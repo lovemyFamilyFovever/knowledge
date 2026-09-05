@@ -224,7 +224,11 @@ function renderNotes() {
 const WORKBENCH = !!document.getElementById("article");
 
 async function navigate(url, push) {
-  if (!WORKBENCH) { location.href = url; return; }
+  if (!WORKBENCH) {
+    // 非阅读页（总览/搜索/收藏）：同类 URL 原地不动，避免 back 触发重复刷新
+    if (location.pathname + location.search !== url) location.href = url;
+    return;
+  }
   closeEditor();
   const path = url.split("?")[0];
   const segs = path.split("/").filter(Boolean).map(decodeURIComponent);
@@ -264,6 +268,7 @@ async function openDoc(domain, sub, name) {
   renderInfo();
   renderNotes();
   linksLoadedFor = null;
+  if (document.querySelector("#pane-links.active")) loadLinks(); // 停在双链标签时跟随切换
   const art = document.querySelector(".article"); if (art) art.scrollTop = 0;
 }
 
@@ -345,6 +350,10 @@ async function toggleFav() {
   const b = $("#fav-btn");
   b.textContent = data.favorite ? "★ 已收藏" : "☆ 收藏";
   b.classList.toggle("faved", data.favorite);
+  // 同步树缓存里的收藏标记，收藏页/列表星星即时一致
+  const s = findSub(DOC.domain, DOC.sub);
+  const td = s && s.docs.find(x => x.name === DOC.name);
+  if (td) td.favorite = data.favorite;
   toast(data.favorite ? "已收藏 · favorite: true 写入 frontmatter" : "已取消收藏");
 }
 
