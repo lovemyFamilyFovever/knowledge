@@ -98,8 +98,22 @@ html[data-theme="dark"] .pill{background:rgba(6,10,14,.45)}
 @keyframes pulse{50%{opacity:.35}}
 #theme-btn{font-size:14px;width:34px;justify-content:center;padding:0}
 /* ---------- 主体四段 ---------- */
-main{position:relative;z-index:4;flex:1;display:grid;grid-template-columns:272px 296px 1fr 272px;
-  gap:10px;padding:10px;min-height:0}
+main{position:relative;z-index:4;flex:1;display:grid;grid-template-columns:272px 296px minmax(0,1fr) 272px;
+  gap:10px;padding:10px;min-height:0;
+  transition:grid-template-columns .35s cubic-bezier(.2,.7,.3,1)}
+main.left-off{grid-template-columns:46px 296px minmax(0,1fr) 272px}
+main.list-off{grid-template-columns:272px 46px minmax(0,1fr) 272px}
+main.left-off.list-off{grid-template-columns:46px 46px minmax(0,1fr) 272px}
+.panel.collapsed>*:not(.unfold){display:none}
+.unfold{display:none;position:absolute;top:12px;left:50%;transform:translateX(-50%);
+  width:30px;height:30px;border-radius:8px;place-items:center;cursor:pointer;
+  color:var(--acc);background:var(--acc-soft);border:1px solid var(--acc-edge)}
+.panel.collapsed .unfold{display:grid}
+.unfold svg{width:15px;height:15px}
+.fold{margin-left:4px;width:22px;height:22px;flex:none;display:grid;place-items:center;border-radius:6px;cursor:pointer;
+  color:var(--faint);border:1px solid transparent;background:none;transition:.15s}
+.fold:hover{color:var(--acc);border-color:var(--edge);background:var(--acc-soft)}
+.fold svg{width:13px;height:13px}
 .panel{background:var(--glass);backdrop-filter:blur(22px) saturate(1.15);
   border:1px solid var(--edge);border-radius:14px;position:relative;overflow:hidden;
   box-shadow:var(--shadow);display:flex;flex-direction:column;min-height:0;transition:background .4s,border-color .4s}
@@ -113,8 +127,9 @@ main{position:relative;z-index:4;flex:1;display:grid;grid-template-columns:272px
 .dom-head:hover{background:var(--acc-soft)}
 .dom-head.active{background:linear-gradient(90deg,var(--acc-soft),transparent);box-shadow:inset 2px 0 0 var(--acc)}
 .dom-glyph{width:26px;height:26px;flex:none;display:grid;place-items:center;border-radius:7px;
-  font-family:var(--disp);font-style:italic;font-weight:700;font-size:14px;color:var(--acc);
-  background:var(--acc-soft);border:1px solid var(--acc-edge)}
+  color:hsl(var(--dh) 55% 40%);background:hsl(var(--dh) 55% 42% / .10);border:1px solid hsl(var(--dh) 55% 42% / .28)}
+.dom-glyph svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+html[data-theme="dark"] .dom-glyph{color:hsl(var(--dh) 72% 64%);background:hsl(var(--dh) 70% 60% / .12);border-color:hsl(var(--dh) 70% 60% / .30)}
 .dom-name{font-size:13.5px;font-weight:600;letter-spacing:.5px}
 .dom-n{margin-left:auto;font-family:var(--disp);font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
 .dom-head.active .dom-n{color:var(--acc)}
@@ -264,6 +279,59 @@ html[data-theme="dark"] #view-home{background:rgba(5,9,13,.6)}
 .statusbar .sb-acc{color:var(--acc)}
 .statusbar b{font-weight:600}
 .statusbar .right{margin-left:auto;display:flex;gap:18px}
+/* ---------- 首页 v2 ---------- */
+.home-inner{max-width:1080px;margin:0 auto;position:relative}
+.home-mark{position:absolute;top:-46px;right:-6px;font-family:var(--disp);font-size:300px;line-height:1;font-weight:700;
+  color:transparent;-webkit-text-stroke:1.5px hsl(158 50% 38% / .09);pointer-events:none;user-select:none;z-index:0}
+html[data-theme="dark"] .home-mark{-webkit-text-stroke:1.5px hsl(158 70% 62% / .07)}
+.home-inner>*:not(.home-mark){position:relative;z-index:1}
+.hero{display:flex;align-items:flex-end;gap:18px;margin:6px 0 24px}
+.hero .hi{font-family:var(--disp);font-size:30px;font-weight:700;letter-spacing:1px;color:var(--ink)}
+.hero .hd{margin-top:8px;color:var(--muted);font-size:13.5px}
+.hero .cd{margin-left:auto;text-align:right;border:1px solid var(--warn-edge);background:var(--warn-soft);border-radius:14px;padding:12px 22px}
+.hero .cd .n{font-family:var(--disp);font-size:34px;font-weight:700;color:var(--warn);line-height:1;font-variant-numeric:tabular-nums}
+.hero .cd .k{font-size:10.5px;color:var(--muted);letter-spacing:2px;margin-top:6px;font-family:var(--mono)}
+.home-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:0 0 26px}
+.hstat{border:1px solid var(--edge);border-radius:13px;padding:18px 20px;background:var(--glass);backdrop-filter:blur(18px);position:relative;overflow:hidden;box-shadow:var(--shadow);animation:rise .5s both}
+.hstat .ic{width:30px;height:30px;border-radius:8px;display:grid;place-items:center;color:hsl(var(--dh) 55% 40%);background:hsl(var(--dh) 55% 42% / .10);margin-bottom:12px}
+html[data-theme="dark"] .hstat .ic{color:hsl(var(--dh) 70% 62%);background:hsl(var(--dh) 70% 60% / .12)}
+.hstat .ic svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.hstat .v{font-family:var(--disp);font-size:34px;font-weight:700;color:hsl(var(--dh) 55% 38%);font-variant-numeric:tabular-nums;line-height:1}
+html[data-theme="dark"] .hstat .v{color:hsl(var(--dh) 70% 64%)}
+.hstat .v small{font-size:15px;color:var(--muted);font-weight:400}
+.hstat .k{margin-top:8px;font-size:12px;color:var(--muted);letter-spacing:1px}
+.hstat .bar{height:5px;border-radius:5px;background:var(--edge);margin-top:12px;overflow:hidden}
+.hstat .bar i{display:block;height:100%;border-radius:5px;background:linear-gradient(90deg,var(--acc),var(--acc2))}
+.dom-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:26px}
+.dcard{border:1px solid var(--edge);border-radius:13px;padding:16px 18px;background:var(--glass);backdrop-filter:blur(18px);cursor:pointer;transition:.2s;position:relative;box-shadow:var(--shadow);animation:rise .5s both}
+.dcard:hover{transform:translateY(-3px);border-color:var(--acc-edge);box-shadow:0 14px 34px rgba(40,60,50,.16)}
+.dcard .dn{display:flex;align-items:center;gap:9px;font-size:14.5px;font-weight:600;letter-spacing:.5px;color:var(--ink)}
+.dcard .ic{width:30px;height:30px;flex:none;border-radius:8px;display:grid;place-items:center;color:hsl(var(--dh) 55% 40%);background:hsl(var(--dh) 55% 42% / .10)}
+html[data-theme="dark"] .dcard .ic{color:hsl(var(--dh) 72% 64%);background:hsl(var(--dh) 70% 60% / .12)}
+.dcard .ic svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.dcard .dn .dc{margin:0 0 0 auto;font-family:var(--disp);font-size:22px;color:hsl(var(--dh) 55% 40%);font-variant-numeric:tabular-nums;font-weight:700}
+html[data-theme="dark"] .dcard .dn .dc{color:hsl(var(--dh) 70% 64%)}
+.dbar{display:flex;gap:2px;height:4px;margin-top:13px}
+.dbar span{height:100%;border-radius:2px;background:hsl(var(--dh) 55% 45%)}
+html[data-theme="dark"] .dbar span{background:hsl(var(--dh) 68% 60%)}
+.dsub{font-family:var(--mono);font-size:9.5px;color:var(--faint);margin-top:8px;letter-spacing:.3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.home-sec{font-family:var(--mono);font-size:10.5px;letter-spacing:3px;color:var(--muted);margin:26px 0 12px;text-transform:uppercase}
+.recent{display:flex;flex-direction:column;gap:8px}
+.rrow{display:flex;align-items:center;gap:12px;padding:11px 16px;border:1px solid var(--edge);border-radius:10px;background:var(--glass);cursor:pointer;transition:.18s;box-shadow:var(--shadow)}
+.rrow:hover{border-color:var(--acc-edge);transform:translateX(4px)}
+.rrow .rt{font-size:13.5px;font-weight:600;flex:1;color:var(--ink)}
+.rrow .rp{font-family:var(--mono);font-size:10px;color:var(--faint)}
+.rrow .when{font-family:var(--mono);font-size:10px;color:var(--muted)}
+.dot2{width:8px;height:8px;flex:none;border-radius:50%;background:var(--acc);box-shadow:0 0 0 3px var(--acc-soft)}
+.pipeline{display:flex;align-items:flex-start;border:1px solid var(--edge);border-radius:13px;padding:20px 24px 16px;background:var(--glass);backdrop-filter:blur(18px);box-shadow:var(--shadow)}
+.pipe-node{display:flex;flex-direction:column;align-items:center;gap:9px;min-width:88px}
+.pipe-node .pic{width:38px;height:38px;border-radius:50%;display:grid;place-items:center;border:1.5px solid var(--acc-edge);color:var(--acc);background:var(--acc-soft)}
+.pipe-node .pic svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.pipe-node .pl{font-size:11.5px;color:var(--faint);letter-spacing:.5px;white-space:nowrap}
+.pipe-node.done .pl{color:var(--muted)}
+.pipe-node.active .pic{border-color:var(--warn-edge);color:var(--warn);background:var(--warn-soft);animation:pulse 2s infinite}
+.pipe-node.active .pl{color:var(--warn);font-weight:600}
+.pipe-line{flex:1;height:1.5px;background:var(--acc-edge);margin:19px 8px 0}
 /* toast */
 #toast{position:fixed;left:50%;bottom:52px;transform:translateX(-50%) translateY(20px);z-index:50;
   background:linear-gradient(120deg,rgba(18,32,28,.96),rgba(12,22,26,.96));border:1px solid rgba(55,230,166,.4);
@@ -275,6 +343,25 @@ html[data-theme="dark"] #view-home{background:rgba(5,9,13,.6)}
 </style>
 </head>
 <body>
+<svg xmlns="http://www.w3.org/2000/svg" style="display:none" aria-hidden="true">
+ <symbol id="i-ai" viewBox="0 0 24 24"><path d="M12 3.5l1.8 4.7 4.7 1.8-4.7 1.8L12 16.5l-1.8-4.7-4.7-1.8 4.7-1.8z"/><path d="M18.8 15.6l.7 1.9 1.9.7-1.9.7-.7 1.9-.7-1.9-1.9-.7 1.9-.7z"/></symbol>
+ <symbol id="i-frontend" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2.5"/><path d="M3 8.5h18M9.5 12.5l-2 2 2 2M14.5 12.5l2 2-2 2"/></symbol>
+ <symbol id="i-cs-fundamentals" viewBox="0 0 24 24"><rect x="6.5" y="6.5" width="11" height="11" rx="2"/><rect x="10.2" y="10.2" width="3.6" height="3.6" rx=".8"/><path d="M9 6.5V4M15 6.5V4M9 20v-2.5M15 20v-2.5M6.5 9H4M6.5 15H4M20 9h-2.5M20 15h-2.5"/></symbol>
+ <symbol id="i-projects" viewBox="0 0 24 24"><circle cx="6" cy="6" r="2.6"/><circle cx="6" cy="18" r="2.6"/><circle cx="18" cy="6" r="2.6"/><path d="M6 8.6v6.8M18 8.6c0 4.2-4.6 4.9-9.4 5.4"/></symbol>
+ <symbol id="i-engineering" viewBox="0 0 24 24"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></symbol>
+ <symbol id="i-interview" viewBox="0 0 24 24"><path d="M21 11.6a8.4 8.4 0 0 1-8.5 8.4 8.5 8.5 0 0 1-3.8-.9L3 21l1.9-5.7A8.5 8.5 0 1 1 21 11.6z"/><path d="M9.7 9.6a2.3 2.3 0 1 1 3.3 2.1c-.8.4-1 .9-1 1.7"/><path d="M12 16.4h.01"/></symbol>
+ <symbol id="i-backend" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="7" rx="2"/><rect x="3" y="13" width="18" height="7" rx="2"/><path d="M7 7.5h.01M7 16.5h.01M17 7.5h-4M17 16.5h-4"/></symbol>
+ <symbol id="i-career" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m16.2 7.8-2.9 6.5-6.5 2.9 2.9-6.5z"/></symbol>
+ <symbol id="i-cookbook" viewBox="0 0 24 24"><path d="M2 4.5h6a4 4 0 0 1 4 4V20a3 3 0 0 0-3-3H2z"/><path d="M22 4.5h-6a4 4 0 0 0-4 4V20a3 3 0 0 1 3-3h7z"/></symbol>
+ <symbol id="i-fold-l" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></symbol>
+ <symbol id="i-fold-r" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></symbol>
+ <symbol id="i-database" viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="8" ry="2.8"/><path d="M4 5v14c0 1.6 3.6 2.9 8 2.9s8-1.3 8-2.9V5"/><path d="M4 12c0 1.6 3.6 2.9 8 2.9s8-1.3 8-2.9"/></symbol>
+ <symbol id="i-scan" viewBox="0 0 24 24"><path d="M3 7V5.5A2.5 2.5 0 0 1 5.5 3H7M17 3h1.5A2.5 2.5 0 0 1 21 5.5V7M21 17v1.5a2.5 2.5 0 0 1-2.5 2.5H17M7 21H5.5A2.5 2.5 0 0 1 3 18.5V17"/><path d="M7 12h10"/></symbol>
+ <symbol id="i-commit" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.2"/><path d="M3 12h5.8M15.2 12H21"/></symbol>
+ <symbol id="i-file" viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9.5 13h5M9.5 16.5h5"/></symbol>
+ <symbol id="i-grid" viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="7" height="7" rx="1.6"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.6"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.6"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.6"/></symbol>
+ <symbol id="i-inbox-s" viewBox="0 0 24 24"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></symbol>
+</svg>
 <div class="aurora"><div class="blob b1"></div><div class="blob b2"></div><div class="blob b3"></div></div>
 <div class="grain"></div>
 
@@ -296,19 +383,21 @@ html[data-theme="dark"] #view-home{background:rgba(5,9,13,.6)}
 </header>
 
 <main>
-  <section class="panel">
-    <div class="panel-h">分类 · TAXONOMY<span class="cnt" id="tree-total">513</span></div>
+  <section class="panel" id="p-left">
+    <div class="panel-h">分类 · TAXONOMY<span class="cnt" id="tree-total">513</span><button class="fold" onclick="togglePanel('left')" title="收起左栏"><svg><use href="#i-fold-l"/></svg></button></div>
     <nav class="tree" id="tree"></nav>
     <div class="tree-foot">
       <div class="tf-row"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>收件箱（待归档）<span class="badge">3,495</span></div>
       <div class="tf-row"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m12 21 8.6-8.8a5 5 0 0 0-7.1-7L12 6.7l-1.5-1.5a5 5 0 1 0-7.1 7z"/></svg>收藏<span class="badge ok" id="fav-n">2</span></div>
       <div class="tf-row"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>最近阅读<span class="badge ok" id="recent-n">6</span></div>
     </div>
+    <button class="unfold" onclick="togglePanel('left')" title="展开左栏"><svg><use href="#i-fold-r"/></svg></button>
   </section>
 
-  <section class="panel">
-    <div class="panel-h" id="list-title">文档 · DOCS<span class="cnt" id="list-cnt">53</span></div>
+  <section class="panel" id="p-list">
+    <div class="panel-h" id="list-title">文档 · DOCS<span class="cnt" id="list-cnt">53</span><button class="fold" onclick="togglePanel('list')" title="收起列表"><svg><use href="#i-fold-l"/></svg></button></div>
     <div class="doclist" id="doclist"></div>
+    <button class="unfold" onclick="togglePanel('list')" title="展开列表"><svg><use href="#i-fold-r"/></svg></button>
   </section>
 
   <section class="panel article-wrap">
@@ -340,7 +429,7 @@ html[data-theme="dark"] #view-home{background:rgba(5,9,13,.6)}
 </main>
 
 <div class="statusbar">
-  <span class="sb-acc">知库 v0.2-prototype</span>
+  <span class="sb-acc">知库 v0.3-prototype</span>
   <span>content/ = 唯一事实源 · SQLite 仅派生索引</span>
   <span class="right"><span>上次重建 21:41</span><span>git <b class="sb-acc">320490c</b></span><span>localhost:5001</span></span>
 </div>
@@ -349,15 +438,15 @@ html[data-theme="dark"] #view-home{background:rgba(5,9,13,.6)}
 <script>
 /* ================= 真实语料数据 ================= */
 const TREE=[
- {id:"ai",name:"AI",n:98,g:"AI",subs:[["llm-and-agents","llm-and-agents",53],["ml","ml",13],["data-science","data-science",17],["agent-in-action","agent-in-action",9],["general","general",6]]},
- {id:"frontend",name:"前端",n:82,g:"Fe",subs:[["javascript","javascript",22],["vue2","vue2",22],["vue3","vue3",6],["css","css",6],["frameworks","frameworks",5],["general","general",7],["optimization","optimization",3],["pinia","pinia",3],["html","html",2],["typescript","typescript",2],["debugging","debugging",1],["mobile","mobile",1]]},
- {id:"cs-fundamentals",name:"CS 基础",n:95,g:"Cs",subs:[["programming-languages","programming-languages",27],["database","database",14],["security","security",9],["network","network",10],["algorithms","algorithms",8],["distributed","distributed",8],["os","os",7],["general","general",5],["hardware","hardware",5],["blockchain","blockchain",1],["iot","iot",1]]},
- {id:"projects",name:"项目",n:92,g:"Pj",subs:[["dsh-agent","dsh-agent",89],["retrospectives","retrospectives",3]]},
- {id:"engineering",name:"工程",n:54,g:"Eg",subs:[["architecture","architecture",21],["devops","devops",12],["testing","testing",6],["software-engineering","software-engineering",5],["tools","tools",5],["design-patterns","design-patterns",3],["developer-skills","developer-skills",2]]},
- {id:"interview",name:"面试",n:39,g:"Iv",subs:[["ai-agent","ai-agent",17],["business","business",5],["css-html","css-html",2],["engineering","engineering",2],["node-fullstack","node-fullstack",2],["performance","performance",2]]},
- {id:"backend",name:"后端",n:13,g:"Be",subs:[["middleware","middleware",7],["general","general",3]]},
- {id:"career",name:"职业",n:28,g:"Cr",subs:[["insights","insights",10],["journal","journal",3],["resume","resume",2],["management","management",1]]},
- {id:"cookbook",name:"手册",n:12,g:"Cb",subs:[["fragment","fragment",9],["skill","skill",2]]},
+ {id:"ai",name:"AI",n:98,h:158,subs:[["llm-and-agents","llm-and-agents",53],["ml","ml",13],["data-science","data-science",17],["agent-in-action","agent-in-action",9],["general","general",6]]},
+ {id:"frontend",name:"前端",n:82,h:200,subs:[["javascript","javascript",22],["vue2","vue2",22],["vue3","vue3",6],["css","css",6],["frameworks","frameworks",5],["general","general",7],["optimization","optimization",3],["pinia","pinia",3],["html","html",2],["typescript","typescript",2],["debugging","debugging",1],["mobile","mobile",1]]},
+ {id:"cs-fundamentals",name:"CS 基础",n:95,h:226,subs:[["programming-languages","programming-languages",27],["database","database",14],["network","network",10],["security","security",9],["algorithms","algorithms",8],["distributed","distributed",8],["os","os",7],["general","general",5],["hardware","hardware",5],["blockchain","blockchain",1],["iot","iot",1]]},
+ {id:"projects",name:"项目",n:92,h:22,subs:[["dsh-agent","dsh-agent",89],["retrospectives","retrospectives",3]]},
+ {id:"engineering",name:"工程",n:54,h:262,subs:[["architecture","architecture",21],["devops","devops",12],["testing","testing",6],["software-engineering","software-engineering",5],["tools","tools",5],["design-patterns","design-patterns",3],["developer-skills","developer-skills",2]]},
+ {id:"interview",name:"面试",n:39,h:340,subs:[["ai-agent","ai-agent",17],["business","business",5],["css-html","css-html",2],["engineering","engineering",2],["node-fullstack","node-fullstack",2],["performance","performance",2]]},
+ {id:"backend",name:"后端",n:13,h:12,subs:[["middleware","middleware",7],["general","general",3]]},
+ {id:"career",name:"职业",n:28,h:42,subs:[["insights","insights",10],["journal","journal",3],["resume","resume",2],["management","management",1]]},
+ {id:"cookbook",name:"手册",n:12,h:96,subs:[["fragment","fragment",9],["skill","skill",2]]},
 ];
 const DOCS={
  "ai/llm-and-agents":[
@@ -561,7 +650,7 @@ function renderTree(){
   $("#tree").innerHTML=TREE.map(d=>`
    <div class="dom ${d.id===cur.dom.split("/")[0]?"open":""}" data-dom="${d.id}">
     <div class="dom-head ${d.id===cur.dom.split("/")[0]?"active":""}" onclick="pickDomain('${d.id}')">
-     <span class="dom-glyph">${d.g}</span><span class="dom-name">${d.name}</span><span class="dom-n">${d.n}</span>
+     <span class="dom-glyph" style="--dh:${d.h}"><svg><use href="#i-${d.id}"/></svg></span><span class="dom-name">${d.name}</span><span class="dom-n">${d.n}</span>
     </div>
     <div class="subs">${d.subs.map(s=>`
       <div class="sub ${cur.dom===d.id+"/"+s[0]?"active":""}" onclick="event.stopPropagation();pickSub('${d.id}/${s[0]}')">${s[1]}<span class="n">${s[2]}</span></div>`).join("")}
@@ -577,7 +666,7 @@ function pickSub(sub){
 function renderList(filter=""){
   const docs=DOCS[cur.dom]||[];
   const shown=docs.filter(d=>!filter||d.t.toLowerCase().includes(filter.toLowerCase())||(d.tags||[]).join(" ").toLowerCase().includes(filter.toLowerCase()));
-  $("#list-title").innerHTML=`文档 · ${cur.dom.toUpperCase()}<span class="cnt">${shown.length}</span>`;
+  $("#list-title").innerHTML=`文档 · ${cur.dom.toUpperCase()}<span class="cnt">${shown.length}</span><button class="fold" onclick="togglePanel('list')" title="收起列表"><svg><use href="#i-fold-l"/></svg></button>`;
   $("#doclist").innerHTML=shown.map(d=>{
     const idx=DOCS[cur.dom].indexOf(d);
     const active=(filter?false:idx===cur.doc)?"active":"";
@@ -620,35 +709,65 @@ function addNote(){const i=$("#ni");if(!i.value.trim())return;cur.art.notes=cur.
 
 /* ================= 首页 ================= */
 function renderHome(){
+ const now=new Date();
+ const h=now.getHours();
+ const greet=h<6?"夜深了":h<11?"早上好":h<13?"中午好":h<18?"下午好":"晚上好";
+ const dateStr=now.toLocaleDateString("zh-CN",{month:"long",day:"numeric",weekday:"long"});
+ const days=Math.max(0,Math.ceil((new Date(now.getFullYear(),9,1)-now)/864e5));
+ const pct=Math.round(513/(513+3495)*100);
  $("#view-home").innerHTML=`<div class="home-inner">
-  <div class="home-h"><h1>总览</h1><span class="sub">one entry, everything.</span></div>
-  <div style="color:var(--muted);font-size:13.5px">2026-09-05 语料合龙 · 百科 408 篇 + 博客 106 篇全量收编 · 离职倒计时 26 天</div>
+  <div class="home-mark">知</div>
+  <div class="hero">
+    <div><div class="hi">${greet}</div><div class="hd">${dateStr} · 语料合龙于 2026-09-05 · 单一入口，一切知识从这里进出</div></div>
+    <div class="cd"><div class="n">${days}</div><div class="k">距 10·01 离职</div></div>
+  </div>
   <div class="home-stats">
-   <div class="hstat"><div class="v">513</div><div class="k">Markdown 文档（事实源）</div></div>
-   <div class="hstat"><div class="v">73</div><div class="k">整页美化版 .html 旁挂</div></div>
-   <div class="hstat"><div class="v">9 <small>域</small> / 40 <small>叶</small></div><div class="k">两层 taxonomy · 冻结</div></div>
-   <div class="hstat warn"><div class="v">3,495</div><div class="k">收件箱待归档</div></div>
+   <div class="hstat" style="--dh:158;animation-delay:0ms"><span class="ic"><svg><use href="#i-file"/></svg></span><div class="v">513</div><div class="k">Markdown 文档 · 事实源</div></div>
+   <div class="hstat" style="--dh:200;animation-delay:60ms"><span class="ic"><svg><use href="#i-cookbook"/></svg></span><div class="v">73</div><div class="k">整页美化版 .html 旁挂</div></div>
+   <div class="hstat" style="--dh:226;animation-delay:120ms"><span class="ic"><svg><use href="#i-grid"/></svg></span><div class="v">9<small> 域</small> / 40<small> 叶</small></div><div class="k">两层 taxonomy · 已冻结</div></div>
+   <div class="hstat" style="--dh:22;animation-delay:180ms"><span class="ic"><svg><use href="#i-inbox-s"/></svg></span><div class="v">3,495</div><div class="k">收件箱待归档</div>
+     <div class="bar"><i style="width:${pct}%"></i></div><div class="k" style="margin-top:7px">全库归档进度 ${pct}%</div></div>
   </div>
   <div class="home-sec">领域 · domains</div>
   <div class="dom-grid">
-   ${TREE.map(d=>`<div class="dcard" onclick="closeHome();pickSub('${d.id}/${d.subs[0][0]}')">
-     <div class="dn"><span class="dom-glyph">${d.g}</span>${d.name}</div>
-     <div class="dc">${d.n}</div><div class="ds">${d.subs.slice(0,4).map(s=>s[1]+"·"+s[2]).join(" / ")}${d.subs.length>4?" / …":""}</div></div>`).join("")}
+   ${TREE.map((d,i)=>`<div class="dcard" style="--dh:${d.h};animation-delay:${220+i*45}ms" onclick="closeHome();pickSub('${d.id}/${d.subs[0][0]}')">
+     <div class="dn"><span class="ic"><svg><use href="#i-${d.id}"/></svg></span>${d.name}<span class="dc">${d.n}</span></div>
+     <div class="dbar">${d.subs.slice(0,5).map((s,j)=>`<span style="width:${(s[2]/d.n*100).toFixed(1)}%;opacity:${(1-j*0.18).toFixed(2)}" title="${s[1]} · ${s[2]} 篇"></span>`).join("")}</div>
+     <div class="dsub">${d.subs.slice(0,3).map(s=>s[1]+" "+s[2]).join(" · ")}${d.subs.length>3?" …":""}</div>
+   </div>`).join("")}
   </div>
   <div class="home-sec">最近更新 · recent</div>
   <div class="recent">
-   <div class="rrow" onclick="closeHome();pickSub('cs-fundamentals/security');pickDoc(0)"><span class="rt">Web安全攻防</span><span class="rp">cs-fundamentals/security</span><span class="when">今天 · baike 迁移</span></div>
-   <div class="rrow" onclick="closeHome();pickSub('frontend/javascript');pickDoc(0)"><span class="rt">JavaScript数组方法介绍</span><span class="rp">frontend/javascript</span><span class="when">今天 · myblog 收编</span></div>
-   <div class="rrow" onclick="closeHome();pickSub('ai/llm-and-agents');pickDoc(0)"><span class="rt">AI Agent 概述与核心架构</span><span class="rp">ai/llm-and-agents</span><span class="when">今天 · baike 迁移</span></div>
+   <div class="rrow" onclick="closeHome();pickSub('cs-fundamentals/security');pickDoc(0)"><span class="dot2"></span><span class="rt">Web安全攻防</span><span class="rp">cs-fundamentals/security</span><span class="when">今天 · baike 迁移</span></div>
+   <div class="rrow" onclick="closeHome();pickSub('frontend/javascript');pickDoc(0)"><span class="dot2"></span><span class="rt">JavaScript数组方法介绍</span><span class="rp">frontend/javascript</span><span class="when">今天 · myblog 收编</span></div>
+   <div class="rrow" onclick="closeHome();pickSub('ai/llm-and-agents');pickDoc(0)"><span class="dot2"></span><span class="rt">AI Agent 概述与核心架构</span><span class="rp">ai/llm-and-agents</span><span class="when">今天 · baike 迁移</span></div>
   </div>
   <div class="home-sec">管线 · pipeline</div>
-  <div class="recent" style="gap:6px">
-   <div class="rrow" style="cursor:default"><span class="rt" style="font-weight:400;font-size:12.5px;color:var(--muted)">scripts/scan_sources.py → content/_inbox/（暂存，不入库） → 归档进 taxonomy → build_index.py 增量重建 FTS → git commit</span><span class="when" style="color:var(--acc)">全部可重建</span></div>
+  <div class="pipeline">
+   ${[["i-scan","全量扫描","done"],["i-inbox-s","收件箱 3,495","done"],["i-grid","归档分类","active"],["i-database","FTS 索引 513","done"],["i-commit","Git 提交","done"]].map(([ic,l,st],i,arr)=>`
+     <div class="pipe-node ${st}"><span class="pic"><svg><use href="#${ic}"/></svg></span><span class="pl">${l}</span></div>
+     ${i<arr.length-1?'<span class="pipe-line"></span>':""}`).join("")}
   </div>
  </div>`;
 }
 function closeHome(){$("#view-home").classList.remove("show")}
 $("#brand").onclick=()=>{renderHome();$("#view-home").classList.add("show")};
+
+/* ================= 面板折叠 ================= */
+function setPanel(which,off){
+  const pid=which==="left"?"p-left":"p-list";
+  const cls=which==="left"?"left-off":"list-off";
+  document.getElementById(pid).classList.toggle("collapsed",off);
+  document.querySelector("main").classList.toggle(cls,off);
+}
+function togglePanel(which){
+  const pid=which==="left"?"p-left":"p-list";
+  const off=!document.getElementById(pid).classList.contains("collapsed");
+  setPanel(which,off);
+  try{const s=JSON.parse(localStorage.getItem("kb-panels")||"{}");s[which]=off;localStorage.setItem("kb-panels",JSON.stringify(s));}catch(e){}
+  toast(off?(which==="left"?"左栏已收起":"列表栏已收起"):(which==="left"?"左栏已展开":"列表栏已展开"));
+}
+function restorePanels(){try{const s=JSON.parse(localStorage.getItem("kb-panels")||"{}");if(s.left)setPanel("left",true);if(s.list)setPanel("list",true);}catch(e){}}
 
 /* ================= 主题切换 ================= */
 function applyTheme(t){document.documentElement.setAttribute("data-theme",t);$("#theme-btn").textContent=t==="dark"?"☾":"☀";try{localStorage.setItem("kb-theme",t)}catch(e){}}
@@ -656,6 +775,7 @@ $("#theme-btn").onclick=()=>{const now=document.documentElement.getAttribute("da
 try{const saved=localStorage.getItem("kb-theme");if(saved)applyTheme(saved);}catch(e){}
 
 /* ================= 启动 ================= */
+restorePanels();
 renderTree();renderList();renderDoc();
 document.addEventListener("keydown",e=>{
  if(e.key==="/"&&document.activeElement.tagName!=="INPUT"&&document.activeElement.tagName!=="TEXTAREA"){e.preventDefault();$("#q").focus();}
