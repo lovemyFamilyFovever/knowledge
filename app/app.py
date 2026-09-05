@@ -213,6 +213,9 @@ def open_db(indexes: Path) -> sqlite3.Connection:
     con = sqlite3.connect(indexes / "index.db")
     con.execute("CREATE VIRTUAL TABLE IF NOT EXISTS docs USING fts5(path UNINDEXED, title, tags, body)")
     con.execute("CREATE TABLE IF NOT EXISTS meta(k TEXT PRIMARY KEY, v TEXT)")
+    con.execute("""CREATE TABLE IF NOT EXISTS links(
+        src TEXT, dst TEXT, raw TEXT, resolved INTEGER,
+        src_title TEXT, dst_title TEXT)""")
     return con
 
 
@@ -244,6 +247,9 @@ def build_index(content: Path, indexes: Path) -> int:
     con = open_db(indexes)
     try:
         con.execute("DELETE FROM docs")
+        con.execute("DELETE FROM links")
+        docs_seen: dict[str, dict] = {}  # path -> {title, stem}
+        pending: list[tuple[str, str, list[str]]] = []  # (path, title, raw links)
         n = 0
         for p, rel in md_files(content):
             fm, body = parse_frontmatter(p.read_text(encoding="utf-8", errors="replace"))
@@ -252,7 +258,38 @@ def build_index(content: Path, indexes: Path) -> int:
             tag_str = " ".join(tags) if isinstance(tags, list) else str(tags or "")
             con.execute("INSERT INTO docs(path,title,tags,body) VALUES(?,?,?,?)",
                         (rel, cjk_space(title), cjk_space(tag_str), cjk_space(body)))
+            docs_seen[rel] = {"title": title, "stem": p.stem}
+            pending.append((rel, title, extract_wikilinks(body)))
             n += 1
+
+        # 双链解析：目标依次匹配 完整相对路径(不带扩展名) / 文件名 / 标题
+        by_path = {rel.rsplit(".md", 1)[0]: rel for rel in docs_seen}
+        by_stem: dict[str, list[str]] = {}
+        by_title: dict[str, list[str]] = {}
+        for rel, info in docs_seen.items():
+            by_stem.setdefault(info["stem"], []).append(rel)
+            by_title.setdefault(info["title"], []).append(rel)
+
+        def resolve(raw: str) -> str | None:
+            raw = raw.strip()
+            for suffix in (".md", ".html"):
+                if raw.endswith(suffix):
+                    raw = raw[: -len(suffix)]
+                    break
+            if raw in by_path:
+                return by_path[raw]
+            if len(by_stem.get(raw, [])) == 1:
+                return by_stem[raw][0]
+            if len(by_title.get(raw, [])) == 1:
+                return by_title[raw][0]
+            return None
+
+        for src, src_title, raws in pending:
+            for raw in raws:
+                dst = resolve(raw)
+                dst_title = docs_seen[dst]["title"] if dst else ""
+                con.execute("INSERT INTO links(src,dst,raw,resolved,src_title,dst_title) VALUES(?,?,?,?,?,?)",
+                            (src, dst or "", raw, 1 if dst else 0, src_title, dst_title))
         con.execute("INSERT OR REPLACE INTO meta(k,v) VALUES('built_at',?)", (str(time.time()),))
         con.execute("INSERT OR REPLACE INTO meta(k,v) VALUES('doc_n',?)", (str(n),))
         con.commit()
@@ -279,6 +316,15 @@ def index_is_stale(content: Path, indexes: Path) -> bool:
 CJK_RUN = re.compile(r"[\u4e00-\u9fff]+")
 CJK_CHAR = re.compile(r"([\u4e00-\u9fff])")
 CJK_GAP = re.compile(r"([\u4e00-\u9fff]) (?=[\u4e00-\u9fff])")
+# [[双链]]：剔除代码块与行内代码后提取，目标支持 别名/锚点 后缀
+FENCE_RE = re.compile(r"```.*?```|~~~.*?~~~", re.S)
+INLINE_CODE_RE = re.compile(r"`[^`\n]*`")
+WIKILINK_RE = re.compile(r"!?\[\[([^\[\]|#]+)(?:#[^\[\]|]*)?(?:\|[^\[\]]*)?\]\]")
+
+
+def extract_wikilinks(body: str) -> list[str]:
+    clean = INLINE_CODE_RE.sub("", FENCE_RE.sub("", body))
+    return [m.group(1).strip() for m in WIKILINK_RE.finditer(clean)]
 
 
 def cjk_space(text: str) -> str:
@@ -531,6 +577,27 @@ def create_app(root: Path | None = None) -> Flask:
         fm["favorite"] = not (fm.get("favorite") is True)
         p.write_text(dump_frontmatter(fm, body), encoding="utf-8")
         return jsonify({"ok": True, "favorite": fm["favorite"]})
+
+    @app.get("/api/links")
+    def api_links():
+        """双链查询：正向(它引用谁，含未解析)与反向(谁引用它)。"""
+        p = safe_rel(request.args.get("path", ""), WRITABLE_EXTS)
+        rel = p.relative_to(content.resolve()).as_posix()
+        con = open_db(indexes)
+        try:
+            outgoing = [
+                {"raw": r[0], "path": r[1] or None, "title": r[2] or r[0], "resolved": bool(r[3])}
+                for r in con.execute(
+                    "SELECT raw, dst, dst_title, resolved FROM links WHERE src=?", (rel,))
+            ]
+            incoming = [
+                {"path": r[0], "title": r[1]}
+                for r in con.execute(
+                    "SELECT src, src_title FROM links WHERE dst=? AND resolved=1", (rel,))
+            ]
+        finally:
+            con.close()
+        return jsonify({"outgoing": outgoing, "incoming": incoming})
 
     @app.post("/api/delete")
     def api_delete():

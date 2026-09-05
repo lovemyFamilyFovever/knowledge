@@ -67,6 +67,7 @@
       <div class="rtab active" data-pane="toc" onclick="tab('toc',this)">目录</div>
       <div class="rtab" data-pane="info" onclick="tab('info',this)">信息</div>
       <div class="rtab" data-pane="notes" onclick="tab('notes',this)">备注</div>
+      <div class="rtab" data-pane="links" onclick="tab('links',this)">双链</div>
     </div>
     <div class="rpane active toc" id="pane-toc"></div>
     <div class="rpane" id="pane-info">
@@ -74,6 +75,9 @@
       <div class="meta-row"><span class="k">{{ k }}</span><span class="v">{{ v }}</span></div>
       {% endfor %}
       <div class="meta-row"><span class="k">版本</span><span class="v">git 全程可追溯</span></div>
+    </div>
+    <div class="rpane" id="pane-links">
+      <div style="padding:6px 2px;font-size:12.5px;color:var(--faint)">打开本标签时自动加载。</div>
     </div>
     <div class="rpane" id="pane-notes">
       <div id="notes-list">

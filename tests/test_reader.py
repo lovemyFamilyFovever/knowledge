@@ -24,6 +24,10 @@ status: "imported"
 
 这里讨论量子纠缠与贝尔不等式。
 
+参见 [[职业笔记B]] 与 [[不存在的链接]]。
+
+代码里的 `[[忽略我]]` 不算双链。
+
 ```python
 print("hello")
 ```
@@ -147,6 +151,16 @@ def main() -> int:
               and any(n["nodeType"] == "doc" for n in j["nodes"]))
         check("/api/graph 连线数 = 节点数 - 域数",
               len(j["links"]) == len(j["nodes"]) - len(j["categories"]))
+
+        r = c.get("/api/links?path=career/B.md")
+        j = r.get_json()
+        check("/api/links 反向链找到 A", any("测试文档A" in x["title"] for x in j["incoming"]))
+
+        r = c.get("/api/links?path=ai/llm-and-agents/A.md")
+        j = r.get_json()
+        check("/api/links 正向含已解析目标", any(x["resolved"] and "职业笔记B" in x["title"] for x in j["outgoing"]))
+        check("/api/links 标记未解析目标", any(not x["resolved"] and "不存在的链接" in x["raw"] for x in j["outgoing"]))
+        check("/api/links 剔除代码内假双链", not any("忽略我" in x["raw"] for x in j["outgoing"]))
 
         r = c.get("/doc/ai/llm-and-agents/deep/Nested")
         check("嵌套目录文档可访问", r.status_code == 200 and "嵌套文档" in r.get_data(as_text=True))

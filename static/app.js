@@ -42,6 +42,7 @@ try { const s = JSON.parse(localStorage.getItem("kb-panels") || "{}");
 function tab(id, el) {
   $$(".rtab").forEach(t => t.classList.remove("active")); el.classList.add("active");
   $$(".rpane").forEach(p => p.classList.remove("active")); $("#pane-" + id).classList.add("active");
+  if (id === "links") loadLinks();
 }
 
 /* ---------- mermaid 懒加载 ---------- */
@@ -170,6 +171,7 @@ async function saveDoc() {
     body = text.slice(m[0].length);
   }
   DOC.fm = fm; DOC.md = body; DOC.title = fm.title || DOC.title;
+  linksLoadedFor = null; // 编辑可能增删双链，重新打开标签时重取
   closeEditor(); renderArticle();
   toast(`已写回 <span class="mono">${DOC.rel}</span> · 索引已更新 · git 可 diff`);
 }
@@ -201,6 +203,30 @@ async function toggleFav() {
   b.textContent = data.favorite ? "★ 已收藏" : "☆ 收藏";
   b.classList.toggle("faved", data.favorite);
   toast(data.favorite ? "已收藏 · favorite: true 写入 frontmatter" : "已取消收藏");
+}
+
+/* ---------- 双链面板（懒加载） ---------- */
+let linksLoadedFor = null;
+function loadLinks() {
+  if (!DOC || DOC.is_html) { $("#pane-links").innerHTML = `<div class="empty" style="padding:10px 2px">HTML 文档暂无双链解析。</div>`; return; }
+  if (linksLoadedFor === DOC.rel) return;
+  linksLoadedFor = DOC.rel;
+  $("#pane-links").innerHTML = `<div style="padding:6px 2px;font-size:12.5px;color:var(--faint)">解析中…</div>`;
+  fetch("/api/links?path=" + encodeURIComponent(DOC.rel))
+    .then(r => r.json())
+    .then(d => {
+      const back = d.incoming.map(x =>
+        `<a class="result" href="/doc/${x.path}"><div class="doc-t">${x.title}</div><div class="rp">${x.path}</div></a>`).join("");
+      const fwd = d.outgoing.map(x => x.resolved
+        ? `<a class="result" href="/doc/${x.path}"><div class="doc-t">${x.title}</div><div class="rp">${x.path}</div></a>`
+        : `<div class="result"><div class="doc-t" style="color:var(--warn)">未解析：${x.raw}</div><div class="rp">没有匹配的文档——整理时顺手修掉或删除</div></div>`).join("");
+      $("#pane-links").innerHTML =
+        `<div class="home-sec" style="margin-top:4px">谁引用了它 · ${d.incoming.length}</div>` +
+        (back || `<div style="font-size:12.5px;color:var(--faint);padding:4px 2px">还没有。写别的文档时打个 [[${DOC.title}]] 就连上了。</div>`) +
+        `<div class="home-sec" style="margin-top:16px">它引用 · ${d.outgoing.length}</div>` +
+        (fwd || `<div style="font-size:12.5px;color:var(--faint);padding:4px 2px">本文没有 [[双链]]。</div>`);
+    })
+    .catch(() => { $("#pane-links").innerHTML = `<div class="empty" style="padding:10px 2px">加载失败，稍后再试。</div>`; linksLoadedFor = null; });
 }
 
 /* ---------- 删除（软删除：移入 _trash） ---------- */
