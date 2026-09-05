@@ -4,3 +4,6 @@ __pycache__/
 *.pyc
 # 派生索引（FTS/向量），由 scripts 重建
 indexes/
+
+# Obsidian 会话状态（每次启动都变，不跟踪）
+content/.obsidian/workspace.json
