@@ -3,9 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>{% block title %}知库 Knowledge{% endblock %}</title>
+<title>{% block title %}知库{% endblock %}</title>
 <link rel="stylesheet" href="/static/style.css">
 <link rel="stylesheet" href="/static/hljs-github-dark.min.css">
+<script>window.LABELS={{ LABELS|tojson }};window.HUES={{ HUES|tojson }};window.SUB_LABELS={{ SUB_LABELS|tojson }};window.SOURCE_LABELS={{ SOURCE_LABELS|tojson }};</script>
 <script src="/static/marked.umd.js" defer></script>
 <script src="/static/highlight.min.js" defer></script>
 <script src="/static/app.js" defer></script>
@@ -46,7 +47,6 @@
   <div class="top-right">
     <span class="pill" title="待归档暂存区（归档后此数下降）"><span>收件箱</span><span class="n">{{ inbox_n|default(0) }}</span></span>
     <span class="pill ok" title="indexes/index.db，启动时自动重建"><span class="dot"></span><span>全文索引</span><span class="n">{{ n_md|default(fts_n)|default(0) }}</span></span>
-    <a class="pill" href="/graph" title="域 → 子域 → 文档 关系图"><span>图谱</span></a>
     {% if obsidian_connected %}
     <span class="pill ok" title="vault: content/ — Ctrl+G 打开图谱"><span class="dot"></span><span>Obsidian 已连接</span></span>
     {% else %}

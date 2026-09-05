@@ -433,11 +433,11 @@ def create_app(root: Path | None = None) -> Flask:
                                    "Tuesday", "周二").replace("Wednesday", "周三").replace("Thursday", "周四").replace(
                                    "Friday", "周五").replace("Saturday", "周六").replace("Sunday", "周日"))
 
-    def workbench(domain, sub, name):
-        domains = scan_corpus(content)
+    def collect_doc(domain, sub, name, domains):
+        """组装单篇文档视图数据（workbench 渲染与 /api/doc 共用）。"""
         p = find_doc(content, domain, sub, name)
         if not p:
-            abort(404)
+            return None
         rel = p.relative_to(content).as_posix()
         raw = p.read_text(encoding="utf-8", errors="replace")
         fm, body = parse_frontmatter(raw)
@@ -446,7 +446,6 @@ def create_app(root: Path | None = None) -> Flask:
         html_twin = p.with_name(p.stem + ".html")
         subs = next(d for d in domains if d["id"] == domain)["subs"]
         sobj = next(s for s in subs if s["id"] == sub)
-        n_fav = sum(1 for d in domains for s in d["subs"] for dd in s["docs"] if dd["favorite"])
         doc_size = f"{p.stat().st_size / 1024:.1f} KB"
         src_raw = str(fm.get("source", ""))
         doc = {
@@ -458,6 +457,7 @@ def create_app(root: Path | None = None) -> Flask:
             "favorite": fm.get("favorite") is True,
             "notes": read_notes(p),
             "size": doc_size,
+            "domain": domain, "sub": sub, "name": name,
             "domain_label": DOMAIN_LABELS.get(domain, domain),
             "sub_label": sobj["label"],
             "source_label": SOURCE_LABELS.get(src_raw, src_raw or "未知"),
@@ -470,6 +470,15 @@ def create_app(root: Path | None = None) -> Flask:
             ("状态", doc["status_label"]),
             ("大小", doc_size),
         ]
+        return {"doc": doc, "info_rows": info_rows, "sobj": sobj}
+
+    def workbench(domain, sub, name):
+        domains = scan_corpus(content)
+        data = collect_doc(domain, sub, name, domains)
+        if data is None:
+            abort(404)
+        doc, info_rows, sobj = data["doc"], data["info_rows"], data["sobj"]
+        n_fav = sum(1 for d in domains for s in d["subs"] for dd in s["docs"] if dd["favorite"])
         con = open_db(indexes)
         try:
             fts_n = con.execute("SELECT count(*) FROM docs").fetchone()[0]
@@ -480,6 +489,21 @@ def create_app(root: Path | None = None) -> Flask:
                                docs=sobj["docs"], sub_label=sobj["label"], doc=doc, n_fav=n_fav,
                                info_rows=info_rows,
                                doc_json=json.dumps(doc, ensure_ascii=False), fts_n=fts_n, inbox_n=inbox_n)
+
+    @app.get("/api/tree")
+    def api_tree():
+        domains = scan_corpus(content)
+        return jsonify({"sig": _tree_sig(content), "domains": domains})
+
+    @app.get("/api/doc")
+    def api_doc():
+        domains = scan_corpus(content)
+        data = collect_doc(request.args.get("domain", ""), request.args.get("sub", ""),
+                           request.args.get("name", ""), domains)
+        if data is None:
+            return jsonify({"error": "not found"}), 404
+        docs = data["sobj"]["docs"]
+        return jsonify({"doc": data["doc"], "info_rows": data["info_rows"], "docs": docs})
 
     @app.route("/browse/<domain>/<sub>")
     def browse(domain, sub):
@@ -499,36 +523,6 @@ def create_app(root: Path | None = None) -> Flask:
     def raw(rel):
         p = safe_rel(rel)
         return send_file(p)
-
-    @app.route("/graph")
-    def graph():
-        return render_template("graph.html", n_md=sum(1 for _ in md_files(content)),
-                               inbox_n=inbox_count(content))
-
-    @app.get("/api/graph")
-    def api_graph():
-        domains = scan_corpus(content)
-        nodes, links = [], []
-        for d in domains:
-            hue = GRAPH_HUES.get(d["id"], 158)
-            nodes.append({"id": d["id"], "name": d["label"], "nodeType": "domain", "n": d["n"],
-                          "symbolSize": 24 + d["n"] ** 0.5 * 4, "hue": hue, "cat": d["id"]})
-            for s in d["subs"]:
-                sid = f'{d["id"]}/{s["id"]}'
-                nodes.append({"id": sid, "name": s["label"], "nodeType": "sub", "n": s["n"],
-                              "symbolSize": 8 + s["n"] ** 0.5 * 2.2, "hue": hue, "cat": d["id"]})
-                links.append({"source": d["id"], "target": sid})
-                for doc in s["docs"]:
-                    did = f'{sid}/{doc["name"]}'
-                    nodes.append({"id": did, "name": doc["title"], "nodeType": "doc",
-                                  "symbolSize": 5 + (3 if doc["favorite"] else 0), "hue": hue,
-                                  "cat": d["id"], "path": f"/doc/{did}"})
-                    links.append({"source": sid, "target": did})
-        categories = [{"name": DOMAIN_LABELS.get(d["id"], d["id"])} for d in domains]
-        cat_index = {d["id"]: i for i, d in enumerate(domains)}
-        for n in nodes:
-            n["category"] = cat_index[n["cat"]]
-        return jsonify({"nodes": nodes, "links": links, "categories": categories})
 
     @app.route("/favorites")
     def favorites():

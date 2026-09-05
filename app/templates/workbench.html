@@ -3,7 +3,7 @@
 <main>
   <section class="panel" id="p-left">
     <div class="panel-h">分类目录<span class="cnt" id="tree-total">{{ n_md }}</span><button class="fold" onclick="togglePanel('left')" title="收起左栏"><svg><use href="#i-fold-l"/></svg></button></div>
-    <nav class="tree">
+    <nav class="tree" id="tree">
       {% for d in domains %}
       <div class="dom {% if cur.domain == d.id %}open{% endif %}">
         <a class="dom-head {% if cur.domain == d.id %}active{% endif %}" href="/browse/{{ d.id }}/{{ d.subs[0].id }}">
@@ -26,7 +26,7 @@
   </section>
 
   <section class="panel" id="p-list">
-    <div class="panel-h">文档 · {{ LABELS.get(cur.domain, cur.domain) }} / {{ sub_label }}<span class="cnt">{{ docs|length }}</span><button class="fold" onclick="togglePanel('list')" title="收起列表"><svg><use href="#i-fold-l"/></svg></button></div>
+    <div class="panel-h" id="list-title">文档 · {{ LABELS.get(cur.domain, cur.domain) }} / {{ sub_label }}<span class="cnt">{{ docs|length }}</span><button class="fold" onclick="togglePanel('list')" title="收起列表"><svg><use href="#i-fold-l"/></svg></button></div>
     <div class="doclist">
       {% for d in docs %}
       <a class="doc {% if cur.name == d.name %}active{% endif %}" href="/doc/{{ cur.domain }}/{{ cur.sub }}/{{ d.name }}">
