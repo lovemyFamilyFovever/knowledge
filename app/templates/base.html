@@ -44,8 +44,8 @@
     <kbd>/</kbd>
   </div>
   <div class="top-right">
-    <a class="pill" href="/home" title="待归档暂存区"><span>收件箱</span><span class="n">{{ inbox_n|default(0) }}</span></a>
-    <a class="pill ok" href="/home"><span class="dot"></span><span>全文索引</span><span class="n">{{ n_md|default(fts_n)|default(0) }}</span></a>
+    <span class="pill" title="待归档暂存区（归档后此数下降）"><span>收件箱</span><span class="n">{{ inbox_n|default(0) }}</span></span>
+    <span class="pill ok" title="indexes/index.db，启动时自动重建"><span class="dot"></span><span>全文索引</span><span class="n">{{ n_md|default(fts_n)|default(0) }}</span></span>
     {% if obsidian_connected %}
     <span class="pill ok" title="vault: content/ — Ctrl+G 打开图谱"><span class="dot"></span><span>Obsidian 已连接</span></span>
     {% else %}
