@@ -141,6 +141,17 @@ def main() -> int:
         r = c.post("/api/favorite", json={"path": "ai/llm-and-agents/A.md"})
         check("/api/favorite 再点取消", r.get_json()["favorite"] is False)
 
+        # 无 frontmatter 的新文档（Obsidian 直接创建）：保存时自动补齐身世信息
+        nf = root / "content/cookbook/fragment"
+        nf.mkdir(parents=True, exist_ok=True)
+        (nf / "newfile.md").write_text("随手记的内容", encoding="utf-8")
+        r = c.post("/api/save", json={"path": "cookbook/fragment/newfile.md", "content": "随手记的内容"})
+        check("无 fm 文档保存成功", r.status_code == 200)
+        saved = (root / "content/cookbook/fragment/newfile.md").read_text(encoding="utf-8")
+        check("保存时自动补齐 frontmatter",
+              saved.startswith("---") and 'title: "newfile"' in saved and 'source: "reader-edit"' in saved
+              and "随手记的内容" in saved)
+
         r = c.get("/api/links?path=career/B.md")
         j = r.get_json()
         check("/api/links 反向链找到 A", any("测试文档A" in x["title"] for x in j["incoming"]))

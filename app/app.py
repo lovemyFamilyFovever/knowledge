@@ -547,6 +547,15 @@ def create_app(root: Path | None = None) -> Flask:
         body = data.get("content", "")
         if not body.endswith("\n"):
             body += "\n"
+        # 新文档（如 Obsidian 里直接创建）没有 frontmatter：首次保存时补齐身世信息；
+        # 已有 frontmatter 的原文照写，不做任何改写
+        fm, _ = parse_frontmatter(body)
+        if not fm:
+            stamp = {
+                "title": p.stem, "tags": [], "source": "reader-edit",
+                "collected": time.strftime("%Y-%m-%d"), "status": "stable",
+            }
+            body = dump_frontmatter(stamp, body)
         p.write_text(body, encoding="utf-8")
         build_index(content, indexes)
         return jsonify({"ok": True, "path": p.relative_to(content.resolve()).as_posix()})
