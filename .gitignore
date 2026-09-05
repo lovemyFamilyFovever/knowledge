@@ -7,3 +7,6 @@ indexes/
 
 # Obsidian 会话状态（每次启动都变，不跟踪）
 content/.obsidian/workspace.json
+
+# 阅读器软删除的回收站（瞬态）
+content/_trash/
