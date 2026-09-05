@@ -151,6 +151,18 @@ async function toggleFav() {
   toast(data.favorite ? "已收藏 · favorite: true 写入 frontmatter" : "已取消收藏");
 }
 
+/* ---------- 删除（软删除：移入 _trash） ---------- */
+async function deleteDoc() {
+  if (!DOC || DOC.is_html) return;
+  if (!confirm("删除后移入 content/_trash/（git 历史亦可找回）。确定删除这篇文档吗？")) return;
+  const r = await fetch("/api/delete", { method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ path: DOC.rel }) });
+  if (!r.ok) { toast("删除失败：" + (await r.text()).slice(0, 120)); return; }
+  const moved = (await r.json()).moved || [];
+  toast(`已移入回收站（${moved.length} 个文件） · 随时可恢复`);
+  setTimeout(() => { location.href = "/"; }, 700);
+}
+
 /* ---------- 快捷键与搜索 ---------- */
 document.addEventListener("keydown", e => {
   if (e.key === "/" && !["INPUT", "TEXTAREA"].includes(document.activeElement.tagName)) { e.preventDefault(); $("#q").focus(); }

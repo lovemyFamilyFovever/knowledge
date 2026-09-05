@@ -46,6 +46,12 @@ def seed(root: Path) -> None:
     d.mkdir(parents=True)
     (d / "A.md").write_text(DOC_A, encoding="utf-8")
     (d / "A.html").write_text(DOC_HTML, encoding="utf-8")
+    nest = d / "deep"
+    nest.mkdir()
+    (nest / "Nested.md").write_text("---\ntitle: \"嵌套文档\"\n---\n\n# 嵌套\n", encoding="utf-8")
+    p2 = root / "content" / "projects" / "dsh-agent" / "architecture"
+    p2.mkdir(parents=True)
+    (p2 / "X.md").write_text("---\ntitle: \"架构分析\"\n---\n\n# X\n", encoding="utf-8")
     c = root / "content" / "career"
     c.mkdir(parents=True)
     (c / "B.md").write_text(DOC_B, encoding="utf-8")
@@ -129,6 +135,20 @@ def main() -> int:
         check("favorite 写进 frontmatter", "favorite: true" in (root / "content/ai/llm-and-agents/A.md").read_text(encoding="utf-8"))
         r = c.post("/api/favorite", json={"path": "ai/llm-and-agents/A.md"})
         check("/api/favorite 再点取消", r.get_json()["favorite"] is False)
+
+        r = c.get("/doc/ai/llm-and-agents/deep/Nested")
+        check("嵌套目录文档可访问", r.status_code == 200 and "嵌套文档" in r.get_data(as_text=True))
+
+        r = c.get("/browse/projects/dsh-agent")
+        check("三级目录子域重定向首篇", r.status_code == 302 and "/doc/projects/dsh-agent/architecture/X" in r.headers["Location"])
+
+        r = c.post("/api/delete", json={"path": "ai/llm-and-agents/A.md"})
+        j = r.get_json() if r.status_code == 200 else {"moved": []}
+        check("/api/delete 移入 _trash", r.status_code == 200 and not (root / "content/ai/llm-and-agents/A.md").exists())
+        check("美化版与备注随删", any("A.html" in m for m in j["moved"]) and any("A.md.notes.md" in m for m in j["moved"]))
+        check("_trash 保留原件", any(p.name == "A.md" for p in (root / "content/_trash").rglob("*.md")))
+        r = c.get("/doc/ai/llm-and-agents/A")
+        check("删除后 404", r.status_code == 404)
 
         r = c.get("/doc/ai/nope/nope")
         check("不存在的文档 404", r.status_code == 404)

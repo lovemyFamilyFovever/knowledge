@@ -64,13 +64,26 @@ def dump_frontmatter(fm: dict, body: str) -> str:
 
 
 # ---------------- corpus scan ----------------
-def scan_corpus(content: Path) -> list[dict]:
-    """Two-level taxonomy: domain dirs -> sub dirs -> documents.
+_SCAN_CACHE: dict = {}
 
-    Files sitting directly in a domain dir land in the pseudo-sub "_root".
-    An .html file is listed as its own document only when no same-stem .md
-    exists; otherwise it is attached to the .md doc as its pretty twin.
-    """
+
+def _tree_sig(content: Path) -> str:
+    """仅 stat 不读内容的树签名：毫秒级，作为扫描缓存的失效依据。"""
+    parts = []
+    for dirpath, dirnames, filenames in os.walk(content):
+        dirnames[:] = [d for d in dirnames if d not in SKIP_DIRS and not d.startswith("_")]
+        for fn in filenames:
+            if fn.endswith((".md", ".html")):
+                p = Path(dirpath) / fn
+                parts.append(f"{p.relative_to(content).as_posix()}:{p.stat().st_mtime_ns}")
+    return "|".join(parts)
+
+
+def scan_corpus(content: Path) -> list[dict]:
+    sig = _tree_sig(content)
+    hit = _SCAN_CACHE.get(str(content))
+    if hit and hit[0] == sig:
+        return hit[1]
     domains = []
     for ddir in sorted(content.iterdir()):
         if not ddir.is_dir() or ddir.name in SKIP_DIRS or ddir.name.startswith("_"):
@@ -85,27 +98,37 @@ def scan_corpus(content: Path) -> list[dict]:
         dom["n"] = sum(s["n"] for s in dom["subs"])
         if dom["subs"]:
             domains.append(dom)
+    _SCAN_CACHE[str(content)] = (sig, domains)
     return domains
 
 
 def _scan_sub(sdir: Path, sid: str, label: str, files=None) -> dict:
+    """递归收集：嵌套目录（如 dsh-agent/architecture、vue2/Details）的文档
+    以子路径作为文档名（<path:name> 路由支持带斜杠的 name）。"""
     files = files if files is not None else sorted(
-        p for p in sdir.iterdir() if p.is_file() and p.suffix in SERVABLE_EXTS
+        p for p in sdir.rglob("*") if p.is_file() and p.suffix in SERVABLE_EXTS
     )
-    stems_md = {p.stem for p in files if p.suffix == ".md"}
+    md_rel = {p.relative_to(sdir).with_suffix("").as_posix() for p in files if p.suffix == ".md"}
     docs = []
     for p in files:
-        if p.suffix == ".html" and p.stem in stems_md:
-            continue  # pretty twin of an md doc; attached below
-        fm, _ = parse_frontmatter(p.read_text(encoding="utf-8", errors="replace")) if p.suffix == ".md" else ({}, None)
+        relp = p.relative_to(sdir).as_posix()
+        fm: dict = {}
+        if p.suffix == ".html":
+            if relp[:-5] in md_rel:
+                continue  # 同名 .md 的美化版旁挂
+            name, title, is_html = relp, p.stem + ".html", True
+        else:
+            name, title, is_html = relp[:-3], p.stem, False
+            fm, _ = parse_frontmatter(p.read_text(encoding="utf-8", errors="replace"))
+            title = str(fm.get("title") or title)
         docs.append({
-            "name": p.stem if p.suffix == ".md" else p.name,
-            "file": p.name,
-            "title": fm.get("title") or (p.stem if p.suffix == ".md" else p.stem + ".html"),
+            "name": name,
+            "file": relp,
+            "title": title,
             "tags": fm.get("tags", []) if isinstance(fm.get("tags"), list) else [],
             "favorite": fm.get("favorite") is True,
-            "is_html": p.suffix == ".html",
-            "has_html": (p.stem + ".html") in {f.name for f in files} if p.suffix == ".md" else False,
+            "is_html": is_html,
+            "has_html": (sdir / (name + ".html")).is_file() if not is_html else False,
             "mtime": p.stat().st_mtime,
         })
     return {"id": sid, "label": label, "n": len(docs), "docs": docs}
@@ -149,11 +172,26 @@ def open_db(indexes: Path) -> sqlite3.Connection:
 
 
 def md_files(content: Path):
-    for p in content.rglob("*.md"):
-        rel = p.relative_to(content).as_posix()
-        if any(part in SKIP_DIRS or part.startswith("_") for part in p.parts):
-            continue
-        yield p, rel
+    for dirpath, dirnames, filenames in os.walk(content):
+        dirnames[:] = [d for d in dirnames if d not in SKIP_DIRS and not d.startswith("_")]
+        for fn in filenames:
+            if fn.endswith(".md"):
+                p = Path(dirpath) / fn
+                yield p, p.relative_to(content).as_posix()
+
+
+_INBOX_CACHE = {"t": 0.0, "n": 0}
+
+
+def inbox_count(content: Path) -> int:
+    d = content / "_inbox"
+    if not d.is_dir():
+        return 0
+    now = time.time()
+    if now - _INBOX_CACHE["t"] > 60:
+        _INBOX_CACHE["n"] = sum(1 for _ in d.rglob("*"))
+        _INBOX_CACHE["t"] = now
+    return _INBOX_CACHE["n"]
 
 
 def build_index(content: Path, indexes: Path) -> int:
@@ -255,7 +293,7 @@ def create_app(root: Path | None = None) -> Flask:
         n_html = sum(1 for p in content.rglob("*.html")
                      if not any(part in SKIP_DIRS or part.startswith("_") for part in p.parts))
         fav = sum(1 for d in (doc for dom in domains for s in dom["subs"] for doc in s["docs"]) if d["favorite"])
-        inbox = sum(1 for _ in (content / "_inbox").rglob("*")) if (content / "_inbox").is_dir() else 0
+        inbox = inbox_count(content)
         return {"domains": domains, "n_md": n_md, "n_html": n_html, "n_fav": fav, "inbox": inbox}
 
     def safe_rel(rel: str, exts=SERVABLE_EXTS) -> Path:
@@ -332,7 +370,7 @@ def create_app(root: Path | None = None) -> Flask:
             fts_n = con.execute("SELECT count(*) FROM docs").fetchone()[0]
         finally:
             con.close()
-        inbox_n = sum(1 for _ in (content / "_inbox").rglob("*")) if (content / "_inbox").is_dir() else 0
+        inbox_n = inbox_count(content)
         return render_template("workbench.html", domains=domains, cur={"domain": domain, "sub": sub, "name": name},
                                docs=sobj["docs"], sub_label=sobj["label"], doc=doc, n_fav=n_fav,
                                doc_json=json.dumps(doc, ensure_ascii=False), fts_n=fts_n, inbox_n=inbox_n)
@@ -362,7 +400,7 @@ def create_app(root: Path | None = None) -> Flask:
         items = [{"domain": d["id"], "domain_label": d["label"], "sub": s["id"], **doc}
                  for d in domains for s in d["subs"] for doc in s["docs"] if doc["favorite"]]
         return render_template("favorites.html", items=items, n_md=sum(1 for _ in md_files(content)),
-                               inbox_n=sum(1 for _ in (content / "_inbox").rglob("*")) if (content / "_inbox").is_dir() else 0)
+                               inbox_n=inbox_count(content))
 
     @app.route("/search")
     def search_route():
@@ -370,7 +408,7 @@ def create_app(root: Path | None = None) -> Flask:
         results = search(indexes, q) if q else []
         return render_template("search.html", q=q, results=results,
                                n_md=sum(1 for _ in md_files(content)),
-                               inbox_n=sum(1 for _ in (content / "_inbox").rglob("*")) if (content / "_inbox").is_dir() else 0)
+                               inbox_n=inbox_count(content))
 
     @app.post("/api/save")
     def api_save():
@@ -403,6 +441,28 @@ def create_app(root: Path | None = None) -> Flask:
         fm["favorite"] = not (fm.get("favorite") is True)
         p.write_text(dump_frontmatter(fm, body), encoding="utf-8")
         return jsonify({"ok": True, "favorite": fm["favorite"]})
+
+    @app.post("/api/delete")
+    def api_delete():
+        """软删除：文档与其美化版、备注一起移入 content/_trash/<时间戳>/，
+        保持相对结构，可随时手动恢复；git 历史是第二重保险。"""
+        data = request.get_json(force=True)
+        p = safe_rel(data.get("path", ""), WRITABLE_EXTS)
+        root_resolved = content.resolve()
+        rel = p.relative_to(root_resolved)
+        trash = content / "_trash" / time.strftime("%Y%m%d-%H%M%S")
+        moved = [rel.as_posix()]
+        target = trash / rel
+        target.parent.mkdir(parents=True, exist_ok=True)
+        p.rename(target)
+        for sib in (p.with_name(p.name + ".notes.md"), p.with_name(p.stem + ".html")):
+            if sib.is_file():
+                s = trash / sib.relative_to(root_resolved)
+                s.parent.mkdir(parents=True, exist_ok=True)
+                sib.rename(s)
+                moved.append(sib.relative_to(root_resolved).as_posix())
+        build_index(content, indexes)
+        return jsonify({"ok": True, "moved": moved})
 
     @app.errorhandler(404)
     def not_found(e):
