@@ -26,6 +26,8 @@ DOMAIN_LABELS = {
     "ai": "AI", "engineering": "工程", "interview": "面试",
     "projects": "项目", "cookbook": "手册", "career": "职业",
 }
+GRAPH_HUES = {"ai": 158, "frontend": 200, "cs-fundamentals": 226, "projects": 22,
+              "engineering": 262, "interview": 340, "backend": 12, "career": 42, "cookbook": 96}
 SUB_LABELS = {
     "llm-and-agents": "大模型与智能体", "ml": "机器学习", "data-science": "数据科学",
     "agent-in-action": "Agent 实战", "general": "综合", "javascript": "JavaScript",
@@ -47,11 +49,18 @@ SOURCE_LABELS = {
     "knowledge": "知识库自产", "dsh-memory": "Agent 记忆",
 }
 STATUS_LABELS = {"imported": "已导入", "reviewed": "已复查", "stable": "已整理"}
+OBSIDIAN_EXE_CANDIDATES = [
+    Path("D:/Obsidian/Obsidian.exe"),
+    Path(os.environ.get("LOCALAPPDATA", "")) / "Programs" / "Obsidian" / "Obsidian.exe",
+    Path("C:/Program Files/Obsidian/Obsidian.exe"),
+]
 OBSIDIAN_CONFIG = Path(os.environ.get("APPDATA", "")) / "obsidian" / "obsidian.json"
 
 
 def obsidian_vault_connected(content: Path) -> bool:
-    """连接的判定标准不是 exe 在哪，而是 Obsidian 配置里注册了指向本语料的 vault。"""
+    """双条件：程序本体存在，且 Obsidian 配置里注册了指向本语料的 vault。"""
+    if not any(p.is_file() for p in OBSIDIAN_EXE_CANDIDATES):
+        return False
     try:
         data = json.loads(OBSIDIAN_CONFIG.read_text(encoding="utf-8"))
     except (OSError, ValueError):
@@ -344,8 +353,7 @@ def create_app(root: Path | None = None) -> Flask:
     def chrome():
         return {"LABELS": DOMAIN_LABELS, "SUB_LABELS": SUB_LABELS,
                 "SOURCE_LABELS": SOURCE_LABELS, "STATUS_LABELS": STATUS_LABELS,
-                "HUES": {"ai": 158, "frontend": 200, "cs-fundamentals": 226, "projects": 22,
-                         "engineering": 262, "interview": 340, "backend": 12, "career": 42, "cookbook": 96},
+                "HUES": GRAPH_HUES,
                 "obsidian_connected": obsidian_vault_connected(content)}
 
     @app.route("/")
@@ -445,6 +453,36 @@ def create_app(root: Path | None = None) -> Flask:
     def raw(rel):
         p = safe_rel(rel)
         return send_file(p)
+
+    @app.route("/graph")
+    def graph():
+        return render_template("graph.html", n_md=sum(1 for _ in md_files(content)),
+                               inbox_n=inbox_count(content))
+
+    @app.get("/api/graph")
+    def api_graph():
+        domains = scan_corpus(content)
+        nodes, links = [], []
+        for d in domains:
+            hue = GRAPH_HUES.get(d["id"], 158)
+            nodes.append({"id": d["id"], "name": d["label"], "nodeType": "domain", "n": d["n"],
+                          "symbolSize": 24 + d["n"] ** 0.5 * 4, "hue": hue, "cat": d["id"]})
+            for s in d["subs"]:
+                sid = f'{d["id"]}/{s["id"]}'
+                nodes.append({"id": sid, "name": s["label"], "nodeType": "sub", "n": s["n"],
+                              "symbolSize": 8 + s["n"] ** 0.5 * 2.2, "hue": hue, "cat": d["id"]})
+                links.append({"source": d["id"], "target": sid})
+                for doc in s["docs"]:
+                    did = f'{sid}/{doc["name"]}'
+                    nodes.append({"id": did, "name": doc["title"], "nodeType": "doc",
+                                  "symbolSize": 5 + (3 if doc["favorite"] else 0), "hue": hue,
+                                  "cat": d["id"], "path": f"/doc/{did}"})
+                    links.append({"source": sid, "target": did})
+        categories = [{"name": DOMAIN_LABELS.get(d["id"], d["id"])} for d in domains]
+        cat_index = {d["id"]: i for i, d in enumerate(domains)}
+        for n in nodes:
+            n["category"] = cat_index[n["cat"]]
+        return jsonify({"nodes": nodes, "links": links, "categories": categories})
 
     @app.route("/favorites")
     def favorites():

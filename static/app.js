@@ -8,6 +8,7 @@ const toast = m => { const t = $("#toast"); t.innerHTML = m; t.classList.add("sh
 function applyTheme(t) {
   document.documentElement.setAttribute("data-theme", t);
   const b = $("#theme-btn"); if (b) b.textContent = t === "dark" ? "☾" : "☀";
+  window.dispatchEvent(new CustomEvent("theme-changed", { detail: t }));
   try { localStorage.setItem("kb-theme", t); } catch (e) {}
 }
 const themeBtn = $("#theme-btn");

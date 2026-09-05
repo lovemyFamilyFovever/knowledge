@@ -95,6 +95,7 @@ main.list-off{grid-template-columns:272px 46px minmax(0,1fr) 272px}
 main.left-off.list-off{grid-template-columns:46px 46px minmax(0,1fr) 272px}
 main.single{display:flex;flex-direction:column}
 .page-panel{flex:1;min-height:0}
+#graph{flex:1;min-height:0}
 .panel.collapsed>*:not(.unfold){display:none}
 .unfold{display:none;position:absolute;top:12px;left:50%;transform:translateX(-50%);
   width:30px;height:30px;border-radius:8px;place-items:center;cursor:pointer;

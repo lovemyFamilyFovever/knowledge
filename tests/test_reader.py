@@ -136,6 +136,18 @@ def main() -> int:
         r = c.post("/api/favorite", json={"path": "ai/llm-and-agents/A.md"})
         check("/api/favorite 再点取消", r.get_json()["favorite"] is False)
 
+        r = c.get("/graph")
+        check("/graph 图谱页渲染", r.status_code == 200 and "知识图谱" in r.get_data(as_text=True))
+
+        r = c.get("/api/graph")
+        j = r.get_json()
+        check("/api/graph 节点覆盖域/子域/文档",
+              j["nodes"] and any(n["nodeType"] == "domain" for n in j["nodes"])
+              and any(n["nodeType"] == "sub" for n in j["nodes"])
+              and any(n["nodeType"] == "doc" for n in j["nodes"]))
+        check("/api/graph 连线数 = 节点数 - 域数",
+              len(j["links"]) == len(j["nodes"]) - len(j["categories"]))
+
         r = c.get("/doc/ai/llm-and-agents/deep/Nested")
         check("嵌套目录文档可访问", r.status_code == 200 and "嵌套文档" in r.get_data(as_text=True))
 
