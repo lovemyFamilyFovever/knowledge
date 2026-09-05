@@ -47,11 +47,6 @@
   <div class="top-right">
     <span class="pill" title="待归档暂存区（归档后此数下降）"><span>收件箱</span><span class="n">{{ inbox_n|default(0) }}</span></span>
     <span class="pill ok" title="indexes/index.db，启动时自动重建"><span class="dot"></span><span>全文索引</span><span class="n">{{ n_md|default(fts_n)|default(0) }}</span></span>
-    {% if obsidian_connected %}
-    <span class="pill ok" title="vault: content/ — Ctrl+G 打开图谱"><span class="dot"></span><span>Obsidian 已连接</span></span>
-    {% else %}
-    <a class="pill" href="/doc/cookbook/skill/Obsidian知识图谱速查" title="安装后可使用双链与图谱"><span>Obsidian 未安装</span></a>
-    {% endif %}
     <button class="pill" id="theme-btn" title="切换白天 / 夜间">☀</button>
   </div>
 </header>
