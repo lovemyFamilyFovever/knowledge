@@ -1,0 +1,6 @@
+# _inbox 是可重建的暂存区，归档进 taxonomy 后才入库
+content/_inbox/
+__pycache__/
+*.pyc
+# 派生索引（FTS/向量），由 scripts 重建
+indexes/

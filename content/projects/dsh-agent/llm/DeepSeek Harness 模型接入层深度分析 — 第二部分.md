@@ -1,0 +1,335 @@
+---
+title: "DeepSeek Harness 模型接入层深度分析 — 第二部分"
+tags: []
+source: "baike"
+source_path: "项目分析 / DSH Agent 项目分析 / 模型接入层"
+collected: "2026-09-05"
+status: "imported"
+---
+
+DeepSeek Harness 模型接入层深度分析 — 第二部分
+目录导航
+Part 1
+Part 2
+Part 3
+⇧
+DeepSeek Harness 模型接入层深度分析
+第二部分：SDK 客户端/服务端 API 与错误处理体系  |  分析日期：2026-08-29
+4. SDK 客户端 API
+4.1 客户端封装的设计
+SDK 客户端分为两层：
+底层：HarnessClient
+这是一个 JSON-RPC 客户端，通过子进程 stdio 与 Harness 运行时通信。核心设计：
+懒启动
+—
+start()
+在第一次请求时自动调用，幂等
+子进程所有权
+— 客户端完全拥有子进程的生命周期
+通知订阅
+—
+subscribe(filter)
+返回
+NotificationSubscription
+，支持异步迭代、队列和等待者模式
+会话树订阅
+—
+subscribeSessionTree(sessionId)
+通过
+subagent.started
+的父/子关系边自动发现后代会话
+NotificationSubscriptionImpl
+实现了生产者-消费者模式：
+方法
+行为
+push(notification)
+过滤匹配后推送给等待者或入队
+next()
+从队列取或注册等待者（异步）
+tryNext()
+非阻塞出队，无则返回 undefined
+close()
+断开并丢弃队列
+fail(error)
+终端失败，拒绝待处理的等待者
+高层：DeepSeekHarness
+封装了启动握手、会话管理和运行 API：
+const harness = new DeepSeekHarness({
+  launch: { command: 'dsh-jsonrpc-agent', args: ['--config', 'cordis.yml'] },
+  provider: 'deepseek-official',
+  model: 'deepseek-v4-flash',
+})
+
+// 一行完成 prompt → 等待 idle → 获取结果
+const result = await harness.run('Hello, world!')
+console.log(result.finalResponse)
+HarnessSession.run()
+的流程：
+确保 harness 已初始化（懒启动 + 握手）
+订阅会话树通知
+发送 prompt，获取 messageId
+等待 inbox receipt 确认消息已入队
+收集所有 session.event 和通知
+等待
+session.status == 'idle'
+终止
+返回
+RunResult
+（sessionId、finalResponse、events、notifications）
+DeepSeekHarness
+实现了
+AsyncDisposable
+，支持
+await using
+语法自动关闭。
+4.2 请求重试和错误处理
+SDK 客户端层的错误处理
+错误类型
+触发条件
+信息内容
+TransportClosedError
+子进程死亡或不可用
+退出码 + stderr 尾部
+RequestTimeoutError
+请求超时
+方法名 + 超时时间
+SdkProtocolError
+运行时返回协议外的响应
+协议违规描述
+LLM 层的重试机制（llm-retry 插件）
+llm-retry
+插件安装在
+agent/request-error
+waterfall 上，实现 provider 路由的请求恢复。
+重试模式
+行为
+默认配置
+normal
+仅重试配置的瞬态失败码
+最多 5 次，可重试 EMPTY_RESPONSE / RATE_LIMIT / SERVER / TIMEOUT / TRANSPORT
+always
+重试所有失败，直到成功、取消或处置
+无次数限制
+重试延迟采用
+有界指数退避 + 对称抖动
+：
+function localDelay(config, retry, random) {
+  const exponential = Math.min(initialDelayMs * 2^(retry-1), maxDelayMs)
+  const jitter = 1 - jitterRatio + 2 * jitterRatio * random()
+  return Math.min(exponential * jitter, maxDelayMs)
+}
+关键设计决策：
+重试前先持久化
+llm/retry
+事件，再等待延迟，确保可恢复性。尊重 provider 返回的
+Retry-After
+头，但限制在
+maxDelayMs
+内。插件处置时取消所有活跃等待并排空。
+4.3 超时和取消机制
+多层取消信号融合
+const upstream = options.signal === undefined
+  ? consumer.signal
+  : AbortSignal.any([options.signal, consumer.signal])
+using watchdog = idleWatchdog(upstream, timeoutMs, 'LLM_STREAM_IDLE_TIMEOUT')
+信号层
+来源
+语义
+options.signal
+调用者
+外部取消请求
+consumer.signal
+消费者
+消费停止
+watchdog.signal
+空闲看门狗
+流空闲超时
+子进程处置梯子
+stdin EOF（合作式退出，等待 disposeEofGraceMs 默认 6s）
+  → SIGTERM（POSIX 优雅终止，等待 disposeGraceMs 默认 3s）
+    → SIGKILL（强制终止，等待 disposeGraceMs 默认 3s）
+Windows 平台跳过 SIGTERM（Node 将其映射为 TerminateProcess），直接使用强制终止。每个阶段都有定时器和退出监听器的清理，避免监听器累积。
+5. SDK 服务端 API
+5.1 服务端接口定义
+HarnessSdkJsonRpcServer
+是运行时侧的 JSON-RPC 服务器，绑定到一个已启动的 Cordis context 和 transport peer。
+方法
+参数
+返回
+说明
+initialize
+InitializeParams
+InitializeResult
+进程级握手，配置 cwd/provider/model
+session/prompt
+SessionPromptParams
+SessionPromptResult
+入队一个用户消息
+shutdown
+—
+{}
+处置 agent、适配器和订阅
+服务端通知
+通知方法
+载荷类型
+触发时机
+session.event
+SessionEventNotification
+会话日志事件记录时
+session.status
+SessionStatusNotification
+agent 状态变化（idle/running）
+subagent.started
+SubagentStartedNotification
+子会话创建
+subagent.finished
+SubagentFinishedNotification
+子 agent 运行结束
+5.2 认证和授权
+Provider 认证
+：
+DeepSeek 适配器：通过
+ctx.credentials
+解析
+CredentialRef
+，或从 launch environment 获取
+Pi-AI 适配器：支持三种认证路径——harbor credentials seam、环境变量、pi-ai 自身的 ambient discovery
+凭据引用机制
+（
+CredentialRef
+）：配置中只存储引用名称（如
+DEEPSEEK_API_KEY
+），实际密钥在每次请求时解析。这确保了密钥不会暴露在配置文件中、密钥变更立即生效、一个请求的端点和密钥来自同一代配置。
+5.3 请求验证
+JsonRpcLineTransport
+实现了换行分隔的 JSON-RPC 2.0。帧分类：有
+id
++
+method
+是请求，仅
+id
+是响应，仅
+method
+是通知。畸形行静默忽略，处理器失败返回
+-32603
+错误。
+6. 错误处理体系
+6.1 错误类型层次
+Error
+  └── HarnessError — 稳定的机器路由 code + cause 链
+        └── LlmError — LLM 相关失败，携带 LlmFailure 序列化数据
+              ├── status?: number (100-599)
+              ├── providerRetryAfterMs?: number
+              └── requestId?: ProviderRequestId
+
+Error
+  └── TransportClosedError (sdk/client) — 子进程死亡
+  └── RequestTimeoutError (sdk/client) — 请求超时
+  └── SdkProtocolError (sdk/client) — 协议违规
+  └── JsonRpcResponseError (sdk/protocol) — JSON-RPC 错误响应
+  └── SessionQueryError (session-query) — 查询错误
+6.2 错误码定义
+错误码
+含义
+可重试
+来源
+AUTH
+认证失败 (401/403)
+否
+HTTP 状态码
+RATE_LIMIT
+速率限制 (429)
+是
+HTTP 状态码
+SERVER
+服务端错误 (5xx)
+是
+HTTP 状态码
+TIMEOUT
+超时
+是
+空闲看门狗
+TRANSPORT
+传输层失败
+是
+fetch / 网络错误
+INVALID_REQUEST
+请求无效 (400/413)
+否
+HTTP 状态码
+CONTEXT_WINDOW_EXCEEDED
+上下文窗口超限
+否
+正则匹配 provider 错误
+QUOTA
+配额/余额耗尽
+否
+正则匹配 provider 错误
+EMPTY_RESPONSE
+空响应
+是
+翻译层检测
+INVALID_CREDENTIAL
+凭据格式错误
+否
+API key 验证
+MISSING_CREDENTIAL
+缺少凭据
+否
+凭据解析
+ABORTED
+调用者取消
+否
+AbortSignal
+STREAM_CLOSED
+流未正常终止
+是
+SSE EOF 无 [DONE]
+NO_ADAPTER
+无适配器注册
+否
+注册表查询
+DUPLICATE_ADAPTER
+路由冲突
+否
+注册时检测
+UNSUPPORTED_REASONING_EFFORT
+不支持的推理级别
+否
+能力验证
+UNSUPPORTED_CONTENT
+不支持的内容类型
+否
+模态检查
+6.3 错误恢复策略
+适配器边界错误规范化
+normalizeLlmFailure
+处理任意抛出值：
+非 Error 值 → 包装为
+HarnessError('UNKNOWN')
+检查 Error 的
+failure
+own property（避免 SDK 定义的 getter）
+验证 failure 结构的完整性（code、status 范围等）
+只信任 Harness 拥有的 code，第三方 SDK code 不进入分类
+上下文窗口检测
+isContextWindowExceededError
+通过正则匹配多种 provider 错误措辞：
+结构化上下文溢出（
+context_length_exceeded
+、
+context_window_overflow
+）
+请求过大措辞（
+request too large for context window
+）
+超限措辞（
+input exceeds model context
+）
+文件 ID 过期恢复（DeepSeek adapter）
+当 provider 拒绝一个文件 ID（过期/删除/无效）时，adapter 使失效的文件映射，最多重试一次（重新上传后重发）。如果再次失败或 provider 拒绝规范化图片，产生详细诊断。
+Pi-AI 错误分类
+由于 pi-ai 扁平化了原始 Error（丢失 cause），适配器通过模式匹配分类。涵盖 AUTH、QUOTA、RATE_LIMIT、INVALID_REQUEST、SERVER、TIMEOUT、TRANSPORT 等类别。
+← 第一部分
+第三部分 →
+DeepSeek Harness 模型接入层深度分析 · 第二部分 · 生成于 2026-08-29

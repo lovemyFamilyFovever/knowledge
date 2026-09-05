@@ -1,0 +1,1221 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DeepSeek Harness 技术栈知识图谱</title>
+<style>
+  :root {
+    --bg: #0d1117;
+    --surface: #161b22;
+    --surface2: #1c2333;
+    --border: #30363d;
+    --text: #e6edf3;
+    --text-secondary: #8b949e;
+    --accent: #58a6ff;
+    --accent2: #3fb950;
+    --accent3: #d2a8ff;
+    --accent4: #f0883e;
+    --accent5: #f778ba;
+    --red: #f85149;
+    --code-bg: #0d1117;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', Helvetica, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.7;
+    padding: 0;
+  }
+  .hero {
+    background: linear-gradient(135deg, #0d1117 0%, #161b22 50%, #1a1e2e 100%);
+    border-bottom: 1px solid var(--border);
+    padding: 60px 40px;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+  }
+  .hero::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(ellipse at 30% 50%, rgba(88,166,255,0.06) 0%, transparent 50%),
+                radial-gradient(ellipse at 70% 50%, rgba(210,168,255,0.04) 0%, transparent 50%);
+    pointer-events: none;
+  }
+  .hero h1 {
+    font-size: 2.8em;
+    font-weight: 800;
+    background: linear-gradient(135deg, var(--accent), var(--accent3));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin-bottom: 12px;
+    position: relative;
+  }
+  .hero .subtitle {
+    color: var(--text-secondary);
+    font-size: 1.15em;
+    position: relative;
+  }
+  .hero .version-badge {
+    display: inline-block;
+    background: rgba(88,166,255,0.15);
+    color: var(--accent);
+    border: 1px solid rgba(88,166,255,0.3);
+    border-radius: 20px;
+    padding: 4px 16px;
+    font-size: 0.85em;
+    margin-top: 16px;
+    position: relative;
+  }
+  .container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 40px 24px;
+  }
+  .toc {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 28px 32px;
+    margin-bottom: 48px;
+  }
+  .toc h2 {
+    font-size: 1.3em;
+    margin-bottom: 16px;
+    color: var(--accent);
+  }
+  .toc-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 8px;
+  }
+  .toc a {
+    color: var(--text-secondary);
+    text-decoration: none;
+    padding: 6px 10px;
+    border-radius: 6px;
+    display: block;
+    transition: all 0.2s;
+    font-size: 0.95em;
+  }
+  .toc a:hover { background: var(--surface2); color: var(--accent); }
+  .toc a .num { color: var(--accent3); font-weight: 600; margin-right: 8px; }
+
+  section { margin-bottom: 56px; }
+  h2.section-title {
+    font-size: 1.8em;
+    font-weight: 700;
+    padding-bottom: 12px;
+    border-bottom: 2px solid var(--accent);
+    margin-bottom: 28px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  h2.section-title .icon { font-size: 1.1em; }
+  h3 {
+    font-size: 1.25em;
+    color: var(--accent3);
+    margin: 24px 0 12px;
+    font-weight: 600;
+  }
+  h4 {
+    font-size: 1.05em;
+    color: var(--accent);
+    margin: 16px 0 8px;
+    font-weight: 600;
+  }
+  p { margin-bottom: 12px; color: var(--text); }
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 20px 24px;
+    margin-bottom: 16px;
+    transition: border-color 0.2s;
+  }
+  .card:hover { border-color: var(--accent); }
+  .card-title {
+    font-weight: 700;
+    font-size: 1.1em;
+    margin-bottom: 8px;
+    color: var(--text);
+  }
+  .badge {
+    display: inline-block;
+    padding: 2px 10px;
+    border-radius: 12px;
+    font-size: 0.78em;
+    font-weight: 600;
+    margin-right: 6px;
+    vertical-align: middle;
+  }
+  .badge-blue { background: rgba(88,166,255,0.15); color: var(--accent); border: 1px solid rgba(88,166,255,0.3); }
+  .badge-green { background: rgba(63,185,80,0.15); color: var(--accent2); border: 1px solid rgba(63,185,80,0.3); }
+  .badge-purple { background: rgba(210,168,255,0.15); color: var(--accent3); border: 1px solid rgba(210,168,255,0.3); }
+  .badge-orange { background: rgba(240,136,62,0.15); color: var(--accent4); border: 1px solid rgba(240,136,62,0.3); }
+  .badge-pink { background: rgba(247,120,186,0.15); color: var(--accent5); border: 1px solid rgba(247,120,186,0.3); }
+  .badge-red { background: rgba(248,81,73,0.15); color: var(--red); border: 1px solid rgba(248,81,73,0.3); }
+
+  .grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 16px; }
+  .grid-3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; }
+  .grid-4 { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 16px 0;
+    font-size: 0.92em;
+  }
+  th, td {
+    padding: 10px 14px;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+  }
+  th {
+    background: var(--surface2);
+    color: var(--accent);
+    font-weight: 600;
+    position: sticky;
+    top: 0;
+  }
+  tr:hover { background: rgba(88,166,255,0.04); }
+
+  code {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 2px 6px;
+    font-family: 'Cascadia Code', 'JetBrains Mono', 'Fira Code', monospace;
+    font-size: 0.88em;
+    color: var(--accent);
+  }
+  pre {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px 20px;
+    overflow-x: auto;
+    font-family: 'Cascadia Code', 'JetBrains Mono', monospace;
+    font-size: 0.85em;
+    line-height: 1.6;
+    margin: 12px 0;
+    color: var(--text);
+  }
+  .flow-diagram {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 28px;
+    margin: 20px 0;
+    text-align: center;
+    overflow-x: auto;
+  }
+  .flow-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin: 8px 0;
+  }
+  .flow-box {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px 18px;
+    font-size: 0.88em;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  .flow-box.highlight { border-color: var(--accent); color: var(--accent); }
+  .flow-arrow { color: var(--text-secondary); font-size: 1.4em; }
+  .flow-label {
+    color: var(--text-secondary);
+    font-size: 0.82em;
+    margin: 4px 0;
+  }
+
+  .stat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 20px;
+    text-align: center;
+  }
+  .stat-number {
+    font-size: 2.2em;
+    font-weight: 800;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .stat-label { color: var(--text-secondary); font-size: 0.88em; margin-top: 4px; }
+
+  .tree-node { padding-left: 20px; border-left: 2px solid var(--border); margin: 4px 0; }
+  .tree-node .label {
+    padding: 3px 8px;
+    border-radius: 4px;
+    display: inline-block;
+    margin: 2px 0;
+    font-size: 0.9em;
+  }
+  .tree-root { font-weight: 700; color: var(--accent); }
+  .tree-group { color: var(--accent3); }
+  .tree-pkg { color: var(--text); }
+
+  .comparison-table { margin: 20px 0; }
+  .winner { color: var(--accent2); font-weight: 600; }
+  .loser { color: var(--text-secondary); }
+
+  .callout {
+    background: rgba(88,166,255,0.08);
+    border-left: 4px solid var(--accent);
+    border-radius: 0 8px 8px 0;
+    padding: 16px 20px;
+    margin: 16px 0;
+    font-size: 0.95em;
+  }
+  .callout-warn {
+    background: rgba(240,136,62,0.08);
+    border-left-color: var(--accent4);
+  }
+
+  .footer {
+    text-align: center;
+    padding: 40px;
+    color: var(--text-secondary);
+    border-top: 1px solid var(--border);
+    margin-top: 60px;
+    font-size: 0.9em;
+  }
+  @media (max-width: 768px) {
+    .hero { padding: 40px 20px; }
+    .hero h1 { font-size: 1.8em; }
+    .container { padding: 24px 16px; }
+    .grid-2, .grid-3, .grid-4 { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<!-- HERO -->
+<div class="hero">
+  <h1>DeepSeek Harness</h1>
+  <p class="subtitle">技术栈知识图谱 &mdash; 完整的运行时、构建、测试、质量工具链深度分析</p>
+  <span class="version-badge">v0.1.1-rc.2 &bull; MIT License &bull; @deepseek-ai/dsh</span>
+</div>
+
+<div class="container">
+
+<!-- TOC -->
+<div class="toc">
+  <h2>目录导航</h2>
+  <div class="toc-grid">
+    <a href="#part1"><span class="num">1</span>运行时技术栈</a>
+    <a href="#part2"><span class="num">2</span>构建工具链</a>
+    <a href="#part3"><span class="num">3</span>测试工具链</a>
+    <a href="#part4"><span class="num">4</span>代码质量工具</a>
+    <a href="#part5"><span class="num">5</span>开发工具与 Git 工作流</a>
+    <a href="#part6"><span class="num">6</span>第三方依赖分析</a>
+    <a href="#part7"><span class="num">7</span>依赖关系图</a>
+    <a href="#part8"><span class="num">8</span>技术选型分析</a>
+    <a href="#part9"><span class="num">9</span>技术栈总结与演进建议</a>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- PART 1: 运行时技术栈 -->
+<!-- ============================================================ -->
+<section id="part1">
+<h2 class="section-title"><span class="icon">⚡</span> 第一部分：运行时技术栈</h2>
+
+<!-- 概览统计 -->
+<div class="grid-4" style="margin-bottom:28px;">
+  <div class="stat-card">
+    <div class="stat-number">22+</div>
+    <div class="stat-label">Node.js 最低版本</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-number">TS 6</div>
+    <div class="stat-label">TypeScript 版本</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-number">ESM</div>
+    <div class="stat-label">模块系统</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-number">pnpm</div>
+    <div class="stat-label">包管理器 (11.7.0)</div>
+  </div>
+</div>
+
+<h3>1.1 Node.js 版本要求</h3>
+<div class="card">
+  <div class="card-title">engines 约束</div>
+  <pre>"engines": { "node": "^22.19.0 || &gt;=24.0.0" }</pre>
+  <p>项目要求 <strong>Node.js 22.19.0+</strong> 或 <strong>24.0.0+</strong>。CI 中的主版本为 <code>Node 24</code>（<code>PRIMARY_NODE_VERSION: '24'</code>），同时在 matrix 策略中对 Node 22.19 和 Node 26 进行兼容性测试。这意味着项目充分利用了 Node 22 LTS 和 Node 24 Current 的最新特性，同时前瞻性地验证 Node 26 的兼容性。</p>
+  <p>值得注意的是，Node 24 在 Worker 线程中存在已知问题：其 CJS lexer 在 macOS/Linux/Windows 上可能因 <code>v8::ToLocalChecked Empty MaybeLocal</code> 而中止。Vitest 配置中明确使用 <code>pool: 'forks'</code> 而非 <code>threads</code> 来规避此问题。</p>
+</div>
+
+<h3>1.2 TypeScript 版本</h3>
+<div class="card">
+  <div class="card-title">TypeScript ^6.0.3</div>
+  <p>项目使用 <strong>TypeScript 6.x</strong>，这是截至 2026 年 8 月的最新主版本。配置中的关键编译选项包括：</p>
+  <pre>{
+  "target": "es2024",
+  "module": "esnext",
+  "moduleResolution": "bundler",
+  "strict": true,
+  "composite": true,
+  "incremental": true,
+  "noUncheckedIndexedAccess": true,
+  "exactOptionalPropertyTypes": true,
+  "allowImportingTsExtensions": true,
+  "rewriteRelativeImportExtensions": true
+}</pre>
+  <p><strong>核心编译特性解析：</strong></p>
+  <ul>
+    <li><code>target: "es2024"</code> &mdash; 输出 ES2024 语法，充分利用最新 JS 引擎特性</li>
+    <li><code>moduleResolution: "bundler"</code> &mdash; 使用 bundler 解析模式，配合 tsdown 构建</li>
+    <li><code>composite: true</code> &mdash; 启用项目引用（Project References），将 Host 和 Client 分离编译</li>
+    <li><code>allowImportingTsExtensions + rewriteRelativeImportExtensions</code> &mdash; 允许直接 import <code>.ts</code> 文件，构建时自动重写为 <code>.js</code></li>
+    <li><code>exactOptionalPropertyTypes</code> &mdash; 严格区分 <code>undefined</code> 和可选属性，属于 TypeScript 最严格的模式之一</li>
+  </ul>
+</div>
+
+<h3>1.3 模块系统</h3>
+<div class="card">
+  <div class="card-title">全量 ESM（"type": "module"）</div>
+  <p>根 <code>package.json</code> 声明 <code>"type": "module"</code>，所有包均使用 ES Module。从 <code>tsconfig.base.json</code> 的 <code>"module": "esnext"</code> 到 tsdown 的 <code>format: ['esm']</code>，整个工具链全面拥抱 ESM。</p>
+  <p>唯一例外是 <code>vendor/schemastery</code> 同时提供 ESM 和 CJS 双格式导出（<code>import: ./lib/index.mjs</code> + <code>require: ./lib/index.cjs</code>），这是为了兼容部分需要 CJS 的消费者场景。</p>
+  <p>测试运行时通过 <code>tsx</code>（TypeScript Execute）直接运行 TypeScript 源码，无需预编译。脚本统一使用 <code>node --import tsx/esm</code> 或 <code>tsx</code> 命令入口。</p>
+</div>
+
+<h3>1.4 包管理器：pnpm 11.7.0</h3>
+<div class="card">
+  <div class="card-title">pnpm monorepo 工作区</div>
+  <p>通过 <code>"packageManager": "pnpm@11.7.0"</code> 锁定 pnpm 版本（Corepack 兼容）。工作区配置定义了多层包路径：</p>
+  <pre>packages:
+  - vendor/*               # 框架层（cordis 生态）
+  - packages/*/*           # 核心业务包（50+ 个子目录）
+  - native/landlock-run    # 原生沙箱启动器
+  - apps/*                 # 产品装配（cli + web）
+  - website                # 文档站
+  - examples               # 可运行示例
+  - python/sdk-runtime     # Python SDK 运行时</pre>
+  <p>关键 pnpm 配置：</p>
+  <ul>
+    <li><code>linkWorkspacePackages: true</code> &mdash; 工作区内包自动链接</li>
+    <li><code>overrides</code> 将 <code>@deepseek-ai/cosmokit</code> 和 <code>@deepseek-ai/schemastery</code> 重定向到 vendor 目录</li>
+    <li><code>allowBuilds</code> 精确控制哪些依赖可以执行安装脚本（仅 esbuild、lefthook、node-pty、koffi）</li>
+    <li><code>patchedDependencies</code> 对 <code>node-pty@1.2.0-beta.15</code> 应用补丁</li>
+  </ul>
+</div>
+</section>
+
+<!-- ============================================================ -->
+<!-- PART 2: 构建工具链 -->
+<!-- ============================================================ -->
+<section id="part2">
+<h2 class="section-title"><span class="icon">🔧</span> 第二部分：构建工具链</h2>
+
+<h3>2.1 tsdown（核心构建工具）</h3>
+<div class="card">
+  <div class="card-title"><span class="badge badge-blue">tsdown ^0.22.2</span> 工作区级 TypeScript 构建器</div>
+  <p><code>tsdown</code> 是本项目的<strong>核心构建工具</strong>，负责将 TypeScript 源码编译为可分发的 JavaScript 库。它基于 Rolldown（Rust 编写的 Rollup 替代品），提供极快的构建速度。</p>
+  <pre>// tsdown.config.ts 核心配置
+export default defineConfig(({ env }) =&gt; {
+  const client = isBuildFaceClient(env?.DSH_BUILD_FACE)
+  return {
+    workspace: ['vendor/*', 'packages/*/*', 'apps/cli'],
+    entry: client ? '' : ['lib/types/{index,invariant,startup}.js'],
+    outDir: 'lib',
+    format: ['esm'],
+    platform: 'node',
+    target: 'es2024',
+    fixedExtension: false,
+    dts: false,
+    clean: false,
+    plugins: client ? [] : [typertPlugin({ mode: 'workspace', faces: ['host'] })],
+  }
+})</pre>
+  <p><strong>双面构建（Dual-Face Build）架构：</strong></p>
+  <ul>
+    <li><strong>Host 面</strong>（<code>DSH_BUILD_FACE=host</code>）：编译服务端/Node.js 代码，运行 Typert 类型注册插件</li>
+    <li><strong>Client 面</strong>（<code>DSH_BUILD_FACE=client</code>）：编译浏览器端代码，选择声明了 browser bundle 的包</li>
+  </ul>
+  <p>构建入口策略独特：Host 面的 entry 仅为 <code>lib/types/{index,invariant,startup}.js</code>，这意味着构建依赖于 <code>tsc -b</code> 先产出类型文件，tsdown 再做后续打包。Client 面则允许每个包定义自己的 <code>tsdown.client.ts</code> 配置。</p>
+</div>
+
+<h3>2.2 tsx（TypeScript Execute）</h3>
+<div class="card">
+  <div class="card-title"><span class="badge badge-green">tsx ^4.22.4</span> 零配置 TypeScript 运行时</div>
+  <p><code>tsx</code> 用于<strong>直接运行 TypeScript 源码</strong>，无需预编译。在项目中承担两大角色：</p>
+  <ul>
+    <li><strong>脚本执行</strong>：所有 <code>scripts/</code> 下的构建、验证、发布脚本均通过 <code>tsx</code> 运行（如 <code>tsx scripts/build.ts</code>、<code>tsx scripts/run-gates.ts</code>）</li>
+    <li><strong>CLI 开发</strong>：<code>"dsh": "node --import tsx/esm apps/cli/src/bin.ts"</code> 直接从源码运行 CLI</li>
+    <li><strong>Git Hooks</strong>：lefthook 中的所有验证任务通过 <code>node_modules/.bin/tsx</code> 调用</li>
+  </ul>
+</div>
+
+<h3>2.3 Vite（前端构建）</h3>
+<div class="card">
+  <div class="card-title"><span class="badge badge-purple">vite ^6.0.0</span> Web 前端构建</div>
+  <p>Vite 专门用于 <code>apps/web</code> 的前端构建。该应用是一个 React 18 SPA，通过 <code>@vitejs/plugin-react</code> 插件支持 JSX 转换。</p>
+  <pre>// apps/web/package.json
+"scripts": {
+  "build": "vite build",
+  "dev": "vite",
+  "watch": "vite build --watch --no-emptyOutDir"
+}</pre>
+  <p>构建产物 <code>dist/</code> 由 <code>apps/cli</code> 的 <code>dsh web</code> 命令通过内置的 Web 服务器（<code>dsh-host-webserver</code>）和静态文件服务（<code>dsh-host-frontend-static</code>）提供服务。</p>
+</div>
+
+<h3>2.4 构建流程全景</h3>
+<div class="flow-diagram">
+  <div class="flow-label">完整构建管道</div>
+  <div class="flow-row">
+    <div class="flow-box highlight">TypeScript 源码</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-box">tsc -b（项目引用）</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-box highlight">类型声明 + .js 中间产物</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-box">tsdown（打包优化）</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-box highlight">lib/ 最终产物</div>
+  </div>
+  <div style="margin-top:16px;">
+    <div class="flow-label">CLI 产品构建</div>
+    <div class="flow-row">
+      <div class="flow-box">Host tsc -b</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-box">Host tsdown</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-box">Client tsc -b</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-box">Client tsdown</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-box highlight">dsh CLI</div>
+    </div>
+  </div>
+  <div style="margin-top:16px;">
+    <div class="flow-label">Web 前端构建</div>
+    <div class="flow-row">
+      <div class="flow-box">React + TypeScript 源码</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-box">Vite Build</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-box highlight">dist/ 静态资源</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-box">dsh web 服务</div>
+    </div>
+  </div>
+</div>
+
+<h3>2.5 TypeScript 项目引用架构</h3>
+<div class="card">
+  <div class="card-title">Solution-style tsconfig</div>
+  <p>根 <code>tsconfig.json</code> 采用 Solution 模式，仅作为引用聚合器：</p>
+  <pre>{
+  "extends": "./tsconfig.base.json",
+  "files": [],
+  "references": [
+    { "path": "./tsconfig.host.json" },
+    { "path": "./tsconfig.client.json" }
+  ]
+}</pre>
+  <p><code>tsconfig.base.json</code> 包含了<strong>所有包的路径映射</strong>（约 100+ 条 <code>paths</code> 规则），使用通配符模式 <code>@deepseek-ai/dsh-*</code> 自动映射到对应的 <code>packages/*/src</code> 目录。这种设计确保了：</p>
+  <ul>
+    <li>源码级路径解析：测试和开发时直接引用源码，而非编译产物</li>
+    <li>Host/Client 分离：通过独立的 <code>tsconfig.host.json</code> 和 <code>tsconfig.client.json</code> 进行独立编译</li>
+    <li>增量构建：<code>composite + incremental</code> 确保只重编译变更的包</li>
+  </ul>
+</div>
+
+<h3>2.6 Typert 类型注册系统</h3>
+<div class="card">
+  <div class="card-title"><span class="badge badge-pink">自研</span> Typert TypeScript 类型注册</div>
+  <p>这是项目中的<strong>自研工具</strong>，以 tsdown 插件形式集成。Typert 在构建时分析 TypeScript 类型信息，生成运行时类型注册表（Type Registry），用于驱动 API Gateway、客户端代码生成等跨进程类型安全通信场景。它包含独立的 generator、registry、loader、protocol 四个子包。</p>
+</div>
+</section>
+
+<!-- ============================================================ -->
+<!-- PART 3: 测试工具链 -->
+<!-- ============================================================ -->
+<section id="part3">
+<h2 class="section-title"><span class="icon">🧪</span> 第三部分：测试工具链</h2>
+
+<h3>3.1 Vitest（单元测试框架）</h3>
+<div class="card">
+  <div class="card-title"><span class="badge badge-green">vitest ^4.1.8</span> + <span class="badge badge-blue">@vitest/coverage-v8 ^4.1.8</span></div>
+  <p>Vitest 是项目的<strong>唯一测试框架</strong>，用于单元测试、E2E 测试、快照测试、性能测试和 Web UI 测试。项目配置了<strong>多种 Vitest 配置文件</strong>：</p>
+  <div class="grid-2">
+    <div class="card" style="margin:0;">
+      <strong>vitest.config.ts</strong>
+      <p style="margin:4px 0 0;font-size:0.9em;color:var(--text-secondary)">主配置：thread-safe + process-bound 双项目池</p>
+    </div>
+    <div class="card" style="margin:0;">
+      <strong>vitest.e2e.config.ts</strong>
+      <p style="margin:4px 0 0;font-size:0.9em;color:var(--text-secondary)">端到端集成测试</p>
+    </div>
+    <div class="card" style="margin:0;">
+      <strong>vitest.snapshot.config.ts</strong>
+      <p style="margin:4px 0 0;font-size:0.9em;color:var(--text-secondary)">快照回归测试</p>
+    </div>
+    <div class="card" style="margin:0;">
+      <strong>vitest.web.config.ts</strong>
+      <p style="margin:4px 0 0;font-size:0.9em;color:var(--text-secondary)">Web UI 组件快照测试</p>
+    </div>
+    <div class="card" style="margin:0;">
+      <strong>vitest.web.perf.config.ts</strong>
+      <p style="margin:4px 0 0;font-size:0.9em;color:var(--text-secondary)">Web UI 性能基准测试</p>
+    </div>
+    <div class="card" style="margin:0;">
+      <strong>vitest.web-stress.config.ts</strong>
+      <p style="margin:4px 0 0;font-size:0.9em;color:var(--text-secondary)">Web UI 压力测试</p>
+    </div>
+  </div>
+</div>
+
+<h3>3.2 测试池策略</h3>
+<div class="card">
+  <div class="card-title">双项目池架构（forks 模式）</div>
+  <p>主配置定义了两个并行测试项目：</p>
+  <pre>projects: [
+  {
+    test: {
+      name: 'thread-safe',
+      pool: 'forks',          // fork 模式，避免 Node 24 CJS lexer 崩溃
+      include: testIncludes,  // 排除 processBoundTests
+    }
+  },
+  {
+    test: {
+      name: 'process-bound',
+      pool: 'forks',
+      include: processBoundTests, // 进程敏感测试单独隔离
+    }
+  }
+]</pre>
+  <p><strong>为什么使用 forks 而非 threads？</strong> Node 24 在 Worker 线程中存在已知的 CJS lexer 崩溃问题。使用 <code>forks</code> 池通过独立进程隔离测试，避免共享线程路径上的崩溃。</p>
+  <p><strong>process-bound 测试</strong>：涉及全局进程状态、进程 API 或时序敏感 I/O 的测试（如 JSONL 持久化、子进程生成、LLM 适配器、Worker 线程工作流），在独立 fork 中运行以确保稳定性。</p>
+</div>
+
+<h3>3.3 覆盖率策略</h3>
+<div class="card">
+  <div class="card-title"><span class="badge badge-red">100% 逐文件覆盖门禁</span></div>
+  <p>覆盖率配置极为严格：<strong>每个源文件</strong>都必须达到 100% 的 statements/branches/functions/lines 覆盖率。</p>
+  <pre>thresholds: {
+  perFile: true,      // 逐文件，不允许大文件补贴小文件
+  statements: 100,
+  branches: 100,
+  functions: 100,
+  lines: 100,
+}</pre>
+  <p><strong>覆盖范围排除策略：</strong></p>
+  <ul>
+    <li><strong>类型文件</strong>（<code>types.ts</code>）：无运行时代码，天然排除</li>
+    <li><strong>入口胶水</strong>（<code>bin.ts</code>、<code>worker.ts</code>）：通过子进程测试覆盖，不在单元测试中导入</li>
+    <li><strong>GUI/Client 层</strong>：大量 UI 组件文件被暂时排除，标记了 TODO(gui) 待后续补齐</li>
+    <li><strong>平台特定代码</strong>：Windows-only 代码（<code>sandbox-windows-acl</code>、<code>windows-inspector.ts</code>）在 Linux CI 中排除</li>
+    <li><strong>Typert generator</strong>：由独立的 fixture 套件保证正确性，不走 v8 覆盖率</li>
+  </ul>
+  <p><strong>覆盖率分区</strong>：支持通过 <code>DSH_COVERAGE_PARTITIONS</code> 环境变量将覆盖率计算分成多个并行分区（CI 中设置为 4 或 8），加速大型仓库的覆盖率收集。</p>
+</div>
+
+<h3>3.4 测试辅助设施</h3>
+<div class="grid-2">
+  <div class="card" style="margin:0;">
+    <div class="card-title">vite-tsconfig-paths</div>
+    <p>确保测试中使用源码级路径解析（<code>tsconfig.base.json</code> 的 paths），而非编译产物</p>
+  </div>
+  <div class="card" style="margin:0;">
+    <div class="card-title">Standard Decorator Plugin</div>
+    <p>自研 Vite 插件，在测试时预处理 TypeScript 标准装饰器语法（TC39 Stage 3），通过 <code>ts.transpileModule</code> 降级</p>
+  </div>
+  <div class="card" style="margin:0;">
+    <div class="card-title">jsdom 29.1.1</div>
+    <p>用于客户端 UI 组件测试，通过 <code>@vitest-environment jsdom</code> pragma 按文件启用</p>
+  </div>
+  <div class="card" style="margin:0;">
+    <div class="card-title">fast-check ^4.8.0</div>
+    <p>基于属性的测试（Property-Based Testing），用于验证关键逻辑的泛化正确性</p>
+  </div>
+</div>
+
+<h3>3.5 E2E 与快照测试</h3>
+<div class="card">
+  <div class="card-title">多层级 E2E 测试体系</div>
+  <table>
+    <tr><th>类型</th><th>配置文件</th><th>说明</th></tr>
+    <tr><td>E2E 测试</td><td><code>vitest.e2e.config.ts</code></td><td>跨包集成测试，测试真实组装后的功能</td></tr>
+    <tr><td>快照回归</td><td><code>vitest.snapshot.config.ts</code></td><td>CLI 输出、LLM 对话等的字节级快照比对</td></tr>
+    <tr><td>Web 快照</td><td><code>vitest.web.config.ts</code></td><td>Web UI 渲染结果的视觉快照</td></tr>
+    <tr><td>Web 性能</td><td><code>vitest.web.perf.config.ts</code></td><td>Web UI 性能基准（replay 模式）</td></tr>
+    <tr><td>Web 压力</td><td><code>vitest.web-stress.config.ts</code></td><td>Web UI 压力测试</td></tr>
+    <tr><td>Playwright E2E</td><td>apps/web 内</td><td>真实浏览器 E2E（Chromium）</td></tr>
+  </table>
+  <p>快照测试支持三种模式：默认（比对）、<code>record</code>（录制新快照）、<code>refresh</code>（刷新预期值），通过 <code>DSH_SNAPSHOT</code> 环境变量控制。</p>
+</div>
+</section>
+
+<!-- ============================================================ -->
+<!-- PART 4: 代码质量工具 -->
+<!-- ============================================================ -->
+<section id="part4">
+<h2 class="section-title"><span class="icon">🛡️</span> 第四部分：代码质量工具</h2>
+
+<h3>4.1 oxlint（代码检查）</h3>
+<div class="card">
+  <div class="card-title"><span class="badge badge-orange">oxlint 1.76.0</span> + <span class="badge badge-purple">oxlint-tsgolint 7.0.2001</span></div>
+  <p>oxlint 是由 Oxidation Compiler 团队（Rust 编写的 TypeScript/JavaScript linter）开发的超快 linter，是本项目<strong>唯一的代码检查工具</strong>，完全替代了 ESLint。</p>
+  <p><strong>配置特点：</strong></p>
+  <ul>
+    <li><strong>Type-Aware Linting</strong>：启用 <code>"typeAware": true</code>，支持需要类型信息的高级规则</li>
+    <li><strong>TypeScript 插件</strong>：启用 <code>typescript</code> 插件，包含 50+ 条 TypeScript 专用规则</li>
+    <li><strong>SonarJS 插件</strong>：启用 <code>eslint-plugin-sonarjs</code>，检测重复代码和逻辑缺陷</li>
+    <li><strong>Stylistic 插件</strong>：启用 <code>@stylistic/eslint-plugin</code>，强制代码格式（缩进2空格、无分号、单引号、尾逗号）</li>
+    <li><strong>tsgolint</strong>：oxlint-tsgolint 是 TypeScript Go 编译器的 linter 集成</li>
+  </ul>
+  <p><strong>分层规则策略：</strong></p>
+  <table>
+    <tr><th>层级</th><th>严格程度</th><th>说明</th></tr>
+    <tr><td>源码 (<code>src/**</code>)</td><td>最严格</td><td>启用 <code>no-non-null-assertion</code>、<code>no-unnecessary-condition</code>、<code>require-await</code> 等</td></tr>
+    <tr><td>测试 (<code>tests/**</code>)</td><td>宽松</td><td>允许 <code>no-non-null-assertion</code>（expect 后断言）、<code>no-unnecessary-condition</code>（刻意测试边界）</td></tr>
+    <tr><td>vendor/</td><td>忽略</td><td>上游代码保持原有风格</td></tr>
+    <tr><td>示例 (<code>examples/</code>)</td><td>中等</td><td>放宽 <code>require-await</code>（demo 回调符合 async 接口）</td></tr>
+  </table>
+  <p><strong>最高价值规则</strong>：<code>typescript/no-floating-promises</code> 被视为"仓库最高价值 linted bug 类"，用于捕获 agent loop 中丢失的 promise。</p>
+</div>
+
+<h3>4.2 knip（死代码检测）</h3>
+<div class="card">
+  <div class="card-title"><span class="badge badge-blue">knip ^6.16.1</span> 未使用依赖 & 导出检测</div>
+  <p>knip 扫描整个 monorepo，检测未使用的文件、导出和依赖。配置文件 <code>knip.json</code> 定义了精细的 workspace 级别入口和排除规则。</p>
+  <p><strong>关键配置：</strong></p>
+  <ul>
+    <li>忽略 <code>vendor/*</code> 和 <code>python/sdk-runtime</code> 工作区（它们有独立的管理策略）</li>
+    <li>为每个 <code>packages/*/*</code> 定义独立的 entry 和 project 模式</li>
+    <li>特殊处理示例项目的 <code>@deepseek-ai/.+</code> 正则忽略（避免将内部依赖误报为未使用）</li>
+    <li>忽略已知的二进制文件（<code>bwrap</code>、<code>icacls</code>、<code>sandbox-exec</code> 等平台工具）</li>
+  </ul>
+  <p>运行命令：<code>knip --treat-config-hints-as-errors</code>，将配置提示也视为错误。</p>
+</div>
+
+<h3>4.3 jscpd（重复代码检测）</h3>
+<div class="card">
+  <div class="card-title"><span class="badge badge-green">jscpd ^5.0.12</span> 代码重复率检查</div>
+  <pre>// .jscpd.json
+{
+  "minTokens": 60,
+  "minLines": 6,
+  "mode": "mild",
+  "format": ["typescript", "tsx"],
+  "pattern": "**/*.{ts,tsx}",
+  "ignore": ["**/tests/**", "**/tsdown.config.ts"],
+  "reporters": ["console"],
+  "exitCode": 1
+}</pre>
+  <p>检测阈值：最少 60 个 token 或 6 行代码。"mild" 模式提供适度的检测灵敏度。仅扫描 TypeScript 源码，排除测试文件和构建配置。</p>
+</div>
+
+<h3>4.4 publint（包发布检查）</h3>
+<div class="card">
+  <div class="card-title"><span class="badge badge-orange">publint ^0.3.21</span> npm 包发布质量验证</div>
+  <p>publint 验证每个即将发布到 npm 的包是否符合最佳实践：检查 <code>exports</code> 字段正确性、<code>types</code> 声明是否存在、<code>files</code> 字段是否包含必要文件等。通过 <code>tsx scripts/publint-all.ts</code> 对所有发布包执行批量检查。</p>
+</div>
+</section>
+
+<!-- ============================================================ -->
+<!-- PART 5: 开发工具 -->
+<!-- ============================================================ -->
+<section id="part5">
+<h2 class="section-title"><span class="icon">🛠️</span> 第五部分：开发工具与 Git 工作流</h2>
+
+<h3>5.1 lefthook（Git Hooks）</h3>
+<div class="card">
+  <div class="card-title"><span class="badge badge-green">lefthook ^2.1.9</span> 本地 Git 质量门禁</div>
+  <p>lefthook 在本地 Git 操作的关键节点设置质量检查：</p>
+  <table>
+    <tr><th>Hook</th><th>检查项</th><th>说明</th></tr>
+    <tr><td rowspan="5"><strong>pre-commit</strong></td><td>translation pairing</td><td>验证 <code>*.i18n.yaml</code> 翻译文件的配对完整性</td></tr>
+    <tr><td>archived agent notes</td><td>验证归档的 agent 笔记格式</td></tr>
+    <tr><td>lint (staged)</td><td>对暂存的 <code>*.{ts,tsx,mts,cts,mjs}</code> 文件运行 oxlint（带 <code>--fix</code>）</td></tr>
+    <tr><td>third-party notices</td><td>依赖变更时自动重新生成 THIRD_PARTY_NOTICES.md</td></tr>
+    <tr><td>whitespace</td><td><code>git diff --cached --check</code> 检查尾随空格</td></tr>
+    <tr><td><strong>pre-merge-commit</strong></td><td>translation + agent notes</td><td>合并提交前的重复验证</td></tr>
+    <tr><td><strong>pre-push</strong></td><td>typecheck</td><td>推送前执行完整 TypeScript 类型检查</td></tr>
+  </table>
+  <p>lefthook 通过 <code>pnpm postinstall</code> 自动安装（<code>node scripts/install-lefthook.mjs</code>）。</p>
+</div>
+
+<h3>5.2 CI/CD 管道</h3>
+<div class="card">
+  <div class="card-title">GitHub Actions 工作流矩阵</div>
+  <p>项目维护了 <strong>18 个 GitHub Actions 工作流文件</strong>，覆盖完整的开发生命周期：</p>
+  <table>
+    <tr><th>工作流</th><th>触发条件</th><th>说明</th></tr>
+    <tr><td><code>ci.yml</code></td><td>pull_request</td><td>主要 PR 检查：static/coverage/consumers + Node 兼容 + Python + Windows</td></tr>
+    <tr><td><code>ci-master.yml</code></td><td>push to master</td><td>master 分支的额外验证</td></tr>
+    <tr><td><code>e2e.yml</code></td><td>按需</td><td>完整 E2E 测试</td></tr>
+    <tr><td><code>sandbox.yml</code></td><td>按需</td><td>沙箱安全测试</td></tr>
+    <tr><td><code>release.yml</code></td><td>按需</td><td>DSH 发布流程</td></tr>
+    <tr><td><code>release-vendor.yml</code></td><td>按需</td><td>Vendor 包发布</td></tr>
+    <tr><td><code>release-publish.yml</code></td><td>按需</td><td>npm 发布</td></tr>
+    <tr><td><code>docs-pages.yml</code></td><td>push</td><td>文档站构建部署（GitHub Pages）</td></tr>
+    <tr><td><code>issue-lifecycle.yml</code></td><td>issues</td><td>Issue 生命周期管理</td></tr>
+    <tr><td><code>landlock-run.yml</code></td><td>按需</td><td>Landlock 沙箱原生构建</td></tr>
+    <tr><td><code>build-exe-for-python-sdk.yml</code></td><td>reusable</td><td>Python SDK 可执行文件构建</td></tr>
+    <tr><td><code>python-release.yml</code></td><td>按需</td><td>Python SDK 发布</td></tr>
+  </table>
+</div>
+
+<h3>5.3 CI 架构详解</h3>
+<div class="card">
+  <div class="card-title">PR CI 矩阵（ci.yml 核心结构）</div>
+  <p>每个 PR 触发 <strong>7 个必要检查</strong> + 1 个可选检查：</p>
+  <div class="grid-2">
+    <div class="card" style="margin:0;border-left:3px solid var(--accent2);">
+      <strong>node-24 (static)</strong>
+      <p style="font-size:0.88em;color:var(--text-secondary)">TypeScript 编译 + oxlint + knip + jscpd + publint + 文档验证 + Agent Notes 归档验证</p>
+    </div>
+    <div class="card" style="margin:0;border-left:3px solid var(--accent);">
+      <strong>node-24-coverage</strong>
+      <p style="font-size:0.88em;color:var(--text-secondary)">100% 逐文件覆盖率门禁（8 个 worker、4 个分区）</p>
+    </div>
+    <div class="card" style="margin:0;border-left:3px solid var(--accent3);">
+      <strong>node-24-consumers</strong>
+      <p style="font-size:0.88em;color:var(--text-secondary)">快照测试 + Web 快照 + Playwright E2E + 产物验证 + publint</p>
+    </div>
+    <div class="card" style="margin:0;border-left:3px solid var(--accent4);">
+      <strong>node-compat (22.19 + 26)</strong>
+      <p style="font-size:0.88em;color:var(--text-secondary)">Node.js 版本兼容性烟雾测试</p>
+    </div>
+    <div class="card" style="margin:0;border-left:3px solid var(--accent5);">
+      <strong>python-sdk</strong>
+      <p style="font-size:0.88em;color:var(--text-secondary)">Python 3.10 keyless SDK 测试（uv + pytest）</p>
+    </div>
+    <div class="card" style="margin:0;border-left:3px solid var(--red);">
+      <strong>python-runtime</strong>
+      <p style="font-size:0.88em;color:var(--text-secondary)">Python SDK 可执行文件构建验证</p>
+    </div>
+    <div class="card" style="margin:0;border-left:3px solid #ffa500;">
+      <strong>windows (Wine)</strong>
+      <p style="font-size:0.88em;color:var(--text-secondary)">Linux 上通过 Wine 验证 Windows 构建和生产站点</p>
+    </div>
+    <div class="card" style="margin:0;border-left:3px solid #888;">
+      <strong>windows-native (非阻塞)</strong>
+      <p style="font-size:0.88em;color:var(--text-secondary)">原生 Windows 16-core 完整门禁（不阻塞合并）</p>
+    </div>
+  </div>
+  <div class="callout" style="margin-top:16px;">
+    <strong>故障转移机制：</strong>CI 支持通过 <code>DSH_CI_FAILOVER_LINUX</code> 和 <code>DSH_CI_FAILOVER_WINDOWS</code> 仓库变量一键将所有任务切换到自托管 runner 池，防止 GitHub hosted runner 宕机阻塞开发。
+  </div>
+</div>
+
+<h3>5.4 门禁系统（Gates）</h3>
+<div class="card">
+  <div class="card-title">统一的门禁编排系统</div>
+  <p>所有质量检查通过 <code>scripts/run-gates.ts</code> 统一编排，定义了多个门禁矩阵：</p>
+  <pre>check:all        → 完整本地门禁
+check:ci         → 主 CI 门禁
+check:ci:static  → 静态分析（编译+lint+knip+jscpd）
+check:ci:coverage → 覆盖率门禁
+check:ci:snapshot → 快照测试门禁
+check:ci:consumers → 消费者/产物门禁
+check:ci:artifacts → 产物验证门禁</pre>
+  <p>这种门禁编排设计使得本地开发和 CI 环境运行完全相同的检查序列，确保 "CI 绿灯 = 本地通过"。</p>
+</div>
+</section>
+
+<!-- ============================================================ -->
+<!-- PART 6: 第三方依赖分析 -->
+<!-- ============================================================ -->
+<section id="part6">
+<h2 class="section-title"><span class="icon">📦</span> 第六部分：第三方依赖分析</h2>
+
+<h3>6.1 根级开发依赖（devDependencies）</h3>
+<div class="card">
+  <div class="card-title">根 package.json 开发依赖分类</div>
+  <table>
+    <tr><th>分类</th><th>依赖</th><th>版本</th><th>用途</th></tr>
+    <tr><td rowspan="3"><span class="badge badge-blue">构建</span></td><td>tsdown</td><td>^0.22.2</td><td>工作区 TypeScript 构建器</td></tr>
+    <tr><td>tsx</td><td>^4.22.4</td><td>TypeScript 直接运行时</td></tr>
+    <tr><td>typescript</td><td>^6.0.3</td><td>TypeScript 编译器</td></tr>
+    <tr><td rowspan="3"><span class="badge badge-green">测试</span></td><td>vitest</td><td>^4.1.8</td><td>测试框架</td></tr>
+    <tr><td>@vitest/coverage-v8</td><td>^4.1.8</td><td>V8 代码覆盖率</td></tr>
+    <tr><td>fast-check</td><td>^4.8.0</td><td>基于属性的测试</td></tr>
+    <tr><td rowspan="2"><span class="badge badge-purple">浏览器测试</span></td><td>jsdom</td><td>29.1.1</td><td>DOM 模拟环境</td></tr>
+    <tr><td>@testing-library/react</td><td>^16.3.2</td><td>React 组件测试工具</td></tr>
+    <tr><td rowspan="4"><span class="badge badge-orange">代码质量</span></td><td>oxlint</td><td>1.76.0</td><td>代码检查</td></tr>
+    <tr><td>oxlint-tsgolint</td><td>7.0.2001</td><td>TS Go linter 集成</td></tr>
+    <tr><td>knip</td><td>^6.16.1</td><td>死代码检测</td></tr>
+    <tr><td>jscpd</td><td>^5.0.12</td><td>重复代码检测</td></tr>
+    <tr><td rowspan="5"><span class="badge badge-pink">文档/验证</span></td><td>mermaid</td><td>11.16.0</td><td>Mermaid 图表渲染</td></tr>
+    <tr><td>mdast-util-from-markdown</td><td>^2.0.3</td><td>Markdown AST 解析</td></tr>
+    <tr><td>js-yaml</td><td>^4.2.0</td><td>YAML 解析</td></tr>
+    <tr><td>smol-toml</td><td>^1.7.1</td><td>TOML 解析</td></tr>
+    <tr><td>spdx-expression-parse</td><td>^5.0.0</td><td>SPDX 许可证表达式解析</td></tr>
+    <tr><td rowspan="2"><span class="badge badge-red">其他</span></td><td>lefthook</td><td>^2.1.9</td><td>Git hooks 管理</td></tr>
+    <tr><td>publint</td><td>^0.3.21</td><td>包发布质量检查</td></tr>
+  </table>
+</div>
+
+<h3>6.2 Vendor 框架层依赖</h3>
+<div class="card">
+  <div class="card-title">vendor/ 层（Cordis 插件生态系统）</div>
+  <table>
+    <tr><th>包名</th><th>版本</th><th>关键外部依赖</th><th>用途</th></tr>
+    <tr><td><code>@deepseek-ai/cordis</code></td><td>4.0.1</td><td>@standard-schema/spec</td><td>元框架核心（IoC 容器、服务注册、生命周期）</td></tr>
+    <tr><td><code>@deepseek-ai/cosmokit</code></td><td>1.8.2</td><td>&mdash;</td><td>通用工具库（零依赖）</td></tr>
+    <tr><td><code>@deepseek-ai/schemastery</code></td><td>3.18.1</td><td>@standard-schema/spec</td><td>类型驱动的 Schema 验证器</td></tr>
+    <tr><td><code>cordis-plugin-loader</code></td><td>1.0.2</td><td>cosmokit</td><td>插件加载器</td></tr>
+    <tr><td><code>cordis-plugin-hmr</code></td><td>1.0.16</td><td>chokidar, picomatch, esbuild</td><td>模块热替换</td></tr>
+    <tr><td><code>cordis-plugin-include</code></td><td>1.0.6</td><td>js-yaml</td><td>配置文件 include 支持</td></tr>
+    <tr><td><code>cordis-plugin-group</code></td><td>1.0.1</td><td>&mdash;</td><td>嵌套插件分组</td></tr>
+    <tr><td><code>cordis-plugin-timer</code></td><td>1.1.3</td><td>cosmokit</td><td>定时器服务</td></tr>
+    <tr><td><code>cordis-plugin-logger-console</code></td><td>1.0.1</td><td>supports-color</td><td>控制台日志输出</td></tr>
+  </table>
+</div>
+
+<h3>6.3 CLI 产品依赖</h3>
+<div class="card">
+  <div class="card-title">apps/cli 关键依赖（@deepseek-ai/dsh）</div>
+  <p>CLI 包是产品装配层，将 50+ 个 workspace 内部包组装为可执行的 <code>dsh</code> 命令。少量外部依赖：</p>
+  <table>
+    <tr><th>依赖</th><th>版本</th><th>用途</th></tr>
+    <tr><td>commander</td><td>^15.0.0</td><td>命令行参数解析</td></tr>
+    <tr><td>js-yaml</td><td>^4.2.0</td><td>YAML 配置解析</td></tr>
+    <tr><td>node-addon-require-builtin</td><td>^0.1.4</td><td>原生 addon 加载</td></tr>
+  </table>
+</div>
+
+<h3>6.4 Web 前端依赖</h3>
+<div class="card">
+  <div class="card-title">apps/web 技术栈</div>
+  <table>
+    <tr><th>依赖</th><th>版本</th><th>用途</th></tr>
+    <tr><td>react</td><td>^18.2.0</td><td>UI 框架</td></tr>
+    <tr><td>react-dom</td><td>^18.2.0</td><td>React DOM 渲染</td></tr>
+    <tr><td>@vitejs/plugin-react</td><td>^4.0.0</td><td>Vite React 插件</td></tr>
+    <tr><td>vite</td><td>^6.0.0</td><td>前端构建工具</td></tr>
+    <tr><td>playwright</td><td>^1.49.0</td><td>浏览器 E2E 测试</td></tr>
+    <tr><td>fflate</td><td>^0.8.2</td><td>压缩/解压库</td></tr>
+  </table>
+</div>
+</section>
+
+<!-- ============================================================ -->
+<!-- PART 7: 依赖关系图 -->
+<!-- ============================================================ -->
+<section id="part7">
+<h2 class="section-title"><span class="icon">🔗</span> 第七部分：依赖关系图</h2>
+
+<h3>7.1 Vendor 层内部依赖拓扑</h3>
+<div class="flow-diagram">
+  <div class="flow-label">Cordis 插件生态内部依赖关系</div>
+  <div class="flow-row">
+    <div class="flow-box highlight">@deepseek-ai/cosmokit</div>
+    <div style="color:var(--text-secondary);font-size:0.85em;">（零依赖基础工具库）</div>
+  </div>
+  <div class="flow-arrow" style="display:block;text-align:center;">↑ 被所有其他 vendor 包依赖</div>
+  <div class="flow-row" style="margin-top:12px;">
+    <div class="flow-box">@standard-schema/spec</div>
+    <div class="flow-arrow">+</div>
+    <div class="flow-box highlight">cosmokit</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-box">cordis (核心)</div>
+  </div>
+  <div class="flow-row" style="margin-top:8px;">
+    <div class="flow-box highlight">cosmokit</div>
+    <div class="flow-arrow">+</div>
+    <div class="flow-box">@standard-schema/spec</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-box">schemastery</div>
+  </div>
+  <div class="flow-row" style="margin-top:12px;">
+    <div class="flow-box">cordis</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-box">plugin-timer</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-box">plugin-hmr</div>
+  </div>
+  <div class="flow-row">
+    <div class="flow-box">cordis</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-box">plugin-loader</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-box">plugin-include</div>
+  </div>
+  <div class="flow-row">
+    <div class="flow-box">cordis</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-box">plugin-group</div>
+  </div>
+  <div class="flow-row">
+    <div class="flow-box">cordis</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-box">plugin-logger-console</div>
+  </div>
+</div>
+
+<h3>7.2 Workspace 依赖关系层次</h3>
+<div class="card">
+  <div class="card-title">三层架构依赖流向</div>
+  <pre style="font-size:0.82em;">
+┌─────────────────────────────────────────────────────────────────┐
+│                      产品装配层 (apps/)                          │
+│  ┌─────────────────────────┐  ┌──────────────────────────────┐  │
+│  │    apps/cli (dsh CLI)   │  │    apps/web (Web Frontend)   │  │
+│  │    50+ workspace deps   │  │    React + Vite              │  │
+│  └───────────┬─────────────┘  └──────────────┬───────────────┘  │
+│              │                               │                  │
+├──────────────┼───────────────────────────────┼──────────────────┤
+│              │     核心业务层 (packages/*/*)   │                  │
+│  ┌───────────▼───────────────────────────────────────────────┐  │
+│  │  core/     llm/      shell/    session/    client/        │  │
+│  │  agent     llm       bash      session     ui-*          │  │
+│  │  scope     llm-deep  pwsh      projection  connection    │  │
+│  │  tools     llm-pi    terminal  query       modules       │  │
+│  │  agent-loop          subprocess            web           │  │
+│  │                                                        │  │
+│  │  skill/    fs/       mcp/      sandbox/    subagent/     │  │
+│  │  storage/  settings/ workflow/ plan/       preset/       │  │
+│  │  goal/     compaction/ acp/    credentials/ interaction/ │  │
+│  │  jobs/     feedback/ schedule/ guard/      bundle/       │  │
+│  └───────────────────────────┬───────────────────────────────┘  │
+│                              │                                   │
+├──────────────────────────────┼───────────────────────────────────┤
+│                              │     框架层 (vendor/)              │
+│  ┌───────────────────────────▼───────────────────────────────┐  │
+│  │  cordis (IoC) → cosmokit (utils) → schemastery (schema)  │  │
+│  │  plugin-loader, plugin-hmr, plugin-include, plugin-group  │  │
+│  │  plugin-timer, plugin-logger-console                      │  │
+│  └───────────────────────────────────────────────────────────┘  │
+└─────────────────────────────────────────────────────────────────┘
+  </pre>
+</div>
+
+<h3>7.3 版本约束策略</h3>
+<div class="card">
+  <div class="card-title">版本管理规范</div>
+  <table>
+    <tr><th>策略</th><th>实现</th><th>说明</th></tr>
+    <tr><td>Workspace 内部</td><td><code>workspace:^</code></td><td>始终链接最新开发版本</td></tr>
+    <tr><td>Workspace examples</td><td><code>workspace:*</code></td><td>examples 使用通配链接</td></tr>
+    <tr><td>外部依赖</td><td><code>^</code> (caret)</td><td>允许 minor/patch 更新</td></tr>
+    <tr><td>锁文件</td><td><code>pnpm-lock.yaml</code></td><td>CI 使用 <code>--frozen-lockfile</code></td></tr>
+    <tr><td>pnpm 版本</td><td>Corepack</td><td><code>"packageManager": "pnpm@11.7.0"</code></td></tr>
+    <tr><td>发布年龄门禁</td><td><code>minimumReleaseAgeExclude</code></td><td>防止过新依赖（pi-ai 等除外）</td></tr>
+    <tr><td>Peer 兼容</td><td><code>peerDependencyRules</code></td><td>TypeScript 允许 >=5 &lt;7</td></tr>
+    <tr><td>构建脚本控制</td><td><code>allowBuilds</code></td><td>仅允许 esbuild/lefthook/node-pty/koffi 执行安装脚本</td></tr>
+  </table>
+</div>
+</section>
+
+<!-- ============================================================ -->
+<!-- PART 8: 技术选型分析 -->
+<!-- ============================================================ -->
+<section id="part8">
+<h2 class="section-title"><span class="icon">🎯</span> 第八部分：技术选型分析</h2>
+
+<h3>8.1 为什么选 pnpm 而不是 npm/yarn？</h3>
+<div class="card">
+  <div class="comparison-table">
+    <table>
+      <tr><th>维度</th><th class="winner">pnpm</th><th class="loser">npm</th><th class="loser">yarn</th></tr>
+      <tr><td>磁盘效率</td><td class="winner">内容寻址存储，硬链接共享</td><td>每个项目独立复制</td><td>PnP 零安装但兼容性差</td></tr>
+      <tr><td>幽灵依赖</td><td class="winner">严格隔离（node_modules 扁平化控制）</td><td>允许幽灵依赖</td><td>Classic 允许 / PnP 不允许</td></tr>
+      <tr><td>Monorepo 支持</td><td class="winner">原生 workspace + 过滤</td><td>基础 workspace 支持</td><td>良好但维护分裂</td></tr>
+      <tr><td>安装脚本控制</td><td class="winner">pnpm 10+ <code>allowBuilds</code> 白名单</td><td>npm 7+ lifecycle scripts</td><td>无内置白名单</td></tr>
+      <tr><td>补丁支持</td><td class="winner"><code>patchedDependencies</code> 原生支持</td><td>需要 patch-package</td><td>Yarn 4 内置</td></tr>
+      <tr><td>发布年龄门禁</td><td class="winner"><code>minimumReleaseAgeExclude</code></td><td>无</td><td>无</td></tr>
+      <tr><td>性能</td><td class="winner">最快（硬链接 + 并行）</td><td>较慢</td><td>Yarn 4 较快</td></tr>
+    </table>
+  </div>
+  <p><strong>关键决策因素：</strong>pnpm 的严格依赖隔离对 50+ 包的 monorepo 至关重要 &mdash; 幽灵依赖会导致运行时难以调试的模块解析错误。<code>allowBuilds</code> 白名单机制增强了供应链安全。<code>patchedDependencies</code> 允许直接在 manifest 中管理 node-pty 的自定义补丁。</p>
+</div>
+
+<h3>8.2 为什么选 Vitest 而不是 Jest？</h3>
+<div class="card">
+  <div class="comparison-table">
+    <table>
+      <tr><th>维度</th><th class="winner">Vitest</th><th class="loser">Jest</th></tr>
+      <tr><td>原生 TypeScript</td><td class="winner">通过 Vite 直接运行 TS，无需 Babel/ts-jest</td><td>需要额外配置转换器</td></tr>
+      <tr><td>ESM 支持</td><td class="winner">完整原生 ESM 支持</td><td>ESM 支持仍不完善</td></tr>
+      <tr><td>速度</td><td class="winner">Vite 的 HMR + 按需转换</td><td>较慢，全局转换</td></tr>
+      <tr><td>兼容性</td><td class="winner">Jest API 兼容（expect/describe/it）</td><td>&mdash;</td></tr>
+      <tr><td>项目隔离</td><td class="winner">原生 projects 配置</td><td>需要额外配置</td></tr>
+      <tr><td>覆盖率</td><td class="winner">V8 原生覆盖率（无 Istanbul 开销）</td><td>Istanbul/Babel 覆盖率</td></tr>
+      <tr><td>配置复杂度</td><td class="winner">与 Vite 共享插件生态</td><td>独立配置体系</td></tr>
+    </table>
+  </div>
+  <p><strong>关键决策因素：</strong>项目全面采用 ESM + TypeScript 6，Vitest 原生支持这两者无需任何转译配置。Vite 插件生态（如 <code>vite-tsconfig-paths</code>）使得源码级路径解析在测试中无缝工作。V8 覆盖率比 Istanbul 更准确且更快。</p>
+</div>
+
+<h3>8.3 为什么选 tsdown 而不是 webpack/rollup/esbuild？</h3>
+<div class="card">
+  <div class="comparison-table">
+    <table>
+      <tr><th>维度</th><th class="winner">tsdown</th><th class="loser">webpack</th><th class="loser">rollup</th><th class="loser">esbuild</th></tr>
+      <tr><td>TypeScript 原生</td><td class="winner">直接消费 tsc 产物</td><td>需要 loader</td><td>需要插件</td><td>内置但功能有限</td></tr>
+      <tr><td>工作区支持</td><td class="winner">原生 workspace 模式</td><td>需手动配置</td><td>需手动配置</td><td>无内置</td></tr>
+      <tr><td>构建速度</td><td class="winner">Rust 内核（Rolldown）</td><td>慢</td><td>中等</td><td>快</td></tr>
+      <tr><td>输出格式</td><td class="winner">ESM 优先</td><td>灵活</td><td>灵活</td><td>灵活</td></tr>
+      <tr><td>DTS 生成</td><td class="winner">可选（项目选择 tsc 生成）</td><td>需要插件</td><td>需要插件</td><td>不支持</td></tr>
+      <tr><td>复杂度</td><td class="winner">极简配置</td><td>高度复杂</td><td>中等</td><td>简单</td></tr>
+    </table>
+  </div>
+  <p><strong>关键决策因素：</strong>tsdown 基于 Rolldown（Rust 编写的 Rollup 替代品），提供接近 esbuild 的速度同时保持 Rollup 的插件生态兼容性。其原生 workspace 模式自动扫描所有工作区包并应用统一构建配置，极大简化了 50+ 包的构建管理。项目选择让 tsc 负责类型检查和 DTS 生成，tsdown 仅负责 JS 产物打包，实现了关注点分离。</p>
+</div>
+
+<h3>8.4 为什么选 oxlint 而不是 ESLint？</h3>
+<div class="card">
+  <div class="comparison-table">
+    <table>
+      <tr><th>维度</th><th class="winner">oxlint</th><th class="loser">ESLint</th></tr>
+      <tr><td>速度</td><td class="winner">Rust 编写，10-100x 更快</td><td>JavaScript 编写</td></tr>
+      <tr><td>TypeScript 类型感知</td><td class="winner">原生支持（typeAware 模式）</td><td>需要 typescript-eslint</td></tr>
+      <tr><td>配置复杂度</td><td class="winner">单个 JSON 文件</td><td>需要多插件 + 配置</td></tr>
+      <tr><td>内置规则</td><td class="winner">400+ 内置规则</td><td>需要安装插件</td></tr>
+      <tr><td>JS 插件兼容</td><td class="winner">支持 jsPlugins（兼容 ESLint 插件）</td><td>&mdash;</td></tr>
+      <tr><td>零配置启动</td><td class="winner">开箱即用</td><td>需要初始化</td></tr>
+    </table>
+  </div>
+  <p><strong>关键决策因素：</strong>在 50+ 包的大型 monorepo 中，ESLint 的运行时间可能达到分钟级别。oxlint 的 Rust 内核将其压缩到秒级。项目通过 <code>jsPlugins</code> 兼容层继续使用 <code>eslint-plugin-sonarjs</code> 和 <code>@stylistic/eslint-plugin</code>，无需重写这些插件。值得注意的是，<code>.oxlintrc.json</code> 顶部声明了 <code>"plugins": []</code> 但通过 <code>overrides</code> 的 <code>plugins</code> 和 <code>jsPlugins</code> 字段精细控制每个文件类型的规则集。</p>
+</div>
+
+<h3>8.5 其他关键选型</h3>
+<div class="grid-2">
+  <div class="card" style="margin:0;">
+    <div class="card-title">React 18（而非 19）</div>
+    <p>Web 前端使用 React 18.2.0，可能因为 React 19 的新特性（Server Components 等）对于这个 CLI-first 的桌面/Web 混合应用并非必需。保持 18 也有利于与更广泛的生态兼容。</p>
+  </div>
+  <div class="card" style="margin:0;">
+    <div class="card-title">Playwright（E2E 测试）</div>
+    <p>仅在 apps/web 中使用 Playwright 进行真实浏览器 E2E 测试。CI 中仅安装 Chromium 以减少资源消耗。通过 <code>pnpm --filter @deepseek-ai/dsh-web-frontend exec playwright install</code> 精确安装。</p>
+  </div>
+  <div class="card" style="margin:0;">
+    <div class="card-title">Cordis 框架（自研 IoC）</div>
+    <p>项目基于自研的 Cordis IoC（控制反转）框架构建。所有功能模块作为 Cordis 插件注册，通过服务注入实现松耦合。vendor/ 目录包含 Cordis 核心及其 7 个官方插件。</p>
+  </div>
+  <div class="card" style="margin:0;">
+    <div class="card-title">LightningCSS</div>
+    <p><code>lightningcss ^1.32.0</code> 用于 CSS 处理，基于 Rust 编写，速度远超 PostCSS。在 Web 前端构建中处理 CSS 优化和转换。</p>
+  </div>
+</div>
+</section>
+
+<!-- ============================================================ -->
+<!-- PART 9: 技术栈总结 -->
+<!-- ============================================================ -->
+<section id="part9">
+<h2 class="section-title"><span class="icon">📊</span> 第九部分：技术栈总结与演进建议</h2>
+
+<h3>9.1 技术栈全景图</h3>
+<div class="card">
+  <div class="card-title">核心数字</div>
+  <div class="grid-4">
+    <div class="stat-card">
+      <div class="stat-number">50+</div>
+      <div class="stat-label">Workspace 包</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-number">9</div>
+      <div class="stat-label">Vendor 框架包</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-number">18</div>
+      <div class="stat-label">CI 工作流</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-number">100%</div>
+      <div class="stat-label">覆盖率门禁</div>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-title">技术栈分层总结</div>
+  <table>
+    <tr><th>层级</th><th>技术选型</th><th>特点</th></tr>
+    <tr><td><strong>运行时</strong></td><td>Node.js 22+/24+, ESM</td><td>最新 LTS + Current 双版本支持</td></tr>
+    <tr><td><strong>语言</strong></td><td>TypeScript 6, ES2024 target</td><td>最严格模式（exactOptionalPropertyTypes）</td></tr>
+    <tr><td><strong>包管理</strong></td><td>pnpm 11.7, Monorepo workspace</td><td>严格隔离 + 供应链安全控制</td></tr>
+    <tr><td><strong>框架</strong></td><td>Cordis IoC (自研)</td><td>插件化架构，服务注入</td></tr>
+    <tr><td><strong>构建</strong></td><td>tsdown (Rolldown) + tsc -b</td><td>Rust 加速 + 项目引用增量编译</td></tr>
+    <tr><td><strong>前端</strong></td><td>React 18 + Vite 6</td><td>SPA with HMR</td></tr>
+    <tr><td><strong>测试</strong></td><td>Vitest 4, 100% coverage</td><td>forks 池 + 分区覆盖 + 快照回归</td></tr>
+    <tr><td><strong>E2E</strong></td><td>Playwright (Chromium)</td><td>Web UI 浏览器级验证</td></tr>
+    <tr><td><strong>Lint</strong></td><td>oxlint (Rust) + type-aware</td><td>替代 ESLint，100x 速度提升</td></tr>
+    <tr><td><strong>死代码</strong></td><td>knip</td><td>monorepo 级未使用依赖检测</td></tr>
+    <tr><td><strong>重复检测</strong></td><td>jscpd</td><td>代码重复率门禁</td></tr>
+    <tr><td><strong>发布检查</strong></td><td>publint</td><td>npm 包发布质量验证</td></tr>
+    <tr><td><strong>Git Hooks</strong></td><td>lefthook</td><td>pre-commit lint + pre-push typecheck</td></tr>
+    <tr><td><strong>CI/CD</strong></td><td>GitHub Actions</td><td>7 必要检查 + 故障转移 + 多平台</td></tr>
+    <tr><td><strong>文档</strong></td><td>VitePress</td><td>文档站 + Mermaid 图表</td></tr>
+    <tr><td><strong>沙箱</strong></td><td>Landlock (Linux) / ACL (Windows)</td><td>原生操作系统级沙箱</td></tr>
+    <tr><td><strong>类型注册</strong></td><td>Typert (自研)</td><td>构建时类型分析 + 运行时注册</td></tr>
+    <tr><td><strong>Python</strong></td><td>Python 3.10 + uv + pytest</td><td>Python SDK 运行时</td></tr>
+  </table>
+</div>
+
+<h3>9.2 与同类项目对比</h3>
+<div class="card">
+  <div class="card-title">对比维度分析</div>
+  <p>与同类型 AI 编码助手/Agent 框架项目相比，deepseek-harness 在以下方面表现突出：</p>
+  <table>
+    <tr><th>维度</th><th>deepseek-harness</th><th>同类项目常见做法</th></tr>
+    <tr><td>覆盖率要求</td><td class="winner">100% 逐文件（行业罕见）</td><td>通常 80-90% 门禁</td></tr>
+    <tr><td>Lint 速度</td><td class="winner">oxlint (Rust)</td><td>ESLint (JS)</td></tr>
+    <tr><td>构建架构</td><td class="winner">Host/Client 双面构建</td><td>单一构建管道</td></tr>
+    <tr><td>模块化程度</td><td class="winner">50+ 微包 + IoC 插件架构</td><td>通常 3-10 个大包</td></tr>
+    <tr><td>类型安全</td><td class="winner">Typert 运行时类型注册 + 严格 TS</td><td>基础 TypeScript</td></tr>
+    <tr><td>CI 可靠性</td><td class="winner">自动故障转移 + 双平台</td><td>单一 CI 路径</td></tr>
+    <tr><td>供应链安全</td><td class="winner">allowBuilds 白名单 + 发布年龄门禁</td><td>基本无控制</td></tr>
+  </table>
+</div>
+
+<h3>9.3 升级和演进建议</h3>
+<div class="card">
+  <div class="card-title">短期优化建议</div>
+  <table>
+    <tr><th>建议</th><th>优先级</th><th>说明</th></tr>
+    <tr><td>补齐 GUI 测试覆盖</td><td><span class="badge badge-red">高</span></td><td>大量 Client/UI 文件标记了 TODO(gui) 排除，应逐步收窄排除列表</td></tr>
+    <tr><td>评估 React 19 迁移</td><td><span class="badge badge-orange">中</span></td><td>React 19 的改进（Compiler、Server Components）可能对 Web 前端有益</td></tr>
+    <tr><td>Node 26 稳定后升级主版本</td><td><span class="badge badge-blue">低</span></td><td>已在 CI 中验证 Node 26 兼容性，可等待其 LTS</td></tr>
+  </table>
+</div>
+
+<div class="card">
+  <div class="card-title">中长期演进方向</div>
+  <table>
+    <tr><th>方向</th><th>说明</th></tr>
+    <tr><td>Bun/Deno 运行时兼容</td><td>项目已全面 ESM + 无 CJS 依赖（除 schemastery 双格式），为未来运行时迁移打下基础</td></tr>
+    <tr><td>Rust 工具链深化</td><td>已有 oxlint (Rust) + tsdown (Rolldown/Rust) + LightningCSS (Rust)，可考虑将更多构建步骤迁移到 Rust</td></tr>
+    <tr><td>类型注册自动生成</td><td>Typert 系统可扩展为自动从源码生成 API 文档和 SDK 类型定义</td></tr>
+    <tr><td>微前端扩展</td><td>Cordis 插件架构 + Client/Host 分离天然支持微前端模式</td></tr>
+  </table>
+</div>
+
+<div class="callout callout-warn">
+  <strong>注意：</strong>项目的 pnpm 版本锁定在 11.7.0，且使用了 <code>minimumReleaseAgeExclude</code> 等 pnpm 10+ 特性。升级 pnpm 主版本前需仔细测试 <code>allowBuilds</code> 和 <code>patchedDependencies</code> 的行为变化。
+</div>
+</section>
+
+</div><!-- /container -->
+
+<div class="footer">
+  <p>DeepSeek Harness 技术栈知识图谱 &bull; 生成于 2026-08-29 &bull; 基于项目源码配置文件深度分析</p>
+  <p>数据来源：package.json, pnpm-workspace.yaml, tsconfig.*, tsdown.config.ts, vitest.*.config.ts, .oxlintrc.json, knip.json, lefthook.yml, .github/workflows/</p>
+</div>
+
+</body>
+</html>

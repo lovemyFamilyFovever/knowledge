@@ -1,0 +1,1634 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interview Pro - 专业程序员面试题库</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        /* 设计系统 - 基于UI/UX Pro Max推荐 */
+        :root {
+            /* 颜色系统 - 开发者工具专业配色 */
+            --color-primary: #1E293B;
+            --color-on-primary: #FFFFFF;
+            --color-secondary: #334155;
+            --color-on-secondary: #FFFFFF;
+            --color-accent: #22C55E;
+            --color-on-accent: #0F172A;
+            --color-background: #0F172A;
+            --color-foreground: #F8FAFC;
+            --color-card: #1B2336;
+            --color-card-foreground: #F8FAFC;
+            --color-muted: #272F42;
+            --color-muted-foreground: #94A3B8;
+            --color-border: #475569;
+            --color-destructive: #EF4444;
+            --color-ring: #1E293B;
+            
+            /* 语义颜色 */
+            --color-success: #22C55E;
+            --color-warning: #F59E0B;
+            --color-error: #EF4444;
+            --color-info: #3B82F6;
+            
+            /* 难度颜色 */
+            --color-easy: #22C55E;
+            --color-medium: #F59E0B;
+            --color-hard: #EF4444;
+            --color-expert: #8B5CF6;
+            
+            /* 字体系统 */
+            --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            --font-mono: 'JetBrains Mono', 'Fira Code', 'Courier New', monospace;
+            
+            /* 间距系统 */
+            --space-1: 0.25rem;
+            --space-2: 0.5rem;
+            --space-3: 0.75rem;
+            --space-4: 1rem;
+            --space-5: 1.25rem;
+            --space-6: 1.5rem;
+            --space-8: 2rem;
+            --space-10: 2.5rem;
+            --space-12: 3rem;
+            --space-16: 4rem;
+            
+            /* 圆角 */
+            --radius-sm: 0.375rem;
+            --radius-md: 0.5rem;
+            --radius-lg: 0.75rem;
+            --radius-xl: 1rem;
+            --radius-2xl: 1.5rem;
+            --radius-full: 9999px;
+            
+            /* 阴影 */
+            --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+            --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+            --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+            --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+            
+            /* 过渡 */
+            --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+            --transition-normal: 200ms cubic-bezier(0.4, 0, 0.2, 1);
+            --transition-slow: 300ms cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        /* 基础样式重置 */
+        *, *::before, *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        html {
+            font-size: 16px;
+            scroll-behavior: smooth;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        body {
+            font-family: var(--font-sans);
+            background-color: var(--color-background);
+            color: var(--color-foreground);
+            line-height: 1.5;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* 容器 */
+        .container {
+            max-width: 1280px;
+            margin: 0 auto;
+            padding: 0 var(--space-6);
+        }
+
+        /* 导航栏 */
+        .navbar {
+            position: sticky;
+            top: 0;
+            z-index: 50;
+            background-color: rgba(15, 23, 42, 0.8);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--color-border);
+            padding: var(--space-4) 0;
+        }
+
+        .navbar-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .navbar-brand {
+            display: flex;
+            align-items: center;
+            gap: var(--space-3);
+            text-decoration: none;
+            color: var(--color-foreground);
+        }
+
+        .navbar-logo {
+            width: 32px;
+            height: 32px;
+            background: linear-gradient(135deg, var(--color-accent), #10B981);
+            border-radius: var(--radius-md);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 14px;
+            color: var(--color-on-accent);
+        }
+
+        .navbar-title {
+            font-weight: 600;
+            font-size: 1.125rem;
+            letter-spacing: -0.025em;
+        }
+
+        .navbar-nav {
+            display: flex;
+            gap: var(--space-1);
+        }
+
+        .nav-link {
+            padding: var(--space-2) var(--space-4);
+            color: var(--color-muted-foreground);
+            text-decoration: none;
+            font-size: 0.875rem;
+            font-weight: 500;
+            border-radius: var(--radius-md);
+            transition: all var(--transition-fast);
+        }
+
+        .nav-link:hover {
+            color: var(--color-foreground);
+            background-color: var(--color-muted);
+        }
+
+        .nav-link.active {
+            color: var(--color-foreground);
+            background-color: var(--color-primary);
+        }
+
+        /* 主要内容 */
+        .main {
+            padding: var(--space-8) 0;
+        }
+
+        /* 英雄区域 */
+        .hero {
+            text-align: center;
+            padding: var(--space-16) 0;
+            border-bottom: 1px solid var(--color-border);
+            margin-bottom: var(--space-12);
+        }
+
+        .hero-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: var(--space-2);
+            padding: var(--space-2) var(--space-4);
+            background-color: var(--color-muted);
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-full);
+            font-size: 0.875rem;
+            color: var(--color-muted-foreground);
+            margin-bottom: var(--space-6);
+        }
+
+        .hero-badge-dot {
+            width: 8px;
+            height: 8px;
+            background-color: var(--color-accent);
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .hero-title {
+            font-size: 3.5rem;
+            font-weight: 700;
+            letter-spacing: -0.025em;
+            line-height: 1.1;
+            margin-bottom: var(--space-6);
+            background: linear-gradient(135deg, var(--color-foreground) 0%, var(--color-muted-foreground) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .hero-subtitle {
+            font-size: 1.25rem;
+            color: var(--color-muted-foreground);
+            max-width: 640px;
+            margin: 0 auto var(--space-8);
+            line-height: 1.6;
+        }
+
+        .hero-actions {
+            display: flex;
+            justify-content: center;
+            gap: var(--space-4);
+            flex-wrap: wrap;
+        }
+
+        /* 按钮系统 */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: var(--space-2);
+            padding: var(--space-3) var(--space-6);
+            font-size: 0.875rem;
+            font-weight: 500;
+            border-radius: var(--radius-md);
+            cursor: pointer;
+            transition: all var(--transition-fast);
+            text-decoration: none;
+            border: none;
+            outline: none;
+        }
+
+        .btn:focus-visible {
+            outline: 2px solid var(--color-accent);
+            outline-offset: 2px;
+        }
+
+        .btn-primary {
+            background-color: var(--color-accent);
+            color: var(--color-on-accent);
+        }
+
+        .btn-primary:hover {
+            background-color: #16A34A;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(34, 197, 94, 0.3);
+        }
+
+        .btn-secondary {
+            background-color: var(--color-muted);
+            color: var(--color-foreground);
+            border: 1px solid var(--color-border);
+        }
+
+        .btn-secondary:hover {
+            background-color: var(--color-border);
+        }
+
+        .btn-ghost {
+            background-color: transparent;
+            color: var(--color-muted-foreground);
+        }
+
+        .btn-ghost:hover {
+            background-color: var(--color-muted);
+            color: var(--color-foreground);
+        }
+
+        /* 统计卡片 */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: var(--space-6);
+            margin-bottom: var(--space-12);
+        }
+
+        .stat-card {
+            background-color: var(--color-card);
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-xl);
+            padding: var(--space-6);
+            transition: all var(--transition-normal);
+        }
+
+        .stat-card:hover {
+            border-color: var(--color-accent);
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .stat-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: var(--space-4);
+        }
+
+        .stat-icon {
+            width: 40px;
+            height: 40px;
+            background-color: var(--color-muted);
+            border-radius: var(--radius-lg);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.25rem;
+        }
+
+        .stat-change {
+            display: flex;
+            align-items: center;
+            gap: var(--space-1);
+            font-size: 0.75rem;
+            font-weight: 500;
+            color: var(--color-success);
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: 700;
+            letter-spacing: -0.025em;
+            margin-bottom: var(--space-1);
+            font-family: var(--font-mono);
+        }
+
+        .stat-label {
+            font-size: 0.875rem;
+            color: var(--color-muted-foreground);
+        }
+
+        /* 搜索区域 */
+        .search-section {
+            margin-bottom: var(--space-12);
+        }
+
+        .search-container {
+            position: relative;
+            max-width: 640px;
+            margin: 0 auto;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: var(--space-4) var(--space-6);
+            padding-left: 3rem;
+            background-color: var(--color-card);
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-xl);
+            color: var(--color-foreground);
+            font-size: 1rem;
+            font-family: var(--font-sans);
+            transition: all var(--transition-fast);
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: var(--color-accent);
+            box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.1);
+        }
+
+        .search-input::placeholder {
+            color: var(--color-muted-foreground);
+        }
+
+        .search-icon {
+            position: absolute;
+            left: var(--space-4);
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--color-muted-foreground);
+            pointer-events: none;
+        }
+
+        .search-shortcut {
+            position: absolute;
+            right: var(--space-4);
+            top: 50%;
+            transform: translateY(-50%);
+            display: flex;
+            gap: var(--space-1);
+        }
+
+        .kbd {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 24px;
+            height: 24px;
+            padding: 0 var(--space-2);
+            background-color: var(--color-muted);
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-sm);
+            font-size: 0.75rem;
+            font-family: var(--font-mono);
+            color: var(--color-muted-foreground);
+        }
+
+        /* 题库分类网格 */
+        .categories-section {
+            margin-bottom: var(--space-12);
+        }
+
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: var(--space-6);
+        }
+
+        .section-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            letter-spacing: -0.025em;
+        }
+
+        .section-subtitle {
+            font-size: 0.875rem;
+            color: var(--color-muted-foreground);
+        }
+
+        .categories-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: var(--space-6);
+        }
+
+        .category-card {
+            background-color: var(--color-card);
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-xl);
+            padding: var(--space-6);
+            cursor: pointer;
+            transition: all var(--transition-normal);
+            text-decoration: none;
+            color: inherit;
+            display: block;
+        }
+
+        .category-card:hover {
+            border-color: var(--color-accent);
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .category-card:focus-visible {
+            outline: 2px solid var(--color-accent);
+            outline-offset: 2px;
+        }
+
+        .category-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: var(--space-4);
+        }
+
+        .category-icon {
+            width: 48px;
+            height: 48px;
+            background-color: var(--color-muted);
+            border-radius: var(--radius-lg);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+        }
+
+        .category-count {
+            display: flex;
+            align-items: center;
+            gap: var(--space-1);
+            font-size: 0.75rem;
+            font-weight: 500;
+            color: var(--color-muted-foreground);
+            background-color: var(--color-muted);
+            padding: var(--space-1) var(--space-3);
+            border-radius: var(--radius-full);
+        }
+
+        .category-title {
+            font-size: 1.125rem;
+            font-weight: 600;
+            margin-bottom: var(--space-2);
+            letter-spacing: -0.025em;
+        }
+
+        .category-description {
+            font-size: 0.875rem;
+            color: var(--color-muted-foreground);
+            line-height: 1.5;
+            margin-bottom: var(--space-4);
+        }
+
+        .category-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: var(--space-2);
+        }
+
+        .tag {
+            display: inline-flex;
+            align-items: center;
+            padding: var(--space-1) var(--space-3);
+            background-color: var(--color-muted);
+            border-radius: var(--radius-full);
+            font-size: 0.75rem;
+            font-weight: 500;
+            color: var(--color-muted-foreground);
+        }
+
+        .tag-primary {
+            background-color: rgba(34, 197, 94, 0.1);
+            color: var(--color-accent);
+        }
+
+        /* 图表区域 */
+        .charts-section {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: var(--space-6);
+            margin-bottom: var(--space-12);
+        }
+
+        .chart-card {
+            background-color: var(--color-card);
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-xl);
+            padding: var(--space-6);
+        }
+
+        .chart-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: var(--space-6);
+        }
+
+        .chart-title {
+            font-size: 1rem;
+            font-weight: 600;
+            letter-spacing: -0.025em;
+        }
+
+        .chart-legend {
+            display: flex;
+            gap: var(--space-4);
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: var(--space-2);
+            font-size: 0.75rem;
+            color: var(--color-muted-foreground);
+        }
+
+        .legend-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+        }
+
+        .chart-container {
+            height: 240px;
+            position: relative;
+        }
+
+        /* 热门问题 */
+        .popular-section {
+            margin-bottom: var(--space-12);
+        }
+
+        .questions-list {
+            display: grid;
+            gap: var(--space-4);
+        }
+
+        .question-item {
+            display: flex;
+            align-items: center;
+            gap: var(--space-4);
+            padding: var(--space-4) var(--space-6);
+            background-color: var(--color-card);
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-lg);
+            cursor: pointer;
+            transition: all var(--transition-fast);
+        }
+
+        .question-item:hover {
+            border-color: var(--color-accent);
+            background-color: var(--color-muted);
+        }
+
+        .question-number {
+            font-family: var(--font-mono);
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: var(--color-muted-foreground);
+            min-width: 32px;
+        }
+
+        .question-content {
+            flex: 1;
+        }
+
+        .question-title {
+            font-size: 0.9375rem;
+            font-weight: 500;
+            margin-bottom: var(--space-1);
+        }
+
+        .question-meta {
+            display: flex;
+            gap: var(--space-4);
+            font-size: 0.75rem;
+            color: var(--color-muted-foreground);
+        }
+
+        .difficulty-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: var(--space-1);
+            padding: var(--space-1) var(--space-3);
+            border-radius: var(--radius-full);
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+
+        .difficulty-easy {
+            background-color: rgba(34, 197, 94, 0.1);
+            color: var(--color-easy);
+        }
+
+        .difficulty-medium {
+            background-color: rgba(245, 158, 11, 0.1);
+            color: var(--color-medium);
+        }
+
+        .difficulty-hard {
+            background-color: rgba(239, 68, 68, 0.1);
+            color: var(--color-hard);
+        }
+
+        .difficulty-expert {
+            background-color: rgba(139, 92, 246, 0.1);
+            color: var(--color-expert);
+        }
+
+        /* 学习路径 */
+        .learning-section {
+            background-color: var(--color-card);
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-xl);
+            padding: var(--space-8);
+            margin-bottom: var(--space-12);
+        }
+
+        .learning-header {
+            text-align: center;
+            margin-bottom: var(--space-8);
+        }
+
+        .learning-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: var(--space-2);
+            letter-spacing: -0.025em;
+        }
+
+        .learning-subtitle {
+            color: var(--color-muted-foreground);
+            font-size: 0.875rem;
+        }
+
+        .learning-timeline {
+            position: relative;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .timeline-item {
+            display: flex;
+            gap: var(--space-6);
+            margin-bottom: var(--space-8);
+            position: relative;
+        }
+
+        .timeline-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .timeline-marker {
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .timeline-dot {
+            width: 12px;
+            height: 12px;
+            background-color: var(--color-accent);
+            border-radius: 50%;
+            border: 3px solid var(--color-background);
+            z-index: 1;
+        }
+
+        .timeline-line {
+            position: absolute;
+            top: 12px;
+            width: 2px;
+            height: calc(100% + var(--space-8));
+            background-color: var(--color-border);
+        }
+
+        .timeline-item:last-child .timeline-line {
+            display: none;
+        }
+
+        .timeline-content {
+            flex: 1;
+            background-color: var(--color-muted);
+            border-radius: var(--radius-lg);
+            padding: var(--space-6);
+            border: 1px solid var(--color-border);
+        }
+
+        .timeline-phase {
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--color-accent);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: var(--space-2);
+        }
+
+        .timeline-title {
+            font-size: 1.125rem;
+            font-weight: 600;
+            margin-bottom: var(--space-2);
+            letter-spacing: -0.025em;
+        }
+
+        .timeline-description {
+            font-size: 0.875rem;
+            color: var(--color-muted-foreground);
+            margin-bottom: var(--space-4);
+            line-height: 1.5;
+        }
+
+        .timeline-meta {
+            display: flex;
+            gap: var(--space-4);
+            font-size: 0.75rem;
+        }
+
+        .meta-item {
+            display: flex;
+            align-items: center;
+            gap: var(--space-1);
+            color: var(--color-muted-foreground);
+        }
+
+        /* 页脚 */
+        .footer {
+            border-top: 1px solid var(--color-border);
+            padding: var(--space-8) 0;
+            margin-top: var(--space-16);
+        }
+
+        .footer-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: var(--space-4);
+        }
+
+        .footer-text {
+            font-size: 0.875rem;
+            color: var(--color-muted-foreground);
+        }
+
+        .footer-links {
+            display: flex;
+            gap: var(--space-6);
+        }
+
+        .footer-link {
+            font-size: 0.875rem;
+            color: var(--color-muted-foreground);
+            text-decoration: none;
+            transition: color var(--transition-fast);
+        }
+
+        .footer-link:hover {
+            color: var(--color-foreground);
+        }
+
+        /* 响应式设计 */
+        @media (max-width: 1024px) {
+            .hero-title {
+                font-size: 2.5rem;
+            }
+            
+            .charts-section {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 0 var(--space-4);
+            }
+            
+            .navbar-nav {
+                display: none;
+            }
+            
+            .hero {
+                padding: var(--space-8) 0;
+            }
+            
+            .hero-title {
+                font-size: 2rem;
+            }
+            
+            .hero-subtitle {
+                font-size: 1rem;
+            }
+            
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            
+            .categories-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .learning-section {
+                padding: var(--space-6);
+            }
+            
+            .timeline-item {
+                flex-direction: column;
+                gap: var(--space-4);
+            }
+            
+            .timeline-marker {
+                flex-direction: row;
+                gap: var(--space-3);
+            }
+            
+            .timeline-line {
+                position: static;
+                width: calc(100% + var(--space-6));
+                height: 2px;
+                margin-top: var(--space-3);
+            }
+        }
+
+        @media (max-width: 480px) {
+            .hero-title {
+                font-size: 1.75rem;
+            }
+            
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .stat-value {
+                font-size: 1.5rem;
+            }
+            
+            .hero-actions {
+                flex-direction: column;
+            }
+            
+            .btn {
+                width: 100%;
+            }
+        }
+
+        /* 减少动画偏好 */
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+            }
+            
+            html {
+                scroll-behavior: auto;
+            }
+        }
+
+        /* 焦点可见性 */
+        :focus-visible {
+            outline: 2px solid var(--color-accent);
+            outline-offset: 2px;
+        }
+
+        /* 滚动条样式 */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--color-background);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--color-border);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--color-muted-foreground);
+        }
+    </style>
+</head>
+<body>
+    <!-- 导航栏 -->
+    <nav class="navbar">
+        <div class="container navbar-content">
+            <a href="#" class="navbar-brand">
+                <div class="navbar-logo">IP</div>
+                <span class="navbar-title">Interview Pro</span>
+            </a>
+            <div class="navbar-nav">
+                <a href="#categories" class="nav-link active">题库</a>
+                <a href="#charts" class="nav-link">统计</a>
+                <a href="#popular" class="nav-link">热门</a>
+                <a href="#learning" class="nav-link">学习路径</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- 主要内容 -->
+    <main class="main">
+        <div class="container">
+            <!-- 英雄区域 -->
+            <section class="hero">
+                <div class="hero-badge">
+                    <span class="hero-badge-dot"></span>
+                    <span>专为资深前端开发者设计</span>
+                </div>
+                <h1 class="hero-title">程序员面试题库</h1>
+                <p class="hero-subtitle">
+                    523道精选面试题，覆盖前端全栈技术。从JavaScript核心到系统架构，从团队管理到AI应用，
+                    助您顺利通过技术面试，拿到心仪Offer。
+                </p>
+                <div class="hero-actions">
+                    <button class="btn btn-primary">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="11" cy="11" r="8"></circle>
+                            <path d="m21 21-4.3-4.3"></path>
+                        </svg>
+                        开始刷题
+                    </button>
+                    <button class="btn btn-secondary">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path>
+                            <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path>
+                        </svg>
+                        查看指南
+                    </button>
+                </div>
+            </section>
+
+            <!-- 统计卡片 -->
+            <section class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-header">
+                        <div class="stat-icon">📚</div>
+                        <div class="stat-change">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="m18 15-6-6-6 6"></path>
+                            </svg>
+                            +12%
+                        </div>
+                    </div>
+                    <div class="stat-value">523</div>
+                    <div class="stat-label">面试题目总数</div>
+                </div>
+                
+                <div class="stat-card">
+                    <div class="stat-header">
+                        <div class="stat-icon">💬</div>
+                        <div class="stat-change">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="m18 15-6-6-6 6"></path>
+                            </svg>
+                            +8%
+                        </div>
+                    </div>
+                    <div class="stat-value">1,569</div>
+                    <div class="stat-label">回答模板数量</div>
+                </div>
+                
+                <div class="stat-card">
+                    <div class="stat-header">
+                        <div class="stat-icon">📂</div>
+                        <div class="stat-change">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="m18 15-6-6-6 6"></path>
+                            </svg>
+                            +2
+                        </div>
+                    </div>
+                    <div class="stat-value">12</div>
+                    <div class="stat-label">专题分类</div>
+                </div>
+                
+                <div class="stat-card">
+                    <div class="stat-header">
+                        <div class="stat-icon">⏱️</div>
+                        <div class="stat-change">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="m18 15-6-6-6 6"></path>
+                            </svg>
+                            -5h
+                        </div>
+                    </div>
+                    <div class="stat-value">50h</div>
+                    <div class="stat-label">预计准备时间</div>
+                </div>
+            </section>
+
+            <!-- 搜索区域 -->
+            <section class="search-section">
+                <div class="search-container">
+                    <svg class="search-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="11" cy="11" r="8"></circle>
+                        <path d="m21 21-4.3-4.3"></path>
+                    </svg>
+                    <input type="text" class="search-input" placeholder="搜索面试题、技术关键词..." id="searchInput">
+                    <div class="search-shortcut">
+                        <span class="kbd">⌘</span>
+                        <span class="kbd">K</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 题库分类 -->
+            <section id="categories" class="categories-section">
+                <div class="section-header">
+                    <div>
+                        <h2 class="section-title">题库分类</h2>
+                        <p class="section-subtitle">12个专题，覆盖前端全栈技术</p>
+                    </div>
+                    <button class="btn btn-ghost">
+                        查看全部
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="m9 18 6-6-6-6"></path>
+                        </svg>
+                    </button>
+                </div>
+                
+                <div class="categories-grid">
+                    <a href="/doc/369" class="category-card">
+                        <div class="category-header">
+                            <div class="category-icon">⚡</div>
+                            <div class="category-count">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+                                </svg>
+                                100题
+                            </div>
+                        </div>
+                        <h3 class="category-title">JavaScript核心</h3>
+                        <p class="category-description">闭包、原型链、事件循环、异步编程等高级概念</p>
+                        <div class="category-tags">
+                            <span class="tag tag-primary">高频考点</span>
+                            <span class="tag">异步编程</span>
+                            <span class="tag">ES6+</span>
+                        </div>
+                    </a>
+                    
+                    <a href="/doc/370" class="category-card">
+                        <div class="category-header">
+                            <div class="category-icon">⚛️</div>
+                            <div class="category-count">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+                                </svg>
+                                80题
+                            </div>
+                        </div>
+                        <h3 class="category-title">React与Vue框架</h3>
+                        <p class="category-description">组件设计、状态管理、性能优化、生态工具链</p>
+                        <div class="category-tags">
+                            <span class="tag tag-primary">框架对比</span>
+                            <span class="tag">Hooks</span>
+                            <span class="tag">Composition API</span>
+                        </div>
+                    </a>
+                    
+                    <a href="/doc/372" class="category-card">
+                        <div class="category-header">
+                            <div class="category-icon">🎨</div>
+                            <div class="category-count">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+                                </svg>
+                                60题
+                            </div>
+                        </div>
+                        <h3 class="category-title">CSS与HTML</h3>
+                        <p class="category-description">现代CSS技术、响应式设计、布局方案</p>
+                        <div class="category-tags">
+                            <span class="tag tag-primary">布局方案</span>
+                            <span class="tag">Flexbox</span>
+                            <span class="tag">Grid</span>
+                        </div>
+                    </a>
+                    
+                    <a href="/doc/374" class="category-card">
+                        <div class="category-header">
+                            <div class="category-icon">🚀</div>
+                            <div class="category-count">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+                                </svg>
+                                70题
+                            </div>
+                        </div>
+                        <h3 class="category-title">性能优化</h3>
+                        <p class="category-description">加载性能、渲染性能、运行时性能、监控体系</p>
+                        <div class="category-tags">
+                            <span class="tag tag-primary">性能指标</span>
+                            <span class="tag">Core Web Vitals</span>
+                            <span class="tag">监控</span>
+                        </div>
+                    </a>
+                    
+                    <a href="/doc/376" class="category-card">
+                        <div class="category-header">
+                            <div class="category-icon">🖥️</div>
+                            <div class="category-count">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+                                </svg>
+                                50题
+                            </div>
+                        </div>
+                        <h3 class="category-title">Node.js与全栈</h3>
+                        <p class="category-description">Express/Koa框架、数据库、API设计、微服务</p>
+                        <div class="category-tags">
+                            <span class="tag tag-primary">全栈能力</span>
+                            <span class="tag">Express</span>
+                            <span class="tag">数据库</span>
+                        </div>
+                    </a>
+                    
+                    <a href="/doc/378" class="category-card">
+                        <div class="category-header">
+                            <div class="category-icon">🔧</div>
+                            <div class="category-count">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+                                </svg>
+                                45题
+                            </div>
+                        </div>
+                        <h3 class="category-title">工程化与工具链</h3>
+                        <p class="category-description">Webpack/Vite构建、CI/CD、代码质量、测试策略</p>
+                        <div class="category-tags">
+                            <span class="tag tag-primary">工程实践</span>
+                            <span class="tag">Webpack</span>
+                            <span class="tag">Vite</span>
+                        </div>
+                    </a>
+                </div>
+            </section>
+
+            <!-- 图表区域 -->
+            <section id="charts" class="charts-section">
+                <div class="chart-card">
+                    <div class="chart-header">
+                        <h3 class="chart-title">题目难度分布</h3>
+                        <div class="chart-legend">
+                            <div class="legend-item">
+                                <div class="legend-dot" style="background-color: var(--color-easy)"></div>
+                                <span>简单</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-dot" style="background-color: var(--color-medium)"></div>
+                                <span>中等</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-dot" style="background-color: var(--color-hard)"></div>
+                                <span>困难</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="difficultyChart"></canvas>
+                    </div>
+                </div>
+                
+                <div class="chart-card">
+                    <div class="chart-header">
+                        <h3 class="chart-title">技术领域覆盖</h3>
+                        <div class="chart-legend">
+                            <div class="legend-item">
+                                <div class="legend-dot" style="background-color: var(--color-accent)"></div>
+                                <span>覆盖度</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="coverageChart"></canvas>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 热门问题 -->
+            <section id="popular" class="popular-section">
+                <div class="section-header">
+                    <div>
+                        <h2 class="section-title">热门面试题</h2>
+                        <p class="section-subtitle">高频出现的面试问题</p>
+                    </div>
+                    <button class="btn btn-ghost">
+                        查看全部
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="m9 18 6-6-6-6"></path>
+                        </svg>
+                    </button>
+                </div>
+                
+                <div class="questions-list" id="questionsList">
+                    <!-- 由JavaScript动态填充 -->
+                </div>
+            </section>
+
+            <!-- 学习路径 -->
+            <section id="learning" class="learning-section">
+                <div class="learning-header">
+                    <h2 class="learning-title">推荐学习路径</h2>
+                    <p class="learning-subtitle">系统化的面试准备计划</p>
+                </div>
+                
+                <div class="learning-timeline">
+                    <div class="timeline-item">
+                        <div class="timeline-marker">
+                            <div class="timeline-dot"></div>
+                            <div class="timeline-line"></div>
+                        </div>
+                        <div class="timeline-content">
+                            <div class="timeline-phase">第一阶段</div>
+                            <h3 class="timeline-title">基础巩固</h3>
+                            <p class="timeline-description">JavaScript核心、CSS/HTML基础、开发工具使用</p>
+                            <div class="timeline-meta">
+                                <div class="meta-item">
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <circle cx="12" cy="12" r="10"></circle>
+                                        <polyline points="12 6 12 12 16 14"></polyline>
+                                    </svg>
+                                    1-2周
+                                </div>
+                                <div class="meta-item">
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+                                    </svg>
+                                    160道题目
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="timeline-item">
+                        <div class="timeline-marker">
+                            <div class="timeline-dot"></div>
+                            <div class="timeline-line"></div>
+                        </div>
+                        <div class="timeline-content">
+                            <div class="timeline-phase">第二阶段</div>
+                            <h3 class="timeline-title">框架深入</h3>
+                            <p class="timeline-description">React/Vue框架、状态管理、性能优化</p>
+                            <div class="timeline-meta">
+                                <div class="meta-item">
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <circle cx="12" cy="12" r="10"></circle>
+                                        <polyline points="12 6 12 12 16 14"></polyline>
+                                    </svg>
+                                    2-3周
+                                </div>
+                                <div class="meta-item">
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+                                    </svg>
+                                    210道题目
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="timeline-item">
+                        <div class="timeline-marker">
+                            <div class="timeline-dot"></div>
+                            <div class="timeline-line"></div>
+                        </div>
+                        <div class="timeline-content">
+                            <div class="timeline-phase">第三阶段</div>
+                            <h3 class="timeline-title">全栈扩展</h3>
+                            <p class="timeline-description">Node.js、数据库、API设计、系统架构</p>
+                            <div class="timeline-meta">
+                                <div class="meta-item">
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <circle cx="12" cy="12" r="10"></circle>
+                                        <polyline points="12 6 12 12 16 14"></polyline>
+                                    </svg>
+                                    2-3周
+                                </div>
+                                <div class="meta-item">
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+                                    </svg>
+                                    155道题目
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="timeline-item">
+                        <div class="timeline-marker">
+                            <div class="timeline-dot"></div>
+                            <div class="timeline-line"></div>
+                        </div>
+                        <div class="timeline-content">
+                            <div class="timeline-phase">第四阶段</div>
+                            <h3 class="timeline-title">高级主题</h3>
+                            <p class="timeline-description">AI技术、团队管理、系统设计、行为面试</p>
+                            <div class="timeline-meta">
+                                <div class="meta-item">
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <circle cx="12" cy="12" r="10"></circle>
+                                        <polyline points="12 6 12 12 16 14"></polyline>
+                                    </svg>
+                                    1-2周
+                                </div>
+                                <div class="meta-item">
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+                                    </svg>
+                                    158道题目
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <!-- 页脚 -->
+    <footer class="footer">
+        <div class="container footer-content">
+            <div class="footer-text">
+                © 2026 Interview Pro. 专为资深前端开发者设计.
+            </div>
+            <div class="footer-links">
+                <a href="#" class="footer-link">使用指南</a>
+                <a href="#" class="footer-link">更新日志</a>
+                <a href="#" class="footer-link">反馈建议</a>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // 热门面试题数据
+        const hotQuestions = [
+            { 
+                id: 1,
+                question: "请解释JavaScript中的闭包（Closure）是什么？它有哪些实际应用场景？", 
+                category: "JavaScript核心", 
+                difficulty: "medium",
+                tags: ["闭包", "作用域"]
+            },
+            { 
+                id: 2,
+                question: "React中的虚拟DOM是什么？它如何提升性能？", 
+                category: "React框架", 
+                difficulty: "medium",
+                tags: ["虚拟DOM", "性能优化"]
+            },
+            { 
+                id: 3,
+                question: "Vue 3的响应式系统是如何工作的？与Vue 2有什么区别？", 
+                category: "Vue框架", 
+                difficulty: "hard",
+                tags: ["响应式", "Proxy"]
+            },
+            { 
+                id: 4,
+                question: "如何优化前端应用的性能？请从多个维度进行说明。", 
+                category: "性能优化", 
+                difficulty: "medium",
+                tags: ["性能优化", "Core Web Vitals"]
+            },
+            { 
+                id: 5,
+                question: "JavaScript的事件循环（Event Loop）机制是什么？", 
+                category: "JavaScript核心", 
+                difficulty: "hard",
+                tags: ["事件循环", "异步"]
+            },
+            { 
+                id: 6,
+                question: "请解释CSS Flexbox和Grid布局的区别和使用场景", 
+                category: "CSS布局", 
+                difficulty: "easy",
+                tags: ["Flexbox", "Grid"]
+            }
+        ];
+
+        // 填充热门面试题
+        function populateQuestions() {
+            const questionsList = document.getElementById('questionsList');
+            questionsList.innerHTML = hotQuestions.map(q => `
+                <div class="question-item" tabindex="0">
+                    <div class="question-number">${String(q.id).padStart(2, '0')}</div>
+                    <div class="question-content">
+                        <div class="question-title">${q.question}</div>
+                        <div class="question-meta">
+                            <span>${q.category}</span>
+                            <span>•</span>
+                            <span>${q.tags.join(', ')}</span>
+                        </div>
+                    </div>
+                    <div class="difficulty-badge difficulty-${q.difficulty}">
+                        ${q.difficulty === 'easy' ? '简单' : q.difficulty === 'medium' ? '中等' : '困难'}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // 搜索功能
+        function searchQuestions() {
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            
+            if (searchTerm.trim() === '') {
+                populateQuestions();
+                return;
+            }
+            
+            const filteredQuestions = hotQuestions.filter(q => 
+                q.question.toLowerCase().includes(searchTerm) || 
+                q.category.toLowerCase().includes(searchTerm) ||
+                q.tags.some(tag => tag.toLowerCase().includes(searchTerm))
+            );
+            
+            const questionsList = document.getElementById('questionsList');
+            if (filteredQuestions.length > 0) {
+                questionsList.innerHTML = filteredQuestions.map(q => `
+                    <div class="question-item" tabindex="0">
+                        <div class="question-number">${String(q.id).padStart(2, '0')}</div>
+                        <div class="question-content">
+                            <div class="question-title">${highlightText(q.question, searchTerm)}</div>
+                            <div class="question-meta">
+                                <span>${highlightText(q.category, searchTerm)}</span>
+                                <span>•</span>
+                                <span>${q.tags.map(tag => highlightText(tag, searchTerm)).join(', ')}</span>
+                            </div>
+                        </div>
+                        <div class="difficulty-badge difficulty-${q.difficulty}">
+                            ${q.difficulty === 'easy' ? '简单' : q.difficulty === 'medium' ? '中等' : '困难'}
+                        </div>
+                    </div>
+                `).join('');
+            } else {
+                questionsList.innerHTML = `
+                    <div style="text-align: center; padding: 2rem; color: var(--color-muted-foreground);">
+                        未找到相关问题，请尝试其他关键词
+                    </div>
+                `;
+            }
+        }
+
+        // 高亮文本
+        function highlightText(text, term) {
+            if (!term) return text;
+            const regex = new RegExp(`(${term})`, 'gi');
+            return text.replace(regex, '<span style="background: rgba(34, 197, 94, 0.2); padding: 0.1rem 0.3rem; border-radius: 3px;">$1</span>');
+        }
+
+        // 初始化图表
+        function initCharts() {
+            // 难度分布饼图
+            const difficultyCtx = document.getElementById('difficultyChart').getContext('2d');
+            new Chart(difficultyCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['简单', '中等', '困难', '专家'],
+                    datasets: [{
+                        data: [120, 180, 150, 73],
+                        backgroundColor: [
+                            'rgba(34, 197, 94, 0.8)',
+                            'rgba(245, 158, 11, 0.8)',
+                            'rgba(239, 68, 68, 0.8)',
+                            'rgba(139, 92, 246, 0.8)'
+                        ],
+                        borderColor: 'transparent',
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+                    cutout: '70%'
+                }
+            });
+
+            // 技术领域覆盖雷达图
+            const coverageCtx = document.getElementById('coverageChart').getContext('2d');
+            new Chart(coverageCtx, {
+                type: 'radar',
+                data: {
+                    labels: ['JavaScript', 'React/Vue', 'CSS/HTML', 'Node.js', '性能优化', '架构设计', 'AI技术', '团队管理'],
+                    datasets: [{
+                        label: '覆盖度',
+                        data: [95, 85, 80, 70, 75, 65, 60, 55],
+                        backgroundColor: 'rgba(34, 197, 94, 0.1)',
+                        borderColor: 'rgba(34, 197, 94, 0.8)',
+                        borderWidth: 2,
+                        pointBackgroundColor: 'rgba(34, 197, 94, 1)',
+                        pointBorderColor: '#1B2336',
+                        pointHoverBackgroundColor: '#1B2336',
+                        pointHoverBorderColor: 'rgba(34, 197, 94, 1)'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        r: {
+                            angleLines: {
+                                color: 'rgba(71, 85, 105, 0.3)'
+                            },
+                            grid: {
+                                color: 'rgba(71, 85, 105, 0.3)'
+                            },
+                            pointLabels: {
+                                color: '#94A3B8',
+                                font: {
+                                    size: 11
+                                }
+                            },
+                            ticks: {
+                                color: '#94A3B8',
+                                backdropColor: 'transparent',
+                                font: {
+                                    size: 10
+                                }
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    }
+                }
+            });
+        }
+
+        // 键盘快捷键
+        document.addEventListener('keydown', function(e) {
+            if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+                e.preventDefault();
+                document.getElementById('searchInput').focus();
+            }
+        });
+
+        // 搜索框事件
+        document.getElementById('searchInput').addEventListener('input', searchQuestions);
+
+        // 页面加载
+        document.addEventListener('DOMContentLoaded', function() {
+            populateQuestions();
+            
+            // 初始化图表
+            setTimeout(initCharts, 100);
+            
+            // 为卡片添加动画
+            document.querySelectorAll('.category-card, .stat-card, .question-item').forEach((card, index) => {
+                card.style.opacity = '0';
+                card.style.transform = 'translateY(20px)';
+                card.style.transition = 'all 0.5s ease';
+                
+                setTimeout(() => {
+                    card.style.opacity = '1';
+                    card.style.transform = 'translateY(0)';
+                }, 100 + index * 50);
+            });
+        });
+    </script>
+</body>
+</html>
