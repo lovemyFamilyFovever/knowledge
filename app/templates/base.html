@@ -46,8 +46,8 @@
   <div class="top-right">
     <a class="pill" href="/home" title="待归档暂存区"><span>收件箱</span><span class="n">{{ inbox_n|default(0) }}</span></a>
     <a class="pill ok" href="/home"><span class="dot"></span><span>全文索引</span><span class="n">{{ n_md|default(fts_n)|default(0) }}</span></a>
-    {% if obsidian_installed %}
-    <span class="pill" title="Obsidian vault = content/"><span>Obsidian 已连接</span></span>
+    {% if obsidian_connected %}
+    <span class="pill ok" title="vault: content/ — Ctrl+G 打开图谱"><span class="dot"></span><span>Obsidian 已连接</span></span>
     {% else %}
     <a class="pill" href="/doc/cookbook/skill/Obsidian知识图谱速查" title="安装后可使用双链与图谱"><span>Obsidian 未安装</span></a>
     {% endif %}

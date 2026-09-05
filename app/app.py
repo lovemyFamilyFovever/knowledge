@@ -47,7 +47,21 @@ SOURCE_LABELS = {
     "knowledge": "知识库自产", "dsh-memory": "Agent 记忆",
 }
 STATUS_LABELS = {"imported": "已导入", "reviewed": "已复查", "stable": "已整理"}
-OBSIDIAN_EXE = Path(os.environ.get("LOCALAPPDATA", "")) / "Programs" / "Obsidian" / "Obsidian.exe"
+OBSIDIAN_CONFIG = Path(os.environ.get("APPDATA", "")) / "obsidian" / "obsidian.json"
+
+
+def obsidian_vault_connected(content: Path) -> bool:
+    """连接的判定标准不是 exe 在哪，而是 Obsidian 配置里注册了指向本语料的 vault。"""
+    try:
+        data = json.loads(OBSIDIAN_CONFIG.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return False
+    me = str(content.resolve()).lower().rstrip("\\/")
+    for v in data.get("vaults", {}).values():
+        p = str(v.get("path", "")).lower().rstrip("\\/")
+        if p == me:
+            return True
+    return False
 
 
 # ---------------- frontmatter ----------------
@@ -332,7 +346,7 @@ def create_app(root: Path | None = None) -> Flask:
                 "SOURCE_LABELS": SOURCE_LABELS, "STATUS_LABELS": STATUS_LABELS,
                 "HUES": {"ai": 158, "frontend": 200, "cs-fundamentals": 226, "projects": 22,
                          "engineering": 262, "interview": 340, "backend": 12, "career": 42, "cookbook": 96},
-                "obsidian_installed": OBSIDIAN_EXE.is_file()}
+                "obsidian_connected": obsidian_vault_connected(content)}
 
     @app.route("/")
     def index():

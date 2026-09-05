@@ -11,8 +11,8 @@ status: "stable"
 
 > 先说清楚三件事：
 > 1. **图谱功能在 Obsidian 这个软件里，不在知识库阅读器里。** 阅读器里的九域结构图（下方那张）只是一张示意图，不可点击跳转；
-> 2. **这台电脑目前尚未安装 Obsidian**，下面第一节先装它（免费）；
-> 3. 装好后把 `E:\GitHub\knowledge\content` 作为仓库（vault）打开，图谱随开随用，零插件。
+> 2. **Obsidian 已安装（D:\Obsidian），vault 已指向 `E:\GitHub\knowledge\content`**——阅读器顶栏应显示「Obsidian 已连接」；
+> 3. 图谱随开随用，零插件。唯一需要养成的是 `[[双链]]` 习惯（见第四节）。
 
 ## 一、安装并打开 vault（一次性）
 
