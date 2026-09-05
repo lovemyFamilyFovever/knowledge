@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}收藏 · 知库{% endblock %}
+{% block body %}
+<main class="single">
+  <section class="panel page-panel">
+    <div class="crumb"><b>收藏</b><span class="sep">·</span>{{ items|length }} 篇<span class="spacer"></span><a class="iconbtn" href="/">← 返回阅读</a></div>
+    <div class="page-body">
+      {% if items %}
+      <div class="results">
+        {% for it in items %}
+        <a class="result" href="/doc/{{ it.domain }}/{{ it.sub }}/{{ it.name }}">
+          <div class="doc-t">{% if it.has_html %}<span class="star">◈</span>{% endif %}{{ it.title }}</div>
+          <div class="rp">{{ it.domain }} / {{ it.sub }}</div>
+        </a>
+        {% endfor %}
+      </div>
+      {% else %}
+      <div class="empty">还没有收藏。阅读时点右下角的「☆ 收藏」，标记会写进 frontmatter，Obsidian 里同样可见。</div>
+      {% endif %}
+    </div>
+  </section>
+</main>
+{% endblock %}

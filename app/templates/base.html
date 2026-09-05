@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{% block title %}知库 Knowledge{% endblock %}</title>
+<link rel="stylesheet" href="/static/style.css">
+<script src="/static/marked.umd.js" defer></script>
+<script src="/static/app.js" defer></script>
+</head>
+<body>
+<svg xmlns="http://www.w3.org/2000/svg" style="display:none" aria-hidden="true">
+ <symbol id="i-ai" viewBox="0 0 24 24"><path d="M12 3.5l1.8 4.7 4.7 1.8-4.7 1.8L12 16.5l-1.8-4.7-4.7-1.8 4.7-1.8z"/><path d="M18.8 15.6l.7 1.9 1.9.7-1.9.7-.7 1.9-.7-1.9-1.9-.7 1.9-.7z"/></symbol>
+ <symbol id="i-frontend" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2.5"/><path d="M3 8.5h18M9.5 12.5l-2 2 2 2M14.5 12.5l2 2-2 2"/></symbol>
+ <symbol id="i-cs-fundamentals" viewBox="0 0 24 24"><rect x="6.5" y="6.5" width="11" height="11" rx="2"/><rect x="10.2" y="10.2" width="3.6" height="3.6" rx=".8"/><path d="M9 6.5V4M15 6.5V4M9 20v-2.5M15 20v-2.5M6.5 9H4M6.5 15H4M20 9h-2.5M20 15h-2.5"/></symbol>
+ <symbol id="i-projects" viewBox="0 0 24 24"><circle cx="6" cy="6" r="2.6"/><circle cx="6" cy="18" r="2.6"/><circle cx="18" cy="6" r="2.6"/><path d="M6 8.6v6.8M18 8.6c0 4.2-4.6 4.9-9.4 5.4"/></symbol>
+ <symbol id="i-engineering" viewBox="0 0 24 24"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></symbol>
+ <symbol id="i-interview" viewBox="0 0 24 24"><path d="M21 11.6a8.4 8.4 0 0 1-8.5 8.4 8.5 8.5 0 0 1-3.8-.9L3 21l1.9-5.7A8.5 8.5 0 1 1 21 11.6z"/><path d="M9.7 9.6a2.3 2.3 0 1 1 3.3 2.1c-.8.4-1 .9-1 1.7"/><path d="M12 16.4h.01"/></symbol>
+ <symbol id="i-backend" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="7" rx="2"/><rect x="3" y="13" width="18" height="7" rx="2"/><path d="M7 7.5h.01M7 16.5h.01M17 7.5h-4M17 16.5h-4"/></symbol>
+ <symbol id="i-career" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m16.2 7.8-2.9 6.5-6.5 2.9 2.9-6.5z"/></symbol>
+ <symbol id="i-cookbook" viewBox="0 0 24 24"><path d="M2 4.5h6a4 4 0 0 1 4 4V20a3 3 0 0 0-3-3H2z"/><path d="M22 4.5h-6a4 4 0 0 0-4 4V20a3 3 0 0 1 3-3h7z"/></symbol>
+ <symbol id="i-fold-l" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></symbol>
+ <symbol id="i-fold-r" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></symbol>
+ <symbol id="i-database" viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="8" ry="2.8"/><path d="M4 5v14c0 1.6 3.6 2.9 8 2.9s8-1.3 8-2.9V5"/><path d="M4 12c0 1.6 3.6 2.9 8 2.9s8-1.3 8-2.9"/></symbol>
+ <symbol id="i-scan" viewBox="0 0 24 24"><path d="M3 7V5.5A2.5 2.5 0 0 1 5.5 3H7M17 3h1.5A2.5 2.5 0 0 1 21 5.5V7M21 17v1.5a2.5 2.5 0 0 1-2.5 2.5H17M7 21H5.5A2.5 2.5 0 0 1 3 18.5V17"/><path d="M7 12h10"/></symbol>
+ <symbol id="i-commit" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.2"/><path d="M3 12h5.8M15.2 12H21"/></symbol>
+ <symbol id="i-file" viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9.5 13h5M9.5 16.5h5"/></symbol>
+ <symbol id="i-grid" viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="7" height="7" rx="1.6"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.6"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.6"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.6"/></symbol>
+ <symbol id="i-inbox-s" viewBox="0 0 24 24"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></symbol>
+ <symbol id="i-star" viewBox="0 0 24 24"><path d="m12 3 2.7 5.8 6.3.8-4.6 4.4 1.2 6.3L12 17.2 6.4 20.3l1.2-6.3L3 9.6l6.3-.8z"/></symbol>
+</svg>
+<div class="aurora"><div class="blob b1"></div><div class="blob b2"></div><div class="blob b3"></div></div>
+<div class="grain"></div>
+
+<header>
+  <a class="brand" href="/home" title="返回总览">
+    <span class="zh">知库</span><span class="en">Knowledge</span><span class="tag">SINGLE&nbsp;ENTRY</span>
+  </a>
+  <div class="searchbox">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--muted)"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+    <input id="q" placeholder="全文检索，或输入标签过滤…" autocomplete="off" value="{{ q|default('') }}">
+    <kbd>/</kbd>
+  </div>
+  <div class="top-right">
+    <a class="pill" href="/home" title="待归档暂存区"><span>收件箱</span><span class="n">{{ inbox_n|default(0) }}</span></a>
+    <a class="pill ok" href="/home"><span class="dot"></span><span>全文索引</span><span class="n">{{ n_md|default(fts_n)|default(0) }}</span></a>
+    <span class="pill" title="Obsidian vault = content/"><span>Obsidian 已连接</span></span>
+    <button class="pill" id="theme-btn" title="切换白天 / 夜间">☀</button>
+  </div>
+</header>
+
+{% block body %}{% endblock %}
+
+<div class="statusbar">
+  <span class="sb-acc">知库 v0.1-reader</span>
+  <span>content/ = 唯一事实源 · SQLite 仅派生索引</span>
+  <span class="right"><span>localhost:5001</span></span>
+</div>
+<div id="toast"></div>
+{% block scripts %}{% endblock %}
+</body>
+</html>

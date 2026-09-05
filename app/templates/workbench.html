@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+{% block body %}
+<main>
+  <section class="panel" id="p-left">
+    <div class="panel-h">分类 · TAXONOMY<span class="cnt" id="tree-total">{{ n_md }}</span><button class="fold" onclick="togglePanel('left')" title="收起左栏"><svg><use href="#i-fold-l"/></svg></button></div>
+    <nav class="tree">
+      {% for d in domains %}
+      <div class="dom {% if cur.domain == d.id %}open{% endif %}">
+        <a class="dom-head {% if cur.domain == d.id %}active{% endif %}" href="/browse/{{ d.id }}/{{ d.subs[0].id }}">
+          <span class="dom-glyph" style="--dh:{{ HUES[d.id] }}"><svg><use href="#i-{{ d.id }}"/></svg></span>
+          <span class="dom-name">{{ d.label }}</span><span class="dom-n">{{ d.n }}</span>
+        </a>
+        <div class="subs">
+          {% for s in d.subs %}
+          <a class="sub {% if cur.domain == d.id and cur.sub == s.id %}active{% endif %}" href="/browse/{{ d.id }}/{{ s.id }}">{{ s.label }}<span class="n">{{ s.n }}</span></a>
+          {% endfor %}
+        </div>
+      </div>
+      {% endfor %}
+    </nav>
+    <div class="tree-foot">
+      <a class="tf-row" href="/home"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>收件箱（待归档）<span class="badge">{{ inbox_n }}</span></a>
+      <a class="tf-row" href="/favorites"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m12 21 8.6-8.8a5 5 0 0 0-7.1-7L12 6.7l-1.5-1.5a5 5 0 1 0-7.1 7z"/></svg>收藏<span class="badge ok">{{ n_fav }}</span></a>
+    </div>
+    <button class="unfold" onclick="togglePanel('left')" title="展开左栏"><svg><use href="#i-fold-r"/></svg></button>
+  </section>
+
+  <section class="panel" id="p-list">
+    <div class="panel-h">文档 · {{ (LABELS.get(cur.domain) or cur.domain)|upper }} / {{ sub_label|upper }}<span class="cnt">{{ docs|length }}</span><button class="fold" onclick="togglePanel('list')" title="收起列表"><svg><use href="#i-fold-l"/></svg></button></div>
+    <div class="doclist">
+      {% for d in docs %}
+      <a class="doc {% if cur.name == d.name %}active{% endif %}" href="/doc/{{ cur.domain }}/{{ cur.sub }}/{{ d.name }}">
+        <div class="doc-t">{% if d.has_html %}<span class="star">◈</span>{% endif %}{{ d.title }}</div>
+        <div class="doc-meta">
+          {% if d.tags %}{% for t in d.tags %}<span class="mini tag">{{ t }}</span>{% endfor %}{% else %}<span class="mini untag">未打标</span>{% endif %}
+          {% if d.has_html %}<span class="mini html">美化版</span>{% endif %}
+          {% if d.is_html %}<span class="mini html">HTML</span>{% endif %}
+        </div>
+      </a>
+      {% endfor %}
+    </div>
+    <button class="unfold" onclick="togglePanel('list')" title="展开列表"><svg><use href="#i-fold-r"/></svg></button>
+  </section>
+
+  <section class="panel article-wrap">
+    <div class="crumb">
+      content<b>/</b>{{ doc.rel.split('/')[0:-1]|join('/') }}<span class="sep">·</span><b>{{ doc.title }}</b><span class="spacer"></span>
+      {% if doc.has_html %}<a class="iconbtn" href="/raw/{{ doc.html_rel }}" target="_blank" title="打开整页美化版">◈ 美化版</a>{% endif %}
+      {% if not doc.is_html %}<button class="iconbtn" onclick="openEditor()">✎ 编辑</button>{% endif %}
+      <button class="iconbtn primary" id="fav-btn" onclick="toggleFav()">{% if doc.favorite %}★ 已收藏{% else %}☆ 收藏{% endif %}</button>
+    </div>
+    <div class="article"><div class="article-inner" id="article"></div></div>
+    <div class="editor" id="editor">
+      <div class="bar">
+        <span class="path" id="ed-path">{{ doc.rel }}</span>
+        <span class="mini" style="margin-left:auto">写回即 git 可追溯</span>
+        <button class="iconbtn" onclick="closeEditor()">取消</button>
+        <button class="iconbtn primary" onclick="saveDoc()">保存写回</button>
+      </div>
+      <textarea id="ed-text" spellcheck="false"></textarea>
+    </div>
+  </section>
+
+  <section class="panel rail">
+    <div class="rtabs">
+      <div class="rtab active" data-pane="toc" onclick="tab('toc',this)">目录</div>
+      <div class="rtab" data-pane="info" onclick="tab('info',this)">信息</div>
+      <div class="rtab" data-pane="notes" onclick="tab('notes',this)">备注</div>
+    </div>
+    <div class="rpane active toc" id="pane-toc"></div>
+    <div class="rpane" id="pane-info">
+      {% for k, v in doc.fm.items() %}
+      <div class="meta-row"><span class="k">{{ k }}</span><span class="v">{{ v|join(', ') if v is iterable and v is not string else v }}</span></div>
+      {% endfor %}
+      <div class="meta-row"><span class="k">size</span><span class="v">{{ doc.size }}</span></div>
+    </div>
+    <div class="rpane" id="pane-notes">
+      <div id="notes-list">
+        {% for n in doc.notes %}
+        <div class="note-card"><div class="when">{{ n.when }} · 旁挂 .notes.md</div><p>{{ n.text }}</p></div>
+        {% else %}<div style="padding:6px 2px;font-size:12.5px;color:var(--faint)">还没有备注，写下第一条。</div>{% endfor %}
+      </div>
+      <div class="note-input"><input id="ni" placeholder="追加备注，回车保存…"><button onclick="addNote()">记</button></div>
+    </div>
+  </section>
+</main>
+{% endblock %}
+
+{% block scripts %}
+<script id="doc-data" type="application/json">{{ doc_json|safe }}</script>
+{% endblock %}

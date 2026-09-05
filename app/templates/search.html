@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}搜索：{{ q }} · 知库{% endblock %}
+{% block body %}
+<main class="single">
+  <section class="panel page-panel">
+    <div class="crumb"><b>全文检索</b><span class="sep">·</span>“{{ q }}”<span class="spacer"></span><a class="iconbtn" href="/">← 返回阅读</a></div>
+    <div class="page-body">
+      {% if results %}
+      <div class="results">
+        {% for r in results %}
+        <a class="result" href="/doc/{{ r.path[:-3] }}">
+          <div class="doc-t">{{ r.title }}</div>
+          <div class="r-snippet">{{ r.snippet|safe }}</div>
+          <div class="rp">{{ r.path }}</div>
+        </a>
+        {% endfor %}
+      </div>
+      {% else %}
+      <div class="empty">{% if q %}没有匹配“{{ q }}”的文档。中文按词前缀匹配，试试更短的词。{% else %}输入关键词开始检索。{% endif %}</div>
+      {% endif %}
+    </div>
+  </section>
+</main>
+{% endblock %}
