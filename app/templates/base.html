@@ -36,7 +36,7 @@
 
 <header>
   <a class="brand" href="/home" title="返回总览">
-    <span class="zh">知库</span><span class="en">Knowledge</span><span class="tag">SINGLE&nbsp;ENTRY</span>
+    <span class="zh">知库</span>
   </a>
   <div class="searchbox">
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--muted)"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
@@ -46,7 +46,11 @@
   <div class="top-right">
     <a class="pill" href="/home" title="待归档暂存区"><span>收件箱</span><span class="n">{{ inbox_n|default(0) }}</span></a>
     <a class="pill ok" href="/home"><span class="dot"></span><span>全文索引</span><span class="n">{{ n_md|default(fts_n)|default(0) }}</span></a>
+    {% if obsidian_installed %}
     <span class="pill" title="Obsidian vault = content/"><span>Obsidian 已连接</span></span>
+    {% else %}
+    <a class="pill" href="/doc/cookbook/skill/Obsidian知识图谱速查" title="安装后可使用双链与图谱"><span>Obsidian 未安装</span></a>
+    {% endif %}
     <button class="pill" id="theme-btn" title="切换白天 / 夜间">☀</button>
   </div>
 </header>
@@ -54,8 +58,8 @@
 {% block body %}{% endblock %}
 
 <div class="statusbar">
-  <span class="sb-acc">知库 v0.1-reader</span>
-  <span>content/ = 唯一事实源 · SQLite 仅派生索引</span>
+  <span class="sb-acc">知库 · 本地阅读器</span>
+  <span>content/ = 唯一事实源 · 索引只是派生缓存</span>
   <span class="right"><span>localhost:5001</span></span>
 </div>
 <div id="toast"></div>

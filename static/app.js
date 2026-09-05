@@ -78,14 +78,14 @@ function renderArticle() {
     return;
   }
   const chips = [
-    `<span class="chip acc">${DOC.fm.source || "unknown"}</span>`,
+    `<span class="chip acc">${DOC.source_label}</span>`,
     DOC.fm.source_path ? `<span class="chip">${DOC.fm.source_path}</span>` : "",
     DOC.fm.collected ? `<span class="chip">${DOC.fm.collected} 收录</span>` : "",
     (DOC.fm.tags && DOC.fm.tags.length)
       ? DOC.fm.tags.map(t => `<span class="chip acc">${t}</span>`).join("")
-      : `<span class="chip warn">tags 未打标 — 点击补标签</span>`,
+      : `<span class="chip warn">tags 未打标</span>`,
   ].join("");
-  el.innerHTML = `<div class="a-kicker">${(DOC.rel.split("/").slice(0, -1).join(" / ")).toUpperCase()}</div>
+  el.innerHTML = `<div class="a-kicker">${DOC.domain_label} / ${DOC.sub_label}</div>
     <h1 class="a-title">${DOC.title}</h1>
     <div class="a-chips">${chips}</div>
     <div class="a-rule"></div>

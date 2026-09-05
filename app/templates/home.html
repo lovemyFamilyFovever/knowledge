@@ -15,7 +15,7 @@
    <a class="hstat" style="--dh:22;animation-delay:180ms" href="/"><span class="ic"><svg><use href="#i-inbox-s"/></svg></span><div class="v">{{ inbox }}</div><div class="k">收件箱待归档</div>
      <div class="bar"><i style="width:{{ pct }}%"></i></div><div class="k" style="margin-top:7px">全库归档进度 {{ pct }}%</div></a>
   </div>
-  <div class="home-sec">领域 · domains</div>
+  <div class="home-sec">九大领域</div>
   <div class="dom-grid">
    {% for d in stats.domains %}
    <a class="dcard" style="--dh:{{ HUES[d.id] }};animation-delay:{{ 220 + loop.index0 * 45 }}ms" href="/browse/{{ d.id }}/{{ d.subs[0].id }}">
@@ -25,13 +25,13 @@
    </a>
    {% endfor %}
   </div>
-  <div class="home-sec">最近更新 · recent</div>
+  <div class="home-sec">最近更新</div>
   <div class="recent">
    {% for r in recents %}
-   <a class="rrow" href="/doc/{{ r.rel[:-3] }}"><span class="dot2"></span><span class="rt">{{ r.title }}</span><span class="rp">{{ r.rel.rsplit('/', 1)[0] }}</span><span class="when">{{ r.source }}</span></a>
+   <a class="rrow" href="/doc/{{ r.rel[:-3] }}"><span class="dot2"></span><span class="rt">{{ r.title }}</span><span class="rp">{{ r.rel.rsplit('/', 1)[0] }}</span><span class="when">{{ SOURCE_LABELS.get(r.source, r.source) }}</span></a>
    {% endfor %}
   </div>
-  <div class="home-sec">管线 · pipeline</div>
+  <div class="home-sec">归档管线</div>
   <div class="pipeline">
    {% for ic, label, st in [("i-scan","全量扫描","done"),("i-inbox-s","收件箱 " ~ inbox,"done"),("i-grid","归档分类","active"),("i-database","全文索引 " ~ n_md,"done"),("i-commit","Git 提交","done")] %}
    <div class="pipe-node {{ st }}"><span class="pic"><svg><use href="#{{ ic }}"/></svg></span><span class="pl">{{ label }}</span></div>

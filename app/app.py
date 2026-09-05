@@ -26,6 +26,28 @@ DOMAIN_LABELS = {
     "ai": "AI", "engineering": "工程", "interview": "面试",
     "projects": "项目", "cookbook": "手册", "career": "职业",
 }
+SUB_LABELS = {
+    "llm-and-agents": "大模型与智能体", "ml": "机器学习", "data-science": "数据科学",
+    "agent-in-action": "Agent 实战", "general": "综合", "javascript": "JavaScript",
+    "vue2": "Vue2", "vue3": "Vue3", "css": "CSS", "html": "HTML", "typescript": "TypeScript",
+    "pinia": "Pinia", "optimization": "性能优化", "debugging": "调试", "frameworks": "框架",
+    "mobile": "移动端", "middleware": "中间件", "database": "数据库", "security": "安全",
+    "network": "网络", "algorithms": "算法", "distributed": "分布式", "os": "操作系统",
+    "hardware": "硬件", "blockchain": "区块链", "iot": "物联网", "programming-languages": "编程语言",
+    "architecture": "架构设计", "devops": "DevOps 与运维", "testing": "测试",
+    "software-engineering": "软件工程", "tools": "工具链", "git": "Git", "design-patterns": "设计模式",
+    "developer-skills": "开发者技能", "ai-agent": "AI Agent 面试", "business": "业务面",
+    "css-html": "CSS 与 HTML", "node-fullstack": "Node 与全栈", "performance": "性能面试",
+    "dsh-agent": "DeepSeek Harness 研究", "retrospectives": "项目复盘", "insights": "洞见",
+    "journal": "随笔", "resume": "简历", "management": "管理", "fragment": "碎片",
+    "skill": "技能", "pitfalls": "踩坑", "_root": "总览",
+}
+SOURCE_LABELS = {
+    "baike": "百科大全", "myblog": "博客", "desktop": "桌面",
+    "knowledge": "知识库自产", "dsh-memory": "Agent 记忆",
+}
+STATUS_LABELS = {"imported": "已导入", "reviewed": "已复查", "stable": "已整理"}
+OBSIDIAN_EXE = Path(os.environ.get("LOCALAPPDATA", "")) / "Programs" / "Obsidian" / "Obsidian.exe"
 
 
 # ---------------- frontmatter ----------------
@@ -92,7 +114,7 @@ def scan_corpus(content: Path) -> list[dict]:
         loose = sorted(p for p in ddir.iterdir() if p.is_file() and p.suffix in SERVABLE_EXTS)
         sdirs = sorted(p for p in ddir.iterdir() if p.is_dir() and p.name not in SKIP_DIRS)
         for sdir in sdirs:
-            dom["subs"].append(_scan_sub(sdir, sdir.name, sdir.name))
+            dom["subs"].append(_scan_sub(sdir, sdir.name, SUB_LABELS.get(sdir.name, sdir.name)))
         if loose:
             dom["subs"].append(_scan_sub(ddir, "_root", "总览", loose))
         dom["n"] = sum(s["n"] for s in dom["subs"])
@@ -306,9 +328,11 @@ def create_app(root: Path | None = None) -> Flask:
 
     @app.context_processor
     def chrome():
-        return {"LABELS": DOMAIN_LABELS,
+        return {"LABELS": DOMAIN_LABELS, "SUB_LABELS": SUB_LABELS,
+                "SOURCE_LABELS": SOURCE_LABELS, "STATUS_LABELS": STATUS_LABELS,
                 "HUES": {"ai": 158, "frontend": 200, "cs-fundamentals": 226, "projects": 22,
-                         "engineering": 262, "interview": 340, "backend": 12, "career": 42, "cookbook": 96}}
+                         "engineering": 262, "interview": 340, "backend": 12, "career": 42, "cookbook": 96},
+                "obsidian_installed": OBSIDIAN_EXE.is_file()}
 
     @app.route("/")
     def index():
@@ -352,6 +376,11 @@ def create_app(root: Path | None = None) -> Flask:
         if p.suffix == ".html":
             body = raw
         html_twin = p.with_name(p.stem + ".html")
+        subs = next(d for d in domains if d["id"] == domain)["subs"]
+        sobj = next(s for s in subs if s["id"] == sub)
+        n_fav = sum(1 for d in domains for s in d["subs"] for dd in s["docs"] if dd["favorite"])
+        doc_size = f"{p.stat().st_size / 1024:.1f} KB"
+        src_raw = str(fm.get("source", ""))
         doc = {
             "rel": rel, "title": str(fm.get("title") or p.stem), "fm": fm, "md": body
             if p.suffix == ".md" else None,
@@ -360,11 +389,19 @@ def create_app(root: Path | None = None) -> Flask:
             "html_rel": html_twin.relative_to(content).as_posix() if html_twin.is_file() else None,
             "favorite": fm.get("favorite") is True,
             "notes": read_notes(p),
-            "size": f"{p.stat().st_size / 1024:.1f} KB",
+            "size": doc_size,
+            "domain_label": DOMAIN_LABELS.get(domain, domain),
+            "sub_label": sobj["label"],
+            "source_label": SOURCE_LABELS.get(src_raw, src_raw or "未知"),
+            "status_label": STATUS_LABELS.get(str(fm.get("status", "")), str(fm.get("status", "")) or "未标记"),
         }
-        subs = next(d for d in domains if d["id"] == domain)["subs"]
-        sobj = next(s for s in subs if s["id"] == sub)
-        n_fav = sum(1 for d in domains for s in d["subs"] for dd in s["docs"] if dd["favorite"])
+        info_rows = [
+            ("来源", doc["source_label"]),
+            ("原始位置", str(fm.get("source_path", "—"))),
+            ("收录日期", str(fm.get("collected", "—"))),
+            ("状态", doc["status_label"]),
+            ("大小", doc_size),
+        ]
         con = open_db(indexes)
         try:
             fts_n = con.execute("SELECT count(*) FROM docs").fetchone()[0]
@@ -373,6 +410,7 @@ def create_app(root: Path | None = None) -> Flask:
         inbox_n = inbox_count(content)
         return render_template("workbench.html", domains=domains, cur={"domain": domain, "sub": sub, "name": name},
                                docs=sobj["docs"], sub_label=sobj["label"], doc=doc, n_fav=n_fav,
+                               info_rows=info_rows,
                                doc_json=json.dumps(doc, ensure_ascii=False), fts_n=fts_n, inbox_n=inbox_n)
 
     @app.route("/browse/<domain>/<sub>")

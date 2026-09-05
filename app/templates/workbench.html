@@ -2,7 +2,7 @@
 {% block body %}
 <main>
   <section class="panel" id="p-left">
-    <div class="panel-h">分类 · TAXONOMY<span class="cnt" id="tree-total">{{ n_md }}</span><button class="fold" onclick="togglePanel('left')" title="收起左栏"><svg><use href="#i-fold-l"/></svg></button></div>
+    <div class="panel-h">分类目录<span class="cnt" id="tree-total">{{ n_md }}</span><button class="fold" onclick="togglePanel('left')" title="收起左栏"><svg><use href="#i-fold-l"/></svg></button></div>
     <nav class="tree">
       {% for d in domains %}
       <div class="dom {% if cur.domain == d.id %}open{% endif %}">
@@ -26,7 +26,7 @@
   </section>
 
   <section class="panel" id="p-list">
-    <div class="panel-h">文档 · {{ (LABELS.get(cur.domain) or cur.domain)|upper }} / {{ sub_label|upper }}<span class="cnt">{{ docs|length }}</span><button class="fold" onclick="togglePanel('list')" title="收起列表"><svg><use href="#i-fold-l"/></svg></button></div>
+    <div class="panel-h">文档 · {{ LABELS.get(cur.domain, cur.domain) }} / {{ sub_label }}<span class="cnt">{{ docs|length }}</span><button class="fold" onclick="togglePanel('list')" title="收起列表"><svg><use href="#i-fold-l"/></svg></button></div>
     <div class="doclist">
       {% for d in docs %}
       <a class="doc {% if cur.name == d.name %}active{% endif %}" href="/doc/{{ cur.domain }}/{{ cur.sub }}/{{ d.name }}">
@@ -70,10 +70,10 @@
     </div>
     <div class="rpane active toc" id="pane-toc"></div>
     <div class="rpane" id="pane-info">
-      {% for k, v in doc.fm.items() %}
-      <div class="meta-row"><span class="k">{{ k }}</span><span class="v">{{ v|join(', ') if v is iterable and v is not string else v }}</span></div>
+      {% for k, v in info_rows %}
+      <div class="meta-row"><span class="k">{{ k }}</span><span class="v">{{ v }}</span></div>
       {% endfor %}
-      <div class="meta-row"><span class="k">size</span><span class="v">{{ doc.size }}</span></div>
+      <div class="meta-row"><span class="k">版本</span><span class="v">git 全程可追溯</span></div>
     </div>
     <div class="rpane" id="pane-notes">
       <div id="notes-list">
