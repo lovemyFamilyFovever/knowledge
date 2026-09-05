@@ -27,7 +27,7 @@
 
   <section class="panel" id="p-list">
     <div class="panel-h" id="list-title">文档 · {{ LABELS.get(cur.domain, cur.domain) }} / {{ sub_label }}<span class="cnt">{{ docs|length }}</span><button class="fold" onclick="togglePanel('list')" title="收起列表"><svg><use href="#i-fold-l"/></svg></button></div>
-    <div class="doclist">
+    <div class="doclist" id="doclist">
       {% for d in docs %}
       <a class="doc {% if cur.name == d.name %}active{% endif %}" href="/doc/{{ cur.domain }}/{{ cur.sub }}/{{ d.name }}">
         <div class="doc-t">{% if d.has_html %}<span class="star">◈</span>{% endif %}{{ d.title }}</div>
