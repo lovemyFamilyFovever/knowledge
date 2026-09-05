@@ -1,5 +1,5 @@
 /* 知库 reader 前端：主题、面板折叠、客户端路由、正文渲染、编辑/备注/收藏/删除、双链、快捷键 */
-window.APP_JS_VERSION = 9;
+window.APP_JS_VERSION = 10;
 
 const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
@@ -220,8 +220,11 @@ function renderNotes() {
   const ni = $("#ni"); if (ni) ni.onkeydown = e => { if (e.key === "Enter") addNote(); };
 }
 
-/* ---------- 客户端路由 ---------- */
+/* ---------- 客户端路由（仅阅读页；其他页面走普通跳转） ---------- */
+const WORKBENCH = !!document.getElementById("article");
+
 async function navigate(url, push) {
+  if (!WORKBENCH) { location.href = url; return; }
   closeEditor();
   const path = url.split("?")[0];
   const segs = path.split("/").filter(Boolean).map(decodeURIComponent);
@@ -264,8 +267,9 @@ async function openDoc(domain, sub, name) {
   const art = document.querySelector(".article"); if (art) art.scrollTop = 0;
 }
 
-/* 点击拦截：站内文档/分类链接全部走客户端路由，不再整页刷新 */
+/* 点击拦截：阅读页内站内文档/分类链接走客户端路由，不再整页刷新 */
 document.addEventListener("click", e => {
+  if (!WORKBENCH) return;
   if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
   const a = e.target.closest("a");
   if (!a || a.target === "_blank" || a.hasAttribute("download")) return;
@@ -274,7 +278,7 @@ document.addEventListener("click", e => {
   e.preventDefault();
   navigate(href, true);
 });
-window.addEventListener("popstate", () => navigate(location.pathname + location.search, false));
+window.addEventListener("popstate", () => { if (WORKBENCH) navigate(location.pathname + location.search, false); });
 
 /* ---------- 编辑 ---------- */
 function openEditor() {
