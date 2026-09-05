@@ -185,6 +185,9 @@ html[data-theme="dark"] .chip{background:rgba(6,10,14,.4)}
 .a-body code{font-family:var(--mono);font-size:.85em;color:var(--acc);background:var(--acc-soft);border:1px solid var(--acc-edge);border-radius:4px;padding:1px 5px}
 .a-body pre{background:var(--plate);border:1px solid var(--edge);border-radius:11px;padding:16px 18px;margin:16px 0;overflow-x:auto;box-shadow:var(--shadow)}
 .a-body pre code{background:none;border:none;color:var(--plate-text);font-family:var(--mono);font-size:13px;line-height:1.75}
+.a-body pre code.hljs{background:transparent;padding:0}
+.mermaid{background:var(--plate);border:1px solid var(--edge);border-radius:11px;padding:18px;margin:16px 0;display:flex;justify-content:center;box-shadow:var(--shadow);overflow-x:auto}
+.mermaid svg{max-width:100%;height:auto}
 .a-body table{width:100%;border-collapse:collapse;margin:16px 0;font-size:14px}
 .a-body th{font-family:var(--sans);font-size:12.5px;letter-spacing:1px;color:var(--acc);text-align:left;padding:8px 12px;border-bottom:1px solid var(--acc-edge)}
 .a-body td{padding:8px 12px;border-bottom:1px solid var(--edge);color:var(--muted)}

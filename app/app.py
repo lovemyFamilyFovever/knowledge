@@ -464,6 +464,13 @@ def create_app(root: Path | None = None) -> Flask:
         build_index(content, indexes)
         return jsonify({"ok": True, "moved": moved})
 
+    @app.after_request
+    def static_no_cache(response):
+        # 本地工具: 静态资源改动后必须立刻生效, 只允许 304 协商缓存
+        if request.path.startswith("/static/"):
+            response.headers["Cache-Control"] = "no-cache"
+        return response
+
     @app.errorhandler(404)
     def not_found(e):
         desc = getattr(e, "description", "页面不存在")
