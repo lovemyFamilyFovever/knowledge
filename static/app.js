@@ -1,5 +1,5 @@
 /* 知库 reader 前端：主题、面板折叠、客户端路由、正文渲染、编辑/备注/收藏/删除、双链、快捷键 */
-window.APP_JS_VERSION = 11;
+window.APP_JS_VERSION = 12;
 
 const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
@@ -181,7 +181,7 @@ function renderTree() {
 
 function renderDocList(docs, subLabel, activeName) {
   const title = $("#list-title");
-  if (title) title.innerHTML = `文档 · ${esc((LABELS[CUR.domain] || CUR.domain) + " / " + subLabel)}<span class="cnt">${docs.length}</span><button class="fold" onclick="togglePanel('list')" title="收起列表"><svg><use href="#i-fold-l"/></svg></button>`;
+  if (title) title.innerHTML = `${esc(subLabel)}<span class="cnt">${docs.length}</span><button class="fold" onclick="togglePanel('list')" title="收起列表"><svg><use href="#i-fold-l"/></svg></button>`;
   const list = $("#doclist"); if (!list) return;
   list.innerHTML = docs.map(d => `
     <a class="doc ${d.name === activeName ? "active" : ""}" href="/doc/${CUR.domain}/${CUR.sub}/${d.name.split("/").map(encodeURIComponent).join("/")}">
@@ -198,7 +198,7 @@ function renderCrumb() {
   const crumb = $("#crumb"); if (!crumb || !DOC) return;
   const dirs = DOC.rel.split("/").slice(0, -1).join("/");
   crumb.innerHTML = `content<b>/</b>${esc(dirs)}<span class="sep">·</span><b>${esc(DOC.title)}</b><span class="spacer"></span>
-    ${DOC.has_html ? `<a class="iconbtn" href="/raw/${esc(DOC.html_rel)}" target="_blank" title="打开整页美化版">◈ 美化版</a>` : ""}
+    ${DOC.has_html ? `<button class="iconbtn" onclick="openPretty()" title="弹窗打开整页美化版">◈ 美化版</button>` : ""}
     ${!DOC.is_html ? `<button class="iconbtn" onclick="openEditor()">✎ 编辑</button>
     <button class="iconbtn" onclick="deleteDoc()" title="移入 content/_trash/">🗑 删除</button>` : ""}
     <button class="iconbtn primary ${DOC.favorite ? "faved" : ""}" id="fav-btn" onclick="toggleFav()">${DOC.favorite ? "★ 已收藏" : "☆ 收藏"}</button>`;
@@ -384,11 +384,8 @@ async function deleteDoc() {
   }
   clearTimeout(deleteArmTimer); deleteArmed = false;
   btn.textContent = "🗑 删除"; btn.style.borderColor = ""; btn.style.color = "";
-  const r = await fetch("/api/delete", { method: "POST", headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ path: DOC.rel }) });
-  if (!r.ok) { toast("删除失败：" + (await r.text()).slice(0, 120)); return; }
-  const moved = (await r.json()).moved || [];
-  // 树缓存即时同步：文档条目移除、计数联动，列表立刻反映
+  // 乐观更新：先改 UI，后台请求失败再提示（文档在回收站可找回）
+  const rel = DOC.rel, deletedTitle = DOC.title;
   const s = findSub(DOC.domain, DOC.sub);
   if (s) {
     s.docs = s.docs.filter(x => x.name !== DOC.name);
@@ -399,7 +396,6 @@ async function deleteDoc() {
     renderTree();
     renderDocList(s.docs, s.label, null);
   }
-  const deletedTitle = DOC.title;
   DOC = null;
   $("#article").innerHTML = `<div class="a-kicker">已删除</div>
     <h1 class="a-title">文档已移入回收站</h1>
@@ -407,7 +403,11 @@ async function deleteDoc() {
     <div class="a-body"><p>《${esc(deletedTitle)}》及其美化版、备注已一起移入 <code>content/_trash/</code>，git 历史亦可找回。</p>
     <p>从左侧选择其他文档继续阅读。</p></div>`;
   $("#crumb").innerHTML = `<b>已删除</b><span class="sep">·</span>${esc(deletedTitle)}`;
-  toast(`已移入回收站（${moved.length} 个文件） · 列表已实时更新`);
+  toast("已移入回收站 · 列表已实时更新");
+  fetch("/api/delete", { method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ path: rel }) })
+    .then(r => { if (!r.ok) toast("服务端删除失败（文件仍在，可重试）"); })
+    .catch(() => toast("服务端删除失败（文件仍在，可重试）"));
 }
 
 /* ---------- 双链面板（懒加载） ---------- */
@@ -433,6 +433,32 @@ function loadLinks() {
         (fwd || `<div style="font-size:12.5px;color:var(--faint);padding:4px 2px">本文没有 [[双链]]。</div>`);
     })
     .catch(() => { pane.innerHTML = `<div class="empty" style="padding:10px 2px">加载失败，稍后再试。</div>`; linksLoadedFor = null; });
+}
+
+/* ---------- 美化版弹窗 ---------- */
+function openPretty() {
+  if (!DOC || !DOC.has_html) return;
+  let ov = document.getElementById("pretty-ov");
+  if (!ov) {
+    ov = document.createElement("div");
+    ov.id = "pretty-ov";
+    ov.className = "pretty-ov";
+    ov.innerHTML = `<div class="pretty-box">
+      <div class="pretty-bar"><span class="pt" id="pretty-title"></span>
+        <a class="iconbtn" id="pretty-newtab" target="_blank">↗ 新窗口</a>
+        <button class="iconbtn" onclick="closePretty()">✕ 关闭</button></div>
+      <iframe id="pretty-frame"></iframe></div>`;
+    document.body.appendChild(ov);
+    ov.addEventListener("click", e => { if (e.target === ov) closePretty(); });
+  }
+  ov.querySelector("#pretty-title").textContent = DOC.title + " · 美化版";
+  ov.querySelector("#pretty-newtab").href = "/raw/" + DOC.html_rel;
+  ov.querySelector("iframe").src = "/raw/" + DOC.html_rel;
+  ov.classList.add("show");
+}
+function closePretty() {
+  const ov = document.getElementById("pretty-ov");
+  if (ov) { ov.classList.remove("show"); ov.querySelector("iframe").src = "about:blank"; }
 }
 
 /* ---------- 快捷键与搜索 ---------- */

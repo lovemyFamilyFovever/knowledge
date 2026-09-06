@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block title %}标签 · 知库{% endblock %}
+{% block body %}
+<main class="single">
+  <section class="panel page-panel">
+    <div class="crumb"><b>标签管理</b><span class="sep">·</span>{{ tags|length }} 个标签<span class="spacer"></span><a class="iconbtn" href="/">← 返回阅读</a></div>
+    <div class="page-body">
+      {% if tags %}
+      <div class="tag-cloud">
+        {% for tag, docs in tags %}
+        <div class="tag-group">
+          <div class="tag-header" onclick="this.parentElement.classList.toggle('open')">
+            <span class="tag-name">{{ tag }}</span>
+            <span class="tag-count">{{ docs|length }} 篇</span>
+            <span class="tag-arrow">▸</span>
+          </div>
+          <div class="tag-docs">
+            {% for d in docs %}
+            <a class="result" href="/doc/{{ d.domain }}/{{ d.sub }}/{{ d.name }}">
+              <div class="doc-t">{{ d.title }}</div>
+              <div class="rp">{{ d.domain_label }} / {{ d.sub_label }}</div>
+            </a>
+            {% endfor %}
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <div class="empty">还没有任何标签。编辑文档的 frontmatter 添加 `tags: [标签1, 标签2]`，标签会自动出现在这里。</div>
+      {% endif %}
+    </div>
+  </section>
+</main>
+{% endblock %}

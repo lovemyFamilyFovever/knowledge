@@ -12,6 +12,7 @@ import json
 import os
 import re
 import sqlite3
+import threading
 import time
 from pathlib import Path
 
@@ -288,23 +289,9 @@ def build_index(content: Path, indexes: Path) -> int:
             by_stem.setdefault(info["stem"], []).append(rel)
             by_title.setdefault(info["title"], []).append(rel)
 
-        def resolve(raw: str) -> str | None:
-            raw = raw.strip()
-            for suffix in (".md", ".html"):
-                if raw.endswith(suffix):
-                    raw = raw[: -len(suffix)]
-                    break
-            if raw in by_path:
-                return by_path[raw]
-            if len(by_stem.get(raw, [])) == 1:
-                return by_stem[raw][0]
-            if len(by_title.get(raw, [])) == 1:
-                return by_title[raw][0]
-            return None
-
         for src, src_title, raws in pending:
             for raw in raws:
-                dst = resolve(raw)
+                dst = resolve_wikilink(raw, by_path, by_stem, by_title)
                 dst_title = docs_seen[dst]["title"] if dst else ""
                 con.execute("INSERT INTO links(src,dst,raw,resolved,src_title,dst_title) VALUES(?,?,?,?,?,?)",
                             (src, dst or "", raw, 1 if dst else 0, src_title, dst_title))
@@ -343,6 +330,37 @@ WIKILINK_RE = re.compile(r"!?\[\[([^\[\]|#]+)(?:#[^\[\]|]*)?(?:\|[^\[\]]*)?\]\]"
 def extract_wikilinks(body: str) -> list[str]:
     clean = INLINE_CODE_RE.sub("", FENCE_RE.sub("", body))
     return [m.group(1).strip() for m in WIKILINK_RE.finditer(clean)]
+
+
+def resolve_wikilink(raw: str, by_path: dict, by_stem: dict, by_title: dict) -> str | None:
+    raw = raw.strip()
+    for suffix in (".md", ".html"):
+        if raw.endswith(suffix):
+            raw = raw[: -len(suffix)]
+            break
+    if raw in by_path:
+        return by_path[raw]
+    if len(by_stem.get(raw, [])) == 1:
+        return by_stem[raw][0]
+    hit = by_title.get(raw) or by_title.get(raw.replace(" ", ""))
+    if hit and len(hit) == 1:
+        return hit[0]
+    return None
+
+
+def resolve_maps_from_db(con):
+    # 从 docs 索引表构建解析映射；标题字段已 cjk_space，需 cjk_clean 还原后再匹配
+    by_path: dict = {}
+    by_stem: dict = {}
+    by_title: dict = {}
+    for path_, db_title in con.execute("SELECT path, title FROM docs"):
+        by_path[path_] = db_title
+        stem = path_.rsplit("/", 1)[-1]
+        if stem.endswith(".md"):
+            stem = stem[:-3]
+        by_stem.setdefault(stem, []).append(path_)
+        by_title.setdefault(cjk_clean(db_title).replace(" ", ""), []).append(path_)
+    return by_path, by_stem, by_title
 
 
 def cjk_space(text: str) -> str:
@@ -396,6 +414,19 @@ def create_app(root: Path | None = None) -> Flask:
     if index_is_stale(content, indexes):
         build_index(content, indexes)
 
+    # 即存即搜：后台线程每 30 秒检测一次，新文件/修改自动入索引
+    def _index_watcher():
+        while True:
+            time.sleep(30)
+            try:
+                if index_is_stale(content, indexes):
+                    build_index(content, indexes)
+            except Exception:
+                pass  # 静默：索引重建失败不影响服务
+
+    _watcher = threading.Thread(target=_index_watcher, daemon=True)
+    _watcher.start()
+
     def corpus_stats() -> dict:
         domains = scan_corpus(content)
         n_md = sum(1 for _, _ in md_files(content))
@@ -447,6 +478,7 @@ def create_app(root: Path | None = None) -> Flask:
         greet = "夜深了" if hour < 6 else "早上好" if hour < 11 else "中午好" if hour < 13 else "下午好" if hour < 18 else "晚上好"
         return render_template("home.html", stats=stats, recents=recents, days=int(days),
                                leaves=leaves, pct=pct, greet=greet,
+                               inbox_n=stats["inbox"], n_md=stats["n_md"],
                                date=time.strftime("%m 月 %d 日 %A", now).replace("Monday", "周一").replace(
                                    "Tuesday", "周二").replace("Wednesday", "周三").replace("Thursday", "周四").replace(
                                    "Friday", "周五").replace("Saturday", "周六").replace("Sunday", "周日"))
@@ -550,6 +582,24 @@ def create_app(root: Path | None = None) -> Flask:
         return render_template("favorites.html", items=items, n_md=sum(1 for _ in md_files(content)),
                                inbox_n=inbox_count(content))
 
+    @app.route("/tags")
+    def tags():
+        domains = scan_corpus(content)
+        tag_map: dict[str, list[dict]] = {}  # tag -> list of doc info
+        for d in domains:
+            for s in d["subs"]:
+                for doc in s["docs"]:
+                    for t in doc.get("tags", []):
+                        tag_map.setdefault(t, []).append({
+                            "domain": d["id"], "domain_label": d["label"],
+                            "sub": s["id"], "sub_label": s["label"],
+                            "name": doc["name"], "title": doc["title"],
+                        })
+        # 按文档数降序排列
+        tags_sorted = sorted(tag_map.items(), key=lambda x: -len(x[1]))
+        return render_template("tags.html", tags=tags_sorted, n_md=sum(1 for _ in md_files(content)),
+                               inbox_n=inbox_count(content))
+
     @app.route("/search")
     def search_route():
         q = request.args.get("q", "").strip()
@@ -575,8 +625,33 @@ def create_app(root: Path | None = None) -> Flask:
             }
             body = dump_frontmatter(stamp, body)
         p.write_text(body, encoding="utf-8")
-        build_index(content, indexes)
-        return jsonify({"ok": True, "path": p.relative_to(content.resolve()).as_posix()})
+        # 外科手术式索引更新：仅替换本文档的正文与双链行（毫秒级，避免全量重建的等待）
+        rel_posix = p.relative_to(content.resolve()).as_posix()
+        fm2, body2 = parse_frontmatter(body)
+        title = str(fm2.get("title") or p.stem)
+        tags = fm2.get("tags")
+        tag_str = " ".join(tags) if isinstance(tags, list) else str(tags or "")
+        con = open_db(indexes)
+        try:
+            con.execute("DELETE FROM docs WHERE path=?", (rel_posix,))
+            con.execute("INSERT INTO docs(path,title,tags,body) VALUES(?,?,?,?)",
+                        (rel_posix, cjk_space(title), cjk_space(tag_str), cjk_space(body2)))
+            con.execute("DELETE FROM links WHERE src=?", (rel_posix,))
+            _, by_stem, by_title = resolve_maps_from_db(con)
+            by_path = {path_.rsplit("/", 1)[-1][:-3] if path_.endswith(".md") else path_.rsplit("/", 1)[-1]: path_
+                       for path_, in con.execute("SELECT path FROM docs")}
+            for raw in extract_wikilinks(body2):
+                dst = resolve_wikilink(raw, by_path, by_stem, by_title)
+                dst_title = ""
+                if dst:
+                    row = con.execute("SELECT title FROM docs WHERE path=?", (dst,)).fetchone()
+                    dst_title = cjk_clean(row[0]) if row else ""
+                con.execute("INSERT INTO links(src,dst,raw,resolved,src_title,dst_title) VALUES(?,?,?,?,?,?)",
+                            (rel_posix, dst or "", raw, 1 if dst else 0, title, dst_title))
+            con.commit()
+        finally:
+            con.close()
+        return jsonify({"ok": True, "path": rel_posix})
 
     @app.post("/api/note")
     def api_note():
@@ -639,7 +714,16 @@ def create_app(root: Path | None = None) -> Flask:
                 s.parent.mkdir(parents=True, exist_ok=True)
                 sib.rename(s)
                 moved.append(sib.relative_to(root_resolved).as_posix())
-        build_index(content, indexes)
+        # 外科手术式索引删除：只移除本文档的正文与双链行（毫秒级）
+        rel_posix = rel.as_posix()
+        con = open_db(indexes)
+        try:
+            con.execute("DELETE FROM docs WHERE path=?", (rel_posix,))
+            con.execute("DELETE FROM links WHERE src=?", (rel_posix,))
+            con.execute("DELETE FROM links WHERE dst=?", (rel_posix,))
+            con.commit()
+        finally:
+            con.close()
         return jsonify({"ok": True, "moved": moved})
 
     @app.after_request

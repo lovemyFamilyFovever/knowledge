@@ -4,6 +4,7 @@
 运行：python tests/test_reader.py
 在临时目录构造迷你语料，不改真实 content/。
 """
+import re
 import sys
 import tempfile
 from pathlib import Path
@@ -99,8 +100,8 @@ def main() -> int:
 
         r = c.get("/home")
         home = r.get_data(as_text=True)
-        check("/home 渲染统计", r.status_code == 200 and "Markdown 文档" in home)
-        check("/home 收件箱计数为 1", "收件箱待归档" in home and ">1<" in home.replace(" ", ""))
+        check("/home 渲染统计", r.status_code == 200 and "九大领域" in home)
+        check("/home 收件箱计数为 1", bool(re.search(r'收件箱</span><span class="n">1</span>', home)))
         check("/home 最近更新含 B", "职业笔记B" in home)
 
         r = c.get("/search?q=量子")
@@ -112,6 +113,11 @@ def main() -> int:
 
         r = c.get("/favorites")
         check("/favorites 列出 favorite 文档", "职业笔记B" in r.get_data(as_text=True))
+
+        r = c.get("/tags")
+        tags_body = r.get_data(as_text=True)
+        check("/tags 页面可访问", r.status_code == 200)
+        check("/tags 列出标签", "AI" in tags_body and "Agent" in tags_body)
 
         r = c.get("/raw/ai/llm-and-agents/A.html")
         check("/raw 直通美化版", r.status_code == 200 and "美化版A" in r.get_data(as_text=True))
@@ -159,7 +165,7 @@ def main() -> int:
 
         r = c.get("/api/links?path=ai/llm-and-agents/A.md")
         j = r.get_json()
-        check("/api/links 正向含已解析目标", any(x["resolved"] and "职业笔记B" in x["title"] for x in j["outgoing"]))
+        check("/api/links 正向含已解析目标", any(x["resolved"] and "职业笔记" in x["title"] for x in j["outgoing"]))
         check("/api/links 标记未解析目标", any(not x["resolved"] and "不存在的链接" in x["raw"] for x in j["outgoing"]))
         check("/api/links 剔除代码内假双链", not any("忽略我" in x["raw"] for x in j["outgoing"]))
 
