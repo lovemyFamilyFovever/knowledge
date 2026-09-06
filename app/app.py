@@ -22,27 +22,44 @@ SKIP_DIRS = {"_inbox", "_assets", "_unfiled"}
 WRITABLE_EXTS = {".md"}
 SERVABLE_EXTS = {".md", ".html"}
 DOMAIN_LABELS = {
-    "frontend": "前端", "backend": "后端", "cs-fundamentals": "CS 基础",
-    "ai": "AI", "engineering": "工程", "interview": "面试",
-    "projects": "项目", "cookbook": "手册", "career": "职业",
+    "baike": "百科", "articles": "文章", "interview": "面试", "projects": "项目",
+    "handbook": "手册", "career": "职业", "ai-assets": "AI 资产",
 }
-GRAPH_HUES = {"ai": 158, "frontend": 200, "cs-fundamentals": 226, "projects": 22,
-              "engineering": 262, "interview": 340, "backend": 12, "career": 42, "cookbook": 96}
+GRAPH_HUES = {"baike": 158, "articles": 200, "interview": 340, "projects": 22,
+              "handbook": 96, "career": 42, "ai-assets": 262}
 SUB_LABELS = {
-    "llm-and-agents": "大模型与智能体", "ml": "机器学习", "data-science": "数据科学",
-    "agent-in-action": "Agent 实战", "general": "综合", "javascript": "JavaScript",
-    "vue2": "Vue2", "vue3": "Vue3", "css": "CSS", "html": "HTML", "typescript": "TypeScript",
-    "pinia": "Pinia", "optimization": "性能优化", "debugging": "调试", "frameworks": "框架",
-    "mobile": "移动端", "middleware": "中间件", "database": "数据库", "security": "安全",
-    "network": "网络", "algorithms": "算法", "distributed": "分布式", "os": "操作系统",
-    "hardware": "硬件", "blockchain": "区块链", "iot": "物联网", "programming-languages": "编程语言",
-    "architecture": "架构设计", "devops": "DevOps 与运维", "testing": "测试",
-    "software-engineering": "软件工程", "tools": "工具链", "git": "Git", "design-patterns": "设计模式",
-    "developer-skills": "开发者技能", "ai-agent": "AI Agent 面试", "business": "业务面",
-    "css-html": "CSS 与 HTML", "node-fullstack": "Node 与全栈", "performance": "性能面试",
-    "dsh-agent": "DeepSeek Harness 研究", "retrospectives": "项目复盘", "insights": "洞见",
-    "journal": "随笔", "resume": "简历", "management": "管理", "fragment": "碎片",
-    "skill": "技能", "pitfalls": "踩坑", "_root": "总览",
+    # 百科
+    "programming-languages": "编程语言", "database": "数据库", "security": "安全与加密",
+    "network": "网络与协议", "os": "操作系统", "algorithms": "算法与数据结构",
+    "distributed": "分布式系统", "hardware": "计算机硬件", "blockchain": "区块链",
+    "iot": "物联网", "cs-basics": "计算机科学基础", "software-engineering": "软件工程",
+    "architecture": "架构设计", "design-patterns": "设计模式", "devops": "DevOps 与云原生",
+    "testing": "测试与质量", "tools": "工具链", "developer-skills": "开发者技能",
+    "ai-and-llm": "AI 与大模型", "machine-learning": "机器学习", "data-science": "数据科学与大数据",
+    "frontend-concepts": "前端概念", "frontend-frameworks": "前端框架", "mobile": "移动开发",
+    "middleware": "消息与中间件", "web-backend": "Web 后端",
+    # 文章
+    "javascript": "JavaScript", "vue2": "Vue2", "vue3": "Vue3", "css": "CSS", "html": "HTML",
+    "typescript": "TypeScript", "debugging": "调试", "pinia": "Pinia", "optimization": "性能优化",
+    "tutorials": "教程", "single-file": "单文件版", "git": "Git",
+    # 手册
+    "pitfalls": "踩坑", "fragments": "碎片", "skills": "技能", "prompts": "Prompt 库",
+    # 项目
+    "dsh-agent": "DeepSeek Harness 研究", "retrospectives": "项目复盘",
+    "妙搭平台": "妙搭平台", "不锈钢市场": "不锈钢市场",
+    # 职业
+    "insights": "洞见", "journal": "随笔", "resume": "简历", "management": "管理",
+    # 面试（域内 scoped，键为 域/子域）
+    "interview/ai-agent": "AI Agent 面试", "interview/business": "业务面",
+    "interview/css-html": "CSS 与 HTML 面", "interview/engineering": "工程面",
+    "interview/node-fullstack": "Node 与全栈面", "interview/performance": "性能面",
+    "interview/javascript": "JavaScript 面试", "interview/frameworks": "框架面",
+    "interview/ai": "AI 面试", "interview/behavioral": "行为面", "interview/career": "职业面",
+    "interview/industry": "行业面", "interview/management": "管理面",
+    "interview/architecture": "架构面", "interview/algorithms": "算法面试",
+    # AI 资产
+    "ai-assets/_root": "总览",
+    "_root": "总览",
 }
 SOURCE_LABELS = {
     "baike": "百科大全", "myblog": "博客", "desktop": "桌面",
@@ -137,7 +154,8 @@ def scan_corpus(content: Path) -> list[dict]:
         loose = sorted(p for p in ddir.iterdir() if p.is_file() and p.suffix in SERVABLE_EXTS)
         sdirs = sorted(p for p in ddir.iterdir() if p.is_dir() and p.name not in SKIP_DIRS)
         for sdir in sdirs:
-            dom["subs"].append(_scan_sub(sdir, sdir.name, SUB_LABELS.get(sdir.name, sdir.name)))
+            label = SUB_LABELS.get(f"{ddir.name}/{sdir.name}", SUB_LABELS.get(sdir.name, sdir.name))
+            dom["subs"].append(_scan_sub(sdir, sdir.name, label))
         if loose:
             dom["subs"].append(_scan_sub(ddir, "_root", "总览", loose))
         dom["n"] = sum(s["n"] for s in dom["subs"])
