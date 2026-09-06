@@ -1,5 +1,5 @@
 /* 知库 reader 前端：主题、面板折叠、客户端路由、正文渲染、编辑/备注/收藏/删除、双链、快捷键 */
-window.APP_JS_VERSION = 10;
+window.APP_JS_VERSION = 11;
 
 const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
@@ -319,6 +319,9 @@ async function saveDoc() {
     body = text.slice(m[0].length);
   }
   DOC.fm = fm; DOC.md = body; DOC.title = fm.title || DOC.title;
+  const sd = findSub(CUR.domain, CUR.sub);
+  const td = sd && sd.docs.find(x => x.name === DOC.name);
+  if (td) { td.title = DOC.title; persistTree(); }
   linksLoadedFor = null;
   closeEditor(); renderArticle();
   toast(`已写回 <span class="mono">${esc(DOC.rel)}</span> · 索引已更新 · git 可 diff`);
@@ -353,11 +356,16 @@ async function toggleFav() {
   // 同步树缓存里的收藏标记，收藏页/列表星星即时一致
   const s = findSub(DOC.domain, DOC.sub);
   const td = s && s.docs.find(x => x.name === DOC.name);
-  if (td) td.favorite = data.favorite;
+  if (td) { td.favorite = data.favorite; persistTree(); }
   toast(data.favorite ? "已收藏 · favorite: true 写入 frontmatter" : "已取消收藏");
 }
 
-/* ---------- 删除（软删除：移入 _trash，两步确认） ---------- */
+/* ---------- 树缓存持久化（增删改后即时同步） ---------- */
+function persistTree() {
+  try { localStorage.setItem(LS_TREE, JSON.stringify({ sig: "(本地已改)", domains: TREE })); } catch (e) {}
+}
+
+/* ---------- 删除（软删除：移入 _trash，两步确认，列表实时更新） ---------- */
 let deleteArmed = false, deleteArmTimer = null;
 async function deleteDoc() {
   if (!DOC || DOC.is_html) return;
@@ -380,8 +388,26 @@ async function deleteDoc() {
     body: JSON.stringify({ path: DOC.rel }) });
   if (!r.ok) { toast("删除失败：" + (await r.text()).slice(0, 120)); return; }
   const moved = (await r.json()).moved || [];
-  toast(`已移入回收站（${moved.length} 个文件） · 随时可恢复`);
-  setTimeout(() => { location.href = "/"; }, 700);
+  // 树缓存即时同步：文档条目移除、计数联动，列表立刻反映
+  const s = findSub(DOC.domain, DOC.sub);
+  if (s) {
+    s.docs = s.docs.filter(x => x.name !== DOC.name);
+    s.n = s.docs.length;
+    const d = TREE.find(x => x.id === DOC.domain);
+    if (d) d.n = d.subs.reduce((a, x) => a + x.n, 0);
+    persistTree();
+    renderTree();
+    renderDocList(s.docs, s.label, null);
+  }
+  const deletedTitle = DOC.title;
+  DOC = null;
+  $("#article").innerHTML = `<div class="a-kicker">已删除</div>
+    <h1 class="a-title">文档已移入回收站</h1>
+    <div class="a-rule"></div>
+    <div class="a-body"><p>《${esc(deletedTitle)}》及其美化版、备注已一起移入 <code>content/_trash/</code>，git 历史亦可找回。</p>
+    <p>从左侧选择其他文档继续阅读。</p></div>`;
+  $("#crumb").innerHTML = `<b>已删除</b><span class="sep">·</span>${esc(deletedTitle)}`;
+  toast(`已移入回收站（${moved.length} 个文件） · 列表已实时更新`);
 }
 
 /* ---------- 双链面板（懒加载） ---------- */
