@@ -43,7 +43,7 @@
   </section>
 
   <section class="panel article-wrap">
-    <div class="crumb">
+    <div class="crumb" id="crumb">
       content<b>/</b>{{ doc.rel.split('/')[0:-1]|join('/') }}<span class="sep">·</span><b>{{ doc.title }}</b><span class="spacer"></span>
       {% if doc.has_html %}<a class="iconbtn" href="/raw/{{ doc.html_rel }}" target="_blank" title="打开整页美化版">◈ 美化版</a>{% endif %}
       {% if not doc.is_html %}<button class="iconbtn" onclick="openEditor()">✎ 编辑</button>

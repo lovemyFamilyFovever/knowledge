@@ -357,10 +357,25 @@ async function toggleFav() {
   toast(data.favorite ? "已收藏 · favorite: true 写入 frontmatter" : "已取消收藏");
 }
 
-/* ---------- 删除（软删除：移入 _trash） ---------- */
+/* ---------- 删除（软删除：移入 _trash，两步确认） ---------- */
+let deleteArmed = false, deleteArmTimer = null;
 async function deleteDoc() {
   if (!DOC || DOC.is_html) return;
-  if (!confirm("删除后移入 content/_trash/（git 历史亦可找回）。确定删除这篇文档吗？")) return;
+  const btn = [...document.querySelectorAll("#crumb .iconbtn")].find(b => b.textContent.includes("删除"));
+  if (!deleteArmed) {
+    deleteArmed = true;
+    btn.textContent = "⚠ 确认删除？";
+    btn.style.borderColor = "var(--warn-edge)";
+    btn.style.color = "var(--warn)";
+    deleteArmTimer = setTimeout(() => {
+      deleteArmed = false;
+      btn.textContent = "🗑 删除";
+      btn.style.borderColor = ""; btn.style.color = "";
+    }, 3000);
+    return;
+  }
+  clearTimeout(deleteArmTimer); deleteArmed = false;
+  btn.textContent = "🗑 删除"; btn.style.borderColor = ""; btn.style.color = "";
   const r = await fetch("/api/delete", { method: "POST", headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ path: DOC.rel }) });
   if (!r.ok) { toast("删除失败：" + (await r.text()).slice(0, 120)); return; }
