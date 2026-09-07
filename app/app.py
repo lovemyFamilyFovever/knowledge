@@ -1,17 +1,20 @@
 # -*- coding: utf-8 -*-
 """知库 reader — Flask 应用：从 content/ 文件树直接服务知识语料。
 
-content/ 的 Markdown/HTML 文件是唯一事实源；indexes/index.db 只是派生的
-FTS5 全文索引，启动时按文件 mtime 增量重建，随时可删可重建。编辑、收藏、
-备注全部写回文件系统，Obsidian 与本应用共享同一份语料。
+content/ 的 Markdown/HTML 文件是唯一事实源；indexes/（index.db / rag.db）只是
+派生缓存，随时可删可重建。编辑、收藏、备注全部写回文件系统，Obsidian 与本
+应用共享同一份语料。
+
+分层（2026-09-07 拆分）：
+    app/store.py  语料层：frontmatter / 分类树 / 备注 / 分类学装载（_meta/taxonomy.json 为权威）
+    app/fts.py    FTS5 全文索引 + [[双链]] 解析（派生，外科手术式更新）
+    app/rag.py    语义检索：切块 / 嵌入 / sqlite-vec（派生，RAG_CODE_VERSION 管版本）
+    app/app.py    本文件：路由与请求编排 + 单一 watcher 统一驱动两套索引同步
 
 工厂模式：create_app(root) 便于测试指向临时语料目录。
 """
-import html as html_mod
 import json
-import os
 import re
-import sqlite3
 import sys
 import threading
 import time
@@ -19,390 +22,25 @@ from pathlib import Path
 
 from flask import Flask, abort, jsonify, redirect, render_template, request, send_file
 
-FM_RE = re.compile(r"\A---\n(.*?)\n---\n\n?", re.S)
-SKIP_DIRS = {"_inbox", "_assets", "_unfiled"}
-WRITABLE_EXTS = {".md"}
-SERVABLE_EXTS = {".md", ".html"}
-DOMAIN_LABELS = {
-    "baike": "百科", "articles": "文章", "interview": "面试", "projects": "项目",
-    "handbook": "手册", "career": "职业", "ai-assets": "AI 资产",
-}
-GRAPH_HUES = {"baike": 158, "articles": 200, "interview": 340, "projects": 22,
-              "handbook": 96, "career": 42, "ai-assets": 262}
-SUB_LABELS = {
-    # 百科
-    "programming-languages": "编程语言", "database": "数据库", "security": "安全与加密",
-    "network": "网络与协议", "os": "操作系统", "algorithms": "算法与数据结构",
-    "distributed": "分布式系统", "hardware": "计算机硬件", "blockchain": "区块链",
-    "iot": "物联网", "cs-basics": "计算机科学基础", "software-engineering": "软件工程",
-    "architecture": "架构设计", "design-patterns": "设计模式", "devops": "DevOps 与云原生",
-    "testing": "测试与质量", "tools": "工具链", "developer-skills": "开发者技能",
-    "ai-and-llm": "AI 与大模型", "machine-learning": "机器学习", "data-science": "数据科学与大数据",
-    "frontend-concepts": "前端概念", "frontend-frameworks": "前端框架", "mobile": "移动开发",
-    "middleware": "消息与中间件", "web-backend": "Web 后端",
-    # 文章
-    "javascript": "JavaScript", "vue2": "Vue2", "vue3": "Vue3", "css": "CSS", "html": "HTML",
-    "typescript": "TypeScript", "debugging": "调试", "pinia": "Pinia", "optimization": "性能优化",
-    "tutorials": "教程", "single-file": "单文件版", "git": "Git",
-    # 手册
-    "pitfalls": "踩坑", "fragments": "碎片", "skills": "技能", "prompts": "Prompt 库",
-    # 项目
-    "dsh-agent": "DeepSeek Harness 研究", "retrospectives": "项目复盘",
-    "妙搭平台": "妙搭平台", "不锈钢市场": "不锈钢市场",
-    # 职业
-    "insights": "洞见", "journal": "随笔", "resume": "简历", "management": "管理",
-    # 面试（域内 scoped，键为 域/子域）
-    "interview/ai-agent": "AI Agent 面试", "interview/business": "业务面",
-    "interview/css-html": "CSS 与 HTML 面", "interview/engineering": "工程面",
-    "interview/node-fullstack": "Node 与全栈面", "interview/performance": "性能面",
-    "interview/javascript": "JavaScript 面试", "interview/frameworks": "框架面",
-    "interview/ai": "AI 面试", "interview/behavioral": "行为面", "interview/career": "职业面",
-    "interview/industry": "行业面", "interview/management": "管理面",
-    "interview/architecture": "架构面", "interview/algorithms": "算法面试",
-    # AI 资产
-    "ai-assets/_root": "总览",
-    "_root": "总览",
-}
-SOURCE_LABELS = {
-    "baike": "百科大全", "myblog": "博客", "desktop": "桌面",
-    "knowledge": "知识库自产", "dsh-memory": "Agent 记忆",
-}
-STATUS_LABELS = {"imported": "已导入", "reviewed": "已复查", "stable": "已整理"}
-OBSIDIAN_EXE_CANDIDATES = [
-    Path("D:/Obsidian/Obsidian.exe"),
-    Path(os.environ.get("LOCALAPPDATA", "")) / "Programs" / "Obsidian" / "Obsidian.exe",
-    Path("C:/Program Files/Obsidian/Obsidian.exe"),
-]
-OBSIDIAN_CONFIG = Path(os.environ.get("APPDATA", "")) / "obsidian" / "obsidian.json"
-
-
-def obsidian_vault_connected(content: Path) -> bool:
-    """双条件：程序本体存在，且 Obsidian 配置里注册了指向本语料的 vault。"""
-    if not any(p.is_file() for p in OBSIDIAN_EXE_CANDIDATES):
-        return False
-    try:
-        data = json.loads(OBSIDIAN_CONFIG.read_text(encoding="utf-8"))
-    except (OSError, ValueError):
-        return False
-    me = str(content.resolve()).lower().rstrip("\\/")
-    for v in data.get("vaults", {}).values():
-        p = str(v.get("path", "")).lower().rstrip("\\/")
-        if p == me:
-            return True
-    return False
-
-
-# ---------------- frontmatter ----------------
-def parse_frontmatter(text: str) -> tuple[dict, str]:
-    """Parse the leading `---` block into a dict; unknown keys are preserved."""
-    m = FM_RE.match(text)
-    if not m:
-        return {}, text
-    fm: dict = {}
-    for line in m.group(1).splitlines():
-        if ":" not in line:
-            continue
-        key, val = line.split(":", 1)
-        key, val = key.strip(), val.strip()
-        if val.startswith("[") and val.endswith("]"):
-            inner = val[1:-1].strip()
-            fm[key] = [x.strip().strip("\"'") for x in inner.split(",") if x.strip()] if inner else []
-        elif val.lower() in ("true", "false"):
-            fm[key] = val.lower() == "true"
-        else:
-            fm[key] = val.strip("\"'")
-    return fm, text[m.end():]
-
-
-def dump_frontmatter(fm: dict, body: str) -> str:
-    lines = ["---"]
-    for key, val in fm.items():
-        if val is True:
-            lines.append(f"{key}: true")
-        elif isinstance(val, list):
-            lines.append(f"{key}: [{', '.join(val)}]")
-        else:
-            lines.append(f'{key}: "{val}"')
-    lines.append("---")
-    return "\n".join(lines) + "\n\n" + body
-
-
-# ---------------- corpus scan ----------------
-_SCAN_CACHE: dict = {}
-
-
-def _tree_sig(content: Path) -> str:
-    """仅 stat 不读内容的树签名：毫秒级，作为扫描缓存的失效依据。"""
-    parts = []
-    for dirpath, dirnames, filenames in os.walk(content):
-        dirnames[:] = [d for d in dirnames if d not in SKIP_DIRS and not d.startswith("_")]
-        for fn in filenames:
-            if fn.endswith((".md", ".html")):
-                p = Path(dirpath) / fn
-                parts.append(f"{p.relative_to(content).as_posix()}:{p.stat().st_mtime_ns}")
-    return "|".join(parts)
-
-
-def scan_corpus(content: Path) -> list[dict]:
-    sig = _tree_sig(content)
-    hit = _SCAN_CACHE.get(str(content))
-    if hit and hit[0] == sig:
-        return hit[1]
-    domains = []
-    for ddir in sorted(content.iterdir()):
-        if not ddir.is_dir() or ddir.name in SKIP_DIRS or ddir.name.startswith("_"):
-            continue
-        dom = {"id": ddir.name, "label": DOMAIN_LABELS.get(ddir.name, ddir.name), "subs": [], "n": 0}
-        loose = sorted(p for p in ddir.iterdir() if p.is_file() and p.suffix in SERVABLE_EXTS)
-        sdirs = sorted(p for p in ddir.iterdir() if p.is_dir() and p.name not in SKIP_DIRS)
-        for sdir in sdirs:
-            label = SUB_LABELS.get(f"{ddir.name}/{sdir.name}", SUB_LABELS.get(sdir.name, sdir.name))
-            dom["subs"].append(_scan_sub(sdir, sdir.name, label))
-        if loose:
-            dom["subs"].append(_scan_sub(ddir, "_root", "总览", loose))
-        dom["n"] = sum(s["n"] for s in dom["subs"])
-        if dom["subs"]:
-            domains.append(dom)
-    _SCAN_CACHE[str(content)] = (sig, domains)
-    return domains
-
-
-def _scan_sub(sdir: Path, sid: str, label: str, files=None) -> dict:
-    """递归收集：嵌套目录（如 dsh-agent/architecture、vue2/Details）的文档
-    以子路径作为文档名（<path:name> 路由支持带斜杠的 name）。"""
-    files = files if files is not None else sorted(
-        p for p in sdir.rglob("*") if p.is_file() and p.suffix in SERVABLE_EXTS
-    )
-    md_rel = {p.relative_to(sdir).with_suffix("").as_posix() for p in files if p.suffix == ".md"}
-    docs = []
-    for p in files:
-        relp = p.relative_to(sdir).as_posix()
-        fm: dict = {}
-        if p.suffix == ".html":
-            if relp[:-5] in md_rel:
-                continue  # 同名 .md 的美化版旁挂
-            name, title, is_html = relp, p.stem + ".html", True
-        else:
-            name, title, is_html = relp[:-3], p.stem, False
-            fm, _ = parse_frontmatter(p.read_text(encoding="utf-8", errors="replace"))
-            title = str(fm.get("title") or title)
-        docs.append({
-            "name": name,
-            "file": relp,
-            "title": title,
-            "tags": fm.get("tags", []) if isinstance(fm.get("tags"), list) else [],
-            "favorite": fm.get("favorite") is True,
-            "is_html": is_html,
-            "has_html": (sdir / (name + ".html")).is_file() if not is_html else False,
-            "mtime": p.stat().st_mtime,
-        })
-    return {"id": sid, "label": label, "n": len(docs), "docs": docs}
-
-
-def find_doc(content: Path, domain: str, sub: str, name: str):
-    """Locate a document; returns (abs_path, rel_posix) or None."""
-    base = content / domain
-    sdir = base / sub if sub != "_root" else base
-    if not base.is_dir() or not sdir.is_dir():
-        return None
-    for cand in (sdir / f"{name}.md", sdir / name, sdir / f"{name}.html"):
-        if cand.is_file() and cand.suffix in SERVABLE_EXTS:
-            return cand
-    return None
-
-
-def notes_path(doc_path: Path) -> Path:
-    return doc_path.with_name(doc_path.name + ".notes.md")
-
-
-def read_notes(doc_path: Path) -> list[dict]:
-    np = notes_path(doc_path)
-    if not np.is_file():
-        return []
-    out = []
-    for line in np.read_text(encoding="utf-8", errors="replace").splitlines():
-        m = re.match(r"- \[(.+?)\] (.*)", line.strip())
-        if m:
-            out.append({"when": m.group(1), "text": m.group(2)})
-    return list(reversed(out))  # newest first
-
-
-# ---------------- FTS index ----------------
-def open_db(indexes: Path) -> sqlite3.Connection:
-    indexes.mkdir(parents=True, exist_ok=True)
-    con = sqlite3.connect(indexes / "index.db")
-    con.execute("CREATE VIRTUAL TABLE IF NOT EXISTS docs USING fts5(path UNINDEXED, title, tags, body)")
-    con.execute("CREATE TABLE IF NOT EXISTS meta(k TEXT PRIMARY KEY, v TEXT)")
-    con.execute("""CREATE TABLE IF NOT EXISTS links(
-        src TEXT, dst TEXT, raw TEXT, resolved INTEGER,
-        src_title TEXT, dst_title TEXT)""")
-    return con
-
-
-def md_files(content: Path):
-    for dirpath, dirnames, filenames in os.walk(content):
-        dirnames[:] = [d for d in dirnames if d not in SKIP_DIRS and not d.startswith("_")]
-        for fn in filenames:
-            if fn.endswith(".md"):
-                p = Path(dirpath) / fn
-                yield p, p.relative_to(content).as_posix()
-
-
-_INBOX_CACHE = {"t": 0.0, "n": 0}
-
-
-def inbox_count(content: Path) -> int:
-    d = content / "_inbox"
-    if not d.is_dir():
-        return 0
-    now = time.time()
-    if now - _INBOX_CACHE["t"] > 60:
-        _INBOX_CACHE["n"] = sum(1 for _ in d.rglob("*"))
-        _INBOX_CACHE["t"] = now
-    return _INBOX_CACHE["n"]
-
-
-def build_index(content: Path, indexes: Path) -> int:
-    """Full rebuild; 500+ docs rebuild in well under a second."""
-    con = open_db(indexes)
-    try:
-        con.execute("DELETE FROM docs")
-        con.execute("DELETE FROM links")
-        docs_seen: dict[str, dict] = {}  # path -> {title, stem}
-        pending: list[tuple[str, str, list[str]]] = []  # (path, title, raw links)
-        n = 0
-        for p, rel in md_files(content):
-            fm, body = parse_frontmatter(p.read_text(encoding="utf-8", errors="replace"))
-            title = str(fm.get("title") or p.stem)
-            tags = fm.get("tags")
-            tag_str = " ".join(tags) if isinstance(tags, list) else str(tags or "")
-            con.execute("INSERT INTO docs(path,title,tags,body) VALUES(?,?,?,?)",
-                        (rel, cjk_space(title), cjk_space(tag_str), cjk_space(body)))
-            docs_seen[rel] = {"title": title, "stem": p.stem}
-            pending.append((rel, title, extract_wikilinks(body)))
-            n += 1
-
-        # 双链解析：目标依次匹配 完整相对路径(不带扩展名) / 文件名 / 标题
-        by_path = {rel.rsplit(".md", 1)[0]: rel for rel in docs_seen}
-        by_stem: dict[str, list[str]] = {}
-        by_title: dict[str, list[str]] = {}
-        for rel, info in docs_seen.items():
-            by_stem.setdefault(info["stem"], []).append(rel)
-            by_title.setdefault(info["title"], []).append(rel)
-
-        for src, src_title, raws in pending:
-            for raw in raws:
-                dst = resolve_wikilink(raw, by_path, by_stem, by_title)
-                dst_title = docs_seen[dst]["title"] if dst else ""
-                con.execute("INSERT INTO links(src,dst,raw,resolved,src_title,dst_title) VALUES(?,?,?,?,?,?)",
-                            (src, dst or "", raw, 1 if dst else 0, src_title, dst_title))
-        con.execute("INSERT OR REPLACE INTO meta(k,v) VALUES('built_at',?)", (str(time.time()),))
-        con.execute("INSERT OR REPLACE INTO meta(k,v) VALUES('doc_n',?)", (str(n),))
-        con.commit()
-        return n
-    finally:
-        con.close()
-
-
-def index_is_stale(content: Path, indexes: Path) -> bool:
-    con = open_db(indexes)
-    try:
-        row = con.execute("SELECT v FROM meta WHERE k='built_at'").fetchone()
-        if not row:
-            return True
-        newest = max((p.stat().st_mtime for p, _ in md_files(content)), default=0)
-        return newest > float(row[0])
-    finally:
-        con.close()
-
-
-# unicode61 分词器把连续中文当作单个长 token, 导致"量子"搜不到"量子纠缠"。
-# 索引侧给每个中文字符后插空格(逐字 token), 查询侧把中文词构造成逐字短语,
-# 展示前再把字符间空格清掉 —— 这是无外部分词依赖时的标准做法。
-CJK_RUN = re.compile(r"[\u4e00-\u9fff]+")
-CJK_CHAR = re.compile(r"([\u4e00-\u9fff])")
-CJK_GAP = re.compile(r"([\u4e00-\u9fff]) (?=[\u4e00-\u9fff])")
-# [[双链]]：剔除代码块与行内代码后提取，目标支持 别名/锚点 后缀
-FENCE_RE = re.compile(r"```.*?```|~~~.*?~~~", re.S)
-INLINE_CODE_RE = re.compile(r"`[^`\n]*`")
-WIKILINK_RE = re.compile(r"!?\[\[([^\[\]|#]+)(?:#[^\[\]|]*)?(?:\|[^\[\]]*)?\]\]")
-
-
-def extract_wikilinks(body: str) -> list[str]:
-    clean = INLINE_CODE_RE.sub("", FENCE_RE.sub("", body))
-    return [m.group(1).strip() for m in WIKILINK_RE.finditer(clean)]
-
-
-def resolve_wikilink(raw: str, by_path: dict, by_stem: dict, by_title: dict) -> str | None:
-    raw = raw.strip()
-    for suffix in (".md", ".html"):
-        if raw.endswith(suffix):
-            raw = raw[: -len(suffix)]
-            break
-    if raw in by_path:
-        return by_path[raw]
-    if len(by_stem.get(raw, [])) == 1:
-        return by_stem[raw][0]
-    hit = by_title.get(raw) or by_title.get(raw.replace(" ", ""))
-    if hit and len(hit) == 1:
-        return hit[0]
-    return None
-
-
-def resolve_maps_from_db(con):
-    # 从 docs 索引表构建解析映射；标题字段已 cjk_space，需 cjk_clean 还原后再匹配
-    by_path: dict = {}
-    by_stem: dict = {}
-    by_title: dict = {}
-    for path_, db_title in con.execute("SELECT path, title FROM docs"):
-        by_path[path_] = db_title
-        stem = path_.rsplit("/", 1)[-1]
-        if stem.endswith(".md"):
-            stem = stem[:-3]
-        by_stem.setdefault(stem, []).append(path_)
-        by_title.setdefault(cjk_clean(db_title).replace(" ", ""), []).append(path_)
-    return by_path, by_stem, by_title
-
-
-def cjk_space(text: str) -> str:
-    return CJK_CHAR.sub(r"\1 ", text)
-
-
-def cjk_clean(text: str) -> str:
-    return CJK_GAP.sub(r"\1", text)
-
-
-def build_match(q: str) -> str:
-    terms = re.findall(r"\w+", q)
-    phrases = []
-    for t in terms:
-        runs = re.findall(r"[\u4e00-\u9fff]+|[^\u4e00-\u9fff]+", t)
-        parts = [cjk_space(r).strip() if CJK_RUN.fullmatch(r) else r for r in runs]
-        phrases.append('"' + " ".join(parts) + '"*')
-    return " OR ".join(phrases)
-
-
-def search(indexes: Path, q: str, limit: int = 50) -> list[dict]:
-    if not re.findall(r"\w+", q):
-        return []
-    match = build_match(q)
-    con = open_db(indexes)
-    try:
-        rows = con.execute(
-            "SELECT path, title, snippet(docs, 3, '<mark>', '</mark>', 12, 24) "
-            "FROM docs WHERE docs MATCH ? ORDER BY rank LIMIT ?",
-            (match, limit),
-        ).fetchall()
-        return [{"path": r[0], "title": cjk_clean(r[1]), "snippet": cjk_clean(r[2])} for r in rows]
-    finally:
-        con.close()
-
-
 # 直接以脚本方式运行（python app\app.py）时 sys.path[0] 是 app/ 目录而非项目根，
-# 补上项目根保证 from app.rag import 在两种启动方式下都能命中
+# 补上项目根保证 from app.xxx import 在两种启动方式下都能命中
 _PROJECT_ROOT = str(Path(__file__).resolve().parents[1])
 if _PROJECT_ROOT not in sys.path:
     sys.path.insert(0, _PROJECT_ROOT)
+
+from app import store
+from app.store import (  # noqa: F401  兼容旧引用（tests 直接 import app.app 的符号）
+    DOMAIN_LABELS, GRAPH_HUES, SKIP_DIRS, SOURCE_LABELS, STATUS_LABELS,
+    WRITABLE_EXTS, SERVABLE_EXTS, FM_RE,
+    dump_frontmatter, find_doc, inbox_count, load_taxonomy, md_files,
+    notes_path, obsidian_vault_connected, parse_frontmatter, read_notes,
+    scan_corpus, _tree_sig,
+)
+from app.fts import (  # noqa: F401
+    build_index, cjk_clean, cjk_space, extract_wikilinks, index_is_stale,
+    open_db, remove_doc_from_index, resolve_maps_from_db, resolve_wikilink,
+    search, upsert_doc_in_index,
+)
 
 # ---------------- 本地向量检索（可选依赖，缺失时自动降级纯 FTS） ----------------
 try:
@@ -418,7 +56,7 @@ except Exception as _e:  # ImportError 及其依赖链上的任何加载失败
 # ---------------- app factory ----------------
 def create_app(root: Path | None = None) -> Flask:
     root = Path(root) if root else Path(
-        os.environ.get("KB_ROOT") or Path(__file__).resolve().parents[1])
+        __import__("os").environ.get("KB_ROOT") or Path(__file__).resolve().parents[1])
     content = root / "content"
     indexes = root / "indexes"
     app = Flask(__name__, root_path=str(root / "app"),
@@ -449,7 +87,8 @@ def create_app(root: Path | None = None) -> Flask:
             rag_state["embedder"] = rag_state["store"] = None
         return rag_state["embedder"], rag_state["store"]
 
-    # 即存即搜：后台线程每 30 秒检测一次，新文件/修改自动入索引
+    # 单一 watcher：每 30 秒统一驱动 FTS 与向量索引的增量同步
+    # （拆分前是两套独立轮询，失效判据不同步会导致短窗内搜索/语义结果矛盾）
     def _index_watcher():
         while True:
             time.sleep(30)
@@ -458,7 +97,6 @@ def create_app(root: Path | None = None) -> Flask:
                     build_index(content, indexes)
             except Exception:
                 pass  # 静默：索引重建失败不影响服务
-            # 向量索引同步（同样静默降级）：仅当 RAG 组件已初始化成功
             if rag_state["embedder"] is not None and rag_state["store"] is not None:
                 try:
                     sync_rag(content, rag_state["embedder"], rag_state["store"])
@@ -487,9 +125,10 @@ def create_app(root: Path | None = None) -> Flask:
 
     @app.context_processor
     def chrome():
-        return {"LABELS": DOMAIN_LABELS, "SUB_LABELS": SUB_LABELS,
-                "SOURCE_LABELS": SOURCE_LABELS, "STATUS_LABELS": STATUS_LABELS,
-                "HUES": GRAPH_HUES,
+        tax = load_taxonomy(content)
+        return {"LABELS": tax["domains"], "SUB_LABELS": tax["subs"],
+                "SOURCE_LABELS": tax["sources"], "STATUS_LABELS": tax["status"],
+                "HUES": tax["hues"],
                 "obsidian_connected": obsidian_vault_connected(content)}
 
     @app.route("/")
@@ -506,6 +145,7 @@ def create_app(root: Path | None = None) -> Flask:
     def home():
         stats = corpus_stats()
         recent = sorted(md_files(content), key=lambda x: x[0].stat().st_mtime, reverse=True)[:6]
+        tax = load_taxonomy(content)
         recents = []
         for p, rel in recent:
             fm, _ = parse_frontmatter(p.read_text(encoding="utf-8", errors="replace"))
@@ -526,6 +166,7 @@ def create_app(root: Path | None = None) -> Flask:
 
     def collect_doc(domain, sub, name, domains):
         """组装单篇文档视图数据（workbench 渲染与 /api/doc 共用）。"""
+        tax = load_taxonomy(content)
         p = find_doc(content, domain, sub, name)
         if not p:
             return None
@@ -549,10 +190,10 @@ def create_app(root: Path | None = None) -> Flask:
             "notes": read_notes(p),
             "size": doc_size,
             "domain": domain, "sub": sub, "name": name,
-            "domain_label": DOMAIN_LABELS.get(domain, domain),
+            "domain_label": tax["domains"].get(domain, domain),
             "sub_label": sobj["label"],
-            "source_label": SOURCE_LABELS.get(src_raw, src_raw or "未知"),
-            "status_label": STATUS_LABELS.get(str(fm.get("status", "")), str(fm.get("status", "")) or "未标记"),
+            "source_label": tax["sources"].get(src_raw, src_raw or "未知"),
+            "status_label": tax["status"].get(str(fm.get("status", "")), str(fm.get("status", "")) or "未标记"),
         }
         info_rows = [
             ("来源", doc["source_label"]),
@@ -651,12 +292,12 @@ def create_app(root: Path | None = None) -> Flask:
         rag_error = None
         if q:
             if semantic:
-                emb, store = get_rag()
-                if emb is None or store is None:
+                emb, rstore = get_rag()
+                if emb is None or rstore is None:
                     rag_error = _RAG_IMPORT_ERROR or "初始化失败"
                 else:
                     try:
-                        hits = query_rag(store, emb, q, k=20)
+                        hits = query_rag(rstore, emb, q, k=20)
                         seen: set[str] = set()
                         for h in hits:
                             if h["file"] in seen:
@@ -695,34 +336,11 @@ def create_app(root: Path | None = None) -> Flask:
                 "title": p.stem, "tags": [], "source": "reader-edit",
                 "collected": time.strftime("%Y-%m-%d"), "status": "stable",
             }
-            body = dump_frontmatter(stamp, body)
+            body = store.dump_frontmatter(stamp, body)
         p.write_text(body, encoding="utf-8")
         # 外科手术式索引更新：仅替换本文档的正文与双链行（毫秒级，避免全量重建的等待）
         rel_posix = p.relative_to(content.resolve()).as_posix()
-        fm2, body2 = parse_frontmatter(body)
-        title = str(fm2.get("title") or p.stem)
-        tags = fm2.get("tags")
-        tag_str = " ".join(tags) if isinstance(tags, list) else str(tags or "")
-        con = open_db(indexes)
-        try:
-            con.execute("DELETE FROM docs WHERE path=?", (rel_posix,))
-            con.execute("INSERT INTO docs(path,title,tags,body) VALUES(?,?,?,?)",
-                        (rel_posix, cjk_space(title), cjk_space(tag_str), cjk_space(body2)))
-            con.execute("DELETE FROM links WHERE src=?", (rel_posix,))
-            _, by_stem, by_title = resolve_maps_from_db(con)
-            by_path = {path_.rsplit("/", 1)[-1][:-3] if path_.endswith(".md") else path_.rsplit("/", 1)[-1]: path_
-                       for path_, in con.execute("SELECT path FROM docs")}
-            for raw in extract_wikilinks(body2):
-                dst = resolve_wikilink(raw, by_path, by_stem, by_title)
-                dst_title = ""
-                if dst:
-                    row = con.execute("SELECT title FROM docs WHERE path=?", (dst,)).fetchone()
-                    dst_title = cjk_clean(row[0]) if row else ""
-                con.execute("INSERT INTO links(src,dst,raw,resolved,src_title,dst_title) VALUES(?,?,?,?,?,?)",
-                            (rel_posix, dst or "", raw, 1 if dst else 0, title, dst_title))
-            con.commit()
-        finally:
-            con.close()
+        upsert_doc_in_index(indexes, rel_posix, p, body)
         return jsonify({"ok": True, "path": rel_posix})
 
     @app.post("/api/note")
@@ -743,7 +361,7 @@ def create_app(root: Path | None = None) -> Flask:
         p = safe_rel(data.get("path", ""), WRITABLE_EXTS)
         fm, body = parse_frontmatter(p.read_text(encoding="utf-8", errors="replace"))
         fm["favorite"] = not (fm.get("favorite") is True)
-        p.write_text(dump_frontmatter(fm, body), encoding="utf-8")
+        p.write_text(store.dump_frontmatter(fm, body), encoding="utf-8")
         return jsonify({"ok": True, "favorite": fm["favorite"]})
 
     @app.get("/api/links")
@@ -787,16 +405,81 @@ def create_app(root: Path | None = None) -> Flask:
                 sib.rename(s)
                 moved.append(sib.relative_to(root_resolved).as_posix())
         # 外科手术式索引删除：只移除本文档的正文与双链行（毫秒级）
-        rel_posix = rel.as_posix()
-        con = open_db(indexes)
-        try:
-            con.execute("DELETE FROM docs WHERE path=?", (rel_posix,))
-            con.execute("DELETE FROM links WHERE src=?", (rel_posix,))
-            con.execute("DELETE FROM links WHERE dst=?", (rel_posix,))
-            con.commit()
-        finally:
-            con.close()
+        remove_doc_from_index(indexes, rel.as_posix())
         return jsonify({"ok": True, "moved": moved})
+
+    @app.post("/api/move")
+    def api_move():
+        """移动/重命名文档（含层级调整）。同步级联：
+        ① 磁盘文件 + 旁挂（.notes.md / .html）；② FTS docs+links 表；
+        ③ 向量索引 rag.db。src/dst 均为 content/ 相对 posix 路径。"""
+        data = request.get_json(force=True)
+        src = safe_rel(data.get("src", ""), WRITABLE_EXTS)
+        dst_rel = (data.get("dst", "") or "").strip().replace("\\", "/")
+        if not dst_rel or not dst_rel.endswith(".md") or dst_rel.startswith("/") or ".." in dst_rel:
+            return jsonify({"ok": False, "error": "invalid dst"}), 400
+        root_resolved = content.resolve()
+        dst = (content / dst_rel)
+        dst_resolved = dst.resolve()
+        if root_resolved not in dst_resolved.parents or dst_resolved.exists():
+            return jsonify({"ok": False, "error": "dst outside content/ or already exists"}), 400
+        src_rel = src.relative_to(root_resolved).as_posix()
+        dst.parent.mkdir(parents=True, exist_ok=True)
+        # ① 磁盘：主文件 + 旁挂一起搬
+        src.rename(dst)
+        moved_sibs = []
+        for sib, sib_suffix in ((src.with_name(src.name + ".notes.md"), ".notes.md"),
+                                (src.with_name(src.stem + ".html"), ".html")):
+            if sib.is_file():
+                sib_dst = dst.with_name(dst.name + ".notes.md") if sib_suffix == ".notes.md" \
+                    else dst.with_name(dst.stem + ".html")
+                sib.rename(sib_dst)
+                moved_sibs.append(sib_suffix)
+        # ② FTS：外科手术式重建该文档行 + 双链（src 方向重写，dst 方向靠 resolve 重算）
+        body = dst.read_text(encoding="utf-8", errors="replace")
+        remove_doc_from_index(indexes, src_rel)
+        upsert_doc_in_index(indexes, dst_rel, dst, body)
+        # ③ 向量索引：换路径（块内容未变，mtime 未变，直接搬 files 表元数据与 chunk 归属）
+        if RagStore is not None:
+            try:
+                rstore = RagStore(indexes)
+                if rstore.known_files().get(src_rel) is not None:
+                    rstore.con.execute("UPDATE vec_docs SET file=? WHERE file=?", (dst_rel, src_rel))
+                    rstore.con.execute("UPDATE vec_docs SET chunk_id=?||'::'||chunk_ix WHERE file=? AND chunk_id LIKE ?",
+                                       (dst_rel, src_rel, src_rel + ":%"))
+                    rstore.con.execute("UPDATE files SET path=? WHERE path=?", (dst_rel, src_rel))
+                    rstore.con.commit()
+                rstore.close()
+            except Exception:
+                pass  # 向量索引搬移失败不阻塞；下轮 sync_rag 会全量对齐
+        return jsonify({"ok": True, "src": src_rel, "dst": dst_rel, "moved_sibs": moved_sibs})
+
+    @app.get("/api/stats")
+    def api_stats():
+        """文档统计：字数/行数/标题数/代码块数/双链数/标签/收录日期/文件大小。"""
+        p = safe_rel(request.args.get("path", ""), WRITABLE_EXTS)
+        if not p.is_file():
+            abort(404, "文档不存在")
+        raw = p.read_text(encoding="utf-8", errors="replace")
+        fm, body = parse_frontmatter(raw)
+        headings = len(re.findall(r"^#{1,6}\\s+", body, re.M))
+        code_blocks = len(re.findall(r"^```", body, re.M)) // 2
+        links = len(extract_wikilinks(body))
+        cjk_n = len(re.findall(r"[\u4e00-\u9fff]", body))
+        words = len(re.findall(r"[A-Za-z0-9_]+", body))
+        st = p.stat()
+        return jsonify({
+            "path": p.relative_to(content.resolve()).as_posix(),
+            "title": str(fm.get("title") or p.stem),
+            "tags": fm.get("tags", []) if isinstance(fm.get("tags"), list) else [],
+            "source": str(fm.get("source", "")),
+            "collected": str(fm.get("collected", "")),
+            "chars": len(body), "cjk": cjk_n, "words": words,
+            "lines": body.count("\n") + 1,
+            "headings": headings, "code_blocks": code_blocks, "wikilinks": links,
+            "size": st.st_size,
+            "mtime": int(st.st_mtime),
+        })
 
     @app.get("/api/rag")
     def api_rag():
@@ -804,8 +487,8 @@ def create_app(root: Path | None = None) -> Flask:
         q = request.args.get("q", "").strip()
         if not q:
             return jsonify({"error": "empty query"}), 400
-        emb, store = get_rag()
-        if emb is None or store is None:
+        emb, rstore = get_rag()
+        if emb is None or rstore is None:
             return jsonify({"error": "rag unavailable",
                             "detail": _RAG_IMPORT_ERROR or "init failed"}), 503
         try:
@@ -814,7 +497,7 @@ def create_app(root: Path | None = None) -> Flask:
             k = 8
         domain = request.args.get("domain") or None
         sub = request.args.get("sub") or None
-        hits = query_rag(store, emb, q, k=k, domain=domain, sub=sub)
+        hits = query_rag(rstore, emb, q, k=k, domain=domain, sub=sub)
         return jsonify({"q": q, "hits": hits})
 
     @app.get("/api/rag/status")
@@ -822,8 +505,8 @@ def create_app(root: Path | None = None) -> Flask:
         if rag_status is None:  # rag 组件导入失败：如实上报，不炸 500
             return jsonify({"enabled": False, "chunks": 0, "model": "",
                             "detail": _RAG_IMPORT_ERROR})
-        emb, store = get_rag()
-        st = rag_status(store)
+        emb, rstore = get_rag()
+        st = rag_status(rstore)
         st["detail"] = _RAG_IMPORT_ERROR
         return jsonify(st)
 
