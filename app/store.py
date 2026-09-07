@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
 """知库语料层 —— frontmatter、分类树扫描、备注、Obsidian 连接、分类学装载。
 
-content/ 的 Markdown/HTML 是唯一事实源；本模块只读语料 + 写回元数据，
-不含任何路由与索引逻辑（FTS 见 fts.py，向量见 rag.py，路由见 app.py）。
+content/ 的 Markdown/HTML 是唯一事实源；本模块负责读语料 + 写回元数据 +
+语料变更原语（移动/重命名/标签治理），不含路由与索引逻辑
+（FTS 见 fts.py，向量见 rag.py，路由见 app.py）。
 
 分类学（taxonomy）权威：content/_meta/taxonomy.json（_ 前缀目录不进索引）。
 装载策略：JSON 覆盖内置缺省；JSON 缺失/损坏时全部走内置缺省，阅读器不炸。
@@ -10,6 +11,7 @@ content/ 的 Markdown/HTML 是唯一事实源；本模块只读语料 + 写回�
 import json
 import os
 import re
+import shutil
 import time
 from pathlib import Path
 
@@ -290,3 +292,189 @@ def read_notes(doc_path: Path) -> list[dict]:
         if m:
             out.append({"when": m.group(1), "text": m.group(2)})
     return list(reversed(out))  # newest first
+
+
+# ---------------- 语料变更原语（治理工具共用；一切变更先 dry-run） ----------------
+def sidecars_of(doc_path: Path) -> list[Path]:
+    """文档的旁挂文件（备注、美化版），移动/重命名时必须随行。"""
+    out = []
+    for sib in (doc_path.with_name(doc_path.name + ".notes.md"),
+                doc_path.with_name(doc_path.stem + ".html")):
+        if sib.is_file():
+            out.append(sib)
+    return out
+
+
+def rename_doc(doc_path: Path, new_path: Path) -> dict:
+    """移动/重命名单个文档及其旁挂；目标存在时拒绝。返回实际移动清单。"""
+    if new_path.exists():
+        raise FileExistsError(f"dst exists: {new_path}")
+    new_path.parent.mkdir(parents=True, exist_ok=True)
+    doc_path.rename(new_path)
+    moved = [str(doc_path)]
+    for sib in sidecars_of(doc_path):
+        if ".notes.md" in sib.name:
+            sib_new = new_path.with_name(new_path.name + ".notes.md")
+        else:
+            sib_new = new_path.with_name(new_path.stem + ".html")
+        sib.rename(sib_new)
+        moved.append(str(sib))
+    return {"src": str(doc_path), "dst": str(new_path), "moved": moved}
+
+
+def iter_doc_frontmatter(content: Path):
+    """迭代全库文档：yield (abs_path, fm, body)。只读。"""
+    for p, _rel in md_files(content):
+        raw = p.read_text(encoding="utf-8", errors="replace")
+        fm, body = parse_frontmatter(raw)
+        yield p, fm, body
+
+
+def tag_census(content: Path) -> dict[str, int]:
+    """全库标签普查：{tag: 文档数}（保留原大小写，聚合时大小写不敏感）。"""
+    census: dict[str, int] = {}
+    seen_per_doc: set = set()
+    for _p, fm, _b in iter_doc_frontmatter(content):
+        tags = fm.get("tags")
+        if not isinstance(tags, list):
+            continue
+        seen_per_doc.clear()
+        for t in tags:
+            t = str(t).strip()
+            if t and t.lower() not in seen_per_doc:
+                seen_per_doc.add(t.lower())
+                census[t] = census.get(t, 0) + 1
+    return dict(sorted(census.items(), key=lambda x: -x[1]))
+
+
+def find_similar_tags(census: dict[str, int]) -> list[tuple[str, str, float]]:
+    """疑似重叠标签对，按可疑度排序。
+    降噪规则（中文短词编辑距离普遍小，直接比会误导）：
+    - 大小写差异（1.0）：照报；
+    - 包含关系（0.9）：仅当短词含 ASCII 字母/数字（AI/AI资产、git/GitHub
+      这类有词根价值的），纯中文双字包含对（如 源码/源码分析）也报但置信降
+      一档 0.7，避免浩劫；
+    - 编辑距离（0.6）：仅 ASCII 词且阈值 ≤1（Vue2/Vue3 这类），中文词不比。"""
+    tags = list(census.keys())
+    pairs: list[tuple[str, str, float]] = []
+
+    def lev(a: str, b: str) -> int:
+        if abs(len(a) - len(b)) > 1:
+            return 99
+        prev = list(range(len(b) + 1))
+        for i, ca in enumerate(a, 1):
+            cur = [i]
+            for j, cb in enumerate(b, 1):
+                cur.append(min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (ca != cb)))
+            prev = cur
+        return prev[-1]
+
+    def has_ascii(s: str) -> bool:
+        return any(c.isascii() and c.isalnum() for c in s)
+
+    for i, a in enumerate(tags):
+        for b in tags[i + 1:]:
+            al, bl = a.lower(), b.lower()
+            if al == bl:
+                pairs.append((a, b, 1.0))
+            elif al in bl or bl in al:
+                short = a if len(al) <= len(bl) else b
+                pairs.append((a, b, 0.9 if has_ascii(short) else 0.7))
+            elif has_ascii(a) and has_ascii(b) and lev(al, bl) <= 1:
+                pairs.append((a, b, 0.6))
+    return sorted(pairs, key=lambda x: -x[2])
+
+
+def merge_tag(content: Path, src: str, dst: str, apply: bool = False) -> dict:
+    """把标签 src 并入 dst（大小写不敏感匹配 src）。默认 dry-run。
+    dst 不存在时等价于重命名。返回受影响文档清单与预览 diff。"""
+    affected: list[dict] = []
+    for p, fm, body in iter_doc_frontmatter(content):
+        tags = fm.get("tags")
+        if not isinstance(tags, list):
+            continue
+        new_tags: list[str] = []
+        hit = False
+        for t in tags:
+            if str(t).strip().lower() == src.lower():
+                hit = True
+                if dst not in new_tags:
+                    new_tags.append(dst)
+            else:
+                if str(t) not in new_tags:
+                    new_tags.append(str(t))
+        if not hit:
+            continue
+        old_fm = list(tags)
+        fm2 = dict(fm)
+        fm2["tags"] = new_tags
+        new_raw = dump_frontmatter(fm2, body)
+        affected.append({"path": p, "old_tags": old_fm, "new_tags": new_tags,
+                         "new_raw": new_raw})
+    if apply:
+        for a in affected:
+            a["path"].write_text(a["new_raw"], encoding="utf-8")
+    return {"src": src, "dst": dst, "apply": apply,
+            "n_docs": len(affected),
+            "docs": [{"path": a["path"].relative_to(content).as_posix(),
+                      "old_tags": a["old_tags"], "new_tags": a["new_tags"]} for a in affected]}
+
+
+def rename_sub(content: Path, domain: str, old_sub: str, new_sub: str,
+               apply: bool = False) -> dict:
+    """重命名/移动整个子域目录：逐文档搬移（含旁挂），更新 taxonomy.json。
+    默认 dry-run。返回计划/执行的文件清单。调用方负责随后重建 FTS 索引
+    （build_index 全量 <1s）并触发 sync_rag（mtime 未变但路径变化，
+    sync_rag 会把新路径当新增、旧路径当删除自然对齐）。"""
+    if "/" in new_sub or new_sub.startswith("_") or new_sub in SKIP_DIRS:
+        raise ValueError(f"invalid new sub name: {new_sub}")
+    src_dir = content / domain / (old_sub if old_sub != "_root" else "")
+    if not src_dir.is_dir():
+        raise FileNotFoundError(f"sub dir not found: {src_dir}")
+    docs = sorted(p for p in src_dir.rglob("*")
+                  if p.is_file() and p.suffix in SERVABLE_EXTS)
+    plan = []
+    tax_path = content / "_meta" / "taxonomy.json"
+    for p in docs:
+        rel_old = p.relative_to(content)
+        rel_new = Path(new_sub) / rel_old.relative_to(old_sub) \
+            if old_sub != "_root" else Path(rel_old.parent.name) / rel_old.name
+        # _root 重命名 = 把域根散文件收进新子域
+        if old_sub == "_root":
+            rel_new = Path(new_sub) / p.name
+        plan.append({"src": rel_old.as_posix(), "dst": rel_new.as_posix(),
+                     "abs": p})
+    if apply:
+        for item in plan:
+            p = item["abs"]
+            new_path = content / item["dst"]
+            new_path.parent.mkdir(parents=True, exist_ok=True)
+            p.rename(new_path)
+            for sib in sidecars_of(p):
+                sib.rename(new_path.with_name(sib.name))
+        # taxonomy.json：scoped 键 域/旧子域 → 域/新子域；普通键同步改名
+        if tax_path.is_file():
+            tax = json.loads(tax_path.read_text(encoding="utf-8"))
+            subs = tax.get("subs", {})
+            scoped_old, scoped_new = f"{domain}/{old_sub}", f"{domain}/{new_sub}"
+            if old_sub == "_root":
+                # 域根散文件收进新子域：scoped 键直接新增
+                subs.setdefault(scoped_new, new_sub)
+            else:
+                subs = {(scoped_new if k == scoped_old else k): v
+                        for k, v in subs.items()}
+                if old_sub in subs:
+                    subs = {(new_sub if k == old_sub else k): v
+                            for k, v in subs.items()}
+            tax["subs"] = subs
+            tax_path.write_text(json.dumps(tax, ensure_ascii=False, indent=2),
+                                encoding="utf-8")
+        # 清理空的旧目录（_root 场景无独立目录）
+        if old_sub != "_root":
+            try:
+                src_dir.rmdir()
+            except OSError:
+                pass  # 尚有旁挂/隐藏文件，留待人工
+    return {"domain": domain, "old_sub": old_sub, "new_sub": new_sub,
+            "apply": apply, "n_docs": len(plan),
+            "plan": [{"src": i["src"], "dst": i["dst"]} for i in plan]}

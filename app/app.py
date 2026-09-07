@@ -52,6 +52,12 @@ except Exception as _e:  # ImportError 及其依赖链上的任何加载失败
     query_rag = sync_rag = rag_status = None
     _RAG_IMPORT_ERROR = str(_e)
 
+# 阅读统计（v1，设计定稿见 docs/统计数据模型-定稿.md；库损坏时静默降级为无统计）
+try:
+    from app.reading import ReadingStore
+except Exception:
+    ReadingStore = None
+
 
 # ---------------- app factory ----------------
 def create_app(root: Path | None = None) -> Flask:
@@ -481,6 +487,20 @@ def create_app(root: Path | None = None) -> Flask:
             "mtime": int(st.st_mtime),
         })
 
+    @app.post("/api/tag/merge")
+    def api_tag_merge():
+        """标签合并（复用 store.merge_tag；apply=true 才写盘并重建 FTS）。
+        返回受影响文档清单供前端确认框展示。"""
+        data = request.get_json(force=True)
+        src = str(data.get("src", "")).strip()
+        dst = str(data.get("dst", "")).strip()
+        if not src or not dst:
+            return jsonify({"ok": False, "error": "src/dst required"}), 400
+        r = store.merge_tag(content, src, dst, apply=bool(data.get("apply")))
+        if r["apply"]:
+            build_index(content, indexes)
+        return jsonify({"ok": True, **r})
+
     @app.get("/api/rag")
     def api_rag():
         """语义检索：自然语言 → 向量 → 最近邻块。组件缺失/未就绪时返回 503。"""
@@ -509,6 +529,54 @@ def create_app(root: Path | None = None) -> Flask:
         st = rag_status(rstore)
         st["detail"] = _RAG_IMPORT_ERROR
         return jsonify(st)
+
+    @app.get("/stats")
+    def stats_page():
+        """月度阅读报表（默认当月）。库缺失时引导文案。"""
+        if ReadingStore is None:
+            abort(404, "统计组件不可用")
+        ym = request.args.get("ym") or time.strftime("%Y-%m")
+        if not re.fullmatch(r"\d{4}-\d{2}", ym):
+            ym = time.strftime("%Y-%m")
+        rs = ReadingStore(indexes)
+        try:
+            kpi = rs.monthly(ym)
+        finally:
+            rs.close()
+        prev = (lambda y, m: f"{y - 1}-12" if m == 1 else f"{y}-{m - 1:02d}")(
+            *(int(x) for x in ym.split("-")))
+        nxt = (lambda y, m: f"{y + 1}-01" if m == 12 else f"{y}-{m + 1:02d}")(
+            *(int(x) for x in ym.split("-")))
+        now_ym = time.strftime("%Y-%m")
+        return render_template("stats.html", ym=ym, kpi=kpi, prev_ym=prev,
+                               next_ym=None if nxt > now_ym else nxt)
+
+    @app.post("/api/track")
+    def api_track():
+        """阅读事件上报；组件缺失/非法入参一律静默成功（统计永不妨碍阅读）。"""
+        if ReadingStore is None:
+            return jsonify({"ok": True, "tracked": False})
+        data = request.get_json(force=True, silent=True) or {}
+        path = str(data.get("path", ""))
+        event = str(data.get("event", ""))
+        if not path or event not in ("open", "read_minute", "finish"):
+            return jsonify({"ok": True, "tracked": False})
+        title = ""
+        # 从路径安全地取标题：仅当该路径确实在语料树内
+        try:
+            pp = safe_rel(path, WRITABLE_EXTS)
+            if pp.is_file():
+                fm2, _ = parse_frontmatter(pp.read_text(encoding="utf-8", errors="replace"))
+                title = str(fm2.get("title") or pp.stem)
+        except Exception:
+            title = path.rsplit("/", 1)[-1][:-3] if path.endswith(".md") else path
+        seconds = max(0, min(int(data.get("seconds") or 0), 3600))
+        rs = ReadingStore(indexes)
+        try:
+            tracked = rs.track(path, title, event, seconds)
+        finally:
+            rs.close()
+        return jsonify({"ok": True, "tracked": bool(tracked)})
 
     @app.after_request
     def static_no_cache(response):

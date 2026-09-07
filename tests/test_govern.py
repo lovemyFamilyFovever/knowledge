@@ -1,0 +1,90 @@
+# -*- coding: utf-8 -*-
+"""知库治理与统计 smoke —— 临时语料/临时库，不碰真实 content/。
+
+覆盖：标签普查/合并（dry-run 与 apply）、疑似重叠降噪、阅读统计事件与月度聚合。
+运行：.python\\python.exe tests/test_govern.py
+"""
+import sys
+import tempfile
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
+
+from app.store import (tag_census, find_similar_tags, merge_tag,  # noqa: E402
+                       parse_frontmatter)
+from app.reading import ReadingStore  # noqa: E402
+
+DOC1 = "---\ntitle: \"A\"\ntags: [AI, 提示词]\n---\n\n# A\n内容"
+DOC2 = "---\ntitle: \"B\"\ntags: [ai, 修正]\n---\n\n# B\n内容"
+DOC3 = "---\ntitle: \"C\"\ntags: [CSS]\n---\n\n# C\n内容"
+
+
+def seed(root: Path) -> Path:
+    d = root / "content" / "baike" / "ai-and-llm"
+    d.mkdir(parents=True)
+    (d / "a.md").write_text(DOC1, encoding="utf-8")
+    (d / "b.md").write_text(DOC2, encoding="utf-8")
+    (d / "c.md").write_text(DOC3, encoding="utf-8")
+    return root / "content"
+
+
+def test_tag_census_and_similar():
+    with tempfile.TemporaryDirectory() as td:
+        content = seed(Path(td))
+        census = tag_census(content)
+        # census 保留原大小写键（AI 与 ai 分开计数），聚合在 merge 阶段做
+        assert sum(census.values()) == 5, f"census 应含 5 个标签实例：{census}"
+        assert census.get("AI") == 1 and census.get("ai") == 1
+        pairs = find_similar_tags(census)
+        case_pairs = [p for p in pairs if p[2] == 1.0]
+        assert case_pairs and {case_pairs[0][0].lower(), case_pairs[0][1].lower()} == {"ai"}, \
+            "应检出 AI/ai 大小写对"
+        # 中文双字词不应被编辑距离误报（提示词 vs 修正 无 ASCII，距离>1）
+        assert not any({p[0], p[1]} == {"提示词", "修正"} for p in pairs)
+    print("ok  tag_census + find_similar_tags（含大小写聚合与降噪）")
+
+
+def test_merge_tag_dryrun_then_apply():
+    with tempfile.TemporaryDirectory() as td:
+        content = seed(Path(td))
+        r = merge_tag(content, "ai", "AI 资产", apply=False)
+        assert r["n_docs"] == 2, f"dry-run 应命中 2 篇：{r['n_docs']}"
+        raw = (content / "baike" / "ai-and-llm" / "a.md").read_text(encoding="utf-8")
+        assert "tags: [AI" in raw, "dry-run 不应写盘"
+        r2 = merge_tag(content, "ai", "AI 资产", apply=True)
+        assert r2["n_docs"] == 2
+        fm, _ = parse_frontmatter((content / "baike" / "ai-and-llm" / "a.md").read_text(encoding="utf-8"))
+        assert fm["tags"] == ["AI 资产", "提示词"], f"合并后 tags 应正确：{fm['tags']}"
+        fm2, _ = parse_frontmatter((content / "baike" / "ai-and-llm" / "b.md").read_text(encoding="utf-8"))
+        assert fm2["tags"] == ["AI 资产", "修正"], "小写 ai 也应被并入且去重"
+    print("ok  merge_tag：dry-run 预览 → apply 写盘 → 大小写不敏感 + 去重")
+
+
+def test_reading_stats():
+    with tempfile.TemporaryDirectory() as td:
+        rs = ReadingStore(Path(td) / "indexes")
+        assert rs.track("a.md", "A", "open") is True
+        assert rs.track("a.md", "A", "open") is False, "10 分钟内 open 应去重"
+        for _ in range(3):
+            rs.track("a.md", "A", "read_minute", seconds=60)
+        rs.track("b.md", "B", "open")
+        ym = rs.monthly(rs.con.execute("SELECT ym FROM reading_events LIMIT 1").fetchone()[0])
+        assert ym["opened_docs"] == 2
+        assert ym["docs"][0]["path"] == "a.md", "a.md 时长最高应排第一"
+        assert ym["total_minutes"] == 3.0, f"总分钟应 3.0：{ym['total_minutes']}"
+        assert ym["daily"] and ym["daily"][0]["minutes"] == 3.0
+        try:
+            rs.track("a.md", "A", "hack")
+            assert False, "非法事件应抛错"
+        except ValueError:
+            pass
+        rs.close()
+    print("ok  reading stats：open 去重 + 分钟累计 + 月度聚合")
+
+
+if __name__ == "__main__":
+    test_tag_census_and_similar()
+    test_merge_tag_dryrun_then_apply()
+    test_reading_stats()
+    print("\nGOVERN+STATS TESTS OK")

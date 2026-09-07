@@ -1,5 +1,5 @@
 /* 知库 reader 前端：主题、面板折叠、客户端路由、正文渲染、编辑/备注/收藏/删除、双链、快捷键 */
-window.APP_JS_VERSION = 13;
+window.APP_JS_VERSION = 14;
 
 const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
@@ -267,6 +267,7 @@ async function openDoc(domain, sub, name) {
   renderCrumb();
   renderInfo();
   renderNotes();
+  setTrackingDoc(DOC.rel);
   linksLoadedFor = null;
   if (document.querySelector("#pane-links.active")) loadLinks(); // 停在双链标签时跟随切换
   const art = document.querySelector(".article"); if (art) art.scrollTop = 0;
@@ -575,6 +576,37 @@ document.addEventListener("contextmenu", e => {
   }
 });
 
+/* ---------- 阅读统计埋点（v1：open / 60s 心跳 / finish，全部本地） ---------- */
+let READ_TRACK = { path: null, lastOpenSent: 0, minutes: 0, timer: null };
+
+function trackEvent(event, seconds) {
+  if (!READ_TRACK.path) return;
+  fetch("/api/track", { method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ path: READ_TRACK.path, event, seconds }) }).catch(() => {});
+}
+
+function startReadTracking() {
+  clearInterval(READ_TRACK.timer);
+  READ_TRACK.minutes = 0;
+  READ_TRACK.timer = setInterval(() => {
+    // 页面不可见不计时长；每满 1 分钟上报一次增量
+    if (document.visibilityState !== "visible" || !READ_TRACK.path) return;
+    READ_TRACK.minutes += 1;
+    trackEvent("read_minute", 60);
+  }, 60000);
+}
+
+function setTrackingDoc(rel) {
+  if (READ_TRACK.path === rel) return; // 同文档刷新不重复 open
+  READ_TRACK.path = rel;
+  READ_TRACK.minutes = 0;
+  const now = Date.now();
+  if (rel && now - READ_TRACK.lastOpenSent > 600000) { // 10 分钟同文档去重（双保险）
+    READ_TRACK.lastOpenSent = now;
+    trackEvent("open", 0);
+  }
+}
+
 /* ---------- 快捷键与搜索 ---------- */
 document.addEventListener("keydown", e => {
   if (e.key === "/" && !["INPUT", "TEXTAREA"].includes(document.activeElement.tagName)) { e.preventDefault(); const q = $("#q"); q && q.focus(); }
@@ -595,6 +627,8 @@ if (docData) {
     renderCrumb();
     renderInfo();
     renderNotes();
+    setTrackingDoc(DOC.rel);
+    startReadTracking();
   } catch (e) { console.error("初始渲染失败", e); }
 }
 loadTree().then(() => renderTree());

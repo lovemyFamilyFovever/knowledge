@@ -20,6 +20,11 @@ if [ -f "tests/test_new_project.py" ]; then
   "$PY" tests/test_new_project.py || exit 1
 fi
 
+if [ -f "tests/test_govern.py" ]; then
+  echo "[pre-commit] running govern/stats smoke..."
+  "$PY" tests/test_govern.py || exit 1
+fi
+
 echo "[pre-commit] running RAG smoke (SKIP if deps missing)..."
 "$PY" tests/test_rag.py || exit 1
 

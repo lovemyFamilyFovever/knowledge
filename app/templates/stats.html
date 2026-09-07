@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block title %}阅读统计 · {{ ym }} · 知库{% endblock %}
+{% block body %}
+<main class="single">
+  <section class="panel page-panel">
+    <div class="crumb"><b>月度阅读统计</b><span class="sep">·</span>{{ ym }}
+      <span class="spacer"></span>
+      {% if prev_ym %}<a class="iconbtn" href="/stats?ym={{ prev_ym }}">← {{ prev_ym }}</a>{% endif %}
+      {% if next_ym %}<a class="iconbtn" href="/stats?ym={{ next_ym }}">{{ next_ym }} →</a>{% endif %}
+      <a class="iconbtn" href="/">← 返回阅读</a></div>
+    <div class="page-body">
+      <div class="stats-kpis">
+        <div class="skpi"><div class="n">{{ kpi.active_days }}</div><div class="l">活跃天数</div></div>
+        <div class="skpi"><div class="n">{{ kpi.total_minutes }}</div><div class="l">阅读分钟</div></div>
+        <div class="skpi"><div class="n">{{ kpi.opened_docs }}</div><div class="l">打开文档</div></div>
+        <div class="skpi"><div class="n">{{ kpi.finished_docs }}</div><div class="l">读完文档</div></div>
+      </div>
+
+      {% if kpi.daily %}
+      <h3 style="margin:22px 0 8px;font-size:14.5px">每日阅读（分钟）</h3>
+      {% set maxmin = (kpi.daily | map(attribute='minutes') | max) or 1 %}
+      <div class="daily-bars">
+        {% for d in kpi.daily %}
+        <div class="dbar" title="{{ d.day }}：{{ d.minutes }} 分钟 / {{ d.docs }} 篇">
+          <div class="dbar-fill" style="height: {{ (d.minutes / maxmin * 100) | round(0) }}%"></div>
+          <div class="dbar-day">{{ d.day[8:] }}</div>
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %}
+
+      <h3 style="margin:26px 0 8px;font-size:14.5px">文档榜（按阅读时长）</h3>
+      {% if kpi.docs %}
+      <div class="results">
+        {% for d in kpi.docs %}
+        <a class="result" href="/doc/{{ d.path[:-3] }}">
+          <div class="doc-t">{{ d.title }}<span class="mini tag" style="margin-left:8px">{{ d.minutes }} 分钟 · 开 {{ d.opens }} 次</span></div>
+          <div class="rp">{{ d.path }}</div>
+        </a>
+        {% endfor %}
+      </div>
+      {% else %}
+      <div class="empty">本月还没有阅读记录。打开任意文档后 60 秒心跳开始累计。</div>
+      {% endif %}
+    </div>
+  </section>
+</main>
+{% endblock %}

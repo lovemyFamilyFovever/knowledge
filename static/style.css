@@ -345,3 +345,14 @@ html[data-theme="dark"] #ctx-menu{background:#0d1412}
 .stats-box{width:min(520px,92vw);max-height:78vh;display:flex;flex-direction:column}
 .stats-body{padding:16px 22px;overflow:auto}
 .stats-body .meta-row{padding:7px 0}
+
+/* ---------- 月度统计页（stats v14） ---------- */
+.stats-kpis{display:flex;gap:0;border:1px solid var(--edge);margin:14px 0 6px;flex-wrap:wrap}
+.skpi{flex:1 1 120px;padding:14px 18px;border-right:1px solid var(--edge)}
+.skpi:last-child{border-right:none}
+.skpi .n{font-size:24px;font-weight:600;color:var(--acc);font-variant-numeric:tabular-nums}
+.skpi .l{font-size:12px;color:var(--faint);margin-top:2px}
+.daily-bars{display:flex;align-items:flex-end;gap:5px;height:110px;padding:8px 4px 0;flex-wrap:nowrap;overflow-x:auto}
+.dbar{flex:0 0 26px;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%}
+.dbar-fill{width:100%;background:linear-gradient(180deg,var(--acc),var(--acc-soft));border-radius:2px 2px 0 0;min-height:2px}
+.dbar-day{font-size:9.5px;color:var(--faint);margin-top:4px;font-family:var(--num)}

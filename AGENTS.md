@@ -13,7 +13,7 @@
 3. `indexes/`（index.db / rag.db）是纯派生缓存：可随时删除重建；禁止手改、禁止 git 跟踪。
 4. 删除必须走软删除（→ `content/_trash/`，`/api/delete`），git 历史是第二重保险。
 5. 分类学（域 / 子域 / 来源 / 状态 / 色相）的权威是 `content/_meta/taxonomy.json`；代码里的字典只是缺省回退。改分类先改 JSON，不改代码。
-6. frontmatter 只存身世与元数据（title/source/collected/tags/favorite/status），不存阅读统计等高频运行时数据——那些走本地存储或 sidecar。
+6. frontmatter 只存身世与元数据（title/source/collected/tags/favorite/status），不存阅读统计等高频运行时数据——阅读统计走 app/reading.py（indexes/reading.db 事件制），标签治理/重命名一律先 dry-run（scripts/govern_tags.py）。
 7. 嵌入 / 分词 / 切块逻辑变更必须递增 `app/rag.py::RAG_CODE_VERSION`（触发向量索引自动全量重建），并用 `tokenizers` 库做逐 token 交叉验证后再提交。
 8. 阅读器同时支持 `start.bat`（任意 Python）与便携运行时（`.python\`）；`python app\app.py` 直启时项目根会自动补进 sys.path，不要依赖 cwd。
 
@@ -35,6 +35,7 @@ content/            语料（唯一不可再生资产）；_meta/taxonomy.json =
 app/app.py          路由与请求编排（create_app / watcher / RAG 惰性接入）
 app/store.py        语料层：frontmatter、扫描、分类树、备注、taxonomy 装载
 app/fts.py          FTS5 全文索引 + [[双链]]解析（派生）
+app/reading.py      月度阅读统计（reading.db 派生，事件制；设计定稿 docs/统计数据模型-定稿.md）
 app/rag.py          语义检索：切块/嵌入/sqlite-vec（派生，RAG_CODE_VERSION 管版本）
 scripts/            迁移与维护脚本（rag_search.py 是 Agent 检索入口）
 .githooks/          pre-commit：提交前自动跑三套测试
