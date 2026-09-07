@@ -1,0 +1,5 @@
+# 语义检索（RAG）可选依赖 —— 仅 start-rag.bat / scripts/rag_search.py 需要
+# 基础阅读器只需 requirements.txt（flask）；缺本文件依赖时阅读器自动降级为纯 FTS
+numpy>=1.26
+onnxruntime>=1.17
+sqlite-vec>=0.1.6

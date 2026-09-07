@@ -19,11 +19,24 @@ tests/              smoke 测试
 ## 启动
 
 ```sh
-start.bat          # 或: pip install -r requirements.txt && python app/app.py
+start.bat          # 纯阅读器（系统 Python，只需 flask）
+start-rag.bat      # 全功能（优先用 .python\ 便携运行时，含语义检索）
 # http://127.0.0.1:5001
 ```
 
 写作层：用 Obsidian 打开 `content/` 作为 vault，与本应用共享同一份语料。
+
+## 语义检索（RAG）
+
+本地向量检索，语料不出网：切块（标题路径继承）→ bge-small-zh-v1.5 嵌入
+（ONNX，CPU，~11ms/块）→ sqlite-vec 近邻检索。索引 `indexes/rag.db` 为
+派生缓存，启动/后台 30s 增量同步，分词或嵌入逻辑变更时自动全量重建。
+
+- 搜索框输入 `? 如何排查 CSRF 403` —— `?` 前缀走语义模式（按意思找，不挑字面）
+- 命令行 / Agent 入口：`python scripts/rag_search.py "查询" --json -k 8`
+- 运行时：`.python\python.exe -m pip install -r requirements-rag.txt`
+  （首次运行自动从 hf-mirror 下载模型约 95MB 至 `app/rag_models/`，之后离线）
+- 依赖缺失时阅读器自动降级纯 FTS，其余功能不受影响
 
 ## 脚本
 
@@ -41,5 +54,6 @@ start.bat          # 或: pip install -r requirements.txt && python app/app.py
 ## 测试
 
 ```sh
-python tests/test_reader.py    # 23 项行为断言，临时语料，不碰真实 content/
+python tests/test_reader.py    # 阅读器行为断言（临时语料）
+.python\python.exe tests\test_rag.py   # RAG 断言（分词对齐/端到端语义命中）
 ```

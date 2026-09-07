@@ -10,3 +10,7 @@ content/.obsidian/workspace.json
 
 # 阅读器软删除的回收站（瞬态）
 content/_trash/
+
+# 便携 Python 运行时与本地嵌入模型（机器本地，可重建）
+.python/
+app/rag_models/

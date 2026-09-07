@@ -3,20 +3,24 @@
 {% block body %}
 <main class="single">
   <section class="panel page-panel">
-    <div class="crumb"><b>全文检索</b><span class="sep">·</span>“{{ q }}”<span class="spacer"></span><a class="iconbtn" href="/">← 返回阅读</a></div>
+    <div class="crumb"><b>全文检索</b><span class="sep">·</span>“{{ q }}”
+      {% if semantic %}<span class="chip acc" title="向量语义检索，找意思相近的段落">语义模式</span>{% else %}<a class="chip" style="cursor:pointer" href="/search?q=%3F{{ q|urlencode }}" title="向量语义检索，找意思相近的段落">试试语义模式 ?</a>{% endif %}
+      <span class="spacer"></span><a class="iconbtn" href="/">← 返回阅读</a></div>
     <div class="page-body">
-      {% if results %}
+      {% if semantic and rag_error %}
+      <div class="empty">语义检索组件未就绪：{{ rag_error }}<br><span style="font-size:12px;color:var(--faint)">依赖安装：.python\python.exe -m pip install numpy onnxruntime sqlite-vec</span></div>
+      {% elif results %}
       <div class="results">
         {% for r in results %}
-        <a class="result" href="/doc/{{ r.path[:-3] }}">
-          <div class="doc-t">{{ r.title }}</div>
+        <a class="result" href="{{ r.url }}">
+          <div class="doc-t">{% if semantic %}<span class="mini tag">{{ r.score_label }}</span> {% endif %}{{ r.title }}{% if r.heading %} <span style="color:var(--faint);font-size:12.5px">§ {{ r.heading }}</span>{% endif %}</div>
           <div class="r-snippet">{{ r.snippet|safe }}</div>
           <div class="rp">{{ r.path }}</div>
         </a>
         {% endfor %}
       </div>
       {% else %}
-      <div class="empty">{% if q %}没有匹配“{{ q }}”的文档。中文按词前缀匹配，试试更短的词。{% else %}输入关键词开始检索。{% endif %}</div>
+      <div class="empty">{% if q %}没有匹配“{{ q }}”的文档。{% if not semantic %}试试<a href="/search?q=%3F{{ q|urlencode }}">语义模式 ?</a>，或换更短的词。{% endif %}{% else %}输入关键词开始检索。{% endif %}</div>
       {% endif %}
     </div>
   </section>

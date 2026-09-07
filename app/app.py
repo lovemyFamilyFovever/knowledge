@@ -397,6 +397,17 @@ def search(indexes: Path, q: str, limit: int = 50) -> list[dict]:
         con.close()
 
 
+# ---------------- 本地向量检索（可选依赖，缺失时自动降级纯 FTS） ----------------
+try:
+    from app.rag import (OnnxEmbedder, RagStore, query_rag, rag_status,
+                         sync_rag)
+    _RAG_IMPORT_ERROR = None
+except Exception as _e:  # ImportError 及其依赖链上的任何加载失败
+    OnnxEmbedder = RagStore = None
+    query_rag = sync_rag = rag_status = None
+    _RAG_IMPORT_ERROR = str(_e)
+
+
 # ---------------- app factory ----------------
 def create_app(root: Path | None = None) -> Flask:
     root = Path(root) if root else Path(
@@ -414,6 +425,23 @@ def create_app(root: Path | None = None) -> Flask:
     if index_is_stale(content, indexes):
         build_index(content, indexes)
 
+    # 向量检索组件：惰性初始化（首次调用时才加载 ONNX 会话）
+    rag_state = {"embedder": None, "store": None, "tried": False}
+
+    def get_rag():
+        """返回 (embedder, store) 或 (None, None)。模型加载失败不拖垮阅读器。"""
+        if rag_state["tried"]:
+            return rag_state["embedder"], rag_state["store"]
+        rag_state["tried"] = True
+        if OnnxEmbedder is None or RagStore is None:
+            return None, None
+        try:
+            rag_state["embedder"] = OnnxEmbedder(root / "app" / "rag_models")
+            rag_state["store"] = RagStore(indexes)
+        except Exception:
+            rag_state["embedder"] = rag_state["store"] = None
+        return rag_state["embedder"], rag_state["store"]
+
     # 即存即搜：后台线程每 30 秒检测一次，新文件/修改自动入索引
     def _index_watcher():
         while True:
@@ -423,6 +451,12 @@ def create_app(root: Path | None = None) -> Flask:
                     build_index(content, indexes)
             except Exception:
                 pass  # 静默：索引重建失败不影响服务
+            # 向量索引同步（同样静默降级）：仅当 RAG 组件已初始化成功
+            if rag_state["embedder"] is not None and rag_state["store"] is not None:
+                try:
+                    sync_rag(content, rag_state["embedder"], rag_state["store"])
+                except Exception:
+                    pass
 
     _watcher = threading.Thread(target=_index_watcher, daemon=True)
     _watcher.start()
@@ -603,8 +637,39 @@ def create_app(root: Path | None = None) -> Flask:
     @app.route("/search")
     def search_route():
         q = request.args.get("q", "").strip()
-        results = search(indexes, q) if q else []
+        semantic = q.startswith("?")
+        if semantic:
+            q = q[1:].strip()
+        results = []
+        rag_error = None
+        if q:
+            if semantic:
+                emb, store = get_rag()
+                if emb is None or store is None:
+                    rag_error = _RAG_IMPORT_ERROR or "初始化失败"
+                else:
+                    try:
+                        hits = query_rag(store, emb, q, k=20)
+                        seen: set[str] = set()
+                        for h in hits:
+                            if h["file"] in seen:
+                                continue  # 同文档多块命中只留最相近块
+                            seen.add(h["file"])
+                            results.append({
+                                "url": h["url"],
+                                "title": h["title"],
+                                "heading": h["heading"],
+                                "path": h["file"],
+                                "score_label": f"{h['score']:.2f}",
+                                # 摘要直接用块正文前段（无 FTS snippet 高亮需求）
+                                "snippet": h["contents"][:140].replace("\n", " ") + "…",
+                            })
+                    except Exception as e:
+                        rag_error = f"检索失败：{e}"
+            else:
+                results = search(indexes, q)
         return render_template("search.html", q=q, results=results,
+                               semantic=semantic, rag_error=rag_error,
                                n_md=sum(1 for _ in md_files(content)),
                                inbox_n=inbox_count(content))
 
@@ -725,6 +790,32 @@ def create_app(root: Path | None = None) -> Flask:
         finally:
             con.close()
         return jsonify({"ok": True, "moved": moved})
+
+    @app.get("/api/rag")
+    def api_rag():
+        """语义检索：自然语言 → 向量 → 最近邻块。组件缺失/未就绪时返回 503。"""
+        q = request.args.get("q", "").strip()
+        if not q:
+            return jsonify({"error": "empty query"}), 400
+        emb, store = get_rag()
+        if emb is None or store is None:
+            return jsonify({"error": "rag unavailable",
+                            "detail": _RAG_IMPORT_ERROR or "init failed"}), 503
+        try:
+            k = min(int(request.args.get("k", 8)), 30)
+        except ValueError:
+            k = 8
+        domain = request.args.get("domain") or None
+        sub = request.args.get("sub") or None
+        hits = query_rag(store, emb, q, k=k, domain=domain, sub=sub)
+        return jsonify({"q": q, "hits": hits})
+
+    @app.get("/api/rag/status")
+    def api_rag_status():
+        emb, store = get_rag()
+        st = rag_status(store)
+        st["detail"] = _RAG_IMPORT_ERROR
+        return jsonify(st)
 
     @app.after_request
     def static_no_cache(response):
