@@ -12,6 +12,7 @@ import json
 import os
 import re
 import sqlite3
+import sys
 import threading
 import time
 from pathlib import Path
@@ -396,6 +397,12 @@ def search(indexes: Path, q: str, limit: int = 50) -> list[dict]:
     finally:
         con.close()
 
+
+# 直接以脚本方式运行（python app\app.py）时 sys.path[0] 是 app/ 目录而非项目根，
+# 补上项目根保证 from app.rag import 在两种启动方式下都能命中
+_PROJECT_ROOT = str(Path(__file__).resolve().parents[1])
+if _PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, _PROJECT_ROOT)
 
 # ---------------- 本地向量检索（可选依赖，缺失时自动降级纯 FTS） ----------------
 try:
@@ -812,6 +819,9 @@ def create_app(root: Path | None = None) -> Flask:
 
     @app.get("/api/rag/status")
     def api_rag_status():
+        if rag_status is None:  # rag 组件导入失败：如实上报，不炸 500
+            return jsonify({"enabled": False, "chunks": 0, "model": "",
+                            "detail": _RAG_IMPORT_ERROR})
         emb, store = get_rag()
         st = rag_status(store)
         st["detail"] = _RAG_IMPORT_ERROR

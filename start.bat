@@ -8,6 +8,14 @@ echo.
 
 cd /d "%~dp0"
 
+if exist ".python\python.exe" (
+    echo Using bundled runtime .python\ ...
+    start " " http://127.0.0.1:5001
+    ".python\python.exe" app\app.py
+    pause
+    exit /b 0
+)
+
 python --version >nul 2>&1
 if errorlevel 1 (
     echo Python not installed. Install Python 3.10+.
