@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>知库 · 严厉版项目诊断报告 · 2026-09-07</title>
+<style>
+  :root{
+    --bg:#fafafa; --ink:#141414; --muted:#5b6166; --faint:#8a9096;
+    --edge:rgba(20,20,20,.14); --edge-hi:rgba(20,20,20,.34);
+    --acc:#1f5f8b; --acc-soft:rgba(31,95,139,.07);
+    --bad:#a63a2b; --bad-soft:rgba(166,58,43,.06);
+    --mono:Consolas,"Sarasa Mono SC",monospace;
+    --sans:"Segoe UI","Microsoft YaHei UI","Noto Sans SC",sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--ink);font-family:var(--sans);
+       font-size:15px;line-height:1.62;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:860px;margin:0 auto;padding:64px 28px 96px}
+  .kicker{font-family:var(--mono);font-size:11px;letter-spacing:.14em;
+          text-transform:uppercase;color:var(--faint)}
+  h1{font-size:40px;line-height:1.12;font-weight:600;letter-spacing:-.02em;margin:14px 0 10px}
+  .lede{font-size:17px;color:var(--muted);max-width:62ch}
+  .meta-row{font-family:var(--mono);font-size:12px;color:var(--faint);
+            border-top:1px solid var(--edge);border-bottom:1px solid var(--edge);
+            padding:10px 0;margin:28px 0 0;display:flex;gap:22px;flex-wrap:wrap}
+  .meta-row b{color:var(--muted);font-weight:400}
+  h2{font-size:23px;font-weight:600;letter-spacing:-.01em;margin:64px 0 6px;
+     padding-top:18px;border-top:1px solid var(--edge)}
+  h2 .no{font-family:var(--mono);font-size:12px;color:var(--acc);font-weight:400;
+         letter-spacing:.1em;vertical-align:2px;margin-right:10px}
+  h3{font-size:16px;font-weight:600;margin:30px 0 8px}
+  p{margin:10px 0;max-width:70ch}
+  .mute{color:var(--muted)}
+  .small{font-size:13px;color:var(--faint)}
+  ul,ol{margin:10px 0 10px 22px;max-width:70ch}
+  li{margin:5px 0}
+  code{font-family:var(--mono);font-size:.86em;background:var(--acc-soft);
+       padding:1px 5px;border-radius:2px}
+  .path{font-family:var(--mono);font-size:12.5px;color:var(--muted)}
+  table{width:100%;border-collapse:collapse;margin:16px 0 8px;font-size:13.5px}
+  th{font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;
+     color:var(--faint);text-align:left;font-weight:400;
+     border-bottom:1px solid var(--edge-hi);padding:7px 10px 7px 0}
+  td{border-bottom:1px solid var(--edge);padding:9px 10px 9px 0;vertical-align:top}
+  tr td:first-child{white-space:nowrap}
+  .sev{font-family:var(--mono);font-size:11px;letter-spacing:.08em;padding:2px 7px;
+       border:1px solid currentColor;white-space:nowrap}
+  .s1{color:var(--bad);background:var(--bad-soft)}
+  .s2{color:var(--acc)}
+  .s3{color:var(--faint)}
+  .verdict{border:1px solid var(--edge-hi);padding:22px 24px;margin:26px 0 8px}
+  .verdict .t{font-size:19px;font-weight:600;margin-bottom:8px}
+  .metrics{display:flex;gap:0;border:1px solid var(--edge);margin:22px 0 6px;flex-wrap:wrap}
+  .metrics div{flex:1 1 150px;padding:14px 18px;border-right:1px solid var(--edge)}
+  .metrics div:last-child{border-right:none}
+  .metrics .n{font-family:var(--mono);font-size:22px;font-weight:600;letter-spacing:-.01em}
+  .metrics .l{font-size:12px;color:var(--faint);margin-top:2px}
+  .note{border-left:2px solid var(--edge-hi);padding:4px 0 4px 16px;margin:16px 0;color:var(--muted)}
+  .foot{margin-top:72px;padding-top:14px;border-top:1px solid var(--edge);
+        font-family:var(--mono);font-size:11.5px;color:var(--faint);
+        display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px}
+  @media print{body{background:#fff}.wrap{padding-top:24px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="kicker">Knowledge Base · Strict Review</div>
+  <h1>知库项目诊断报告</h1>
+  <p class="lede">以严厉监督者立场、10 年产品/工程双视角对「知库」做全面体检。只依据可验证事实：git 历史、代码、今日实测数据。优点照实说，问题按严重度排序，不含安慰性措辞。</p>
+  <div class="meta-row">
+    <span>审查日 <b>2026-09-07</b></span>
+    <span>仓库 <b>E:\chen\code\knowledge</b></span>
+    <span>HEAD <b>0a7dffd</b></span>
+    <span>语料 <b>515 md / 73 html</b></span>
+  </div>
+
+  <div class="metrics">
+    <div><div class="n">27+2</div><div class="l">今日前后提交数</div></div>
+    <div><div class="n">14,791</div><div class="l">语义索引块</div></div>
+    <div><div class="n">~60ms</div><div class="l">单次语义查询</div></div>
+    <div><div class="n">50/50</div><div class="l">三项测试套件通过</div></div>
+  </div>
+
+  <div class="verdict">
+    <div class="t">总评</div>
+    <p>这个项目的<strong>架构判断是对的，工程纪律在快速退化</strong>。「Markdown 唯一事实源 + 派生索引可删可重建」是整 个系统最有价值的一条决策，它让一切 bug 都有退路；软删除 + git 双保险、测试文化、BACKLOG 约束都高于个人项目的平均水准。但 748 行的 <code>app.py</code> 正在变成新的「docs.db」——你逃离了一个数据库单点，却在重建一个代码单点。标签、来源、状态全部硬编码在源码里，等于把「知识分类学」焊死在 Python 字典上；每次调整 taxonomy 都要改代码发版，这违背你自己定下的「语料与代码分离」原则。按当前惯性再迭代三个月，改造成本会翻倍。</p>
+  </div>
+
+  <h2><span class="no">01</span>做对了什么 —— 先给信用，批评才有分量</h2>
+  <ul>
+    <li><strong>事实源决策正确且被坚持</strong>：编辑/收藏/备注全部写回文件系统（frontmatter / sidecar），索引可随时重建。这是正确的第一性设计，多数个人知识库项目死在「数据库和文件两套真相」上，你没有。</li>
+    <li><strong>派生物哲学一致</strong>：<code>indexes/</code>、<code>_inbox/</code>、<code>_trash/</code> 全部不入库，缓存层清晰。</li>
+    <li><strong>有测试且有真实断言</strong>：38 条 reader smoke + 今日新增 3 条 RAG 断言，行为级而非摆设。</li>
+    <li><strong>产品克制</strong>：图谱视图上线当天因「装 B 无实用」被你砍掉（可恢复），BACKLOG 有「不中途插队」纪律——知道自己不要什么，比知道要什么更稀缺。</li>
+    <li><strong>性能预算合理</strong>：客户端路由切文档 ~20ms、语义查询 ~60ms，对单机工具绰绰有余。</li>
+  </ul>
+
+  <h2><span class="no">02</span>问题清单 —— 按严重度排序</h2>
+
+  <h3>P1 · 架构债：正在形成单点</h3>
+  <table>
+    <tr><th>严重度</th><th>问题</th><th>证据与后果</th><th>处置建议</th></tr>
+    <tr>
+      <td><span class="sev s1">P1</span></td>
+      <td><code>app.py</code> 单文件神模块</td>
+      <td>现约 880 行：工厂 + 15 组路由 + FTS 索引 + 双链解析 + frontmatter 读写 + 回收站全在一个文件。每加一个功能都在同一个命名空间里叠状态，回归面越来越大（今日 0a7dffd 的 500 就是耦合的实证）。</td>
+      <td>拆为 <code>store.py</code>（语料扫描/frontmatter）、<code>fts.py</code>、<code>views.py</code>（Blueprint）三层，接口不动，一次 2 小时的重构。</td>
+    </tr>
+    <tr>
+      <td><span class="sev s1">P1</span></td>
+      <td>分类学硬编码在源码</td>
+      <td><code>DOMAIN_LABELS</code> / <code>SUB_LABELS</code> / <code>SOURCE_LABELS</code> / <code>GRAPH_HUES</code> 四张字典写死在 Python 里（app.py 头部约 60 行）。加一个子域 = 改代码；taxonomy Plan A 那次全量 remap 的痛苦会重复。</td>
+      <td>迁到 <code>content/_meta/taxonomy.json</code>，代码只读不存。分类学是内容，不是程序。</td>
+    </tr>
+    <tr>
+      <td><span class="sev s1">P1</span></td>
+      <td>双索引双 watcher，同步机制重复且分叉</td>
+      <td>FTS（index.db）与向量（rag.db）各有一套「30 秒 mtime 轮询 + 增量同步」，失效判据不同（built_at vs mtime+code_version）。两套索引对「删除」的反应时窗不一致，双链/搜索/语义可能在数分钟内给出互相矛盾的结果。</td>
+      <td>合并为单一 watcher，一次遍历同时喂 FTS 与 RAG 同步；失效判据统一成 tree-sig。</td>
+    </tr>
+    <tr>
+      <td><span class="sev s1">P1</span></td>
+      <td>缺 <code>AGENTS.md</code>：AI 协作无契约</td>
+      <td>你明确要让 AI 长期参与维护，但仓库没有任何给 AI 的约束文件——不变量（md 唯一事实源、_inbox 流程、索引可删）、测试命令、禁区全靠口头。今天任何一次 AI 会话都可能破坏这些隐含规则。</td>
+      <td>写一份 <code>AGENTS.md</code>：不变量清单 + 常用命令 + 提交纪律。半小时的事，杠杆极大。</td>
+    </tr>
+  </table>
+
+  <h3>P2 · 健壮性债：低频但真实</h3>
+  <table>
+    <tr><th>严重度</th><th>问题</th><th>证据与后果</th><th>处置建议</th></tr>
+    <tr>
+      <td><span class="sev s2">P2</span></td>
+      <td>依赖未锁定版本</td>
+      <td><code>requirements*.txt</code> 全部只用 <code>&gt;=</code>。onnxruntime/numpy 大版本升级历史上多次破坏性变更，重建环境时行为不可复现。</td>
+      <td><code>pip freeze</code> 生成 lock 文件；.python 运行时一并锁定。</td>
+    </tr>
+    <tr>
+      <td><span class="sev s2">P2</span></td>
+      <td>Markdown 直通 innerHTML，无净化</td>
+      <td><code>app.js</code> 用 <code>marked.parse</code> 结果直接注入 DOM。语料是自写的所以风险低，但 <code>_inbox</code> 会收外部来源文档（今天收的履历就是机器写的）——一段恶意 HTML 即可在本地执行。</td>
+      <td>引入 DOMPurify（可本地化一份 min.js），或 marked 配置白名单。半天工作量。</td>
+    </tr>
+    <tr>
+      <td><span class="sev s2">P2</span></td>
+      <td>无 CI / 无提交前自动检查</td>
+      <td>测试全靠手动跑。reader smoke 曾被 UI 改版打断过（你自己的记忆里写过「UI 改动后需全面测试」的教训），教训没有被制度化。</td>
+      <td>pre-commit 跑三个测试文件 + <code>python -m json.tool</code> 级别的语法检查；GitHub Actions 一个 20 行的 workflow 即可。</td>
+    </tr>
+    <tr>
+      <td><span class="sev s2">P2</span></td>
+      <td>content/ 单盘无异地备份</td>
+      <td>唯一不可再生资产在 E 盘，git remote 虽有 GitHub 但「写完即 commit」纯靠自觉，push 无节奏。磁盘故障 = 语料清零。</td>
+      <td>每日定时 <code>git add content/ && git commit && git push</code>（Windows 任务计划 5 行脚本），外加 _assets 云同步。</td>
+    </tr>
+  </table>
+
+  <h3>P3 · 产品与体验</h3>
+  <table>
+    <tr><th>严重度</th><th>问题</th><th>说明与建议</th></tr>
+    <tr>
+      <td><span class="sev s3">P3</span></td>
+      <td>语义搜索入口可发现性差</td>
+      <td><code>?前缀</code> 是隐藏知识。建议搜索框旁放「语义/关键词」切换 pill，或在空结果页强引导（已做了一半：结果页有「试试语义模式」，空态有链接——进一步做成默认切换）。</td>
+    </tr>
+    <tr>
+      <td><span class="sev s3">P3</span></td>
+      <td>右键菜单方案缺「归档动作」</td>
+      <td>你的功能清单（移动/复制/粘贴/导出/统计）漏了本项目最常用的动作：复制 <code>[[双链]]</code>、复制 Obsidian URI、新建文档、批量归档 _inbox。已替你补进 BACKLOG，并写死三条设计约束（移动必须级联双链索引、统计走 sidecar、保留软删除）。</td>
+    </tr>
+    <tr>
+      <td><span class="sev s3">P3</span></td>
+      <td>「已读/阅读时间」数据模型未定</td>
+      <td>统计功能动工前必须先定数据归属：建议 sidecar <code>.stats.md</code> 或独立 <code>content/_meta/reading.json</code>，<strong>不要</strong>写进 frontmatter——那会污染「语料即真相」的 diff 纪律。</td>
+    </tr>
+    <tr>
+      <td><span class="sev s3">P3</span></td>
+      <td>career 域的沉淀方式</td>
+      <td>10 月 1 日离职，27 篇职业文档远不足以承接 10 年经验。建议每周固定 30 分钟「回顾入库」仪式（_inbox → 归档），靠系统而不是靠突击。经验回收的敌人不是工具，是节奏。</td>
+    </tr>
+  </table>
+
+  <h2><span class="no">03</span>RAG 本次引入的新债 —— 批评不含我自己就是虚假的严厉</h2>
+  <ul>
+    <li><strong>自研分词器是长期负债</strong>：手写 WordPiece 与 tokenizers 库逐 token 对齐只验证了 today 的三个样本；模型一换（如换 Qwen-Embedding）就全部作废。缓解措施已内置（code_version 机制 + 交叉验证脚本），但正解是等 <code>tokenizers</code> 允许时直接依赖它。</li>
+    <li><strong>rag.db 无 schema 版本表</strong>：靠 code_version 间接判断，若未来出现「代码没变、schema 变」的场景会漏判。低成本补一张 <code>schema_version</code> meta。</li>
+    <li><strong>暴力扫描兜底的复杂度</strong>：KNN + IN 过滤回退全量扫描的路径目前测不到（语料小），语料到 10 万块后若触发，查询会从 60ms 跳到秒级。届时应升级 sqlite-vec 的分区或改用分区文件。</li>
+    <li><strong>今天两次全量重建（~10 分钟）本可避免</strong>：tokenizer 语义变更本应在我改 <code>lowercase</code> 的第一次就预见到要失效全量索引——浪费了你的等待时间。</li>
+  </ul>
+
+  <h2><span class="no">04</span>90 天行动清单</h2>
+  <ol>
+    <li><strong>本周</strong>：写 <code>AGENTS.md</code>（P1，半小时）；content/ 每日自动 commit+push（P2，1 小时）；pip freeze 锁版本（P2，10 分钟）。</li>
+    <li><strong>两周内</strong>：app.py 三层拆分；taxonomy 迁 JSON；合并双 watcher。</li>
+    <li><strong>一个月内</strong>：DOMPurify 接入；pre-commit + GitHub Actions；右键菜单一期（移动/复制双链/统计入口，按 BACKLOG 约束）。</li>
+    <li><strong>三个月内</strong>：标签合并/重命名工具（taxonomy 治理闭环）；静态发布再评估（VitePress 导出你已延后，合理，但 90 天后语料翻倍时重议）。</li>
+  </ol>
+
+  <div class="note">
+    <p style="margin:0">一句话收束：这个项目最危险的不是缺功能，而是<strong>「个人项目不需要工程化」的错觉已经在代码里显形</strong>。你现在每年在这上面投入的时间越多，上面每一条 P1 的利息就越贵。好消息是：所有 P1 加起来不到两个工作日。</p>
+  </div>
+
+  <div class="foot">
+    <span>知库 · 严厉版诊断 · 2026-09-07</span>
+    <span>依据: git log 0a7dffd^..e635143 · 今日实测 · 代码审查</span>
+  </div>
+</div>
+</body>
+</html>
