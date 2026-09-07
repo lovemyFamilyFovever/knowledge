@@ -1,0 +1,27 @@
+#!/bin/sh
+# 知库 pre-commit：提交前自动跑三套测试（存在对应运行时才跑对应套件）
+# 启用：git config core.hooksPath .githooks
+
+PY=""
+if [ -f ".python/python.exe" ]; then PY=".python/python.exe"
+elif command -v python >/dev/null 2>&1; then PY="python"
+fi
+
+if [ -z "$PY" ]; then
+  echo "[pre-commit] no python found, skipping tests"
+  exit 0
+fi
+
+echo "[pre-commit] running reader smoke..."
+"$PY" tests/test_reader.py || exit 1
+
+if [ -f "tests/test_new_project.py" ]; then
+  echo "[pre-commit] running scaffolder smoke..."
+  "$PY" tests/test_new_project.py || exit 1
+fi
+
+echo "[pre-commit] running RAG smoke (SKIP if deps missing)..."
+"$PY" tests/test_rag.py || exit 1
+
+echo "[pre-commit] all green."
+exit 0

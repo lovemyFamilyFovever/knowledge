@@ -331,3 +331,17 @@ html[data-theme="dark"] .dbar span{background:hsl(var(--dh) 68% 60%)}
 .tag-group.open .tag-docs{display:block}
 .tag-docs .result{border-color:transparent;background:transparent}
 .tag-docs .result:hover{border-color:var(--acc-edge);background:var(--acc-soft)}
+
+/* ---------- 右键菜单 / 统计弹窗（ctx-menu v13） ---------- */
+.ctx-item{display:block;width:100%;text-align:left;padding:8px 14px;border:none;background:none;
+ font:13px var(--sans);color:var(--ink);cursor:pointer;white-space:nowrap}
+.ctx-item:hover{background:var(--acc-soft);color:var(--acc)}
+.ctx-item.danger{color:var(--warn)}
+.ctx-item.danger:hover{background:var(--warn-soft);color:var(--warn)}
+.ctx-sep{height:1px;background:var(--edge);margin:4px 8px}
+#ctx-menu{position:fixed;z-index:90;border:1px solid var(--edge-hi);border-radius:6px;
+ background:var(--paper,#fff);box-shadow:0 8px 28px rgba(0,0,0,.13);padding:4px;min-width:190px}
+html[data-theme="dark"] #ctx-menu{background:#0d1412}
+.stats-box{width:min(520px,92vw);max-height:78vh;display:flex;flex-direction:column}
+.stats-body{padding:16px 22px;overflow:auto}
+.stats-body .meta-row{padding:7px 0}

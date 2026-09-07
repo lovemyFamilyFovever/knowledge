@@ -1,5 +1,5 @@
 /* 知库 reader 前端：主题、面板折叠、客户端路由、正文渲染、编辑/备注/收藏/删除、双链、快捷键 */
-window.APP_JS_VERSION = 12;
+window.APP_JS_VERSION = 13;
 
 const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
@@ -114,7 +114,7 @@ function renderArticle() {
       <h1 class="a-title">${esc(DOC.title)}</h1>
       <div class="a-chips">${chips}</div>
       <div class="a-rule"></div>
-      <div class="a-body">${marked.parse(DOC.md)}</div>`;
+      <div class="a-body">${DOMPurify.sanitize(marked.parse(DOC.md), { FORBID_TAGS: ['style', 'iframe', 'form', 'script'], ADD_ATTR: ['target'] })}</div>`;
   }
   // mermaid：按需懒加载（3.5MB），仅文档真含 mermaid 图时加载
   const mm = el.querySelectorAll("pre code.language-mermaid");
@@ -168,13 +168,13 @@ function buildToc() {
 function renderTree() {
   const nav = $("#tree"); if (!nav || !TREE) return;
   nav.innerHTML = TREE.map(d => `
-   <div class="dom ${CUR && CUR.domain === d.id ? "open" : ""}">
+   <div class="dom ${CUR && CUR.domain === d.id ? "open" : ""}" data-dom="${esc(d.id)}">
     <a class="dom-head ${CUR && CUR.domain === d.id ? "active" : ""}" href="/browse/${d.id}/${d.subs[0].id}">
      <span class="dom-glyph" style="--dh:${HUES[d.id] || 158}"><svg><use href="#i-${d.id}"/></svg></span>
      <span class="dom-name">${esc(d.label)}</span><span class="dom-n">${d.n}</span>
     </a>
     <div class="subs">${d.subs.map(s => `
-      <a class="sub ${CUR && CUR.domain === d.id && CUR.sub === s.id ? "active" : ""}" href="/browse/${d.id}/${s.id}">${esc(s.label)}<span class="n">${s.n}</span></a>`).join("")}
+      <a class="sub ${CUR && CUR.domain === d.id && CUR.sub === s.id ? "active" : ""}" data-dom="${esc(d.id)}" data-sub="${esc(s.id)}" href="/browse/${d.id}/${s.id}">${esc(s.label)}<span class="n">${s.n}</span></a>`).join("")}
     </div>
    </div>`).join("");
 }
@@ -184,7 +184,7 @@ function renderDocList(docs, subLabel, activeName) {
   if (title) title.innerHTML = `${esc(subLabel)}<span class="cnt">${docs.length}</span><button class="fold" onclick="togglePanel('list')" title="收起列表"><svg><use href="#i-fold-l"/></svg></button>`;
   const list = $("#doclist"); if (!list) return;
   list.innerHTML = docs.map(d => `
-    <a class="doc ${d.name === activeName ? "active" : ""}" href="/doc/${CUR.domain}/${CUR.sub}/${d.name.split("/").map(encodeURIComponent).join("/")}">
+    <a class="doc ${d.name === activeName ? "active" : ""}" data-name="${esc(d.name)}" href="/doc/${CUR.domain}/${CUR.sub}/${d.name.split("/").map(encodeURIComponent).join("/")}">
       <div class="doc-t">${d.has_html ? '<span class="star">◈</span>' : ""}${esc(d.title)}</div>
       <div class="doc-meta">
         ${(d.tags && d.tags.length) ? d.tags.map(t => `<span class="mini tag">${esc(t)}</span>`).join("") : `<span class="mini untag">未打标</span>`}
@@ -460,6 +460,120 @@ function closePretty() {
   const ov = document.getElementById("pretty-ov");
   if (ov) { ov.classList.remove("show"); ov.querySelector("iframe").src = "about:blank"; }
 }
+
+/* ---------- 右键菜单：文档移动 / 复制双链 / 统计信息 ---------- */
+let CTX = null; // 当前菜单目标 {kind:'doc'|'sub', rel|domain, sub, name}
+
+function closeCtxMenu() {
+  const m = document.getElementById("ctx-menu");
+  if (m) { m.remove(); document.removeEventListener("click", closeCtxMenu); }
+  CTX = null;
+}
+
+function docRelOf(domain, sub, name) {
+  return sub === "_root" ? `${domain}/${name}.md` : `${domain}/${sub}/${name}.md`;
+}
+
+function openCtxMenu(x, y, items) {
+  closeCtxMenu();
+  const m = document.createElement("div");
+  m.id = "ctx-menu";
+  m.innerHTML = items.map((it, i) =>
+    it === "-" ? `<div class="ctx-sep"></div>` :
+    `<button class="ctx-item ${it.danger ? "danger" : ""}" data-i="${i}">${esc(it.label)}</button>`).join("");
+  document.body.appendChild(m);
+  const r = m.getBoundingClientRect();
+  m.style.left = Math.min(x, innerWidth - r.width - 8) + "px";
+  m.style.top = Math.min(y, innerHeight - r.height - 8) + "px";
+  m.addEventListener("click", e => {
+    const b = e.target.closest(".ctx-item");
+    if (!b) return;
+    const it = items[+b.dataset.i];
+    closeCtxMenu();
+    if (it && it.fn) it.fn();
+  });
+  setTimeout(() => document.addEventListener("click", closeCtxMenu), 0);
+}
+
+async function copyText(t, okMsg) {
+  try { await navigator.clipboard.writeText(t); toast(okMsg); }
+  catch (e) {
+    const ta = document.createElement("textarea"); ta.value = t; document.body.appendChild(ta);
+    ta.select(); document.execCommand("copy"); ta.remove(); toast(okMsg);
+  }
+}
+
+async function showStats(rel) {
+  const r = await fetch("/api/stats?path=" + encodeURIComponent(rel));
+  if (!r.ok) { toast("统计失败"); return; }
+  const s = await r.json();
+  const kb = (s.size / 1024).toFixed(1);
+  const rows = [
+    ["标题", s.title], ["路径", s.path],
+    ["字数", `${s.chars} 字符（中文 ${s.cjk} · 英数词 ${s.words}）`],
+    ["结构", `${s.lines} 行 · ${s.headings} 个标题 · ${s.code_blocks} 个代码块`],
+    ["双链", s.wikilinks + " 条"],
+    ["标签", s.tags.length ? s.tags.join("、") : "未打标"],
+    ["来源", s.source || "—"], ["收录", s.collected || "—"],
+    ["文件", kb + " KB · 修改 " + new Date(s.mtime * 1000).toLocaleString()],
+  ];
+  const ov = document.createElement("div");
+  ov.className = "pretty-ov";
+  ov.innerHTML = `<div class="pretty-box stats-box"><div class="pretty-bar"><span class="pt">统计信息</span><button class="iconbtn" onclick="this.closest('.pretty-ov').remove()">✕ 关闭</button></div>
+    <div class="stats-body">${rows.map(([k, v]) => `<div class="meta-row"><span class="k">${esc(k)}</span><span class="v">${esc(v)}</span></div>`).join("")}</div></div>`;
+  ov.addEventListener("click", e => { if (e.target === ov) ov.remove(); });
+  document.body.appendChild(ov);
+}
+
+async function moveDocPrompt(rel) {
+  const dst = prompt("移动到（content/ 下的新相对路径，含 .md）：\n例：articles/vue2/新目录/文档名.md", rel);
+  if (!dst || dst === rel) return;
+  const r = await fetch("/api/move", { method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ src: rel, dst }) });
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok || !d.ok) { toast("移动失败：" + (d.error || r.status)); return; }
+  toast(`已移动至 <span class='mono'>${esc(d.dst)}</span> · 索引已级联更新`);
+  TREE = null; localStorage.removeItem(LS_TREE); // 树缓存失效，下次渲染重新拉取
+  const url = "/doc/" + d.dst.replace(/\.md$/, "").split("/").map(encodeURIComponent).join("/");
+  location.href = url; // 移动涉及树/列表重排，整页跳转最可靠
+}
+
+document.addEventListener("contextmenu", e => {
+  if (!WORKBENCH) return;
+  const docA = e.target.closest("#doclist .doc");
+  if (docA) {
+    e.preventDefault();
+    const name = docA.dataset.name;
+    const rel = docRelOf(CUR.domain, CUR.sub, name);
+    const title = (docA.querySelector(".doc-t") || {}).textContent || name;
+    openCtxMenu(e.clientX, e.clientY, [
+      { label: "📈 统计信息", fn: () => showStats(rel) },
+      { label: "⧉ 复制 [[双链]]", fn: () => copyText(`[[${title.trim()}]]`, "已复制双链") },
+      { label: "⧉ 复制 Obsidian URI", fn: () => copyText(`obsidian://open?vault=${encodeURIComponent("knowledge")}&file=${encodeURIComponent(rel.replace(/\.md$/, ""))}`, "已复制 URI") },
+      "-",
+      { label: "⇄ 移动 / 重命名…", fn: () => moveDocPrompt(rel) },
+    ]);
+    return;
+  }
+  const subA = e.target.closest("#tree .sub");
+  if (subA) {
+    e.preventDefault();
+    const dom = subA.dataset.dom, sub = subA.dataset.sub;
+    const base = sub === "_root" ? dom : `${dom}/${sub}`;
+    openCtxMenu(e.clientX, e.clientY, [
+      { label: "📂 在此新建文档…", fn: async () => {
+          const nm = prompt("新文档文件名（不含 .md）：");
+          if (!nm) return;
+          const rel = `${base}/${nm}.md`;
+          const r = await fetch("/api/save", { method: "POST", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ path: rel, content: `# ${nm}\n\n` }) });
+          if (r.ok) { TREE = null; localStorage.removeItem(LS_TREE); location.href = "/doc/" + rel.slice(0, -3).split("/").map(encodeURIComponent).join("/"); }
+          else toast("创建失败：" + r.status);
+        } },
+      { label: "⧉ 复制目录路径", fn: () => copyText(base, "已复制路径") },
+    ]);
+  }
+});
 
 /* ---------- 快捷键与搜索 ---------- */
 document.addEventListener("keydown", e => {
