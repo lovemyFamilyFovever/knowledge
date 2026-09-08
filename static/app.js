@@ -1,5 +1,5 @@
 /* 知库 reader 前端：主题、面板折叠、客户端路由、正文渲染、编辑/备注/收藏/删除、双链、快捷键 */
-window.APP_JS_VERSION = 15;
+window.APP_JS_VERSION = 16;
 
 const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
@@ -572,6 +572,31 @@ function kbModal(opt) {
   });
 }
 
+async function showSubStats(dom, sub) {
+  const r = await fetch(`/api/substats?domain=${encodeURIComponent(dom)}&sub=${encodeURIComponent(sub)}`);
+  if (!r.ok) { toast("目录统计失败：" + r.status); return; }
+  const s = await r.json();
+  const maxTag = s.tags.length ? s.tags[0].n : 1;
+  const tagRows = s.tags.map(t => `
+    <div class="ss-tag"><span class="ss-tag-name">${esc(t.tag)}</span>
+      <span class="ss-bar"><i style="width:${Math.round(100 * t.n / maxTag)}%"></i></span>
+      <span class="ss-tag-n">${t.n}</span></div>`).join("") || `<div class="kbm-li">无标签</div>`;
+  await kbModal({
+    title: `📊 ${s.label} · 目录统计`,
+    html: `<div class="ss-grid">
+      <div class="ss-cell"><div class="ss-n">${s.n_docs}</div><div class="ss-l">文档数</div></div>
+      <div class="ss-cell"><div class="ss-n">${s.total_cjk.toLocaleString()}</div><div class="ss-l">总字数（CJK）</div></div>
+      <div class="ss-cell"><div class="ss-n">${s.avg_cjk.toLocaleString()}</div><div class="ss-l">篇均字数</div></div>
+      <div class="ss-cell"><div class="ss-n">${s.n_untagged}</div><div class="ss-l">未打标</div></div>
+    </div>
+    <div class="ss-sec">标签分布 Top ${s.tags.length}</div>
+    <div class="ss-tags">${tagRows}</div>
+    <div class="ss-sec">最近更新</div>
+    <div class="kbm-li">《${esc(s.newest.title || "—")}》 · ${esc(s.newest.when)}</div>`,
+    confirmText: "关闭",
+  });
+}
+
 async function moveDocPrompt(rel) {
   const res = await kbModal({
     title: "移动 / 重命名",
@@ -630,6 +655,8 @@ document.addEventListener("contextmenu", e => {
           if (r.ok) { TREE = null; localStorage.removeItem(LS_TREE); location.href = "/doc/" + rel.slice(0, -3).split("/").map(encodeURIComponent).join("/"); }
           else toast("创建失败：" + r.status);
         } },
+      { label: "📊 目录统计", fn: () => showSubStats(dom, sub) },
+      "-",
       { label: "⧉ 复制目录路径", fn: () => copyText(base, "已复制路径") },
     ]);
   }

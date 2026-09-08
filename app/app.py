@@ -484,6 +484,90 @@ def create_app(root: Path | None = None) -> Flask:
                 pass  # 向量索引搬移失败不阻塞；下轮 sync_rag 会全量对齐
         return jsonify({"ok": True, "src": src_rel, "dst": dst_rel, "moved_sibs": moved_sibs})
 
+    @app.post("/api/move/batch")
+    def api_move_batch():
+        """批量移动（收件箱批量归档用）。items: [{src,dst},...]；逐条独立执行，
+        返回 per-item 成败清单，部分失败不回滚（前一条已成功者保持）。"""
+        data = request.get_json(force=True)
+        items = data.get("items") or []
+        if not isinstance(items, list) or not items or len(items) > 50:
+            return jsonify({"ok": False, "error": "items required (1-50)"}), 400
+        results = []
+        for it in items:
+            src_rel = str(it.get("src", ""))
+            dst_rel = str(it.get("dst", "")).strip().replace("\\", "/")
+            try:
+                src = safe_rel(src_rel, WRITABLE_EXTS)
+                if not dst_rel or not dst_rel.endswith(".md") or dst_rel.startswith("/") or ".." in dst_rel:
+                    raise ValueError("invalid dst")
+                root_resolved = content.resolve()
+                dst = (content / dst_rel)
+                dst_resolved = dst.resolve()
+                if root_resolved not in dst_resolved.parents or dst_resolved.exists():
+                    raise ValueError("dst outside content/ or already exists")
+                s_rel = src.relative_to(root_resolved).as_posix()
+                dst.parent.mkdir(parents=True, exist_ok=True)
+                src.rename(dst)
+                for sib in (src.with_name(src.name + ".notes.md"), src.with_name(src.stem + ".html")):
+                    if sib.is_file():
+                        sib_dst = dst.with_name(dst.name + ".notes.md") if sib.name.endswith(".notes.md") \
+                            else dst.with_name(dst.stem + ".html")
+                        sib.rename(sib_dst)
+                body = dst.read_text(encoding="utf-8", errors="replace")
+                remove_doc_from_index(indexes, s_rel)
+                upsert_doc_in_index(indexes, dst_rel, dst, body)
+                if RagStore is not None:
+                    try:
+                        rstore = RagStore(indexes)
+                        if rstore.known_files().get(s_rel) is not None:
+                            rstore.con.execute("UPDATE vec_docs SET file=? WHERE file=?", (dst_rel, s_rel))
+                            rstore.con.execute("UPDATE vec_docs SET chunk_id=?||'::'||chunk_ix WHERE file=? AND chunk_id LIKE ?",
+                                               (dst_rel, s_rel, s_rel + ":%"))
+                            rstore.con.execute("UPDATE files SET path=? WHERE path=?", (dst_rel, s_rel))
+                            rstore.con.commit()
+                        rstore.close()
+                    except Exception:
+                        pass
+                results.append({"src": s_rel, "dst": dst_rel, "ok": True})
+            except Exception as e:
+                results.append({"src": src_rel, "dst": dst_rel, "ok": False, "error": str(e)[:120]})
+        return jsonify({"ok": True, "results": results,
+                        "n_ok": sum(1 for r in results if r["ok"]),
+                        "n_fail": sum(1 for r in results if not r["ok"])})
+
+    @app.get("/api/substats")
+    def api_substats():
+        """目录级统计：某 domain/sub 下所有文档的篇数/字数(CJK)/标签分布/最近更新。"""
+        domains = scan_corpus(content)
+        dom = next((d for d in domains if d["id"] == request.args.get("domain", "")), None)
+        sobj = next((s for s in dom["subs"] if s["id"] == request.args.get("sub", "")), None) if dom else None
+        if not sobj:
+            return jsonify({"error": "not found"}), 404
+        total_cjk = 0
+        tag_map: dict[str, int] = {}
+        newest = ("", 0.0)
+        for doc in sobj["docs"]:
+            p = find_doc(content, dom["id"], sobj["id"], doc["name"])
+            if not p:
+                continue
+            raw = p.read_text(encoding="utf-8", errors="replace")
+            fm, body = parse_frontmatter(raw)
+            total_cjk += len(re.findall(r"[\u4e00-\u9fff]", body))
+            for t in (fm.get("tags") if isinstance(fm.get("tags"), list) else []):
+                tag_map[t] = tag_map.get(t, 0) + 1
+            mt = p.stat().st_mtime
+            if mt > newest[1]:
+                newest = (str(fm.get("title") or p.stem), mt)
+        tags_sorted = sorted(tag_map.items(), key=lambda x: -x[1])[:12]
+        return jsonify({
+            "domain": dom["id"], "sub": sobj["id"], "label": sobj["label"],
+            "n_docs": sobj["n"], "total_cjk": total_cjk,
+            "avg_cjk": round(total_cjk / max(1, sobj["n"])),
+            "tags": [{"tag": t, "n": n} for t, n in tags_sorted],
+            "n_untagged": sum(1 for d in sobj["docs"] if not d.get("tags")),
+            "newest": {"title": newest[0], "when": time.strftime("%Y-%m-%d %H:%M", time.localtime(newest[1])) if newest[1] else "—"},
+        })
+
     @app.get("/api/stats")
     def api_stats():
         """文档统计：字数/行数/标题数/代码块数/双链数/标签/收录日期/文件大小。"""

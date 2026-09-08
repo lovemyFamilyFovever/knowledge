@@ -318,8 +318,9 @@ html[data-theme="dark"] .seg-bar span{background:hsl(var(--dh) 68% 60%)}
   #view-home{padding:20px 16px 40px}
   .home-mark{font-size:170px;top:-30px;right:-14px}
   .hero{flex-wrap:wrap;gap:12px}
-  .hero .hi{font-size:24px}
-  .hero .cd{margin-left:0;padding:10px 16px}
+  .hero>div:first-child{flex:1 1 220px;min-width:0}   /* 左列可收缩，防倒计时卡溢出屏外 */
+  .hero .hd{white-space:normal}
+  .hero .cd{flex:none;margin-left:0;padding:10px 16px}
   .hero .cd .n{font-size:26px}
   .dom-grid{grid-template-columns:1fr 1fr;gap:10px}
   .dcard{padding:13px 14px}
@@ -336,11 +337,18 @@ html[data-theme="dark"] .seg-bar span{background:hsl(var(--dh) 68% 60%)}
   .kbm{padding:16px}
   .pretty-box{width:96vw;height:86vh}
 }
-@media (max-width:520px){
-  .dom-grid{grid-template-columns:1fr}
-  .stats-kpis{flex-direction:column}
-  .skpi{border-right:none;border-bottom:1px solid var(--edge)}
-  .skpi:last-child{border-bottom:none}
+@media (max-width:640px){
+  .dom-grid{grid-template-columns:1fr 1fr;gap:10px}   /* 中窄屏双列紧凑，避免单列长列表 */
+  .dcard{padding:12px 13px}
+  .stats-kpis{display:grid;grid-template-columns:1fr 1fr}   /* KPI 2×2 */
+  .skpi{border-right:1px solid var(--edge);border-bottom:1px solid var(--edge)}
+}
+@media (max-width:440px){
+  .dom-grid{grid-template-columns:1fr}   /* 极窄屏才退单列 */
+  .hero .hi{font-size:22px}
+  .hero .cd .n{font-size:24px}
+  .stats-kpis{grid-template-columns:1fr 1fr}
+  .skpi{border-right:1px solid var(--edge);border-bottom:1px solid var(--edge)}
 }
 
 /* ---------- 美化版弹窗 ---------- */
@@ -446,6 +454,37 @@ html[data-theme="dark"] .kbm-input{background:rgba(6,10,14,.5)}
 .sbar i{display:block;height:100%;border-radius:4px;background:linear-gradient(90deg,var(--acc),var(--acc2))}
 .dbar.hot .dbar-fill{background:linear-gradient(180deg,var(--warn),var(--acc));}
 .stat-note{font-family:var(--mono);font-size:10.5px;color:var(--faint);margin-top:8px}
+
+/* ---------- v16：收件箱批量归档工具条 ---------- */
+.inbox-toolbar{display:flex;align-items:center;gap:12px;padding:10px 14px;border:1px solid var(--edge);
+  border-radius:10px;background:var(--glass);margin-bottom:10px}
+.inbox-toolbar .spacer{flex:1}
+.ib-selall{display:flex;align-items:center;gap:7px;font-size:12.5px;color:var(--muted);cursor:pointer;user-select:none}
+.ib-count{font-family:var(--mono);font-size:11px;color:var(--acc)}
+.iconbtn:disabled{opacity:.45;cursor:not-allowed}
+.inbox-row input[type=checkbox]{accent-color:var(--acc);width:15px;height:15px;cursor:pointer}
+
+/* ---------- v16：标签多选操作条 ---------- */
+.tag-check{accent-color:var(--acc);width:15px;height:15px;cursor:pointer;flex:none}
+.tag-selbar{position:sticky;bottom:0;display:flex;align-items:center;gap:10px;margin-top:14px;
+  padding:11px 16px;border:1px solid var(--acc-edge);border-radius:10px;background:var(--glass);
+  backdrop-filter:blur(18px);box-shadow:var(--shadow);z-index:5}
+.tag-selbar .spacer{flex:1}
+#tag-sel-count{font-family:var(--mono);font-size:11.5px;color:var(--acc)}
+
+/* ---------- v16：目录统计弹窗（showSubStats） ---------- */
+.ss-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:6px}
+.ss-cell{border:1px solid var(--edge);border-radius:10px;padding:12px 10px;text-align:center;background:rgba(255,255,255,.35)}
+html[data-theme="dark"] .ss-cell{background:rgba(6,10,14,.4)}
+.ss-cell .ss-n{font-family:var(--num);font-size:20px;font-weight:700;color:var(--acc);font-variant-numeric:tabular-nums}
+.ss-cell .ss-l{font-size:10.5px;color:var(--faint);margin-top:3px}
+.ss-sec{font-family:var(--mono);font-size:10px;letter-spacing:2px;color:var(--faint);margin:12px 0 6px;text-transform:uppercase}
+.ss-tags{display:flex;flex-direction:column;gap:5px;max-height:200px;overflow-y:auto}
+.ss-tag{display:flex;align-items:center;gap:10px}
+.ss-tag-name{flex:0 0 110px;font-size:12px;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:right}
+.ss-bar{flex:1;height:6px;border-radius:3px;background:var(--edge);overflow:hidden}
+.ss-bar i{display:block;height:100%;border-radius:3px;background:linear-gradient(90deg,var(--acc),var(--acc2))}
+.ss-tag-n{flex:0 0 26px;font-family:var(--num);font-size:12px;color:var(--muted);text-align:left}
 
 /* ---------- v15：编辑器引导 ---------- */
 .editor .hint{font-family:var(--mono);font-size:10.5px;color:var(--faint);margin-bottom:8px;line-height:1.7}

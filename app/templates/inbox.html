@@ -10,9 +10,16 @@
         <p>收件箱（<span class="mono">content/_inbox/</span>）是<strong>新内容的唯一入口</strong>：任何新摘录、新文章、AI 产出先扔进这里，不直接写进正式领域。阅读后决定去向——用每篇右侧的「移动」归档进领域目录，或「删除」丢弃。inbox 清空即代表本轮信息消化完毕。</p>
       </div>
       {% if items %}
+      <div class="inbox-toolbar">
+        <label class="ib-selall"><input type="checkbox" id="ib-all" onchange="ibToggleAll(this)"> 全选</label>
+        <span class="ib-count" id="ib-count">未选择</span>
+        <span class="spacer"></span>
+        <button class="iconbtn primary" id="ib-go" onclick="ibArchive()" disabled>⇎ 批量归档…</button>
+      </div>
       <div class="results">
         {% for it in items %}
         <div class="result inbox-row" data-rel="{{ it.rel }}">
+          <input type="checkbox" class="ib-check" onchange="ibUpdate()" style="flex:none">
           <div style="flex:1;min-width:0">
             <div class="doc-t">{{ it.title }}</div>
             <div class="rp">{{ it.rel }} · {{ it.size }}</div>
@@ -32,6 +39,45 @@
 {% endblock %}
 {% block scripts %}
 <script>
+function ibSel() { return [...document.querySelectorAll(".ib-check:checked")].map(c => c.closest(".inbox-row")); }
+function ibUpdate() {
+  const n = ibSel().length;
+  document.getElementById("ib-count").textContent = n ? `已选 ${n} 篇` : "未选择";
+  document.getElementById("ib-go").disabled = !n;
+  const all = document.getElementById("ib-all");
+  const total = document.querySelectorAll(".ib-check").length;
+  all.checked = n === total && n > 0;
+}
+function ibToggleAll(master) {
+  document.querySelectorAll(".ib-check").forEach(c => c.checked = master.checked);
+  ibUpdate();
+}
+async function ibArchive() {
+  const rows = ibSel();
+  if (!rows.length) return;
+  const listHtml = rows.map(r => `<div class="kbm-li">${esc(r.dataset.rel)}</div>`).join("");
+  const res = await kbModal({
+    title: `批量归档 ${rows.length} 篇`,
+    body: `所选 ${rows.length} 篇将移入同一目标目录（文件名保持不变）：
+      <div class="kbm-list">${listHtml}</div>`,
+    inputs: [{ key: "dir", label: "目标目录（content/ 下，不含文件名）", placeholder: "articles/ai" }],
+    confirmText: "批量归档",
+  });
+  if (!res || !res.dir) return;
+  const dir = res.dir.replace(/^\\/+|\\/+$/g, "");
+  const items = rows.map(r => ({ src: r.dataset.rel, dst: `${dir}/${r.dataset.rel.split("/").pop()}` }));
+  const r = await fetch("/api/move/batch", { method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ items }) });
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok || !d.ok) { toast("批量归档失败：" + (d.error || r.status)); return; }
+  if (d.n_fail) {
+    const fails = d.results.filter(x => !x.ok).map(x => `<div class="kbm-li">${esc(x.src)} → ${esc(x.error)}</div>`).join("");
+    await kbModal({ title: `完成（${d.n_ok} 成功 / ${d.n_fail} 失败）`,
+      body: `<div class="kbm-list">${fails}</div>`, confirmText: "知道了" });
+  } else { toast(`已批量归档 ${d.n_ok} 篇 → <span class='mono'>${esc(dir)}</span>`); }
+  TREE = null; localStorage.removeItem(LS_TREE);
+  setTimeout(() => location.reload(), d.n_fail ? 1600 : 900);
+}
 async function inboxMove(row) {
   const rel = row.dataset.rel;
   const res = await kbModal({

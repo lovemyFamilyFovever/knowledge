@@ -10,6 +10,7 @@
         {% for tag, docs in tags %}
         <div class="tag-group">
           <div class="tag-header" onclick="this.parentElement.classList.toggle('open')">
+            <input type="checkbox" class="tag-check" data-tag="{{ tag|e }}" onclick="event.stopPropagation(); tagSelUpdate()">
             <span class="tag-name">{{ tag }}</span>
             <span class="tag-count">{{ docs|length }} 篇</span>
             <button class="iconbtn tag-merge" title="把这个标签并入另一个标签" onclick="mergeTagPrompt('{{ tag|e }}'); event.stopPropagation();">并入...</button>
@@ -26,6 +27,12 @@
         </div>
         {% endfor %}
       </div>
+      <div class="tag-selbar" id="tag-selbar">
+        <span id="tag-sel-count">未选择标签</span>
+        <span class="spacer"></span>
+        <button class="iconbtn" onclick="tagClearSel()">清除</button>
+        <button class="iconbtn primary" id="tag-merge-sel" onclick="mergeSelectedTags()" disabled>⇎ 合并到…</button>
+      </div>
       {% else %}
       <div class="empty">还没有任何标签。编辑文档的 frontmatter 添加 `tags: [标签1, 标签2]`，标签会自动出现在这里。</div>
       {% endif %}
@@ -36,6 +43,56 @@
 
 {% block scripts %}
 <script>
+function tagSel() { return [...document.querySelectorAll(".tag-check:checked")].map(c => c.dataset.tag); }
+function tagSelUpdate() {
+  const n = tagSel().length;
+  document.getElementById("tag-sel-count").textContent = n ? `已选 ${n} 个标签` : "未选择标签";
+  document.getElementById("tag-merge-sel").disabled = !n;
+}
+function tagClearSel() {
+  document.querySelectorAll(".tag-check:checked").forEach(c => c.checked = false);
+  tagSelUpdate();
+}
+async function mergeSelectedTags() {
+  const srcs = tagSel();
+  if (!srcs.length) return;
+  const listHtml = srcs.map(t => `<div class="kbm-li">${esc(t)}</div>`).join("");
+  const res = await kbModal({
+    title: `批量合并 ${srcs.length} 个标签`,
+    body: `以下标签将全部并入同一目标标签（受影响文档的 frontmatter 会被改写，FTS 重建）：
+      <div class="kbm-list">${listHtml}</div>`,
+    inputs: [{ key: "dst", label: "目标标签", placeholder: "例如：AI资产" }],
+    confirmText: "预览影响",
+  });
+  if (!res || !res.dst) return;
+  const dst = res.dst;
+  const affected = [];
+  for (const src of srcs) {
+    if (src === dst) continue;
+    const r1 = await fetch("/api/tag/merge", { method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ src, dst, apply: false }) });
+    const d1 = await r1.json();
+    if (d1.ok && d1.n_docs) affected.push({ src, n: d1.n_docs });
+  }
+  if (!affected.length) { toast("所选标签均无可合并文档"); return; }
+  const total = affected.reduce((s, x) => s + x.n, 0);
+  const affHtml = affected.map(x => `<div class="kbm-li">${esc(x.src)} · ${x.n} 篇</div>`).join("");
+  const res2 = await kbModal({
+    title: "确认批量合并",
+    body: `共 <b>${total}</b> 篇文档受影响：<div class="kbm-list">${affHtml}</div>`,
+    danger: true, confirmText: "执行合并",
+  });
+  if (!res2) return;
+  let okN = 0;
+  for (const { src } of affected) {
+    const r2 = await fetch("/api/tag/merge", { method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ src, dst, apply: true }) });
+    const d2 = await r2.json();
+    if (d2.ok) okN += d2.n_docs;
+  }
+  toast(`已合并 ${okN} 篇 · ${affected.length} 个标签 → 「${dst}」 · FTS 已重建`);
+  setTimeout(() => location.reload(), 1400);
+}
 async function mergeTagPrompt(src) {
   const res = await kbModal({
     title: "标签合并",
