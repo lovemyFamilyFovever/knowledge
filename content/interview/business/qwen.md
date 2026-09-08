@@ -1,5 +1,5 @@
 ---
-tags: [面试, AI, 通义千问]
+tags: [面试, AI资产, 通义千问]
 source: "myblog"
 collected: "2026-09-05"
 status: "imported"

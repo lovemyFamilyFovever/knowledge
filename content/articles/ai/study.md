@@ -1,5 +1,5 @@
 ---
-tags: [AI, 大模型]
+tags: [AI资产, 大模型]
 source: "myblog"
 collected: "2026-09-05"
 status: "imported"

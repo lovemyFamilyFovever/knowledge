@@ -1,5 +1,5 @@
 ---
-tags: [面试, AI, MiniMax]
+tags: [面试, AI资产, MiniMax]
 source: "myblog"
 collected: "2026-09-05"
 status: "imported"

@@ -1,5 +1,5 @@
 ---
-tags: [AI, 提示词]
+tags: [AI资产, 提示词]
 source: "myblog"
 collected: "2026-09-05"
 status: "imported"

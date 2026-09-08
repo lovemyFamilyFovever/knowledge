@@ -1,5 +1,5 @@
 ---
-tags: [AI, 越狱词]
+tags: [AI资产, 越狱词]
 source: "myblog"
 collected: "2026-09-05"
 status: "imported"

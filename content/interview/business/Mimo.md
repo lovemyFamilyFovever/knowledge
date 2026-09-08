@@ -1,5 +1,5 @@
 ---
-tags: [面试, AI, MiMo]
+tags: [面试, AI资产, MiMo]
 source: "myblog"
 collected: "2026-09-05"
 status: "imported"
