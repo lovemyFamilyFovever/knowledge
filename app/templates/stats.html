@@ -10,31 +10,37 @@
       <a class="iconbtn" href="/">← 返回阅读</a></div>
     <div class="page-body">
       <div class="stats-kpis">
-        <div class="skpi"><div class="n">{{ kpi.active_days }}</div><div class="l">活跃天数</div></div>
-        <div class="skpi"><div class="n">{{ kpi.total_minutes }}</div><div class="l">阅读分钟</div></div>
+        <div class="skpi"><div class="n">{{ kpi.active_days }}</div><div class="l">活跃天数</div>
+          <div class="sbar"><i style="width:{{ (100 * kpi.active_days / kpi.days_in_month) | round(0) }}%"></i></div></div>
+        <div class="skpi"><div class="n">{{ '%g'|format(kpi.total_minutes) }}<small style="font-size:13px;color:var(--muted)"> 分钟</small></div><div class="l">阅读时长</div>
+          {% if kpi.delta_minutes is defined %}{% if kpi.delta_minutes > 0 %}<span class="delta up">↑ {{ '%g'|format(kpi.delta_minutes) }} vs 上月</span>{% elif kpi.delta_minutes < 0 %}<span class="delta down">↓ {{ '%g'|format(-kpi.delta_minutes) }} vs 上月</span>{% else %}<span class="delta flat">— 持平</span>{% endif %}{% endif %}</div>
         <div class="skpi"><div class="n">{{ kpi.opened_docs }}</div><div class="l">打开文档</div></div>
-        <div class="skpi"><div class="n">{{ kpi.finished_docs }}</div><div class="l">读完文档</div></div>
+        <div class="skpi"><div class="n">{{ kpi.finished_docs }}</div><div class="l">读完文档</div>
+          {% if kpi.opened_docs %}<div class="sbar"><i style="width:{{ (100 * kpi.finished_docs / kpi.opened_docs) | round(0) }}%"></i></div>{% endif %}</div>
       </div>
 
       {% if kpi.daily %}
-      <h3 style="margin:22px 0 8px;font-size:14.5px">每日阅读（分钟）</h3>
+      <h3 style="margin:22px 0 2px;font-size:14.5px">每日阅读（分钟）</h3>
       {% set maxmin = (kpi.daily | map(attribute='minutes') | max) or 1 %}
       <div class="daily-bars">
         {% for d in kpi.daily %}
-        <div class="dbar" title="{{ d.day }}：{{ d.minutes }} 分钟 / {{ d.docs }} 篇">
+        <div class="dbar {{ 'hot' if d.minutes == maxmin and d.minutes > 0 }}" title="{{ d.day }}：{{ d.minutes }} 分钟 / {{ d.docs }} 篇">
           <div class="dbar-fill" style="height: {{ (d.minutes / maxmin * 100) | round(0) }}%"></div>
           <div class="dbar-day">{{ d.day[8:] }}</div>
         </div>
         {% endfor %}
       </div>
+      <div class="stat-note">峰值 {{ '%g'|format(maxmin) }} 分钟 · 悬停查看每日明细 · 深色为当日最高</div>
       {% endif %}
 
       <h3 style="margin:26px 0 8px;font-size:14.5px">文档榜（按阅读时长）</h3>
       {% if kpi.docs %}
+      {% set maxdoc = kpi.docs[0].minutes or 1 %}
       <div class="results">
         {% for d in kpi.docs %}
         <a class="result" href="/doc/{{ d.path[:-3] }}">
           <div class="doc-t">{{ d.title }}<span class="mini tag" style="margin-left:8px">{{ d.minutes }} 分钟 · 开 {{ d.opens }} 次</span></div>
+          <div class="sbar" style="margin-top:8px"><i style="width:{{ (100 * d.minutes / maxdoc) | round(0) }}%"></i></div>
           <div class="rp">{{ d.path }}</div>
         </a>
         {% endfor %}

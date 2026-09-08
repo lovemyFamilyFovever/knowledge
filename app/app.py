@@ -259,8 +259,32 @@ def create_app(root: Path | None = None) -> Flask:
 
     @app.route("/raw/<path:rel>")
     def raw(rel):
+        """服务语料原文件；美化版 HTML 在响应时做依赖重写（不改语料）：
+        ① /static/echarts.min.js 等本地引用 → /static/ 真实文件（绝对路径在 iframe 下本就命中）；
+        ② ./_shared/js/* 相对引用 → /static/（语料内并无 _shared/ 目录，iframe 下必 404）；
+        ③ 公网 CDN（jsdelivr 等）→ 本地 vendored 副本，离线可用。"""
         p = safe_rel(rel)
-        return send_file(p)
+        if p.suffix != ".html":
+            return send_file(p)
+        html = p.read_text(encoding="utf-8", errors="replace")
+        html = _rewrite_html_assets(html)
+        return app.response_class(html, mimetype="text/html")
+
+    @app.route("/inbox")
+    def inbox_page():
+        """收件箱：content/_inbox/ 是新内容的唯一入口，此页列出待归档项。"""
+        inbox = content / "_inbox"
+        items = []
+        if inbox.is_dir():
+            for p in sorted(inbox.rglob("*")):
+                if p.is_file() and p.suffix.lower() in (".md", ".html"):
+                    rel = p.relative_to(content).as_posix()
+                    fm, _ = parse_frontmatter(p.read_text(encoding="utf-8", errors="replace")) \
+                        if p.suffix == ".md" else ({}, None)
+                    items.append({"rel": rel, "title": str(fm.get("title") or p.stem),
+                                  "size": f"{p.stat().st_size / 1024:.1f} KB"})
+        return render_template("inbox.html", items=items, n_md=sum(1 for _ in md_files(content)),
+                               inbox_n=inbox_count(content))
 
     @app.route("/favorites")
     def favorites():
@@ -548,8 +572,21 @@ def create_app(root: Path | None = None) -> Flask:
         nxt = (lambda y, m: f"{y + 1}-01" if m == 12 else f"{y}-{m + 1:02d}")(
             *(int(x) for x in ym.split("-")))
         now_ym = time.strftime("%Y-%m")
+        # 增强字段：当月天数 + 与上月的时长环比（组件缺失/首月无数据时优雅缺席）
+        import calendar
+        kpi["days_in_month"] = calendar.monthrange(*[int(x) for x in ym.split("-")])[1]
+        try:
+            rs2 = ReadingStore(indexes)
+            try:
+                kpi["delta_minutes"] = kpi["total_minutes"] - rs2.monthly(prev)["total_minutes"]
+            finally:
+                rs2.close()
+        except Exception:
+            kpi["delta_minutes"] = 0
         return render_template("stats.html", ym=ym, kpi=kpi, prev_ym=prev,
-                               next_ym=None if nxt > now_ym else nxt)
+                               next_ym=None if nxt > now_ym else nxt,
+                               n_md=sum(1 for _ in md_files(content)),
+                               inbox_n=inbox_count(content))
 
     @app.post("/api/track")
     def api_track():
@@ -591,6 +628,25 @@ def create_app(root: Path | None = None) -> Flask:
         return render_template("error.html", message=desc), 404
 
     return app
+
+
+# ---------------- 美化版 HTML 依赖重写（响应时改写，语料文件不动） ----------------
+_ASSET_REWRITE = [
+    # 语料内不存在的 _shared/ 相对引用（美化时遗留的工程目录）→ 本地 vendored
+    (re.compile(r'("|\(|=)(\./)?_shared/js/mermaid(\.min)?\.js'),
+     r'\1/static/mermaid.min.js'),
+    # 公网 CDN → 本地 vendored 副本（离线可用，不依赖网络）
+    (re.compile(r'https?://cdn\.jsdelivr\.net/npm/mermaid@[^/"]+/dist/mermaid(\.min)?\.js'),
+     '/static/mermaid.min.js'),
+    (re.compile(r'https?://cdn\.jsdelivr\.net/npm/chart\.js@[^/"]+/dist/chart(\.umd)?(\.min)?\.js'),
+     '/static/chart.umd.min.js'),
+]
+
+
+def _rewrite_html_assets(html: str) -> str:
+    for pat, rep in _ASSET_REWRITE:
+        html = pat.sub(rep, html)
+    return html
 
 
 DEFAULT_ROOT = Path(__file__).resolve().parents[1]

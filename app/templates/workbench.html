@@ -60,6 +60,7 @@
         <button class="iconbtn" onclick="closeEditor()">取消</button>
         <button class="iconbtn primary" onclick="saveDoc()">保存写回</button>
       </div>
+      <div class="hint" id="ed-hint" style="display:none">上方 <b>---</b> 包裹的是 frontmatter（文档元数据）：<b>title</b> 标题 · <b>tags</b> 标签列表 · <b>status</b> 状态（inbox/stable）· <b>favorite</b> 收藏。只改值，不要动字段名和 <b>---</b> 分隔线。下方正文区直接写 Markdown。</div>
       <textarea id="ed-text" spellcheck="false"></textarea>
     </div>
   </section>

@@ -44,8 +44,8 @@
     <kbd>/</kbd>
   </div>
   <div class="top-right">
-    <span class="pill" title="待归档暂存区（归档后此数下降）"><span>收件箱</span><span class="n">{{ inbox_n|default(0) }}</span></span>
-    <span class="pill ok" title="indexes/index.db，启动时自动重建"><span class="dot"></span><span>全文索引</span><span class="n">{{ n_md|default(fts_n)|default(0) }}</span></span>
+    <a class="pill" href="/inbox" title="收件箱：新收录的待整理内容先进这里，阅读后归档进各领域"><span>收件箱</span><span class="n">{{ inbox_n|default(0) }}</span></a>
+    <button class="pill ok" onclick="const q=document.getElementById('q'); q.focus(); q.select();" title="全文索引已就绪；点击聚焦搜索框（快捷键 / 支持语义检索，前缀 ?）"><span class="dot"></span><span>全文检索</span><span class="n">{{ n_md|default(fts_n)|default(0) }}</span></button>
     <button class="pill" id="theme-btn" title="切换白天 / 夜间">☀</button>
   </div>
 </header>

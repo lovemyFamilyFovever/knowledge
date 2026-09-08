@@ -1,5 +1,5 @@
 /* 知库 reader 前端：主题、面板折叠、客户端路由、正文渲染、编辑/备注/收藏/删除、双链、快捷键 */
-window.APP_JS_VERSION = 14;
+window.APP_JS_VERSION = 15;
 
 const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
@@ -291,14 +291,18 @@ function openEditor() {
   if (!DOC || DOC.is_html) return;
   $("#article").style.display = "none";
   $("#editor").classList.add("show");
+  const hint = $("#ed-hint");
+  if (hint) hint.style.display = ""; // frontmatter 引导：这是编辑页顶部空白区的用途说明
   $("#ed-path").textContent = DOC.rel;
   $("#ed-text").value = "---\n" + Object.entries(DOC.fm).map(([k, v]) =>
     `${k}: ${v === true ? "true" : JSON.stringify(v)}`).join("\n") + "\n---\n\n" + DOC.md;
   $("#ed-text").focus();
   toast("编辑态 · 保存即写回文件系统，git 记录本次变更");
 }
-function closeEditor() {
+async function closeEditor() {
   const ed = $("#editor"); if (!ed) return;
+  const hint = $("#ed-hint");
+  if (hint) hint.style.display = "none";
   ed.classList.remove("show");
   $("#article").style.display = "";
 }
@@ -526,8 +530,57 @@ async function showStats(rel) {
   document.body.appendChild(ov);
 }
 
+/* ---------- 通用弹窗（替代系统 prompt/alert/confirm） ----------
+   kbModal({ title, body, html, inputs:[{key,label,value,placeholder}], confirmText, danger })
+   → Promise<null | { values:{key:value} }>；Esc / 取消 / 点击遮罩返回 null。 */
+function kbModal(opt) {
+  return new Promise(resolve => {
+    const ov = document.createElement("div");
+    ov.className = "kbm-ov";
+    const inputs = opt.inputs || [];
+    ov.innerHTML = `<div class="kbm" role="dialog" aria-modal="true">
+      <div class="kbm-title">${esc(opt.title || "")}</div>
+      ${opt.body ? `<div class="kbm-body">${esc(opt.body)}</div>` : ""}
+      ${opt.html ? `<div class="kbm-body">${opt.html}</div>` : ""}
+      ${inputs.map(i => `<label class="kbm-label">${esc(i.label || "")}
+        <input class="kbm-input" data-k="${esc(i.key)}" value="${esc(i.value ?? "")}"
+          placeholder="${esc(i.placeholder || "")}" spellcheck="false"></label>`).join("")}
+      <div class="kbm-btns">
+        <button class="iconbtn kbm-cancel">取消</button>
+        <button class="iconbtn primary kbm-ok ${opt.danger ? "danger" : ""}">${esc(opt.confirmText || "确定")}</button>
+      </div></div>`;
+    document.body.appendChild(ov);
+    const done = val => { ov.remove(); document.removeEventListener("keydown", onKey); resolve(val); };
+    const collect = () => {
+      const values = {};
+      ov.querySelectorAll(".kbm-input").forEach(inp => values[inp.dataset.k] = inp.value.trim());
+      return values;
+    };
+    const onOk = () => done(collect());
+    const onCancel = () => done(null);
+    const onKey = e => {
+      if (e.key === "Escape") onCancel();
+      if (e.key === "Enter" && (e.metaKey || e.ctrlKey || !inputs.length)) onOk();
+    };
+    ov.querySelector(".kbm-ok").onclick = onOk;
+    ov.querySelector(".kbm-cancel").onclick = onCancel;
+    ov.addEventListener("mousedown", e => { if (e.target === ov) onCancel(); });
+    document.addEventListener("keydown", onKey);
+    const first = ov.querySelector(".kbm-input");
+    if (first) { first.focus(); first.select(); }
+    else ov.querySelector(".kbm-ok").focus();
+  });
+}
+
 async function moveDocPrompt(rel) {
-  const dst = prompt("移动到（content/ 下的新相对路径，含 .md）：\n例：articles/vue2/新目录/文档名.md", rel);
+  const res = await kbModal({
+    title: "移动 / 重命名",
+    body: "目标为 content/ 下的相对路径（含 .md）。移动后 FTS、双链与向量索引自动级联更新。",
+    inputs: [{ key: "dst", label: "新路径", value: rel, placeholder: "articles/vue2/目录/文档名.md" }],
+    confirmText: "移动",
+  });
+  if (!res) return;
+  const dst = res.dst;
   if (!dst || dst === rel) return;
   const r = await fetch("/api/move", { method: "POST", headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ src: rel, dst }) });
@@ -563,8 +616,14 @@ document.addEventListener("contextmenu", e => {
     const base = sub === "_root" ? dom : `${dom}/${sub}`;
     openCtxMenu(e.clientX, e.clientY, [
       { label: "📂 在此新建文档…", fn: async () => {
-          const nm = prompt("新文档文件名（不含 .md）：");
-          if (!nm) return;
+          const res = await kbModal({
+            title: "新建文档",
+            body: `将在 <span class='mono'>${esc(base)}/</span> 下创建 Markdown 文件，首行自动写入标题。`,
+            inputs: [{ key: "nm", label: "文件名（不含 .md）", placeholder: "示例：RAG 切块策略" }],
+            confirmText: "创建",
+          });
+          if (!res || !res.nm) return;
+          const nm = res.nm;
           const rel = `${base}/${nm}.md`;
           const r = await fetch("/api/save", { method: "POST", headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ path: rel, content: `# ${nm}\n\n` }) });

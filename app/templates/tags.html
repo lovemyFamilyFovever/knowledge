@@ -37,16 +37,27 @@
 {% block scripts %}
 <script>
 async function mergeTagPrompt(src) {
-  const dst = prompt("把标签「" + src + "」并入哪个标签？\n（受影响文档将改写 frontmatter，先预览）", src);
-  if (!dst || dst === src) return;
+  const res = await kbModal({
+    title: "标签合并",
+    body: "把「<b>" + esc(src) + "</b>」并入另一个标签：受影响文档的 frontmatter 会被改写，FTS 重建。先预览受影响清单，确认后才写盘。",
+    inputs: [{ key: "dst", label: "目标标签", value: src, placeholder: "例如：AI资产" }],
+    confirmText: "预览影响",
+  });
+  if (!res || !res.dst || res.dst === src) return;
+  const dst = res.dst;
   const r1 = await fetch("/api/tag/merge", { method: "POST", headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ src, dst, apply: false }) });
   const d1 = await r1.json();
   if (!d1.ok) { toast("预览失败"); return; }
   if (!d1.n_docs) { toast("「" + src + "」没有可合并的文档"); return; }
-  const list = d1.docs.slice(0, 12).map(x => "· " + x.path).join("\n");
-  const more = d1.n_docs > 12 ? "\n… 共 " + d1.n_docs + " 篇" : "";
-  if (!confirm("将把 " + d1.n_docs + " 篇文档的「" + src + "」改为「" + dst + "」：\n" + list + more + "\n\n确认执行？")) return;
+  const listHtml = d1.docs.slice(0, 12).map(x => `<div class="kbm-li">${esc(x.path)}</div>`).join("")
+    + (d1.n_docs > 12 ? `<div class="kbm-li">… 共 ${d1.n_docs} 篇</div>` : "");
+  const res2 = await kbModal({
+    title: "确认合并",
+    body: `将把 <b>${d1.n_docs}</b> 篇文档的「<b>${esc(src)}</b>」改为「<b>${esc(dst)}</b>」：<div class="kbm-list">${listHtml}</div>`,
+    danger: true, confirmText: "执行合并",
+  });
+  if (!res2) return;
   const r2 = await fetch("/api/tag/merge", { method: "POST", headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ src, dst, apply: true }) });
   const d2 = await r2.json();

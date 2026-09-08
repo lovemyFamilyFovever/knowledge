@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block title %}收件箱 · 知库{% endblock %}
+{% block body %}
+<main class="single">
+  <section class="panel page-panel">
+    <div class="crumb"><b>收件箱</b><span class="sep">·</span>{{ items|length }} 篇待归档<span class="spacer"></span><a class="iconbtn" href="/">← 返回阅读</a></div>
+    <div class="page-body">
+      <div class="inbox-intro">
+        <div class="ii-title">这是什么？</div>
+        <p>收件箱（<span class="mono">content/_inbox/</span>）是<strong>新内容的唯一入口</strong>：任何新摘录、新文章、AI 产出先扔进这里，不直接写进正式领域。阅读后决定去向——用每篇右侧的「移动」归档进领域目录，或「删除」丢弃。inbox 清空即代表本轮信息消化完毕。</p>
+      </div>
+      {% if items %}
+      <div class="results">
+        {% for it in items %}
+        <div class="result inbox-row" data-rel="{{ it.rel }}">
+          <div style="flex:1;min-width:0">
+            <div class="doc-t">{{ it.title }}</div>
+            <div class="rp">{{ it.rel }} · {{ it.size }}</div>
+          </div>
+          <a class="iconbtn" href="/raw/{{ it.rel }}" target="_blank">阅读</a>
+          <button class="iconbtn" onclick="inboxMove(this.closest('.inbox-row'))">⇄ 归档 / 移动…</button>
+          <button class="iconbtn danger" onclick="inboxDelete(this.closest('.inbox-row'))">🗑 丢弃</button>
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <div class="empty">收件箱已清空 ✓ —— 把新内容放进 <span class="mono">content/_inbox/</span>，这里就会出现待办。</div>
+      {% endif %}
+    </div>
+  </section>
+</main>
+{% endblock %}
+{% block scripts %}
+<script>
+async function inboxMove(row) {
+  const rel = row.dataset.rel;
+  const res = await kbModal({
+    title: "归档到…",
+    body: "把 <span class='mono'>" + rel + "</span> 移入正式领域目录（content/ 下的相对路径，含 .md）。移出 _inbox 后才算完成归档。",
+    inputs: [{ key: "dst", label: "目标路径", placeholder: "articles/ai/文件名.md" }],
+    confirmText: "归档",
+  });
+  if (!res || !res.dst) return;
+  const r = await fetch("/api/move", { method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ src: rel, dst: res.dst }) });
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok || !d.ok) { toast("归档失败：" + (d.error || r.status)); return; }
+  toast(`已归档至 <span class='mono'>${esc(d.dst)}</span>`); setTimeout(() => location.reload(), 900);
+}
+async function inboxDelete(row) {
+  const rel = row.dataset.rel;
+  const res = await kbModal({ title: "丢弃这篇？", body: "「" + rel + "」将移入 content/_trash/（软删除，可找回）。", danger: true, confirmText: "丢弃" });
+  if (!res) return;
+  const r = await fetch("/api/delete", { method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ path: rel }) });
+  if (r.ok) { toast("已移入回收站"); row.remove(); }
+  else toast("删除失败：" + r.status);
+}
+</script>
+{% endblock %}
