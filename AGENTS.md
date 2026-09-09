@@ -52,6 +52,7 @@ scripts/            迁移与维护脚本（rag_search.py 是 Agent 检索入口
 
 - git 输出含中文文件名时默认转义为带引号的八进制串（如 `"\347\231\276….md"`），行尾多出的引号使 `\.md$` 类正则大面积漏计（实测 baike 目录 245 个文件只命中 9 个）。统计/匹配 git 路径输出一律加 `-c core.quotepath=false`。
 - PowerShell 5.1 读无 BOM 的 UTF-8 脚本按 GBK 解码：若文件还是 LF-only，行尾中文的 UTF-8 末字节（0x80-0xBF，合法 GBK 首字节）会把换行符吞进非法双字节序列，下一行代码被并入注释静默失效（实测 daily_backup.ps1 的 $root 赋值被吞，Join-Path 报 null）。仓库 .ps1 一律 UTF-8 BOM + CRLF（.gitattributes 已强制 `*.ps1 text eol=crlf`）。
+- 测试全绿 ≠ 启动路径可用：tests 从项目根导入 `app`，start.bat 脚本直启走另一条解析路径（sys.path[0]=app/ 目录）；2026-09-09 实测 app/ 缺 __init__.py 时直启崩、测试全绿。回归入口：`python app\app.py --import-check`（已入 tests/test_reader.py 断言与 pre-commit 链）。
 
 ## 禁区
 
