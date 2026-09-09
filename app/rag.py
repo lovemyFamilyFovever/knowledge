@@ -548,6 +548,8 @@ def query_rag(store: RagStore, embedder: OnnxEmbedder, q: str, k: int = 8,
         if not files:
             return []
     hits = store.search(qvec, k, files)
+    from urllib.parse import quote as _urlquote
     for h in hits:
-        h["url"] = "/doc/" + h["file"][:-3]
+        # 逐段编码：含空格/中文的路径裸拼会在复制链接、代理等场景断链
+        h["url"] = "/doc/" + "/".join(_urlquote(x) for x in h["file"][:-3].split("/"))
     return hits
