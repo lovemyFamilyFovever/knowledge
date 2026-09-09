@@ -96,11 +96,14 @@ function renderArticle() {
   const el = $("#article");
   if (!el || !DOC) return;
   if (DOC.is_html) {
+    // 整页 HTML 文档：iframe 沙箱内嵌直通 /raw/（保留自带样式/脚本），
+    // 绝不走 marked+DOMPurify 管线——0.3MB HTML 过 markdown 解析会把源码平铺成数万节点 DOM，卡且不可读
     el.innerHTML = `<div class="a-kicker">HTML 文档</div>
       <h1 class="a-title">${esc(DOC.title)}</h1>
       <div class="a-rule"></div>
-      <div class="a-body"><p>这是整页 HTML 文档，直通渲染以保留其自带样式。</p>
-      <p><a class="iconbtn primary" href="/raw/${esc(DOC.rel)}" target="_blank">在新标签页打开原页面 ↗</a></p></div>`;
+      <div class="html-frame-wrap"><iframe class="html-frame" src="/raw/${DOC.rel.split("/").map(encodeURIComponent).join("/")}"
+        sandbox="allow-same-origin allow-popups" title="${esc(DOC.title)} 美化版"></iframe></div>
+      <p style="margin-top:10px"><a class="iconbtn" href="/raw/${DOC.rel.split("/").map(encodeURIComponent).join("/")}" target="_blank">↗ 新标签页打开原页面</a></p>`;
   } else {
     const chips = [
       `<span class="chip acc">${esc(DOC.source_label)}</span>`,

@@ -334,6 +334,14 @@ html[data-theme="dark"] .seg-bar span{background:hsl(var(--dh) 68% 60%)}
   .pipe-line{display:none}
   .pipe-node{min-width:72px}
   .page-body{padding:16px 14px}
+  /* 阅读页四栏 → 单栏栈叠：树/列表改横向压缩条，正文优先 */
+  main{display:flex;flex-direction:column;overflow-y:auto}
+  main>section.panel{flex:none;max-height:36vh;overflow-y:auto}
+  main>section.article-wrap{flex:1 1 auto;order:-1;max-height:none;min-height:72vh}
+  main>section.rail{display:none}   /* 手机上右栏（目录/信息/备注）降级隐藏 */
+  .article{padding:16px 14px 40px}
+  .article-inner{max-width:none}
+  .editor textarea{min-height:50vh}
   .kbm{padding:16px}
   .pretty-box{width:96vw;height:86vh}
 }
@@ -489,3 +497,7 @@ html[data-theme="dark"] .ss-cell{background:rgba(6,10,14,.4)}
 /* ---------- v15：编辑器引导 ---------- */
 .editor .hint{font-family:var(--mono);font-size:10.5px;color:var(--faint);margin-bottom:8px;line-height:1.7}
 .editor .hint b{color:var(--acc);font-weight:600}
+/* ---------- v17：整页 HTML 文档 iframe 内嵌 ---------- */
+.html-frame-wrap{border:1px solid var(--edge);border-radius:12px;overflow:hidden;box-shadow:var(--shadow)}
+.html-frame{display:block;width:100%;height:calc(100vh - 230px);min-height:480px;border:0;background:#fff}
+html[data-theme="dark"] .html-frame{background:#0d1412}

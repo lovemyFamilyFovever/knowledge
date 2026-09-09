@@ -14,6 +14,7 @@ content/ 的 Markdown/HTML 文件是唯一事实源；indexes/（index.db / rag.
 工厂模式：create_app(root) 便于测试指向临时语料目录。
 """
 import json
+import logging
 import re
 import sys
 import threading
@@ -21,6 +22,8 @@ import time
 from pathlib import Path
 
 from flask import Flask, abort, jsonify, redirect, render_template, request, send_file
+
+logger = logging.getLogger("kb.reader")
 
 # 直接以脚本方式运行（python app\app.py）时 sys.path[0] 是 app/ 目录而非项目根，
 # 补上项目根保证 from app.xxx import 在两种启动方式下都能命中
@@ -90,6 +93,7 @@ def create_app(root: Path | None = None) -> Flask:
             rag_state["embedder"] = OnnxEmbedder(root / "app" / "rag_models")
             rag_state["store"] = RagStore(indexes)
         except Exception:
+            logger.warning("RAG 初始化失败，语义检索降级纯 FTS", exc_info=True)
             rag_state["embedder"] = rag_state["store"] = None
         return rag_state["embedder"], rag_state["store"]
 
@@ -102,18 +106,31 @@ def create_app(root: Path | None = None) -> Flask:
                 if index_is_stale(content, indexes):
                     build_index(content, indexes)
             except Exception:
-                pass  # 静默：索引重建失败不影响服务
+                # 重建失败不拖垮服务，但必须留痕：否则表现为“搜索不到新文档”而无处排查
+                logger.warning("FTS 索引重建失败", exc_info=True)
             if rag_state["embedder"] is not None and rag_state["store"] is not None:
                 try:
                     sync_rag(content, rag_state["embedder"], rag_state["store"])
                 except Exception:
-                    pass
+                    logger.warning("RAG 同步失败（下轮重试）", exc_info=True)
 
     _watcher = threading.Thread(target=_index_watcher, daemon=True)
     _watcher.start()
 
+    # 语料树请求间缓存：_tree_sig 仅 stat 不读内容（毫秒级），签名未变时复用上次扫描结果，
+    # 消除 10 处热点路由每请求全量 rglob 的开销。文件增删改均会改变签名，不存陈旧风险。
+    _scan_cache = {"sig": None, "domains": None}
+
+    def domains_cached() -> list[dict]:
+        """scan_corpus 的缓存门面：签名命中直接复用，未命中重扫。"""
+        sig = _tree_sig(content)
+        if _scan_cache["sig"] != sig or _scan_cache["domains"] is None:
+            _scan_cache["domains"] = scan_corpus(content)
+            _scan_cache["sig"] = sig
+        return _scan_cache["domains"]
+
     def corpus_stats() -> dict:
-        domains = scan_corpus(content)
+        domains = domains_cached()
         n_md = sum(1 for _, _ in md_files(content))
         n_html = sum(1 for p in content.rglob("*.html")
                      if not any(part in SKIP_DIRS or part.startswith("_") for part in p.parts))
@@ -139,7 +156,7 @@ def create_app(root: Path | None = None) -> Flask:
 
     @app.route("/")
     def index():
-        domains = scan_corpus(content)
+        domains = domains_cached()
         if not domains:
             abort(404, "content/ 语料为空")
         d0, s0 = domains[0]["id"], domains[0]["subs"][0]
@@ -211,7 +228,7 @@ def create_app(root: Path | None = None) -> Flask:
         return {"doc": doc, "info_rows": info_rows, "sobj": sobj}
 
     def workbench(domain, sub, name):
-        domains = scan_corpus(content)
+        domains = domains_cached()
         data = collect_doc(domain, sub, name, domains)
         if data is None:
             abort(404)
@@ -230,12 +247,12 @@ def create_app(root: Path | None = None) -> Flask:
 
     @app.get("/api/tree")
     def api_tree():
-        domains = scan_corpus(content)
+        domains = domains_cached()
         return jsonify({"sig": _tree_sig(content), "domains": domains})
 
     @app.get("/api/doc")
     def api_doc():
-        domains = scan_corpus(content)
+        domains = domains_cached()
         data = collect_doc(request.args.get("domain", ""), request.args.get("sub", ""),
                            request.args.get("name", ""), domains)
         if data is None:
@@ -245,7 +262,7 @@ def create_app(root: Path | None = None) -> Flask:
 
     @app.route("/browse/<domain>/<sub>")
     def browse(domain, sub):
-        domains = scan_corpus(content)
+        domains = domains_cached()
         dom = next((d for d in domains if d["id"] == domain), None)
         sobj = next((s for s in dom["subs"] if s["id"] == sub), None) if dom else None
         if not sobj or not sobj["docs"]:
@@ -288,7 +305,7 @@ def create_app(root: Path | None = None) -> Flask:
 
     @app.route("/favorites")
     def favorites():
-        domains = scan_corpus(content)
+        domains = domains_cached()
         items = [{"domain": d["id"], "domain_label": d["label"], "sub": s["id"], **doc}
                  for d in domains for s in d["subs"] for doc in s["docs"] if doc["favorite"]]
         return render_template("favorites.html", items=items, n_md=sum(1 for _ in md_files(content)),
@@ -296,7 +313,7 @@ def create_app(root: Path | None = None) -> Flask:
 
     @app.route("/tags")
     def tags():
-        domains = scan_corpus(content)
+        domains = domains_cached()
         tag_map: dict[str, list[dict]] = {}  # tag -> list of doc info
         for d in domains:
             for s in d["subs"]:
@@ -481,7 +498,8 @@ def create_app(root: Path | None = None) -> Flask:
                     rstore.con.commit()
                 rstore.close()
             except Exception:
-                pass  # 向量索引搬移失败不阻塞；下轮 sync_rag 会全量对齐
+                # 搬移失败不阻塞移动本身；留痕后由下轮 sync_rag 全量对齐
+                logger.warning("向量索引搬移失败（%s → %s），待 sync_rag 对齐", src_rel, dst_rel, exc_info=True)
         return jsonify({"ok": True, "src": src_rel, "dst": dst_rel, "moved_sibs": moved_sibs})
 
     @app.post("/api/move/batch")
@@ -527,7 +545,7 @@ def create_app(root: Path | None = None) -> Flask:
                             rstore.con.commit()
                         rstore.close()
                     except Exception:
-                        pass
+                        logger.warning("批量移动：向量索引搬移失败（%s → %s）", s_rel, dst_rel, exc_info=True)
                 results.append({"src": s_rel, "dst": dst_rel, "ok": True})
             except Exception as e:
                 results.append({"src": src_rel, "dst": dst_rel, "ok": False, "error": str(e)[:120]})
@@ -538,7 +556,7 @@ def create_app(root: Path | None = None) -> Flask:
     @app.get("/api/substats")
     def api_substats():
         """目录级统计：某 domain/sub 下所有文档的篇数/字数(CJK)/标签分布/最近更新。"""
-        domains = scan_corpus(content)
+        domains = domains_cached()
         dom = next((d for d in domains if d["id"] == request.args.get("domain", "")), None)
         sobj = next((s for s in dom["subs"] if s["id"] == request.args.get("sub", "")), None) if dom else None
         if not sobj:
