@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>知库全站巡检报告 · 2026-09-09</title>
+<style>
+  :root{
+    --bg:#0f0f0f; --ink:#f0f0f0; --mut:#9a9a9a; --dim:#6f6f6f;
+    --line:rgba(255,255,255,.08); --line2:rgba(255,255,255,.14);
+    --acc:#4ec9a6; --warn:#e0a458; --bad:#e07a68;
+    --mono:ui-monospace,'Cascadia Mono','JetBrains Mono',Consolas,monospace;
+    --sans:'Segoe UI','PingFang SC','Microsoft YaHei',system-ui,sans-serif;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:15px;line-height:1.6;padding:56px 24px 96px}
+  .wrap{max-width:960px;margin:0 auto}
+  .kick{font-family:var(--mono);font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:var(--dim)}
+  h1{font-size:34px;font-weight:600;letter-spacing:-.02em;margin:10px 0 6px}
+  .lede{color:var(--mut);max-width:64ch}
+  .meta{display:flex;gap:22px;flex-wrap:wrap;font-family:var(--mono);font-size:12px;color:var(--dim);margin:22px 0 0;padding:14px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+  .meta b{color:var(--ink);font-weight:500}
+  h2{font-size:19px;font-weight:600;letter-spacing:-.01em;margin:52px 0 6px}
+  .h2sub{color:var(--mut);font-size:13.5px;margin-bottom:18px}
+  table{width:100%;border-collapse:collapse;font-size:13.5px;margin:14px 0 8px}
+  th{font-family:var(--mono);font-size:11px;letter-spacing:.07em;text-transform:uppercase;color:var(--dim);text-align:left;font-weight:500;padding:8px 10px;border-bottom:1px solid var(--line2)}
+  td{padding:9px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+  td.mono,code{font-family:var(--mono);font-size:12.5px}
+  code{background:rgba(255,255,255,.05);padding:1px 5px;border-radius:3px}
+  .pass{color:var(--acc);font-family:var(--mono);font-size:12px;white-space:nowrap}
+  .warn{color:var(--warn);font-family:var(--mono);font-size:12px;white-space:nowrap}
+  .grid{display:grid;grid-template-columns:repeat(4,1fr);gap:0;border:1px solid var(--line);margin:18px 0 6px}
+  .cell{padding:16px 18px;border-right:1px solid var(--line)}
+  .cell:last-child{border-right:none}
+  .num{font-family:var(--mono);font-size:26px;font-weight:600;letter-spacing:-.02em}
+  .lbl{font-size:12px;color:var(--mut);margin-top:2px}
+  .num.ok{color:var(--acc)}
+  .note{border-left:2px solid var(--line2);padding:2px 0 2px 16px;color:var(--mut);font-size:13.5px;margin:18px 0;max-width:70ch}
+  .note b{color:var(--ink);font-weight:550}
+  .foot{margin-top:64px;padding-top:16px;border-top:1px solid var(--line);font-family:var(--mono);font-size:11px;color:var(--dim);display:flex;justify-content:space-between;letter-spacing:.05em}
+  @media(max-width:720px){.grid{grid-template-columns:repeat(2,1fr)}.cell:nth-child(2){border-right:none}.cell{border-bottom:1px solid var(--line)}.cell:nth-child(3),.cell:nth-child(4){border-bottom:none}body{padding:36px 16px 72px}h1{font-size:27px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="kick">Knowledge Base · Full-App Patrol</div>
+  <h1>知库全站交互巡检报告</h1>
+  <p class="lede">应「全页面 × 全交互巡检」要求，对 127.0.0.1:5001 做了一轮系统性走查：API 写路径矩阵 22 项断言、搜索双模式 10 项断言、桌面 6 页 + 移动端 3 断点 9 图截图走查、workbench DOM 探针。抓到并修复 1 个真 bug，澄清 2 个疑似非 bug。</p>
+  <div class="meta">
+    <span>日期 <b>2026-09-09</b></span>
+    <span>范围 <b>22 路由 / 8 POST 端点 / 9 页面</b></span>
+    <span>结论 commit <b>112a807</b></span>
+    <span>基线 <b>53856bf</b></span>
+  </div>
+
+  <h2>总览</h2>
+  <p class="h2sub">四条巡检线的量化结果；修复项已含在通过数内（修后复跑全绿）。</p>
+  <div class="grid">
+    <div class="cell"><div class="num ok">22/22</div><div class="lbl">API 写路径矩阵</div></div>
+    <div class="cell"><div class="num ok">10/10</div><div class="lbl">搜索双模式</div></div>
+    <div class="cell"><div class="num ok">15</div><div class="lbl">页面截图走查</div></div>
+    <div class="cell"><div class="num">1</div><div class="lbl">真 bug 修复</div></div>
+  </div>
+
+  <h2>发现与处置</h2>
+  <p class="h2sub">全部异常按「真 bug / 误报」两类归档，均给出证据链。</p>
+  <table>
+    <tr><th>编号</th><th>现象</th><th>根因</th><th>处置</th><th>状态</th></tr>
+    <tr>
+      <td class="mono">F-1</td>
+      <td>语义检索命中含空格/中文路径时，<code>/api/rag</code> 返回的 <code>url</code> 未逐段 URL 编码</td>
+      <td class="mono">rag.py 拼 url 直接 <code>"/doc/"+file[:-3]</code>，未 quote</td>
+      <td>逐段 <code>quote()</code> 后拼接，与 FTS 分支口径一致；重启后复测含空格路径 href 正常</td>
+      <td class="pass">已修复 · 112a807</td>
+    </tr>
+    <tr>
+      <td class="mono">F-2</td>
+      <td>顶栏「收件箱 1」vs 收藏页「0 篇」疑不一致</td>
+      <td>两套口径：<b>收件箱</b>计数 = <code>_inbox/</code> 文件数（确有 1 篇「知库项目履历」）；<b>收藏</b>计数 = frontmatter <code>favorite: true</code> 数（确为 0）</td>
+      <td>两处数字均正确，无需修；巡检脚本留档防回归</td>
+      <td class="warn">误报澄清</td>
+    </tr>
+    <tr>
+      <td class="mono">F-3</td>
+      <td>DOM 探针报「编辑器元素不存在」「双链面板不存在」</td>
+      <td>探针选择器写错：真实 id 是 <code>ed-text</code> / <code>pane-links</code>，探针猜的是 <code>ed-ta</code> / <code>.backlinks</code></td>
+      <td>核对 workbench.html 后确认元素在位，探针自身 bug</td>
+      <td class="warn">误报澄清</td>
+    </tr>
+  </table>
+
+  <h2>API 写路径矩阵（22/22）</h2>
+  <p class="h2sub">全部写操作走临时探针文档（<code>_probe巡检*.md</code>），测毕软删入 <code>_trash/</code>，语料零残留。脚本：<code>scripts/api_patrol.py</code>，可重复执行。</p>
+  <table>
+    <tr><th>分组</th><th>断言</th><th>结果</th></tr>
+    <tr><td>新建 / 编辑</td><td>save 新建自动补 frontmatter；save 编辑覆盖保留 frontmatter</td><td class="pass">2/2 PASS</td></tr>
+    <tr><td>备注 / 收藏</td><td>note 追加并返回；favorite 开→true、关→false 双向切换</td><td class="pass">3/3 PASS</td></tr>
+    <tr><td>移动 / 重命名</td><td>move 正常迁移；dst 已存在拒绝(400)；越界 <code>../</code> 路径拒绝(400)</td><td class="pass">3/3 PASS</td></tr>
+    <tr><td>批量移动</td><td>move/batch 1 正确 + 1 非法 dst → per-item 报错、部分失败不回滚（n_ok=1, n_fail=1）</td><td class="pass">1/1 PASS</td></tr>
+    <tr><td>统计</td><td>substats 目录级（篇数/CJK/标签分布）；stats 文档级（字数/标题/代码块）</td><td class="pass">2/2 PASS</td></tr>
+    <tr><td>标签合并</td><td>预检 apply=false 返回 n_docs=0 不写盘；真合并 n_docs=1 且 FTS 重建</td><td class="pass">2/2 PASS</td></tr>
+    <tr><td>软删 / 索引同步</td><td>delete 移入 _trash 含旁挂文件；删后 /api/rag 查询正常（索引同步）</td><td class="pass">2/2 PASS</td></tr>
+    <tr><td>健壮性</td><td>rag 特殊字符（引号/加号/百分号/空格）4 组不 500；search 页面 200；track 埋点 ok</td><td class="pass">6/6 PASS</td></tr>
+    <tr><td>双链</td><td>links 出链+入链查询结构完整</td><td class="pass">1/1 PASS</td></tr>
+  </table>
+
+  <h2>搜索双模式（10/10）</h2>
+  <p class="h2sub">脚本：<code>scripts/search_patrol.py</code>。FTS 关键词与 <code>?前缀</code> 语义两条链路都测。</p>
+  <table>
+    <tr><th>断言</th><th>结果</th></tr>
+    <tr><td>FTS 中文词命中；结果卡全部带非空 href（上轮修复不回归）</td><td class="pass">PASS</td></tr>
+    <tr><td>FTS 英文词命中；空结果优雅降级（empty 态非报错）</td><td class="pass">PASS</td></tr>
+    <tr><td>语义 /api/rag 返回 hits 结构（file/url/score 齐全）；空 query 400</td><td class="pass">PASS</td></tr>
+    <tr><td>语义 hits url 非空且无裸空格（本轮 F-1 修复验证点）</td><td class="pass">PASS</td></tr>
+    <tr><td>search 页面聚合渲染 200；超长 query（300 字）不 500</td><td class="pass">PASS</td></tr>
+  </table>
+
+  <h2>视觉走查（15 图）</h2>
+  <p class="h2sub">无头 Chrome 实截；布局结论均来自截图 + DOM 探针双重验证。</p>
+  <table>
+    <tr><th>断点 / 模式</th><th>页面</th><th>结论</th></tr>
+    <tr><td>桌面 1440</td><td>home / tags / stats / inbox / search / favorites</td><td class="pass">六页版式正常</td></tr>
+    <tr><td>移动 390</td><td>阅读页 / home / tags</td><td class="pass">单栏栈叠、正文置顶、无溢出</td></tr>
+    <tr><td>移动 520</td><td>阅读页 / home / tags</td><td class="pass">同上；顶栏 pill 正常收纳</td></tr>
+    <tr><td>移动 768</td><td>阅读页 / home / tags</td><td class="pass">过渡断点正常；批量合并工具条在位</td></tr>
+    <tr><td>DOM 探针</td><td>workbench（摘要文档）</td><td class="pass">右键菜单 6 函数、树 71 子域、收藏按钮、JS v16 全在位</td></tr>
+  </table>
+
+  <h2>回归基线</h2>
+  <p class="h2sub">修复落盘后全量测试 + git 状态。</p>
+  <table>
+    <tr><th>项</th><th>结果</th></tr>
+    <tr><td>test_reader / test_new_project / test_rag / test_govern</td><td class="pass">39 + 9 + RAG + GOVERN 全绿</td></tr>
+    <tr><td>本轮 commit</td><td class="mono">112a807 fix(rag): URL-encode semantic search hrefs segment by segment</td></tr>
+    <tr><td>新增可复用资产</td><td class="mono">scripts/api_patrol.py · scripts/search_patrol.py（巡检随时重跑）</td></tr>
+    <tr><td>工作区</td><td class="pass">干净（push 按惯例留给用户）</td></tr>
+  </table>
+
+  <div class="note"><b>遗留观察项（非 bug，记录在案）：</b>① FTS snippet 对 markdown 语法符号（<code>#</code>、<code>**</code>、表格线）有噪音，可读性一般——属 snippet 美化范畴，已有优化池条目；② 收件箱仍有 1 篇「知库项目履历」待人工归档；③ 临时端点探针已删，正式巡检脚本保留两个。</div>
+
+  <div class="foot">
+    <span>KNOWLEDGE · PATROL-20260909</span>
+    <span>22 API + 10 SEARCH + 15 SHOTS</span>
+  </div>
+</div>
+</body>
+</html>
