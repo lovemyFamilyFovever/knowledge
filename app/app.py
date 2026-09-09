@@ -737,4 +737,9 @@ DEFAULT_ROOT = Path(__file__).resolve().parents[1]
 app = create_app()
 
 if __name__ == "__main__":
+    if "--import-check" in sys.argv:
+        # 回归测试入口（tests/test_reader.py）：验证脚本直启导入链 + create_app 完整走通
+        # 后即退出；不绑端口、不进服务循环（watcher 为 daemon 线程，随进程退出）
+        print("IMPORT-CHECK OK")
+        raise SystemExit(0)
     app.run(host="127.0.0.1", port=5001, debug=False)

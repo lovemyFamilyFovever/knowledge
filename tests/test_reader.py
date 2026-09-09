@@ -186,6 +186,15 @@ def main() -> int:
         r = c.get("/doc/ai/nope/nope")
         check("不存在的文档 404", r.status_code == 404)
 
+    # 回归：脚本直启（python app\app.py / start.bat）的导入路径 —— 2026-09-09 启动报错修复
+    import subprocess
+    r = subprocess.run(
+        [sys.executable, "app/app.py", "--import-check"],
+        cwd=str(Path(__file__).resolve().parents[1]),
+        capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=120,
+    )
+    check("脚本直启导入路径可用（app.py --import-check）", r.returncode == 0)
+
     print(f"\n{passed} passed, {failed} failed")
     return 1 if failed else 0
 
