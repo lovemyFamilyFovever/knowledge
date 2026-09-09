@@ -226,7 +226,7 @@ def create_app(root: Path | None = None) -> Flask:
         return render_template("workbench.html", domains=domains, cur={"domain": domain, "sub": sub, "name": name},
                                docs=sobj["docs"], sub_label=sobj["label"], doc=doc, n_fav=n_fav,
                                info_rows=info_rows,
-                               doc_json=json.dumps(doc, ensure_ascii=False), fts_n=fts_n, inbox_n=inbox_n)
+                               doc_json=json.dumps(doc, ensure_ascii=False).replace("<", "\\u003c"), fts_n=fts_n, inbox_n=inbox_n)
 
     @app.get("/api/tree")
     def api_tree():
