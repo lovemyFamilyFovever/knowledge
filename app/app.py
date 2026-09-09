@@ -363,6 +363,15 @@ def create_app(root: Path | None = None) -> Flask:
                         rag_error = f"检索失败：{e}"
             else:
                 results = search(indexes, q)
+                # FTS 结果同样需要可跳转 URL：模板读 r.url，缺失时 href 为空导致整卡不可点
+                from urllib.parse import quote as _urlquote
+                for r in results:
+                    p = r.get("path", "")
+                    seg = lambda s: "/".join(_urlquote(x) for x in s.split("/"))
+                    if p.endswith(".md") and not p.startswith("_inbox/"):
+                        r["url"] = "/doc/" + seg(p[:-3])
+                    else:  # .html 美化版 / _inbox 文件 / 其他可服务文件 → 直通原文件
+                        r["url"] = "/raw/" + seg(p)
         return render_template("search.html", q=q, results=results,
                                semantic=semantic, rag_error=rag_error,
                                n_md=sum(1 for _ in md_files(content)),
@@ -733,6 +742,40 @@ def create_app(root: Path | None = None) -> Flask:
 
 
 # ---------------- 美化版 HTML 依赖重写（响应时改写，语料文件不动） ----------------
+# mermaid 图点击放大查看器：仅当页面含 mermaid 容器时注入；不写进语料文件
+_ZOOM_SNIPPET = """<script>(function(){
+ function ready(fn){if(document.readyState!=='loading')fn();else document.addEventListener('DOMContentLoaded',fn)}
+ ready(function(){
+  var css=document.createElement('style');css.textContent="\n#kb-zoom-ov{position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.82);display:none;align-items:center;justify-content:center;cursor:zoom-out}\n#kb-zoom-ov.show{display:flex}\n#kb-zoom-ov .kbz-inner{background:#fff;border-radius:10px;padding:10px;max-width:96vw;max-height:94vh;overflow:auto;cursor:grab}\n#kb-zoom-ov svg{transform-origin:top left;transition:transform .15s}\n#kb-zoom-hint{position:fixed;left:12px;bottom:10px;color:#8b949e;font:12px/1.6 sans-serif;z-index:100000}\n";document.head.appendChild(css);
+  var ov=document.createElement('div');ov.id='kb-zoom-ov';
+  ov.innerHTML='<div class="kbz-inner"></div><div id="kb-zoom-hint">滚轮缩放 · 点击空白关闭</div>';
+  document.body.appendChild(ov);
+  var inner=ov.querySelector('.kbz-inner'),scale=1,drag=null;
+  function close(){ov.classList.remove('show');inner.innerHTML='';scale=1}
+  ov.addEventListener('click',function(e){if(e.target===ov||e.target.id==='kb-zoom-hint')close()});
+  inner.addEventListener('wheel',function(e){e.preventDefault();scale*= (e.deltaY<0?1.15:0.87);scale=Math.max(.3,Math.min(8,scale));var sv=inner.querySelector('svg');if(sv)sv.style.transform='scale('+scale+')'},{passive:false});
+  inner.addEventListener('mousedown',function(e){drag={x:e.clientX,y:e.clientY,l:inner.scrollLeft,t:inner.scrollTop};inner.style.cursor='grabbing'});
+  window.addEventListener('mousemove',function(e){if(!drag)return;inner.scrollLeft=drag.l-(e.clientX-drag.x);inner.scrollTop=drag.t-(e.clientY-drag.y)});
+  window.addEventListener('mouseup',function(){drag=null;inner.style.cursor='grab'});
+  function bind(){
+   var nodes=document.querySelectorAll('.mermaid>svg, pre.mermaid>svg, div.mermaid svg');
+   nodes.forEach(function(sv){
+    if(sv.dataset.kbZoom)return;sv.dataset.kbZoom='1';
+    sv.style.cursor='zoom-in';
+    sv.addEventListener('click',function(ev){
+     ev.stopPropagation();scale=1;
+     inner.innerHTML='';inner.appendChild(sv.cloneNode(true));
+     var c=inner.querySelector('svg');if(c)c.style.transform='scale(1)';
+     ov.classList.add('show');
+    });
+   });
+  }
+  bind();
+  if(window.mermaid&&window.mermaid.run){try{var pb=window.mermaid.run({});if(pb&&pb.then)pb.then(function(){setTimeout(bind,300)})}catch(e){}}
+  new MutationObserver(function(){setTimeout(bind,200)}).observe(document.body,{childList:true,subtree:true});
+ });
+})();</script>"""
+
 _ASSET_REWRITE = [
     # 语料内不存在的 _shared/ 相对引用（美化时遗留的工程目录）→ 本地 vendored
     (re.compile(r'("|\(|=)(\./)?_shared/js/mermaid(\.min)?\.js'),
@@ -748,6 +791,13 @@ _ASSET_REWRITE = [
 def _rewrite_html_assets(html: str) -> str:
     for pat, rep in _ASSET_REWRITE:
         html = pat.sub(rep, html)
+    has_mm = bool(re.search(r'class="mermaid|pre\.mermaid|class="mermaid-code"', html))
+    if has_mm:
+        # 非标准容器名归一：mermaid-code → mermaid（mermaid@11 startOnLoad 只认 .mermaid）
+        html = html.replace('class="mermaid-code"', 'class="mermaid"')
+        # 注入点击放大查看器（滚轮缩放 + 拖拽平移，语料文件不动）
+        if "</body>" in html:
+            html = html.replace("</body>", _ZOOM_SNIPPET + "</body>", 1)
     return html
 
 
