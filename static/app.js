@@ -1,5 +1,5 @@
 /* 知库 reader 前端：主题、面板折叠、客户端路由、正文渲染、编辑/备注/收藏/删除、双链、快捷键 */
-window.APP_JS_VERSION = 16;
+window.APP_JS_VERSION = 18;
 
 const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
@@ -182,12 +182,24 @@ function renderTree() {
    </div>`).join("");
 }
 
+/* ---------- 目录聚合树（移动弹窗 + 目录统计共用；1 分钟缓存） ---------- */
+let DIRTREE = null, DIRTREE_T = 0;
+async function loadDirTree(force) {
+  if (!force && DIRTREE && Date.now() - DIRTREE_T < 60000) return DIRTREE;
+  const r = await fetch("/api/dir/tree");
+  if (!r.ok) { toast("目录树加载失败：" + r.status); return null; }
+  const d = await r.json();
+  DIRTREE = d.domains || [];
+  DIRTREE_T = Date.now();
+  return DIRTREE;
+}
+
 function renderDocList(docs, subLabel, activeName) {
   const title = $("#list-title");
-  if (title) title.innerHTML = `${esc(subLabel)}<span class="cnt">${docs.length}</span><button class="fold" onclick="togglePanel('list')" title="收起列表"><svg><use href="#i-fold-l"/></svg></button>`;
+  if (title) title.innerHTML = `${esc(subLabel)}<button class="fold dir-stats-btn" onclick="showSubStats(CUR.domain, CUR.sub)" title="目录统计：当前目录篇数/字数/标签分布，含兄弟目录对比"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="m7 15 4-6 4 3 5-8"/></svg><span>统计</span></button><span class="cnt">${docs.length}</span><button class="fold" onclick="togglePanel('list')" title="收起列表"><svg><use href="#i-fold-l"/></svg></button>`;
   const list = $("#doclist"); if (!list) return;
   list.innerHTML = docs.map(d => `
-    <a class="doc ${d.name === activeName ? "active" : ""}" data-name="${esc(d.name)}" href="/doc/${CUR.domain}/${CUR.sub}/${d.name.split("/").map(encodeURIComponent).join("/")}">
+    <a class="doc ${d.name === activeName ? "active" : ""}" data-name="${esc(d.name)}" draggable="true" href="/doc/${CUR.domain}/${CUR.sub}/${d.name.split("/").map(encodeURIComponent).join("/")}">
       <div class="doc-t">${d.has_html ? '<span class="star">◈</span>' : ""}${esc(d.title)}</div>
       <div class="doc-meta">
         ${(d.tags && d.tags.length) ? d.tags.map(t => `<span class="mini tag">${esc(t)}</span>`).join("") : `<span class="mini untag">未打标</span>`}
@@ -584,9 +596,23 @@ async function showSubStats(dom, sub) {
     <div class="ss-tag"><span class="ss-tag-name">${esc(t.tag)}</span>
       <span class="ss-bar"><i style="width:${Math.round(100 * t.n / maxTag)}%"></i></span>
       <span class="ss-tag-n">${t.n}</span></div>`).join("") || `<div class="kbm-li">无标签</div>`;
-  await kbModal({
-    title: `📊 ${s.label} · 目录统计`,
-    html: `<div class="ss-grid">
+  // 兄弟目录排行（可点击切换）：与移动弹窗共用 /api/dir/tree 聚合数据
+  const dirTree = await loadDirTree();
+  const domObj = (dirTree || []).find(d => d.id === s.domain);
+  const siblings = domObj ? domObj.subs.filter(x => x.id !== s.sub) : [];
+  const sibRows = siblings.map(x => `
+    <button class="ss-sib" onclick="openCtxStats('${esc(s.domain)}','${esc(x.id)}')">
+      <span class="ss-sib-l">${esc(x.label)}</span>
+      <span class="ss-sib-bar"><i style="width:${Math.round(100 * x.n / Math.max(1, domObj.subs[0].n))}%"></i></span>
+      <span class="ss-sib-n">${x.n} 篇 · ${Math.round(x.cjk / 1000)}k 字</span>
+    </button>`).join("") || `<div class="kbm-li">本域仅此一个目录</div>`;
+  const ov = document.createElement("div");
+  ov.className = "kbm-ov";
+  ov.id = "ss-ov";
+  ov.innerHTML = `<div class="kbm" role="dialog" aria-modal="true">
+    <div class="kbm-title">📊 ${esc(s.domain_label)} / ${esc(s.label)} · 目录统计</div>
+    <div class="kbm-body" style="max-height:none;overflow:visible">
+    <div class="ss-grid">
       <div class="ss-cell"><div class="ss-n">${s.n_docs}</div><div class="ss-l">文档数</div></div>
       <div class="ss-cell"><div class="ss-n">${s.total_cjk.toLocaleString()}</div><div class="ss-l">总字数（CJK）</div></div>
       <div class="ss-cell"><div class="ss-n">${s.avg_cjk.toLocaleString()}</div><div class="ss-l">篇均字数</div></div>
@@ -595,72 +621,298 @@ async function showSubStats(dom, sub) {
     <div class="ss-sec">标签分布 Top ${s.tags.length}</div>
     <div class="ss-tags">${tagRows}</div>
     <div class="ss-sec">最近更新</div>
-    <div class="kbm-li">《${esc(s.newest.title || "—")}》 · ${esc(s.newest.when)}</div>`,
-    confirmText: "关闭",
-  });
+    <div class="kbm-li">《${esc(s.newest.title || "—")}》 · ${esc(s.newest.when)}</div>
+    ${siblings.length ? `<div class="ss-sec">${esc(s.domain_label)} · 其他目录</div><div class="ss-sibs">${sibRows}</div>` : ""}
+    </div>
+    <div class="kbm-btns"><button class="iconbtn primary ss-close">关闭</button></div></div>`;
+  ov.querySelector(".ss-close").onclick = () => ov.remove();
+  ov.addEventListener("mousedown", e => { if (e.target === ov) ov.remove(); });
+  ov.addEventListener("keydown", e => { if (e.key === "Escape") ov.remove(); });
+  document.body.appendChild(ov);
+  ov.querySelector(".ss-close").focus();
+}
+function openCtxStats(dom, sub) {
+  const ov = document.getElementById("ss-ov");
+  if (ov) ov.remove();
+  showSubStats(dom, sub);
 }
 
+/* ---------- 移动 / 重命名：目录树选择器 ----------
+   树节点 = 真实目录（域可展开为子目录）；目标目录点击选择，
+   文件名可改，路径实时预览；同名冲突/越界/空名前端拦截，后端 /api/move 兜底。 */
 async function moveDocPrompt(rel) {
-  const res = await kbModal({
-    title: "移动 / 重命名",
-    body: "目标为 content/ 下的相对路径（含 .md）。移动后 FTS、双链与向量索引自动级联更新。",
-    inputs: [{ key: "dst", label: "新路径", value: rel, placeholder: "articles/vue2/目录/文档名.md" }],
-    confirmText: "移动",
+  const dirTree = await loadDirTree(true);
+  if (!dirTree || !dirTree.length) { toast("目录树为空，无法移动"); return; }
+  const parts = rel.split("/");
+  const fileName = parts.pop().replace(/\.md$/, "");
+  const srcDir = parts.join("/");
+  // 域根文档 → sub=_root；子目录文档（含嵌套 architecture/xx）→ sub=parts[1]
+  const curSubId = parts.length >= 2 ? parts[1] : "_root";
+
+  const ov = document.createElement("div");
+  ov.className = "kbm-ov";
+  ov.id = "mv-ov";
+  ov.innerHTML = `<div class="kbm kbm-mv" role="dialog" aria-modal="true">
+    <div class="kbm-title">⇄ 移动 / 重命名</div>
+    <div class="mv-src mono">${esc(rel)}</div>
+    <div class="mv-cols">
+      <div class="mv-treebox">
+        <input class="kbm-input mv-filter" placeholder="过滤目录…" spellcheck="false">
+        <div class="mv-tree" tabindex="0"></div>
+      </div>
+      <div class="mv-side">
+        <label class="kbm-label">文件名（不含 .md）
+          <input class="kbm-input mv-name" value="${esc(fileName)}" spellcheck="false"></label>
+        <div class="mv-dst-label">目标路径</div>
+        <div class="mv-dst mono"></div>
+        <div class="mv-hint">同名冲突、越界与未选目录会被拦截；移动后 FTS / 双链 / 向量索引自动级联更新，git 可追溯。</div>
+      </div>
+    </div>
+    <div class="kbm-btns">
+      <button class="iconbtn mv-cancel">取消</button>
+      <button class="iconbtn primary mv-ok">移动</button>
+    </div></div>`;
+  document.body.appendChild(ov);
+
+  const treeEl = ov.querySelector(".mv-tree");
+  const nameEl = ov.querySelector(".mv-name");
+  const dstEl = ov.querySelector(".mv-dst");
+  const okBtn = ov.querySelector(".mv-ok");
+  const filterEl = ov.querySelector(".mv-filter");
+  const state = { dom: parts[0], sub: curSubId, open: new Set([parts[0]]) };
+
+  function subDirOf(d, sid) { return sid === "_root" ? d.id : `${d.id}/${sid}`; }
+  function refresh() {
+    const dom = dirTree.find(d => d.id === state.dom);
+    const sub = dom && dom.subs.find(s => s.id === state.sub);
+    const nm = nameEl.value.trim();
+    const invalidName = !nm || /[\\/:*?"<>|]/.test(nm);
+    dstEl.textContent = sub ? `${subDirOf(dom, state.sub)}/${nm || "（未命名）"}.md` : "先在左侧选择目标目录";
+    dstEl.classList.toggle("mv-dst-same", sub && `${subDirOf(dom, state.sub)}/${nm}.md` === rel);
+    okBtn.disabled = !sub || invalidName || `${subDirOf(dom, state.sub)}/${nm}.md` === rel;
+    okBtn.textContent = `${subDirOf(dom, state.sub)}/${nm}.md` === rel ? "未变化" : "移动";
+  }
+  function renderTreeNodes() {
+    const kw = filterEl.value.trim().toLowerCase();
+    treeEl.innerHTML = dirTree.map(d => {
+      if (kw && !(`${d.label}${d.id}`.toLowerCase().includes(kw) || d.subs.some(s => `${s.label}${s.id}`.toLowerCase().includes(kw)))) return "";
+      const open = kw ? true : state.open.has(d.id);
+      const subs = d.subs
+        .filter(s => !kw || `${s.label}${s.id}`.toLowerCase().includes(kw) || `${d.label}${d.id}`.toLowerCase().includes(kw))
+        .map(s => {
+          const dir = subDirOf(d, s.id);
+          const isCur = dir === srcDir;
+          const sel = state.dom === d.id && state.sub === s.id;
+          return `<div class="mv-node mv-sub ${sel ? "sel" : ""} ${isCur ? "cur" : ""}" data-dom="${esc(d.id)}" data-sub="${esc(s.id)}">
+            <span class="mv-tw"></span><span class="mv-ic">📄</span>
+            <span class="mv-lb">${esc(s.label)}</span><span class="mv-n">${s.n}</span></div>`;
+        }).join("");
+      return `<div class="mv-domrow ${state.open.has(d.id) ? "open" : ""}">
+          <div class="mv-node mv-dom" data-dom="${esc(d.id)}">
+            <span class="mv-tw">${open ? "▾" : "▸"}</span><span class="mv-ic">🗂</span>
+            <span class="mv-lb">${esc(d.label)}</span><span class="mv-n">${d.n}</span></div>
+          ${open ? subs : ""}
+        </div>`;
+    }).join("");
+    refresh();
+  }
+  treeEl.addEventListener("click", e => {
+    const node = e.target.closest(".mv-node");
+    if (!node) return;
+    const d = dirTree.find(x => x.id === node.dataset.dom);
+    if (node.classList.contains("mv-dom")) {
+      // 单击域头：展开/收起 + 选中该域“总览”子目录（与现有点击习惯一致）
+      if (state.open.has(d.id) && state.dom === d.id) state.open.delete(d.id);
+      else state.open.add(d.id);
+      const first = d.subs.find(s => s.id === "_root") || d.subs[0];
+      state.dom = d.id; state.sub = first.id;
+    } else {
+      state.dom = node.dataset.dom; state.sub = node.dataset.sub;
+      state.open.add(node.dataset.dom);
+    }
+    renderTreeNodes();
   });
-  if (!res) return;
-  const dst = res.dst;
-  if (!dst || dst === rel) return;
-  const r = await fetch("/api/move", { method: "POST", headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ src: rel, dst }) });
-  const d = await r.json().catch(() => ({}));
-  if (!r.ok || !d.ok) { toast("移动失败：" + (d.error || r.status)); return; }
-  toast(`已移动至 <span class='mono'>${esc(d.dst)}</span> · 索引已级联更新`);
-  TREE = null; localStorage.removeItem(LS_TREE); // 树缓存失效，下次渲染重新拉取
-  const url = "/doc/" + d.dst.replace(/\.md$/, "").split("/").map(encodeURIComponent).join("/");
-  location.href = url; // 移动涉及树/列表重排，整页跳转最可靠
+  // 键盘导航：↑↓ 移动高亮，←→ 折叠/展开，Enter 确认选中
+  treeEl.addEventListener("keydown", e => {
+    const nodes = [...treeEl.querySelectorAll(".mv-node:not(.mv-tw)")];
+    const vis = nodes.filter(n => n.offsetParent !== null);
+    if (!vis.length) return;
+    let i = vis.findIndex(n => n.classList.contains("sel"));
+    if (e.key === "ArrowDown") { e.preventDefault(); i = Math.min(i + 1, vis.length - 1); }
+    else if (e.key === "ArrowUp") { e.preventDefault(); i = Math.max(i - 1, 0); }
+    else if (e.key === "ArrowRight" || e.key === "ArrowLeft" || e.key === "Enter") {
+      e.preventDefault();
+      const n = vis[i] || vis[0];
+      if (n.classList.contains("mv-dom")) {
+        if (e.key === "ArrowRight") state.open.add(n.dataset.dom);
+        else if (e.key === "ArrowLeft") state.open.delete(n.dataset.dom);
+        else { state.dom = n.dataset.dom; state.sub = (dirTree.find(d => d.id === n.dataset.dom).subs.find(s => s.id === "_root") || dirTree.find(d => d.id === n.dataset.dom).subs[0]).id; }
+      } else { state.dom = n.dataset.dom; state.sub = n.dataset.sub; }
+      renderTreeNodes();
+      const cur = treeEl.querySelector(".mv-node.sel"); if (cur) cur.scrollIntoView({ block: "nearest" });
+      return;
+    } else return;
+    vis.forEach(n => n.classList.remove("sel"));
+    if (vis[i]) {
+      const n = vis[i];
+      if (n.classList.contains("mv-dom")) { state.dom = n.dataset.dom; state.sub = (dirTree.find(d => d.id === n.dataset.dom).subs.find(s => s.id === "_root") || dirTree.find(d => d.id === n.dataset.dom).subs[0]).id; }
+      else { state.dom = n.dataset.dom; state.sub = n.dataset.sub; }
+      renderTreeNodes();
+      const cur = treeEl.querySelector(".mv-node.sel"); if (cur) cur.scrollIntoView({ block: "nearest" });
+    }
+  });
+  filterEl.addEventListener("input", renderTreeNodes);
+  nameEl.addEventListener("input", refresh);
+  nameEl.addEventListener("keydown", e => { if (e.key === "Enter" && !okBtn.disabled) okBtn.click(); });
+
+  const close = () => { ov.remove(); document.removeEventListener("keydown", onEsc); };
+  const onEsc = e => { if (e.key === "Escape") close(); };
+  document.addEventListener("keydown", onEsc);
+  ov.querySelector(".mv-cancel").onclick = close;
+  ov.addEventListener("mousedown", e => { if (e.target === ov) close(); });
+  renderTreeNodes();
+  nameEl.focus(); nameEl.select();
+
+  okBtn.onclick = async () => {
+    const nm = nameEl.value.trim();
+    const dst = `${subDirOf(dirTree.find(d => d.id === state.dom), state.sub)}/${nm}.md`;
+    okBtn.disabled = true; okBtn.textContent = "移动中…";
+    const r = await fetch("/api/move", { method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ src: rel, dst }) });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok || !d.ok) { okBtn.disabled = false; okBtn.textContent = "移动"; toast("移动失败：" + (d.error || r.status)); return; }
+    close();
+    toast(`已移动至 <span class='mono'>${esc(d.dst)}</span> · 索引已级联更新`);
+    TREE = null; localStorage.removeItem(LS_TREE); DIRTREE = null; // 树缓存失效，下次渲染重新拉取
+    const url = "/doc/" + d.dst.replace(/\.md$/, "").split("/").map(encodeURIComponent).join("/");
+    location.href = url; // 移动涉及树/列表重排，整页跳转最可靠
+  };
+}
+
+/* ---------- 拖拽移动：文档列表 → 左栏目录树 ---------- */
+function wireDragMove() {
+  const list = $("#doclist"), nav = $("#tree");
+  if (!list || !nav) return;
+  list.addEventListener("dragstart", e => {
+    const a = e.target.closest(".doc");
+    if (!a) return;
+    e.dataTransfer.setData("text/kb-doc", docRelOf(CUR.domain, CUR.sub, a.dataset.name));
+    e.dataTransfer.effectAllowed = "move";
+    nav.classList.add("drop-armed");
+  });
+  list.addEventListener("dragend", () => {
+    nav.classList.remove("drop-armed");
+    nav.querySelectorAll(".drop-hint").forEach(x => x.classList.remove("drop-hint"));
+  });
+  ["dragover", "dragleave", "drop"].forEach(ev => nav.addEventListener(ev, e => {
+    const t = e.target.closest(".sub, .dom-head");
+    if (ev === "dragleave") { t && t.classList.remove("drop-hint"); return; }
+    e.preventDefault(); // 允许 drop
+    nav.querySelectorAll(".drop-hint").forEach(x => x.classList.remove("drop-hint"));
+    if (!t) return;
+    t.classList.add("drop-hint");
+    if (ev === "drop") {
+      t.classList.remove("drop-hint"); nav.classList.remove("drop-armed");
+      const rel = e.dataTransfer.getData("text/kb-doc");
+      if (!rel) return;
+      const [dom, sub] = t.classList.contains("dom-head")
+        ? [t.closest(".dom").dataset.dom, null] : [t.dataset.dom, t.dataset.sub];
+      const d = (TREE || []).find(x => x.id === dom);
+      const tgtSub = d && d.subs.find(s => s.id === (sub || "_root")) ? (sub || "_root") : (d && d.subs[0].id);
+      const target = tgtSub || sub;
+      if (!target) return;
+      if (dom === CUR.domain && target === CUR.sub) { toast("已在该目录，无需移动"); return; }
+      const nm = rel.split("/").pop().replace(/\.md$/, "");
+      const dst = (target === "_root" ? dom : `${dom}/${target}`) + `/${nm}.md`;
+      (async () => {
+        const c = await kbModal({ title: "⇄ 拖拽移动",
+          body: `将 <span class='mono'>${esc(rel)}</span><br>移动到 <span class='mono'>${esc(dst)}</span> ？<br>旁挂的备注 / 美化版会随行，索引自动级联。`,
+          confirmText: "移动" });
+        if (!c) return;
+        const r = await fetch("/api/move", { method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ src: rel, dst }) });
+        const dj = await r.json().catch(() => ({}));
+        if (!r.ok || !dj.ok) { toast("移动失败：" + (dj.error || r.status)); return; }
+        toast(`已移动至 <span class='mono'>${esc(dj.dst)}</span> · 索引已级联更新`);
+        TREE = null; localStorage.removeItem(LS_TREE); DIRTREE = null;
+        if (rel === (DOC && DOC.rel)) location.href = "/doc/" + dj.dst.replace(/\.md$/, "").split("/").map(encodeURIComponent).join("/");
+        else location.reload();
+      })();
+    }
+  }));
 }
 
 document.addEventListener("contextmenu", e => {
-  if (!WORKBENCH) return;
-  const docA = e.target.closest("#doclist .doc");
-  if (docA) {
+  // 工作台（阅读页）：文档列表 / 分类树的右键
+  if (WORKBENCH) {
+    const docA = e.target.closest("#doclist .doc");
+    if (docA) {
+      e.preventDefault();
+      const name = docA.dataset.name;
+      const rel = docRelOf(CUR.domain, CUR.sub, name);
+      const title = (docA.querySelector(".doc-t") || {}).textContent || name;
+      openCtxMenu(e.clientX, e.clientY, [
+        { label: "📈 统计信息", fn: () => showStats(rel) },
+        { label: "⧉ 复制 [[双链]]", fn: () => copyText(`[[${title.trim()}]]`, "已复制双链") },
+        { label: "⧉ 复制 Obsidian URI", fn: () => copyText(`obsidian://open?vault=${encodeURIComponent("knowledge")}&file=${encodeURIComponent(rel.replace(/\.md$/, ""))}`, "已复制 URI") },
+        "-",
+        { label: "⇄ 移动 / 重命名…", fn: () => moveDocPrompt(rel) },
+      ]);
+      return;
+    }
+    const subA = e.target.closest("#tree .sub");
+    if (subA) {
+      e.preventDefault();
+      const dom = subA.dataset.dom, sub = subA.dataset.sub;
+      const base = sub === "_root" ? dom : `${dom}/${sub}`;
+      openCtxMenu(e.clientX, e.clientY, [
+        { label: "📂 在此新建文档…", fn: async () => {
+            const res = await kbModal({
+              title: "新建文档",
+              body: `将在 <span class='mono'>${esc(base)}/</span> 下创建 Markdown 文件，首行自动写入标题。`,
+              inputs: [{ key: "nm", label: "文件名（不含 .md）", placeholder: "示例：RAG 切块策略" }],
+              confirmText: "创建",
+            });
+            if (!res || !res.nm) return;
+            const nm = res.nm;
+            const rel = `${base}/${nm}.md`;
+            const r = await fetch("/api/save", { method: "POST", headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ path: rel, content: `# ${nm}\n\n` }) });
+            if (r.ok) { TREE = null; localStorage.removeItem(LS_TREE); location.href = "/doc/" + rel.slice(0, -3).split("/").map(encodeURIComponent).join("/"); }
+            else toast("创建失败：" + r.status);
+          } },
+        { label: "⧉ 复制目录路径", fn: () => copyText(base, "已复制路径") },
+      ]);
+    }
+    return;
+  }
+  // 总览页：领域卡片 / 最近更新行的右键（此前被 WORKBENCH 门禁整体挡掉）
+  const dcard = e.target.closest("#view-home .dcard");
+  if (dcard) {
     e.preventDefault();
-    const name = docA.dataset.name;
-    const rel = docRelOf(CUR.domain, CUR.sub, name);
-    const title = (docA.querySelector(".doc-t") || {}).textContent || name;
+    const m = (dcard.getAttribute("href") || "").match(/^\/browse\/([^/]+)\/([^/]+)/);
+    if (!m) return;
+    const [_, dom, firstSub] = m;
     openCtxMenu(e.clientX, e.clientY, [
-      { label: "📈 统计信息", fn: () => showStats(rel) },
-      { label: "⧉ 复制 [[双链]]", fn: () => copyText(`[[${title.trim()}]]`, "已复制双链") },
-      { label: "⧉ 复制 Obsidian URI", fn: () => copyText(`obsidian://open?vault=${encodeURIComponent("knowledge")}&file=${encodeURIComponent(rel.replace(/\.md$/, ""))}`, "已复制 URI") },
-      "-",
-      { label: "⇄ 移动 / 重命名…", fn: () => moveDocPrompt(rel) },
+      { label: "📊 统计信息", fn: () => showSubStats(dom, firstSub) },
+      { label: "📂 进入该目录", fn: () => { location.href = dcard.getAttribute("href"); } },
+      { label: "⧉ 复制目录路径", fn: () => copyText(dom, "已复制路径") },
     ]);
     return;
   }
-  const subA = e.target.closest("#tree .sub");
-  if (subA) {
+  const rrow = e.target.closest("#view-home .rrow");
+  if (rrow) {
     e.preventDefault();
-    const dom = subA.dataset.dom, sub = subA.dataset.sub;
-    const base = sub === "_root" ? dom : `${dom}/${sub}`;
+    const href = rrow.getAttribute("href") || "";
+    const rp = (rrow.querySelector(".rp") || {}).textContent || "";
+    const title = (rrow.querySelector(".rt") || {}).textContent || "";
+    const dm = href.match(/^\/doc\/(.+)$/);
+    if (!dm) { copyText(rp || title, "已复制路径"); return; } // _inbox 外链行：只给路径
+    const rel = decodeURIComponent(dm[1]) + ".md";
     openCtxMenu(e.clientX, e.clientY, [
-      { label: "📂 在此新建文档…", fn: async () => {
-          const res = await kbModal({
-            title: "新建文档",
-            body: `将在 <span class='mono'>${esc(base)}/</span> 下创建 Markdown 文件，首行自动写入标题。`,
-            inputs: [{ key: "nm", label: "文件名（不含 .md）", placeholder: "示例：RAG 切块策略" }],
-            confirmText: "创建",
-          });
-          if (!res || !res.nm) return;
-          const nm = res.nm;
-          const rel = `${base}/${nm}.md`;
-          const r = await fetch("/api/save", { method: "POST", headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ path: rel, content: `# ${nm}\n\n` }) });
-          if (r.ok) { TREE = null; localStorage.removeItem(LS_TREE); location.href = "/doc/" + rel.slice(0, -3).split("/").map(encodeURIComponent).join("/"); }
-          else toast("创建失败：" + r.status);
-        } },
-      { label: "📊 目录统计", fn: () => showSubStats(dom, sub) },
-      "-",
-      { label: "⧉ 复制目录路径", fn: () => copyText(base, "已复制路径") },
+      { label: "📈 统计信息", fn: () => showStats(rel) },
+      { label: "⧉ 复制 [[双链]]", fn: () => copyText(`[[${title.trim()}]]`, "已复制双链") },
+      { label: "⇄ 移动 / 重命名…", fn: () => moveDocPrompt(rel) },
     ]);
   }
 });
@@ -720,4 +972,11 @@ if (docData) {
     startReadTracking();
   } catch (e) { console.error("初始渲染失败", e); }
 }
+if (WORKBENCH) wireDragMove();
+// 左栏「分类目录」header 的独立统计按钮：统计当前域/子目录
+const dirStatsBtn = document.getElementById("dir-stats-btn");
+if (dirStatsBtn) dirStatsBtn.onclick = () => {
+  if (!CUR) { toast("先打开一个文档再统计"); return; }
+  showSubStats(CUR.domain, CUR.sub);
+};
 loadTree().then(() => renderTree());

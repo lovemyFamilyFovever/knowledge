@@ -494,7 +494,59 @@ html[data-theme="dark"] .ss-cell{background:rgba(6,10,14,.4)}
 .ss-bar i{display:block;height:100%;border-radius:3px;background:linear-gradient(90deg,var(--acc),var(--acc2))}
 .ss-tag-n{flex:0 0 26px;font-family:var(--num);font-size:12px;color:var(--muted);text-align:left}
 
-/* ---------- v15：编辑器引导 ---------- */
+/* 分类目录 / 文档列表 header 右侧的独立「目录统计」按钮 */
+.dir-stats-btn{display:inline-flex;align-items:center;gap:4px;margin-left:8px;height:20px;padding:0 8px;
+  font-size:10px;letter-spacing:1px;color:var(--acc);border:1px solid var(--acc-edge);border-radius:5px;
+  background:var(--acc-soft);cursor:pointer;transition:.2s;font-family:var(--mono)}
+.dir-stats-btn:hover{background:var(--acc);color:#fff}
+.dir-stats-btn svg{flex:none}
+.dir-stats-btn span{line-height:1}
+.panel-h .dir-stats-btn + .cnt{margin-left:auto} /* 统计按钮不再抢 cnt 的右对齐 */
+
+/* 拖拽移动：树落点高亮 */
+.tree.drop-armed .sub,.tree.drop-armed .dom-head{outline:1px dashed var(--edge-hi);outline-offset:-1px;border-radius:7px}
+.tree .sub.drop-hint,.tree .dom-head.drop-hint{background:var(--acc-soft);outline:1.5px solid var(--acc-edge);color:var(--acc)}
+#doclist .doc{cursor:grab}
+#doclist .doc:active{cursor:grabbing}
+
+/* 移动弹窗：目录树选择器 */
+.kbm-mv{width:min(640px,94vw)}
+.mv-src{font-family:var(--mono);font-size:11px;color:var(--faint);word-break:break-all;margin-bottom:12px}
+.mv-cols{display:grid;grid-template-columns:1.2fr 1fr;gap:14px;margin-bottom:4px}
+.mv-treebox{display:flex;flex-direction:column;min-height:0}
+.mv-filter{margin-bottom:8px;height:30px;font-size:12px}
+.mv-tree{flex:1;min-height:220px;max-height:300px;overflow-y:auto;border:1px solid var(--edge);border-radius:9px;
+  background:rgba(255,255,255,.35);padding:6px;outline:none}
+html[data-theme="dark"] .mv-tree{background:rgba(6,10,14,.45)}
+.mv-domrow{margin-bottom:1px}
+.mv-node{display:flex;align-items:center;gap:6px;padding:5px 8px;border-radius:7px;cursor:pointer;
+  font-size:12.5px;color:var(--ink);user-select:none}
+.mv-node:hover{background:var(--acc-soft)}
+.mv-node.sel{background:var(--acc-soft);color:var(--acc);box-shadow:inset 0 0 0 1px var(--acc-edge)}
+.mv-node.cur .mv-lb::after{content:"（当前）";font-size:10px;color:var(--faint)}
+.mv-sub{padding-left:26px}
+.mv-tw{flex:0 0 14px;font-size:10px;color:var(--faint);text-align:center}
+.mv-ic{font-size:11px}
+.mv-lb{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mv-n{flex:none;font-family:var(--num);font-size:11px;color:var(--faint)}
+.mv-side{display:flex;flex-direction:column}
+.mv-dst-label{font-size:11px;letter-spacing:1px;color:var(--faint);font-family:var(--mono);margin-bottom:6px}
+.mv-dst{font-family:var(--mono);font-size:12px;color:var(--acc);word-break:break-all;border:1px dashed var(--acc-edge);
+  border-radius:9px;padding:10px 12px;background:var(--acc-soft);min-height:38px}
+.mv-dst.mv-dst-same{color:var(--faint);border-color:var(--edge);background:transparent}
+.mv-hint{font-size:11px;line-height:1.7;color:var(--faint);margin-top:auto;padding-top:10px}
+
+/* 目录统计：兄弟目录排行（可点击切换） */
+.ss-sibs{display:flex;flex-direction:column;gap:4px;max-height:180px;overflow-y:auto}
+.ss-sib{display:flex;align-items:center;gap:10px;padding:6px 10px;border:1px solid var(--edge);border-radius:8px;
+  background:none;cursor:pointer;font:12px var(--sans);color:var(--ink);text-align:left;transition:.15s}
+.ss-sib:hover{border-color:var(--acc-edge);background:var(--acc-soft);color:var(--acc)}
+.ss-sib-l{flex:0 0 120px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ss-sib-bar{flex:1;height:5px;border-radius:3px;background:var(--edge);overflow:hidden}
+.ss-sib-bar i{display:block;height:100%;border-radius:3px;background:linear-gradient(90deg,var(--acc),var(--acc2))}
+.ss-sib-n{flex:none;font-family:var(--mono);font-size:10.5px;color:var(--faint)}
+
+
 .editor .hint{font-family:var(--mono);font-size:10.5px;color:var(--faint);margin-bottom:8px;line-height:1.7}
 .editor .hint b{color:var(--acc);font-weight:600}
 /* ---------- v17：整页 HTML 文档 iframe 内嵌 ---------- */

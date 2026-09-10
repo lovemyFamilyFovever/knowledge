@@ -35,7 +35,7 @@ from app import store
 from app.store import (  # noqa: F401  兼容旧引用（tests 直接 import app.app 的符号）
     DOMAIN_LABELS, GRAPH_HUES, SKIP_DIRS, SOURCE_LABELS, STATUS_LABELS,
     WRITABLE_EXTS, SERVABLE_EXTS, FM_RE,
-    dump_frontmatter, find_doc, inbox_count, load_taxonomy, md_files,
+    domain_label, dump_frontmatter, find_doc, inbox_count, load_taxonomy, md_files,
     notes_path, obsidian_vault_connected, parse_frontmatter, read_notes,
     scan_corpus, _tree_sig,
 )
@@ -562,10 +562,40 @@ def create_app(root: Path | None = None) -> Flask:
                         "n_ok": sum(1 for r in results if r["ok"]),
                         "n_fail": sum(1 for r in results if not r["ok"])})
 
+    @app.get("/api/dir/tree")
+    def api_dir_tree():
+        """移动弹窗/统计弹窗共用的目录聚合树：一次返回各域与子目录的
+        篇数/总字数(CJK)/未打标数/最近更新时间，供前端渲染可展开树与排行。"""
+        tax = load_taxonomy(content)
+        domains = []
+        for dom in domains_cached():
+            subs, dom_cjk, dom_untagged, dom_mtime = [], 0, 0, 0.0
+            for sobj in dom["subs"]:
+                cjk, untagged = 0, 0
+                for d in sobj["docs"]:
+                    p = find_doc(content, dom["id"], sobj["id"], d["name"])
+                    if not p:
+                        continue
+                    _, body = parse_frontmatter(p.read_text(encoding="utf-8", errors="replace"))
+                    cjk += len(re.findall(r"[\u4e00-\u9fff]", body))
+                    if not d.get("tags"):
+                        untagged += 1
+                mt = max((d["mtime"] for d in sobj["docs"]), default=0.0)
+                subs.append({"id": sobj["id"], "label": sobj["label"], "n": sobj["n"],
+                             "cjk": cjk, "untagged": untagged, "mtime": int(mt)})
+                dom_cjk += cjk
+                dom_untagged += untagged
+                dom_mtime = max(dom_mtime, mt)
+            domains.append({"id": dom["id"], "label": domain_label(tax, dom["id"]), "n": dom["n"],
+                            "cjk": dom_cjk, "untagged": dom_untagged, "mtime": int(dom_mtime),
+                            "subs": sorted(subs, key=lambda x: -x["n"])})
+        return jsonify({"domains": domains})
+
     @app.get("/api/substats")
     def api_substats():
         """目录级统计：某 domain/sub 下所有文档的篇数/字数(CJK)/标签分布/最近更新。"""
         domains = domains_cached()
+        tax = load_taxonomy(content)
         dom = next((d for d in domains if d["id"] == request.args.get("domain", "")), None)
         sobj = next((s for s in dom["subs"] if s["id"] == request.args.get("sub", "")), None) if dom else None
         if not sobj:
@@ -587,7 +617,8 @@ def create_app(root: Path | None = None) -> Flask:
                 newest = (str(fm.get("title") or p.stem), mt)
         tags_sorted = sorted(tag_map.items(), key=lambda x: -x[1])[:12]
         return jsonify({
-            "domain": dom["id"], "sub": sobj["id"], "label": sobj["label"],
+            "domain": dom["id"], "domain_label": domain_label(tax, dom["id"]),
+            "sub": sobj["id"], "label": sobj["label"],
             "n_docs": sobj["n"], "total_cjk": total_cjk,
             "avg_cjk": round(total_cjk / max(1, sobj["n"])),
             "tags": [{"tag": t, "n": n} for t, n in tags_sorted],

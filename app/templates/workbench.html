@@ -2,7 +2,7 @@
 {% block body %}
 <main>
   <section class="panel" id="p-left">
-    <div class="panel-h">分类目录<span class="cnt" id="tree-total">{{ n_md }}</span><button class="fold" onclick="togglePanel('left')" title="收起左栏"><svg><use href="#i-fold-l"/></svg></button></div>
+    <div class="panel-h">分类目录<button class="fold dir-stats-btn" id="dir-stats-btn" title="目录统计：当前目录篇数/字数/标签分布，含兄弟目录对比"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="m7 15 4-6 4 3 5-8"/></svg><span>统计</span></button><span class="cnt" id="tree-total">{{ n_md }}</span><button class="fold" onclick="togglePanel('left')" title="收起左栏"><svg><use href="#i-fold-l"/></svg></button></div>
     <nav class="tree" id="tree">
       {% for d in domains %}
       <div class="dom {% if cur.domain == d.id %}open{% endif %}">
@@ -28,10 +28,10 @@
   </section>
 
   <section class="panel" id="p-list">
-    <div class="panel-h" id="list-title">{{ sub_label }}<span class="cnt">{{ docs|length }}</span><button class="fold" onclick="togglePanel('list')" title="收起列表"><svg><use href="#i-fold-l"/></svg></button></div>
+    <div class="panel-h" id="list-title">{{ sub_label }}<button class="fold dir-stats-btn" onclick="showSubStats('{{ cur.domain }}','{{ cur.sub }}')" title="目录统计：当前目录篇数/字数/标签分布，含兄弟目录对比"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="m7 15 4-6 4 3 5-8"/></svg><span>统计</span></button><span class="cnt">{{ docs|length }}</span><button class="fold" onclick="togglePanel('list')" title="收起列表"><svg><use href="#i-fold-l"/></svg></button></div>
     <div class="doclist" id="doclist">
       {% for d in docs %}
-      <a class="doc {% if cur.name == d.name %}active{% endif %}" href="/doc/{{ cur.domain }}/{{ cur.sub }}/{{ d.name }}">
+      <a class="doc {% if cur.name == d.name %}active{% endif %}" data-name="{{ d.name }}" href="/doc/{{ cur.domain }}/{{ cur.sub }}/{{ d.name }}" draggable="true">
         <div class="doc-t">{% if d.has_html %}<span class="star">◈</span>{% endif %}{{ d.title }}</div>
         <div class="doc-meta">
           {% if d.tags %}{% for t in d.tags %}<span class="mini tag">{{ t }}</span>{% endfor %}{% else %}<span class="mini untag">未打标</span>{% endif %}
