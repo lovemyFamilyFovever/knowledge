@@ -784,7 +784,7 @@ async function moveDocPrompt(rel) {
     close();
     toast(`已移动至 <span class='mono'>${esc(d.dst)}</span> · 索引已级联更新`);
     TREE = null; localStorage.removeItem(LS_TREE); DIRTREE = null; // 树缓存失效，下次渲染重新拉取
-    const url = "/doc/" + d.dst.replace(/\.md$/, "").split("/").map(encodeURIComponent).join("/");
+    const url = "/doc/" + [state.dom, state.sub, nm].map(encodeURIComponent).join("/");
     location.href = url; // 移动涉及树/列表重排，整页跳转最可靠
   };
 }
@@ -835,7 +835,7 @@ function wireDragMove() {
         if (!r.ok || !dj.ok) { toast("移动失败：" + (dj.error || r.status)); return; }
         toast(`已移动至 <span class='mono'>${esc(dj.dst)}</span> · 索引已级联更新`);
         TREE = null; localStorage.removeItem(LS_TREE); DIRTREE = null;
-        if (rel === (DOC && DOC.rel)) location.href = "/doc/" + dj.dst.replace(/\.md$/, "").split("/").map(encodeURIComponent).join("/");
+        if (rel === (DOC && DOC.rel)) location.href = "/doc/" + [dom, target, nm].map(encodeURIComponent).join("/");
         else location.reload();
       })();
     }

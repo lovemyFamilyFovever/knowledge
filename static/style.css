@@ -414,7 +414,7 @@ html[data-theme="dark"] #ctx-menu{background:#0d1412}
 .kbm-ov{position:fixed;inset:0;z-index:100;background:rgba(8,12,16,.55);backdrop-filter:blur(4px);
   display:flex;align-items:center;justify-content:center;animation:rise .18s ease}
 .kbm{width:min(500px,92vw);max-height:82vh;display:flex;flex-direction:column;
-  background:var(--glass);backdrop-filter:blur(24px) saturate(1.15);
+  background:color-mix(in oklab, var(--seed-surface), transparent 4%);backdrop-filter:blur(24px) saturate(1.15);
   border:1px solid var(--edge-hi);border-radius:14px;box-shadow:0 24px 70px rgba(0,0,0,.42);padding:20px 22px}
 .kbm-title{font-family:var(--disp);font-size:17px;font-weight:700;color:var(--ink);margin-bottom:10px}
 .kbm-body{font-size:13px;line-height:1.85;color:var(--muted);margin-bottom:12px;overflow-y:auto}
@@ -423,7 +423,7 @@ html[data-theme="dark"] #ctx-menu{background:#0d1412}
 .kbm-list{margin-top:8px;border:1px solid var(--edge);border-radius:9px;background:rgba(255,255,255,.35);
   padding:8px 12px;max-height:200px;overflow-y:auto}
 html[data-theme="dark"] .kbm-list{background:rgba(6,10,14,.45)}
-.kbm-li{font-family:var(--mono);font-size:11px;color:var(--muted);padding:3px 0;border-bottom:1px dashed var(--edge)}
+.kbm-li{font-family:var(--mono);font-size:11px;color:var(--ink);padding:3px 0;border-bottom:1px dashed var(--edge)}
 .kbm-li:last-child{border-bottom:none}
 .kbm-label{display:block;font-size:11px;letter-spacing:1px;color:var(--faint);font-family:var(--mono);margin-bottom:12px}
 .kbm-input{display:block;width:100%;margin-top:6px;height:36px;padding:0 12px;border-radius:9px;
@@ -482,24 +482,24 @@ html[data-theme="dark"] .kbm-input{background:rgba(6,10,14,.5)}
 
 /* ---------- v16：目录统计弹窗（showSubStats） ---------- */
 .ss-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:6px}
-.ss-cell{border:1px solid var(--edge);border-radius:10px;padding:12px 10px;text-align:center;background:rgba(255,255,255,.35)}
-html[data-theme="dark"] .ss-cell{background:rgba(6,10,14,.4)}
+.ss-cell{border:1px solid var(--edge);border-radius:10px;padding:12px 10px;text-align:center;background:color-mix(in oklab, var(--seed-fg), transparent 95%)}
+html[data-theme="dark"] .ss-cell{background:color-mix(in oklab, var(--seed-fg), transparent 92%)}
 .ss-cell .ss-n{font-family:var(--num);font-size:20px;font-weight:700;color:var(--acc);font-variant-numeric:tabular-nums}
-.ss-cell .ss-l{font-size:10.5px;color:var(--faint);margin-top:3px}
-.ss-sec{font-family:var(--mono);font-size:10px;letter-spacing:2px;color:var(--faint);margin:12px 0 6px;text-transform:uppercase}
+.ss-cell .ss-l{font-size:10.5px;color:var(--muted);margin-top:3px}
+.ss-sec{font-family:var(--mono);font-size:10px;letter-spacing:2px;color:var(--muted);margin:12px 0 6px;text-transform:uppercase}
 .ss-tags{display:flex;flex-direction:column;gap:5px;max-height:200px;overflow-y:auto}
 .ss-tag{display:flex;align-items:center;gap:10px}
 .ss-tag-name{flex:0 0 110px;font-size:12px;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:right}
 .ss-bar{flex:1;height:6px;border-radius:3px;background:var(--edge);overflow:hidden}
 .ss-bar i{display:block;height:100%;border-radius:3px;background:linear-gradient(90deg,var(--acc),var(--acc2))}
-.ss-tag-n{flex:0 0 26px;font-family:var(--num);font-size:12px;color:var(--muted);text-align:left}
+.ss-tag-n{flex:0 0 26px;font-family:var(--num);font-size:12px;color:var(--ink);text-align:left}
 
 /* 分类目录 / 文档列表 header 右侧的独立「目录统计」按钮 */
 .dir-stats-btn{display:inline-flex;align-items:center;gap:4px;margin-left:8px;height:20px;padding:0 8px;
   font-size:10px;letter-spacing:1px;color:var(--acc);border:1px solid var(--acc-edge);border-radius:5px;
   background:var(--acc-soft);cursor:pointer;transition:.2s;font-family:var(--mono)}
 .dir-stats-btn:hover{background:var(--acc);color:#fff}
-.dir-stats-btn svg{flex:none}
+.dir-stats-btn svg{flex:none;width:13px;height:13px;display:block}
 .dir-stats-btn span{line-height:1}
 .panel-h .dir-stats-btn + .cnt{margin-left:auto} /* 统计按钮不再抢 cnt 的右对齐 */
 
