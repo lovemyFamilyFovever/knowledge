@@ -1,6 +1,6 @@
 ---
 title: "分布式ID与缓存术语百科"
-tags: []
+tags: [分布式与并行计算, 分布式缓存, 分布式ID, 术语合集]
 source: "baike"
 source_path: "开发术语 / 分布式系统"
 collected: "2026-09-05"
@@ -9,7 +9,9 @@ status: "imported"
 
 # 分布式ID与缓存术语百科
 
-> 本文档涵盖分布式ID生成方案和缓存设计中的核心问题，包括缓存穿透、雪崩、击穿等常见问题及解决方案。
+> 本文档是分布式 **ID 生成**与**缓存设计**的深度参考合集：ID 方案选型，以及缓存穿透/击穿/雪崩、缓存一致性、多级缓存、热点与冷热数据等核心问题及解决方案。体系化概述见 [[分布式缓存]]，本文侧重实战细节与代码。
+>
+> **三大缓存问题一句话辨析**：穿透 = 查**根本不存在**的数据（缓存和库都没有，请求直达 DB）；击穿 = **单个热点 Key 过期**瞬间大量并发回源；雪崩 = **大量 Key 同时过期或缓存宕机**导致请求洪峰打库。
 
 ---
 
@@ -328,18 +330,20 @@ public void updateProduct(Product product) {
     redis.delete("product:" + product.getId());
     // 2. 更新数据库
     db.update(product);
-    // 3. 延迟再删一次
-    Thread.sleep(500); // 异步执行
-    redis.delete("product:" + product.getId());
+    // 3. 异步延迟再删一次（清理此间可能被回填的旧值）；❌ 不要用同步 Thread.sleep 阻塞写线程
+    delayExecutor.schedule(() -> redis.delete("product:" + product.getId()),
+            500, TimeUnit.MILLISECONDS);
 }
 
-// 方案3：Canal监听（强一致性）
-// Canal监听MySQL binlog，自动同步到Redis
-@Component
-public class CanalListener {
-    @CanalEventListener
-    public void onProductUpdate(CanalEntry.RowData rowData) {
-        String productId = rowData.getBeforeColumns().get("id").getValue();
+// 方案3：Canal 订阅 MySQL binlog，异步失效缓存（业务解耦、最终一致）
+@CanalTable("product")
+public void onProductChange(CanalEntry.RowData rowData) {
+    // Canal 的 Column 是列表，需按列名匹配取主键，而非 Map.get("id")
+    String productId = rowData.getAfterColumnsList().stream()
+            .filter(c -> "id".equals(c.getName()))
+            .map(CanalEntry.Column::getValue)
+            .findFirst().orElse(null);
+    if (productId != null) {
         redis.delete("product:" + productId);
     }
 }
@@ -351,6 +355,8 @@ public Product getProduct(Long id) {
         key -> db.selectById(id)); // 缓存未命中时自动加载
 }
 ```
+
+> 注：上方方案 4 的 `get(key, loader)` 是 Read-Through 的**示意**写法——RedisTemplate 并无此 API，工程上应由 Caffeine 的 LoadingCache 或自封装缓存组件实现「未命中自动回源」。
 
 ### 为什么需要它
 数据库和缓存是两套系统，更新时可能不一致，导致用户看到脏数据。
@@ -664,5 +670,13 @@ public class HotColdDataSeparator {
 ```
 
 ---
+
+## 相关术语
+
+[[分布式缓存]]、[[缓存策略]]、[[Redis深入]]、[[分布式基础术语百科]]、[[高并发系统设计]]
+
+## 参考资料
+
+建议人工核验：可参考《Redis 设计与实现》（黄健宏）、Redis 官方文档（过期/淘汰/持久化）、美团 Leaf 与 Guava BloomFilter 文档，以及 Cache-Aside / Read-Through / Write-Behind 等缓存模式的经典阐述（如 Microsoft Azure Architecture Center）。
 
 > 📌 **学习建议**：建议先掌握分布式ID生成方案（雪花算法最常用），再深入理解缓存穿透、雪崩、击穿的区别。缓存一致性是面试高频考点，建议重点理解"先更新DB再删缓存"策略。多级缓存架构是实际项目中的最佳实践，建议结合业务场景设计。
