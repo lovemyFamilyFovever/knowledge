@@ -177,7 +177,6 @@ def create_app(root: Path | None = None) -> Flask:
     def home():
         stats = corpus_stats()
         recent = sorted(md_files(content), key=lambda x: x[0].stat().st_mtime, reverse=True)[:6]
-        tax = load_taxonomy(content)
         recents = []
         for p, rel in recent:
             fm, _ = parse_frontmatter(p.read_text(encoding="utf-8", errors="replace"))
