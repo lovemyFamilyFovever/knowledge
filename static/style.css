@@ -414,7 +414,7 @@ html[data-theme="dark"] #ctx-menu{background:#0d1412}
 .kbm-ov{position:fixed;inset:0;z-index:100;background:rgba(8,12,16,.55);backdrop-filter:blur(4px);
   display:flex;align-items:center;justify-content:center;animation:rise .18s ease}
 .kbm{width:min(500px,92vw);max-height:82vh;display:flex;flex-direction:column;
-  background:color-mix(in oklab, var(--seed-surface), transparent 4%);backdrop-filter:blur(24px) saturate(1.15);
+  background:var(--bg0);backdrop-filter:blur(24px) saturate(1.15);
   border:1px solid var(--edge-hi);border-radius:14px;box-shadow:0 24px 70px rgba(0,0,0,.42);padding:20px 22px}
 .kbm-title{font-family:var(--disp);font-size:17px;font-weight:700;color:var(--ink);margin-bottom:10px}
 .kbm-body{font-size:13px;line-height:1.85;color:var(--muted);margin-bottom:12px;overflow-y:auto}
@@ -482,8 +482,8 @@ html[data-theme="dark"] .kbm-input{background:rgba(6,10,14,.5)}
 
 /* ---------- v16：目录统计弹窗（showSubStats） ---------- */
 .ss-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:6px}
-.ss-cell{border:1px solid var(--edge);border-radius:10px;padding:12px 10px;text-align:center;background:color-mix(in oklab, var(--seed-fg), transparent 95%)}
-html[data-theme="dark"] .ss-cell{background:color-mix(in oklab, var(--seed-fg), transparent 92%)}
+.ss-cell{border:1px solid var(--edge);border-radius:10px;padding:12px 10px;text-align:center;background:color-mix(in oklab, var(--ink), transparent 95%)}
+html[data-theme="dark"] .ss-cell{background:color-mix(in oklab, var(--ink), transparent 92%)}
 .ss-cell .ss-n{font-family:var(--num);font-size:20px;font-weight:700;color:var(--acc);font-variant-numeric:tabular-nums}
 .ss-cell .ss-l{font-size:10.5px;color:var(--muted);margin-top:3px}
 .ss-sec{font-family:var(--mono);font-size:10px;letter-spacing:2px;color:var(--muted);margin:12px 0 6px;text-transform:uppercase}
