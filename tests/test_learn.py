@@ -1,0 +1,529 @@
+# -*- coding: utf-8 -*-
+"""知库 学习/复习 smoke tests —— 抽卡、SM-2 调度、卡片库、HTTP 契约。
+
+运行：python tests/test_learn.py
+
+分四段（缺 RAG/Flask 依赖的段落自动 SKIP，参照 tests/test_rag.py 的写法）：
+    ① parse_file   对真实语料样本的抽卡行为（纯函数，零依赖）
+    ② sm2          SM-2 间隔推进（纯函数，零依赖）
+    ③ LearnStore   sqlite 卡片库：幂等 / 软下线 / 删库自愈
+    ④ HTTP         通过 Flask test_client 校验接口信封与字段名
+
+全程只读真实 content/（解析样本时在 repo 内按路径读），写操作一律用临时目录。
+"""
+import json
+import shutil
+import sys
+import tempfile
+import time
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
+CONTENT = ROOT / "content"
+
+from app.cards import (CARDS_PARSER_VERSION, fingerprint, make_card_id, norm,  # noqa: E402
+                       parse_file)
+from app.sm2 import DEFAULT_STATE, EF_MIN, Q_MAP, schedule  # noqa: E402
+
+passed = failed = 0
+
+
+def check(name: str, cond: bool, extra: str = "") -> None:
+    global passed, failed
+    if cond:
+        passed += 1
+        print(f"  PASS {name}")
+    else:
+        failed += 1
+        print(f"  FAIL {name} {extra}")
+
+
+def read_sample(rel: str) -> str:
+    p = CONTENT / rel
+    if not p.is_file():
+        raise FileNotFoundError(f"缺真实语料样本：{rel}")
+    return p.read_text(encoding="utf-8", errors="replace")
+
+
+# ---------------------------------------------------------------- ① 抽卡
+def test_parse_baike_a() -> None:
+    rel = "baike/algorithms/KMP 算法.md"
+    cards = parse_file(rel, read_sample(rel))
+    defs = [c for c in cards if c.kind == "baike_def"]
+    traps = [c for c in cards if c.kind == "baike_trap"]
+    check("A 格式：1 张 baike_def", len(defs) == 1, f"got {len(defs)}")
+    check("A 格式：2 张 baike_trap", len(traps) == 2, f"got {len(traps)}")
+    check("A 格式：term 取 frontmatter title", defs and defs[0].term == "KMP 算法",
+          f"got {defs[0].term if defs else None!r}")
+    check("A 格式：front 模板", bool(defs) and defs[0].front == "「KMP 算法」是什么？用一句话说清楚。",
+          f"got {defs[0].front if defs else None!r}")
+    check("A 格式：back 是一句话定义", bool(defs) and "字符串匹配算法" in defs[0].back)
+    check("A 格式：hint 来自通俗类比", bool(defs) and len(defs[0].hint) > 10)
+    check("A 格式：anchor = ## 定义", bool(defs) and defs[0].anchor == "## 定义")
+    rel_terms = json.loads(defs[0].related) if defs else []
+    check("A 格式：related 解析出 5 个双链", len(rel_terms) == 5, f"got {rel_terms}")
+    check("A 格式：domain/sub 来自路径",
+          bool(defs) and defs[0].domain == "baike" and defs[0].sub == "algorithms")
+    check("A 格式：trap front 模板", bool(traps) and traps[0].front.startswith("判断正误："))
+    check("A 格式：trap back 带正解", bool(traps) and traps[0].back.startswith("✗ 这是常见误区。正解："))
+
+
+def test_parse_baike_b() -> None:
+    rel = "baike/security/哈希算法篇.md"
+    cards = parse_file(rel, read_sample(rel))
+    defs = [c for c in cards if c.kind == "baike_def"]
+    terms = [c.term for c in defs]
+    check("B 格式：抽出 ≥4 张 def", len(defs) >= 4, f"got {len(defs)}")
+    check("B 格式：term 保留英文括号", "MD5（Message Digest 5）" in terms, f"got {terms[:3]}")
+    check("B 格式：每个词条 1 张 def + 至多 1 张 trap",
+          len(defs) >= len([c for c in cards if c.kind == "baike_trap"]))
+    check("B 格式：related 为空数组", all(c.related == "[]" for c in cards))
+    # 冒号在 ** 内部的变体（SQL 基础术语篇）
+    rel2 = "baike/database/SQL 基础术语.md"
+    cards2 = parse_file(rel2, read_sample(rel2))
+    terms2 = [c.term for c in cards2 if c.kind == "baike_def"]
+    check("B 格式变体（冒号在 ** 内）：也能抽到定义卡", len(terms2) >= 4, f"got {len(terms2)}")
+    check("B 格式变体：第一条是 DDL（…）",
+          bool(terms2) and terms2[0].startswith("DDL"), f"got {terms2[:1]}")
+    check("B 格式变体：back 非空且够长",
+          all(len(c.back) >= 10 for c in cards2 if c.kind == "baike_def"))
+
+
+def test_parse_interview_i1() -> None:
+    rel = "interview/algorithms/算法面试100题精讲.md"
+    cards = parse_file(rel, read_sample(rel))
+    check("I-1：抽出 interview_qa", len(cards) >= 5 and all(c.kind == "interview_qa" for c in cards),
+          f"got {len(cards)}")
+    check("I-1：front 形如 Q1. 标题", bool(cards) and cards[0].front == "Q1. 两数之和（LeetCode 1）",
+          f"got {cards[0].front if cards else None!r}")
+    check("I-1：has_answer=1", all(c.has_answer == 1 for c in cards))
+    check("I-1：difficulty 缺省 medium", all(c.difficulty == "medium" for c in cards))
+    check("I-1：back 剔除了代码块", all("```" not in c.back for c in cards))
+    check("I-1：back 截断到 600 字内", all(len(c.back) <= 600 for c in cards))
+    check("I-1：anchor 是原题标题", bool(cards) and "题目1" in cards[0].anchor)
+
+
+def test_parse_interview_i2() -> None:
+    rel = "interview/ai-agent/AI Agent 技术面试题库（140题）.md"
+    cards = parse_file(rel, read_sample(rel))
+    check("I-2：抽出表格题目", len(cards) >= 30, f"got {len(cards)}")
+    check("I-2：has_answer=0（原文未附答案）", all(c.has_answer == 0 for c in cards))
+    check("I-2：difficulty 走 DIFF_MAP", any(c.difficulty in ("easy", "medium", "hard")
+                                             for c in cards))
+    check("I-2：front 形如 Q1. 题面", bool(cards) and cards[0].front.startswith("Q1. "),
+          f"got {cards[0].front if cards else None!r}")
+    check("I-2：anchor 落在最近的 ### 主题N", bool(cards) and "主题1" in cards[0].anchor)
+
+
+def test_parse_interview_i3() -> None:
+    rel = "interview/css-html/CSS与HTML面试题库 - 60道精选题目.md"
+    cards = parse_file(rel, read_sample(rel))
+    check("I-3：抽出扁平题目", len(cards) >= 20, f"got {len(cards)}")
+    check("I-3：题面以 ？ 结尾", all(c.front.rstrip().endswith("？") or c.front.rstrip().endswith("?")
+                                     for c in cards))
+    check("I-3：答案从「查看答案」之后才收集",
+          all("查看答案" not in c.back for c in cards))
+    check("I-3：难度行不进答案正文",
+          all(c.back.strip() != "简单" for c in cards))
+    check("I-3：back 截断到 800 字内", all(len(c.back) <= 800 for c in cards))
+    check("I-3：保留「回答模板N」小标题", any("回答模板" in c.back for c in cards))
+
+
+def test_no_cards_from_fenced_code() -> None:
+    md = ('---\ntitle: "伪题陷阱"\ntags: []\n---\n\n# 伪题陷阱\n\n'
+          '正文里只有一个真问题。\n\n```python\n1. 代码块里的问题会被算成卡片吗？\n'
+          '**一句话定义：** 也不该被算成定义。\n```\n')
+    cards = parse_file("baike/algorithms/伪题陷阱.md", md)
+    check("代码块里的内容不成卡", cards == [], f"got {len(cards)}")
+
+
+def test_card_id_stable() -> None:
+    rel = "baike/algorithms/KMP 算法.md"
+    raw = read_sample(rel)
+    a = parse_file(rel, raw)
+    b = parse_file(rel, raw)
+    check("同一输入两次 card_id 相同",
+          [c.card_id for c in a] == [c.card_id for c in b])
+    check("card_id 始终以 c_ 开头且 14 位",
+          all(c.card_id.startswith("c_") and len(c.card_id) == 14 for c in a))
+    moved = parse_file("baike/strings/X2.md", raw)
+    check("文件改名/换子域后 card_id 不变（进度不丢）",
+          [c.card_id for c in moved] == [c.card_id for c in a])
+    check("文件改名/换子域后 card_id 不变（进度不丢）",
+          [c.card_id for c in moved] == [c.card_id for c in a])
+    moved2 = parse_file("interview/algorithms/KMP 算法.md", raw)
+    check("只有 baike / interview 之外的内容不抽卡（换到非候选域则无卡）",
+          parse_file("articles/notes/KMP 算法.md", raw) == [])
+    check("同一原文换到 interview 域走 interview 解析器（故无 baike 卡）",
+          all(c.kind != "baike_def" for c in moved2), f"got {[c.kind for c in moved2][:3]}")
+    # make_card_id / fingerprint / norm 的显式契约
+    cid = make_card_id("baike_def", "KMP 算法", "「KMP 算法」是什么？用一句话说清楚。")
+    check("make_card_id 幂等", cid == make_card_id("baike_def", "KMP算法", "「KMP 算法」是什么?用一句话说清楚。"))
+    check("make_card_id 对 kind 敏感",
+          cid != make_card_id("baike_trap", "KMP 算法", "「KMP 算法」是什么？用一句话说清楚。"))
+    check("norm 剥离 markdown 标记与空白", norm(" **KMP_算法** ") == norm("KMP算法"))
+    check("fingerprint 对正反面敏感",
+          fingerprint("A", "B") != fingerprint("A", "C") and len(fingerprint("A", "B")) == 16)
+
+
+# ---------------------------------------------------------------- ② SM-2
+def _advance(state: dict, qs: list[int], now: float | None = None) -> dict:
+    now = now if now is not None else time.time()
+    st = dict(state)
+    for q in qs:
+        nxt = schedule(st, q, now)
+        st = {"ef": nxt["ef"], "interval": nxt["interval"], "reps": nxt["reps"],
+              "lapses": nxt["lapses"]}
+    return {"st": st, "last": nxt}
+
+
+def test_sm2() -> None:
+    now = time.time()
+    check("Q_MAP 取值符合契约", Q_MAP == {"again": 0, "hard": 3, "good": 4, "easy": 5})
+
+    r = schedule({"ef": 2.5, "interval": 0, "reps": 0, "lapses": 0}, 4, now)
+    check("首次 q=4 → interval=1, reps=1, ef 不变",
+          (r["interval"], r["reps"], r["ef"]) == (1, 1, 2.5), f"got {r}")
+    check("due_ts 落在明天当地 00:00 之后", r["due_ts"] > now)
+
+    st = {"ef": 2.5, "interval": 0, "reps": 0, "lapses": 0}
+    ivs, efs = [], []
+    for _ in range(3):
+        n = schedule(st, 4, now)
+        st = {"ef": n["ef"], "interval": n["interval"], "reps": n["reps"], "lapses": n["lapses"]}
+        ivs.append(n["interval"])
+        efs.append(n["ef"])
+    check("连续 q=4 三次 → interval 1→6→15", ivs == [1, 6, 15], f"got {ivs}")
+    check("连续 q=4 → ef 恒为 2.50", all(abs(e - 2.5) < 1e-9 for e in efs), f"got {efs}")
+
+    r = schedule({"ef": 2.5, "interval": 15, "reps": 3, "lapses": 0}, 0, now)
+    check("q=0 → interval=1, reps=0, lapses+1", (r["interval"], r["reps"], r["lapses"]) == (1, 0, 1),
+          f"got {r}")
+    r = schedule({"ef": 2.5, "interval": 15, "reps": 3, "lapses": 0}, 2, now)
+    check("q=2 也算遗忘（lapses+1）且 ef 不变", r["lapses"] == 1 and r["ef"] == 2.5, f"got {r}")
+
+    st = {"ef": 2.5, "interval": 0, "reps": 0, "lapses": 0}
+    efs = []
+    for _ in range(6):
+        n = schedule(st, 5, now)
+        st = {"ef": n["ef"], "interval": n["interval"], "reps": n["reps"], "lapses": n["lapses"]}
+        efs.append(n["ef"])
+    check("连续 q=5 → ef 单调不减", all(efs[i] <= efs[i + 1] for i in range(len(efs) - 1)),
+          f"got {efs}")
+    check("连续 q=5 → ef 先严格上升再被 2.80 夹住",
+          efs[0] < efs[1] < efs[2] and max(efs) == 2.80, f"got {efs}")
+    check("连续 q=5 → ef 不超 2.80", max(efs) <= 2.80, f"got {max(efs)}")
+
+    st = {"ef": 2.5, "interval": 0, "reps": 0, "lapses": 0}
+    efs = []
+    for _ in range(8):
+        n = schedule(st, 0, now)
+        st = {"ef": n["ef"], "interval": n["interval"], "reps": n["reps"], "lapses": n["lapses"]}
+        efs.append(n["ef"])
+    check("连续 q=0 → ef 恒为初始值（不低于 1.30）", min(efs) >= EF_MIN and min(efs) == 2.5,
+          f"got {efs}")
+
+    st = {"ef": 2.5, "interval": 200, "reps": 8, "lapses": 0}
+    n = schedule(st, 4, now)
+    check("interval 有 365 天上限", n["interval"] == 365, f"got {n['interval']}")
+
+    st = {"ef": 2.5, "interval": 0, "reps": 0, "lapses": 0}
+    n = st.copy()
+    for q in (4, 4, 4, 4):
+        n = schedule(st, q, now)
+        st = {"ef": n["ef"], "interval": n["interval"], "reps": n["reps"], "lapses": n["lapses"]}
+    check("interval>=21 且 reps>=3 → mastered=1", n["mastered"] == 1, f"got {n}")
+    check("schedule 不改入参",
+          all(k in DEFAULT_STATE for k in ("ef", "interval", "reps", "lapses")))
+
+
+# ---------------------------------------------------------------- ③ 卡片库
+def _seed_mini_corpus(root: Path) -> Path:
+    content = root / "content"
+    for rel in ("baike/algorithms/KMP 算法.md", "baike/security/哈希算法篇.md",
+                "interview/css-html/CSS与HTML面试题库 - 60道精选题目.md"):
+        src = CONTENT / rel
+        dst = content / rel
+        dst.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy(src, dst)
+    # 一篇 longer tutorial（无定义小节）→ 应记为 skipped
+    d = content / "baike" / "algorithms"
+    (d / "教程长文.md").write_text(
+        "---\ntitle: \"教程长文\"\ntags: []\n---\n\n# 教程长文\n\n## 原理与机制\n\n"
+        "这是一篇没有任何「一句话定义」的教程长文，按设计不抽卡。\n",
+        encoding="utf-8")
+    return content
+
+
+def test_learn_store() -> None:
+    from app.learn import LearnStore
+
+    with tempfile.TemporaryDirectory() as td:
+        root = Path(td)
+        content = _seed_mini_corpus(root)
+        indexes = root / "indexes"
+        ls = LearnStore(indexes, content)
+        try:
+            ls.ensure_synced(content)
+            check("删库后 ensure_synced 自动同步",
+                  int(ls.con.execute("SELECT count(*) FROM cards WHERE active=1").fetchone()[0]) > 0)
+            r1 = ls.sync(content)
+            check("sync 抽出卡片", r1["total"] > 20, f"total={r1['total']}")
+            check("coverage.files 只统计候选域", r1["coverage"]["files"] == 4,
+                  f"got {r1['coverage']}")
+            check("coverage.skipped 记录教程长文", r1["coverage"]["skipped"] == 1,
+                  f"got {r1['coverage']}")
+            check("by_kind 含三种类型", set(r1["by_kind"]) >= {"baike_def", "interview_qa"},
+                  f"got {r1['by_kind']}")
+
+            dueTs_before = {}
+            r2 = ls.sync(content)
+            check("二次 sync：added=0", r2["added"] == 0, f"got {r2['added']}")
+            check("二次 sync：updated=0", r2["updated"] == 0, f"got {r2['updated']}")
+            check("二次 sync：total 不变", r2["total"] == r1["total"])
+
+            due = ls.due(limit=5)
+            card = due["cards"][0]
+            dueTs_before[card["card_id"]] = card["due_ts"]
+            before_mastered = int(card["mastered"])
+            res = ls.submit_review(card["card_id"], 4, 1500)
+            check("submit_review：next.interval=1", res["next"]["interval"] == 1, f"got {res['next']}")
+            check("submit_review：due_ts 后移", res["next"]["due_ts"] > time.time(),
+                  f"got {res['next']['due_ts']}")
+            check("submit_review：mastery_delta 合理",
+                  res["mastery_delta"] >= 0 and res["mastery_delta"] == res["next"]["mastered"] - before_mastered
+                  + (before_mastered - before_mastered), f"got {res['mastery_delta']}")
+            check("submit_review：streak_days >= 1", res["streak_days"] >= 1)
+
+            dup = ls.submit_review(card["card_id"], 4, 1500)
+            check("同一秒重复提交幂等（interval 不二次推进）", dup["next"]["interval"] == 1,
+                  f"got {dup['next']}")
+            ls.con.execute("UPDATE review_events SET ts=ts-1 WHERE card_id=?", (card["card_id"],))
+            ls.con.commit()
+
+            m = ls.mastery(scope="sub", domain="baike")
+            check("mastery 返回 items 与 totals", bool(m["items"]) and "pct" in m["totals"])
+            check("mastery hue 取域色相", all(isinstance(i["hue"], int) for i in m["items"]))
+
+            tc = ls.today_card()
+            check("today_card 有结果", tc["card"] is not None)
+            check("today_stats 字段齐全",
+                  {"due_n", "done_today", "new_left", "streak_days", "mastered",
+                   "mastered_total", "mastered_pct"} <= set(ls.today_stats()))
+
+            rm = ls.roam("KMP 算法", n=4)
+            check("roam 返回 path 与 dead_ends", isinstance(rm["path"], list)
+                  and isinstance(rm["dead_ends"], list))
+
+            sc = ls.search_cards(q="哈希", limit=5)
+            check("search_cards 返回 total/items", sc["total"] >= 1 and len(sc["items"]) >= 1)
+
+            g = ls.glossary(domain="baike", sub="security")
+            check("glossary 分桶含字母桶与 # 桶",
+                  any(b["letter"] != "#" for b in g["buckets"]) and g["total"] >= 4,
+                  f"got {g['buckets']}")
+            check("glossary items_flat 带 def_brief",
+                  bool(g["items_flat"]) and "def_brief" in g["items_flat"][0])
+
+            p = ls.palette_index(None, content)
+            check("palette 返回 6 条命令", p["counts"]["commands"] == 6,
+                  f"got {p['counts']}")
+            check("palette sig 一致时 fresh",
+                  ls.palette_index(p["sig"], content).get("fresh") is True)
+
+            sug = ls.wikilink_suggest("MD5", limit=3)
+            check("wikilink_suggest 命中术语", bool(sug) and sug[0]["score"] >= 70, f"got {sug}")
+            ck = ls.wikilink_check("参见 [[不存在的链接]]。")
+            check("wikilink_check 标出断链", ck["dead_n"] == 1 and ck["dead"][0]["line"] == 1,
+                  f"got {ck}")
+
+            check("parser_version 写进 learn_meta",
+                  ls.meta_get("parser_version") == str(CARDS_PARSER_VERSION))
+        finally:
+            ls.close()
+
+        # 软下线：把语料搬走再同步，旧卡应 active=0 而不是被删掉
+        ls2 = LearnStore(indexes, content)
+        try:
+            n_before = int(ls2.con.execute("SELECT count(*) FROM cards").fetchone()[0])
+            (content / "baike" / "algorithms" / "KMP 算法.md").unlink()
+            ls2.sync(content)
+            n_after = int(ls2.con.execute("SELECT count(*) FROM cards").fetchone()[0])
+            retired = int(ls2.con.execute(
+                "SELECT count(*) FROM cards WHERE active=0").fetchone()[0])
+            check("语料删除后仍是软下线（不 DELETE）", n_before == n_after, f"{n_before}→{n_after}")
+            check("软下线把对应卡片置为 inactive", retired >= 3, f"retired={retired}")
+        finally:
+            ls2.close()
+
+        # 删库自愈
+        (indexes / "reading.db").unlink()
+        ls3 = LearnStore(indexes, content)
+        try:
+            t0 = time.perf_counter()
+            ls3.ensure_synced(content)
+            n = int(ls3.con.execute("SELECT count(*) FROM cards WHERE active=1").fetchone()[0])
+            check("删库后重新打开自动重建且非空中岁以上（<5s）",
+                  n > 0 and (time.perf_counter() - t0) < 5, f"n={n}")
+        finally:
+            ls3.close()
+
+
+# ---------------------------------------------------------------- ④ HTTP
+def test_routes() -> None:
+    try:
+        from app.app import create_app
+    except Exception as e:
+        print(f"SKIP: Flask 依赖不可用（{e}）")
+        return
+
+    with tempfile.TemporaryDirectory() as td:
+        root = Path(td)
+        _seed_mini_corpus(root)
+        app = create_app(root)
+        c = app.test_client()
+
+        r = c.post("/api/learn/sync", json={"force": True})
+        j = r.get_json()
+        check("POST /api/learn/sync 200 + ok", r.status_code == 200 and j.get("ok") is True,
+              f"{r.status_code} {str(j)[:200]}")
+        for field in ("added", "updated", "retired", "total", "by_kind", "coverage", "elapsed_ms",
+                      "synced_at"):
+            check(f"/api/learn/sync 含字段 {field}", field in j)
+
+        r = c.get("/api/learn/due?limit=5")
+        j = r.get_json()
+        check("GET /api/learn/due 200 + ok", r.status_code == 200 and j.get("ok") is True)
+        for field in ("cards", "due_n", "new_n", "total_n"):
+            check(f"/api/learn/due 含字段 {field}", field in j)
+        if j.get("cards"):
+            card = j["cards"][0]
+            for field in ("card_id", "kind", "term", "front", "back", "hint", "source_rel",
+                          "anchor", "url", "domain", "sub", "sub_label", "tags", "related",
+                          "state"):
+                check(f"due card 含字段 {field}", field in card)
+            st = card["state"]
+            for field in ("ef", "interval", "reps", "lapses", "due_ts", "mastered", "is_new"):
+                check(f"due card.state 含字段 {field}", field in st)
+            check("due card.url 指向 /doc/", str(card["url"]).startswith("/doc/"), card["url"])
+
+            rid = card["card_id"]
+            r = c.post("/api/learn/review", json={"card_id": rid, "q": 4, "elapsed_ms": 800})
+            j = r.get_json()
+            check("POST /api/learn/review 200 + ok", r.status_code == 200 and j.get("ok") is True,
+                  f"{r.status_code} {str(j)[:200]}")
+            check("review next.interval == 1", j.get("next", {}).get("interval") == 1, str(j)[:200])
+            for field in ("card_id", "q", "prev", "next", "mastery_delta", "streak_days"):
+                check(f"/api/learn/review 含字段 {field}", field in j)
+
+        r = c.get("/api/learn/mastery?scope=sub&domain=baike")
+        j = r.get_json()
+        check("GET /api/learn/mastery 200", r.status_code == 200 and j.get("ok") is True)
+        check("mastery items 字段齐全", all(
+            {"id", "label", "total", "mastered", "learning", "new", "pct", "hue", "ef_avg",
+             "due_n"} <= set(i) for i in j.get("items", [])))
+
+        r = c.get("/api/learn/today")
+        j = r.get_json()
+        check("GET /api/learn/today 200", r.status_code == 200 and j.get("ok") is True,
+              f"{r.status_code} {str(j)[:160]}")
+        check("today 含 date/card/stats/tip",
+              {"date", "card", "stats", "tip"} <= set(j))
+
+        r = c.get("/api/learn/cards?limit=3")
+        j = r.get_json()
+        check("GET /api/learn/cards 200", r.status_code == 200 and j.get("ok") is True)
+        check("cards 含 total/items", "total" in j and "items" in j)
+
+        r = c.get("/api/learn/roam?from=KMP 算法&n=4")
+        j = r.get_json()
+        check("GET /api/learn/roam 200", r.status_code == 200 and j.get("ok") is True)
+        check("roam 含 path/n/dead_ends", {"path", "n", "dead_ends"} <= set(j))
+        r = c.get("/api/learn/roam")
+        check("roam 缺 from → BAD_PARAM", r.get_json().get("error") == "BAD_PARAM", str(r.get_json()))
+
+        r = c.get("/api/wikilink/suggest?q=MD5")
+        j = r.get_json()
+        check("GET /api/wikilink/suggest 200", r.status_code == 200 and j.get("ok") is True)
+        check("suggest items 含 name/rel/kind/score/sub_label",
+              all({"name", "rel", "kind", "score", "sub_label"} <= set(i) for i in j.get("items", [])))
+
+        r = c.post("/api/wikilink/check", json={"body": "参见 [[不存在的链接]]。"})
+        j = r.get_json()
+        check("POST /api/wikilink/check 200", r.status_code == 200 and j.get("ok") is True)
+        check("check dead_n == 1", j.get("dead_n") == 1, str(j)[:200])
+        check("check dead 含 raw/line/col/suggest/suggest_score",
+              all({"raw", "line", "col", "suggest", "suggest_score"} <= set(d)
+                  for d in j.get("dead", [])))
+        r = c.post("/api/wikilink/check", json={})
+        check("check 缺 body → BAD_PARAM", r.get_json().get("error") == "BAD_PARAM")
+
+        r = c.get("/api/palette/index")
+        j = r.get_json()
+        check("GET /api/palette/index 200", r.status_code == 200 and j.get("ok") is True)
+        check("palette 6 条命令 id 顺序稳定",
+              [x["id"] for x in j.get("commands", [])] ==
+              ["go-home", "toggle-theme", "goto-review", "goto-quiz", "goto-glossary", "readpref"],
+              str([x["id"] for x in j.get("commands", [])]))
+        r2 = c.get("/api/palette/index?sig=" + str(j.get("sig")))
+        check("palette sig 一致 → fresh", r2.get_json().get("fresh") is True, str(r2.get_json()))
+
+        r = c.get("/api/glossary")
+        j = r.get_json()
+        check("GET /api/glossary 200", r.status_code == 200 and j.get("ok") is True)
+        check("glossary 含 total/buckets/groups/items_flat",
+              {"total", "buckets", "groups", "items_flat"} <= set(j))
+        check("glossary group 含 sub/sub_label/hue/items",
+              all({"sub", "sub_label", "hue", "items"} <= set(g) for g in j.get("groups", [])))
+
+        r = c.get("/api/search?q=KMP")
+        j = r.get_json()
+        check("GET /api/search 200", r.status_code == 200 and j.get("ok") is True)
+        check("search 含 q/mode/total/精确+命中/facets",
+              {"q", "mode", "total", "took_ms", "exact", "hits", "facets",
+               "semantic_available"} <= set(j))
+        if j.get("exact"):
+            check("search exact[0] 字段齐全",
+                  {"path", "title", "url", "snippet", "score_label", "domain", "sub",
+                   "sub_label", "tags", "match"} <= set(j["exact"][0]))
+            check("search exact[0].title 命中 KMP 算法", j["exact"][0]["title"] == "KMP 算法",
+                  j["exact"][0]["title"])
+            check("search exact[0].match == exact", j["exact"][0]["match"] == "exact")
+        else:
+            check("search：KMP 应进 exact[]", False, str(j)[:200])
+        r = c.get("/api/search")
+        check("search 缺 q → BAD_Q", r.get_json().get("error") == "BAD_Q", str(r.get_json()))
+
+        for page in ("/review", "/quiz", "/glossary"):
+            r = c.get(page)
+            check(f"GET {page} 渲染成功", r.status_code == 200, f"got {r.status_code}")
+
+        r = c.post("/api/learn/review", json={"card_id": "c_notexist", "q": 4})
+        check("未知 card_id → BAD_CARD 404", r.status_code == 404
+              and r.get_json().get("error") == "BAD_CARD", f"{r.status_code} {str(r.get_json())}")
+        r = c.post("/api/learn/review", json={"card_id": "c_x", "q": 9})
+        check("q 越界 → BAD_Q 400", r.status_code == 400 and r.get_json().get("error") == "BAD_Q")
+
+
+def main() -> int:
+    print("== ① 抽卡 parse_file ==")
+    test_parse_baike_a()
+    test_parse_baike_b()
+    test_parse_interview_i1()
+    test_parse_interview_i2()
+    test_parse_interview_i3()
+    test_no_cards_from_fenced_code()
+    test_card_id_stable()
+    print("== ② SM-2 ==")
+    test_sm2()
+    print("== ③ LearnStore ==")
+    test_learn_store()
+    print("== ④ HTTP 契约 ==")
+    test_routes()
+    print(f"\n{passed} passed, {failed} failed")
+    return 1 if failed else 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

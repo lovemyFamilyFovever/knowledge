@@ -61,6 +61,9 @@ try:
 except Exception:
     ReadingStore = None
 
+from app.routes_learn import register as register_learn
+from app.routes_search import register as register_search
+
 
 # ---------------- app factory ----------------
 def create_app(root: Path | None = None) -> Flask:
@@ -843,6 +846,11 @@ def create_app(root: Path | None = None) -> Flask:
     def not_found(e):
         desc = getattr(e, "description", "页面不存在")
         return render_template("error.html", message=desc), 404
+
+    # 扩展路由：学习/复习/门户/命令面板 + 搜索增强
+    _hooks = {"domains_cached": domains_cached, "safe_rel": safe_rel, "get_rag": get_rag}
+    register_learn(app, _hooks)
+    register_search(app, _hooks)
 
     return app
 

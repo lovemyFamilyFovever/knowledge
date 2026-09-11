@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}面试刷题 · 知库{% endblock %}
+{% block body %}
+<main class="wrap learn-page" id="quiz-root">
+  <h1 class="learn-title">面试刷题</h1>
+  <p class="learn-sub" id="quiz-sub">正在载入…</p>
+  <div class="learn-body" id="quiz-body">
+    <noscript>本页需要 JavaScript：刷题模式依赖 /api/learn/cards 与 /api/learn/review。</noscript>
+  </div>
+</main>
+{% endblock %}
+{% block scripts %}
+<script>
+  // 后端占位页（后端批交付时前端尚未完成）。前端接手后替换本文件即可，
+  // 数据契约见 /api/learn/cards?kind=interview_qa 与 /api/learn/review。
+  (function () {
+    var sub = document.getElementById('quiz-sub');
+    fetch('/api/learn/cards?kind=interview_qa&limit=5')
+      .then(function (r) { return r.json(); })
+      .then(function (j) {
+        if (!j.ok) { sub.textContent = '载入失败：' + (j.detail || j.error); return; }
+        sub.textContent = '题库共 ' + j.total + ' 张';
+        document.getElementById('quiz-body').innerHTML = j.items.map(function (c) {
+          return '<pre style="white-space:pre-wrap">' + c.front + '\n\n' + c.back + '</pre>';
+        }).join('<hr>');
+      })
+      .catch(function (e) { sub.textContent = '载入失败：' + e; });
+  })();
+</script>
+{% endblock %}

@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}术语百科 · 知库{% endblock %}
+{% block body %}
+<main class="wrap learn-page" id="glossary-root">
+  <h1 class="learn-title">术语百科</h1>
+  <p class="learn-sub" id="glossary-sub">正在载入…</p>
+  <div class="learn-body" id="glossary-body">
+    <noscript>本页需要 JavaScript：术语索引依赖 /api/glossary。</noscript>
+  </div>
+</main>
+{% endblock %}
+{% block scripts %}
+<script>
+  // 后端占位页（后端批交付时前端尚未完成）。前端接手后替换本文件即可，
+  // 数据契约见 /api/glossary（total / buckets / groups / items_flat）。
+  (function () {
+    var sub = document.getElementById('glossary-sub');
+    fetch('/api/glossary')
+      .then(function (r) { return r.json(); })
+      .then(function (j) {
+        if (!j.ok) { sub.textContent = '载入失败：' + (j.detail || j.error); return; }
+        sub.textContent = '共 ' + j.total + ' 个词条 · ' + j.groups.length + ' 个子域 · 首字母桶 '
+          + j.buckets.map(function (b) { return b.letter + '(' + b.n + ')'; }).join(' ');
+        document.getElementById('glossary-body').innerHTML = j.groups.map(function (g) {
+          return '<h3>' + g.sub_label + '</h3><ul>' + g.items.map(function (it) {
+            return '<li><a href="' + it.url + '">' + it.term + '</a></li>';
+          }).join('') + '</ul>';
+        }).join('');
+      })
+      .catch(function (e) { sub.textContent = '载入失败：' + e; });
+  })();
+</script>
+{% endblock %}

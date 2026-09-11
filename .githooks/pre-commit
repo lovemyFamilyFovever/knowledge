@@ -1,5 +1,5 @@
 #!/bin/sh
-# 知库 pre-commit：提交前自动跑三套测试（存在对应运行时才跑对应套件）
+# 知库 pre-commit：提交前自动跑四套测试（存在对应运行时才跑对应套件）
 # 启用：git config core.hooksPath .githooks
 
 PY=""
@@ -18,6 +18,11 @@ echo "[pre-commit] running reader smoke..."
 if [ -f "tests/test_new_project.py" ]; then
   echo "[pre-commit] running scaffolder smoke..."
   "$PY" tests/test_new_project.py || exit 1
+fi
+
+if [ -f "tests/test_learn.py" ]; then
+  echo "[pre-commit] running learn/review smoke..."
+  "$PY" tests/test_learn.py || exit 1
 fi
 
 if [ -f "tests/test_govern.py" ]; then

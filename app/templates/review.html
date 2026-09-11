@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}今日复习 · 知库{% endblock %}
+{% block body %}
+<main class="wrap learn-page" id="review-root">
+  <h1 class="learn-title">今日复习</h1>
+  <p class="learn-sub" id="learn-sub">正在载入…</p>
+  <div class="learn-body" id="learn-body">
+    <noscript>本页需要 JavaScript：复习卡 SM-2 调度与评分在前端完成。</noscript>
+  </div>
+</main>
+{% endblock %}
+{% block scripts %}
+<script>
+  // 后端占位页（后端批交付时前端尚未完成）。前端接手后替换本文件即可，
+  // 数据契约见 /api/learn/due 与 /api/learn/review，此处仅做最小自检。
+  (function () {
+    var sub = document.getElementById('learn-sub');
+    fetch('/api/learn/due?limit=5')
+      .then(function (r) { return r.json(); })
+      .then(function (j) {
+        if (!j.ok) { sub.textContent = '载入失败：' + (j.detail || j.error); return; }
+        sub.textContent = '到期 ' + j.due_n + ' 张 · 新卡 ' + j.new_n + ' 张 · 本次取 ' + j.cards.length + ' 张';
+        document.getElementById('learn-body').innerHTML = j.cards.map(function (c) {
+          return '<pre style="white-space:pre-wrap">' + c.front + '\n\n' + c.back + '</pre>';
+        }).join('<hr>');
+      })
+      .catch(function (e) { sub.textContent = '载入失败：' + e; });
+  })();
+</script>
+{% endblock %}
