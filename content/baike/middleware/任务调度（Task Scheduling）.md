@@ -1,6 +1,6 @@
 ---
 title: "任务调度（Task Scheduling）"
-tags: []
+tags: [消息与中间件, 任务调度, 分布式, XXL-JOB]
 source: "baike"
 source_path: "开发术语 / 消息与中间件"
 collected: "2026-09-05"
@@ -8,6 +8,8 @@ status: "imported"
 ---
 
 # 任务调度（Task Scheduling）
+
+> 📌 **导航**：本文汇总**分布式任务调度**与相关机制（调度平台 XXL-JOB/Elastic-JOB/SchedulerX、延迟/优先级队列、分布式定时任务、Crontab、DAG 编排、监控告警）。单机 cron/systemd 定时见 [[进程管理详解]]，延迟消息与 MQ 见 [[消息队列（Message Queue）]]，分布式锁见 [[分布式基础术语百科]]。
 
 ## 分布式任务调度概念
 
@@ -442,3 +444,13 @@ with DAG('order_pipeline', start_date=datetime(2024, 1, 1),
 | Prometheus + Grafana | 可视化强，指标丰富 |
 | SkyWalking 链路追踪 | 需要追踪任务上下游 |
 | 自建监控平台 | 大规模、定制化需求 |
+
+---
+
+## 相关术语
+
+[[消息队列（Message Queue）]]、[[死信队列]]、[[进程管理详解]]、[[分布式基础术语百科]]、[[幂等性]]
+
+## 参考资料
+
+建议人工核验：可参考 XXL-JOB / Elastic-JOB / Apache DolphinScheduler / Apache Airflow 官方文档，以及 `crontab(5)` man page。

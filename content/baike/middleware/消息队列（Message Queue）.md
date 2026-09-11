@@ -1,6 +1,6 @@
 ---
 title: "消息队列（Message Queue）"
-tags: []
+tags: [消息与中间件, 消息队列, Kafka, RabbitMQ]
 source: "baike"
 source_path: "开发术语 / 消息与中间件"
 collected: "2026-09-05"
@@ -8,6 +8,8 @@ status: "imported"
 ---
 
 # 消息队列（Message Queue）
+
+> 📌 **导航**：本文是消息队列的**总览与选型 hub**（核心概念 + Kafka/RabbitMQ/RocketMQ/Pulsar + 可靠性/顺序/幂等）。其中 Kafka 深入见 [[Kafka深入]]，三者选型对比见 [[RabbitMQ vs Kafka vs Pulsar]]，死信见 [[死信队列]]，幂等见 [[幂等性]]，事务消息见 [[分布式事务]]。
 
 ## 消息队列核心概念
 
@@ -282,3 +284,13 @@ public void handleMessage(Message msg) {
     }
 }
 ```
+
+---
+
+## 相关术语
+
+[[Kafka深入]]、[[RabbitMQ vs Kafka vs Pulsar]]、[[死信队列]]、[[幂等性]]、[[分布式事务]]、[[任务调度（Task Scheduling）]]
+
+## 参考资料
+
+建议人工核验：可参考 Apache Kafka / RabbitMQ / Apache RocketMQ / Apache Pulsar 官方文档、《企业集成模式》(EIP, Hohpe & Woolf)，以及 AMQP 规范。
