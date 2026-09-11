@@ -22,6 +22,8 @@ qwenwork/
 .qoder-cn/
 # Cowork / Agent 会话临时目录
 .cowork-temp/
+# Box-Agent 会话产物（任务注册表等）
+.box-agent/
 # 日期戳 + 哈希的一次性 agent 会话目录（例如 2026-09-10-428af70d/）
 20??-??-??-*/
 # 巡检脚本产出的 _probe 前缀文档（不属于知识语料，是测试记录）
