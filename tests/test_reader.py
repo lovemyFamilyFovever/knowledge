@@ -100,7 +100,7 @@ def main() -> int:
 
         r = c.get("/home")
         home = r.get_data(as_text=True)
-        check("/home 渲染统计", r.status_code == 200 and "大领域" in home)  # 领域数已动态化：{{ stats.domains|length }} 大领域
+        check("/home 渲染统计", r.status_code == 200 and "个域入口" in home)  # 领域数已动态化：{{ stats.domains|length }} 个域入口
         check("/home 收件箱计数为 1", bool(re.search(r'收件箱</span><span class="n">1</span>', home)))
         check("/home 最近更新含 B", "职业笔记B" in home)
 
