@@ -1,13 +1,14 @@
 {% extends "base.html" %}
+{% block title %}知库 · {{ sub_label }}{% endblock %}
 {% block body %}
 <main>
-  <section class="panel" id="p-left">
-    <div class="panel-h">分类目录<span class="cnt" id="tree-total">{{ n_md }}</span><button class="fold" onclick="togglePanel('left')" title="收起左栏"><svg><use href="#i-fold-l"/></svg></button></div>
-    <nav class="tree" id="tree">
+  <section class="panel wb-panel" id="p-left" data-reveal data-reveal-y="14">
+    <div class="panel-h">分类目录<span class="cnt" id="tree-total">{{ n_md }}</span><button class="fold" onclick="togglePanel('left')" title="收起左栏" aria-label="收起左栏"><svg class="i i-12"><use href="#i-fold-l"/></svg></button></div>
+    <nav class="tree" id="tree" aria-label="分类目录">
       {% for d in domains %}
-      <div class="dom {% if cur.domain == d.id %}open{% endif %}">
+      <div class="dom {% if cur.domain == d.id %}open{% endif %}" style="--dh:{{ HUES[d.id] }}">
         <a class="dom-head {% if cur.domain == d.id %}active{% endif %}" href="/browse/{{ d.id }}/{{ d.subs[0].id }}">
-          <span class="dom-glyph" style="--dh:{{ HUES[d.id] }}"><svg><use href="#i-{{ d.id }}"/></svg></span>
+          <span class="dom-glyph"><svg><use href="#i-{{ d.id }}"/></svg></span>
           <span class="dom-name">{{ d.label }}</span><span class="dom-n">{{ d.n }}</span>
         </a>
         <div class="subs">
@@ -19,20 +20,21 @@
       {% endfor %}
     </nav>
     <div class="tree-foot">
-      <span class="tf-row" title="待归档暂存区"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>收件箱（待归档）<span class="badge">{{ inbox_n }}</span></span>
-      <a class="tf-row" href="/favorites"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m12 21 8.6-8.8a5 5 0 0 0-7.1-7L12 6.7l-1.5-1.5a5 5 0 1 0-7.1 7z"/></svg>收藏<span class="badge ok">{{ n_fav }}</span></a>
-      <a class="tf-row" href="/tags"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2 2 7l10 15 10-15Z"/><path d="m2 7 10 5"/><path d="m22 7-10 5"/></svg>标签管理</a>
-      <a class="tf-row" href="/stats"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="m7 15 4-6 4 3 5-8"/></svg>月度统计</a>
+      <span class="tf-row" title="待归档暂存区"><svg class="i i-14"><use href="#i-inbox-tray"/></svg>收件箱（待归档）<span class="badge">{{ inbox_n }}</span></span>
+      <a class="tf-row" href="/favorites"><svg class="i i-14"><use href="#i-favorite-heart"/></svg>收藏<span class="badge ok">{{ n_fav }}</span></a>
+      <a class="tf-row" href="/tags"><svg class="i i-14"><use href="#i-tag-outline"/></svg>标签管理</a>
+      <a class="tf-row" href="/stats"><svg class="i i-14"><use href="#i-stats-chart"/></svg>月度统计</a>
     </div>
-    <button class="unfold" onclick="togglePanel('left')" title="展开左栏"><svg><use href="#i-fold-r"/></svg></button>
+    <button class="unfold" onclick="togglePanel('left')" title="展开左栏" aria-label="展开左栏"><svg class="i"><use href="#i-fold-r"/></svg></button>
   </section>
 
-  <section class="panel" id="p-list">
-    <div class="panel-h" id="list-title">{{ sub_label }}<span class="cnt">{{ docs|length }}</span><button class="fold" onclick="togglePanel('list')" title="收起列表"><svg><use href="#i-fold-l"/></svg></button></div>
+  <section class="panel wb-panel" id="p-list" data-reveal data-reveal-y="14">
+    <div class="panel-h" id="list-title">{{ sub_label }}<span class="cnt">{{ docs|length }}</span><button class="fold" onclick="togglePanel('list')" title="收起列表" aria-label="收起列表"><svg class="i i-12"><use href="#i-fold-l"/></svg></button></div>
+    <div class="doclist-head" id="doclist-head" aria-label="列表密度"></div>
     <div class="doclist" id="doclist">
       {% for d in docs %}
       <a class="doc {% if cur.name == d.name %}active{% endif %}" data-name="{{ d.name }}" href="/doc/{{ cur.domain }}/{{ cur.sub }}/{{ d.name }}" draggable="true">
-        <div class="doc-t">{% if d.has_html %}<span class="star">◈</span>{% endif %}{{ d.title }}</div>
+        <div class="doc-t">{% if d.has_html %}<span class="star" title="有美化版"><svg class="i i-12"><use href="#i-external-link"/></svg></span>{% endif %}{{ d.title }}</div>
         <div class="doc-meta">
           {% if d.tags %}{% for t in d.tags %}<span class="mini tag">{{ t }}</span>{% endfor %}{% else %}<span class="mini untag">未打标</span>{% endif %}
           {% if d.has_html %}<span class="mini html">美化版</span>{% endif %}
@@ -41,54 +43,62 @@
       </a>
       {% endfor %}
     </div>
-    <button class="unfold" onclick="togglePanel('list')" title="展开列表"><svg><use href="#i-fold-r"/></svg></button>
+    <button class="unfold" onclick="togglePanel('list')" title="展开列表" aria-label="展开列表"><svg class="i"><use href="#i-fold-r"/></svg></button>
   </section>
 
-  <section class="panel article-wrap">
+  <section class="panel article-wrap" id="p-article" data-reveal data-reveal-y="14">
     <div class="crumb" id="crumb">
-      content<b>/</b>{{ doc.rel.split('/')[0:-1]|join('/') }}<span class="sep">·</span><b>{{ doc.title }}</b><span class="spacer"></span>
-      {% if doc.has_html %}<a class="iconbtn" href="/raw/{{ doc.html_rel }}" target="_blank" title="打开整页美化版">◈ 美化版</a>{% endif %}
-      {% if not doc.is_html %}<button class="iconbtn" onclick="openEditor()"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-.15em"><use href="#i-edit"/></svg> 编辑</button>
-      <button class="iconbtn" onclick="deleteDoc()" title="移入 content/_trash/"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-.15em"><use href="#i-trash"/></svg> 删除</button>{% endif %}
-      <button class="iconbtn primary{% if doc.favorite %} faved{% endif %}" id="fav-btn" onclick="toggleFav()"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-.15em"><use href="#i-star"/></svg> {% if doc.favorite %}已收藏{% else %}收藏{% endif %}</button>
+      <svg class="i i-12 i-faint"><use href="#i-folder"/></svg>
+      <span class="path">content<b>/</b>{{ doc.rel.split('/')[0:-1]|join('/') }}</span><span class="sep">·</span>
+      <svg class="i i-12 i-acc"><use href="#i-file"/></svg>
+      <b>{{ doc.title }}</b><span class="spacer"></span>
+      {% if doc.has_html %}<a class="iconbtn" href="/raw/{{ doc.html_rel }}" target="_blank" title="打开整页美化版"><svg class="i i-12"><use href="#i-external-link"/></svg>美化版</a>{% endif %}
+      {% if not doc.is_html %}<button class="iconbtn" onclick="openEditor()"><svg class="i i-12"><use href="#i-edit-pencil"/></svg> 编辑</button>
+      <button class="iconbtn" onclick="deleteDoc()" title="移入 content/_trash/"><svg class="i i-12"><use href="#i-trash-outline"/></svg> 删除</button>{% endif %}
+      <button class="iconbtn primary{% if doc.favorite %} faved{% endif %}" id="fav-btn" onclick="toggleFav()"><svg class="i i-12"><use href="#i-star"/></svg> {% if doc.favorite %}已收藏{% else %}收藏{% endif %}</button>
     </div>
     <div class="article"><div class="article-inner" id="article"></div></div>
-    <div class="editor" id="editor">
+    <div class="editor" id="editor" role="dialog" aria-label="Markdown 编辑器">
       <div class="bar">
+        <svg class="i i-12 i-acc"><use href="#i-git-commit"/></svg>
         <span class="path" id="ed-path">{{ doc.rel }}</span>
-        <span class="mini" style="margin-left:auto">写回即 git 可追溯</span>
-        <button class="iconbtn" onclick="closeEditor()">取消</button>
-        <button class="iconbtn primary" onclick="saveDoc()">保存写回</button>
+        <span class="ed-note mono-sm">写回即 git 可追溯</span>
+        <button class="iconbtn" onclick="closeEditor()"><svg class="i i-12"><use href="#i-cancel-x"/></svg> 取消</button>
+        <button class="iconbtn" id="ed-del" onclick="deleteDoc()" title="移入 content/_trash/"><svg class="i i-12"><use href="#i-trash-outline"/></svg> 删除</button>
+        <button class="iconbtn primary" onclick="saveDoc()"><svg class="i i-12"><use href="#i-save-write"/></svg> 保存写回</button>
       </div>
-      <div class="hint" id="ed-hint" style="display:none">上方 <b>---</b> 包裹的是 frontmatter（文档元数据）：<b>title</b> 标题 · <b>tags</b> 标签列表 · <b>status</b> 状态（inbox/stable）· <b>favorite</b> 收藏。只改值，不要动字段名和 <b>---</b> 分隔线。下方正文区直接写 Markdown。</div>
-      <textarea id="ed-text" spellcheck="false"></textarea>
+      <div class="hint editor-hint" id="ed-hint" style="display:none">
+        <svg class="i i-14"><use href="#ill-key-mini"/></svg>
+        <div>上方 <b>---</b> 包裹的是 frontmatter（文档元数据）：<b>title</b> 标题 · <b>tags</b> 标签列表 · <b>status</b> 状态（inbox/stable）· <b>favorite</b> 收藏。只改值，不要动字段名和 <b>---</b> 分隔线。下方正文区直接写 Markdown。</div>
+      </div>
+      <textarea id="ed-text" spellcheck="false" aria-label="Markdown 源码"></textarea>
     </div>
   </section>
 
-  <section class="panel rail">
-    <div class="rtabs">
-      <div class="rtab active" data-pane="toc" onclick="tab('toc',this)">目录</div>
-      <div class="rtab" data-pane="info" onclick="tab('info',this)">信息</div>
-      <div class="rtab" data-pane="notes" onclick="tab('notes',this)">备注</div>
-      <div class="rtab" data-pane="links" onclick="tab('links',this)">双链</div>
+  <section class="panel rail" id="p-rail" data-reveal data-reveal-y="14">
+    <div class="rtabs" role="tablist" aria-label="文档信息面板">
+      <div class="rtab active" data-pane="toc" role="tab" aria-selected="true" tabindex="0" onclick="tab('toc',this)"><svg class="i i-12"><use href="#i-toc-list"/></svg>目录</div>
+      <div class="rtab" data-pane="info" role="tab" aria-selected="false" tabindex="0" onclick="tab('info',this)"><svg class="i i-12"><use href="#i-info-circle"/></svg>信息</div>
+      <div class="rtab" data-pane="notes" role="tab" aria-selected="false" tabindex="0" onclick="tab('notes',this)"><svg class="i i-12"><use href="#i-note-pen"/></svg>备注</div>
+      <div class="rtab" data-pane="links" role="tab" aria-selected="false" tabindex="0" onclick="tab('links',this)"><svg class="i i-12"><use href="#i-backlink-graph"/></svg>双链</div>
     </div>
-    <div class="rpane active toc" id="pane-toc"></div>
-    <div class="rpane" id="pane-info">
+    <div class="rpane active toc" id="pane-toc" role="tabpanel"></div>
+    <div class="rpane" id="pane-info" role="tabpanel">
       {% for k, v in info_rows %}
       <div class="meta-row"><span class="k">{{ k }}</span><span class="v">{{ v }}</span></div>
       {% endfor %}
       <div class="meta-row"><span class="k">版本</span><span class="v">git 全程可追溯</span></div>
     </div>
-    <div class="rpane" id="pane-links">
-      <div style="padding:6px 2px;font-size:12.5px;color:var(--faint)">打开本标签时自动加载。</div>
+    <div class="rpane" id="pane-links" role="tabpanel">
+      <div class="rpane-hint">打开本标签时自动加载。</div>
     </div>
-    <div class="rpane" id="pane-notes">
+    <div class="rpane" id="pane-notes" role="tabpanel">
       <div id="notes-list">
         {% for n in doc.notes %}
         <div class="note-card"><div class="when">{{ n.when }} · 旁挂 .notes.md</div><p>{{ n.text }}</p></div>
-        {% else %}<div style="padding:6px 2px;font-size:12.5px;color:var(--faint)">还没有备注，写下第一条。</div>{% endfor %}
+        {% else %}<div class="rpane-hint">还没有备注，写下第一条。</div>{% endfor %}
       </div>
-      <div class="note-input"><input id="ni" placeholder="追加备注，回车保存…"><button onclick="addNote()">记</button></div>
+      <div class="note-input"><input id="ni" placeholder="追加备注，回车保存…" aria-label="追加备注"><button onclick="addNote()">记</button></div>
     </div>
   </section>
 </main>
@@ -96,4 +106,6 @@
 
 {% block scripts %}
 <script id="doc-data" type="application/json">{{ doc_json|safe }}</script>
+<link rel="stylesheet" href="/static/pages/workbench.css?v={{ av('pages/workbench.css') }}">
+<script src="/static/pages/workbench.js?v={{ av('pages/workbench.js') }}" defer></script>
 {% endblock %}

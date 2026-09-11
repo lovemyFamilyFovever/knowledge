@@ -2,27 +2,109 @@
 {% block title %}搜索：{{ q }} · 知库{% endblock %}
 {% block body %}
 <main class="single">
-  <section class="panel page-panel">
-    <div class="crumb"><b>全文检索</b><span class="sep">·</span>“{{ q }}”
-      {% if semantic %}<span class="chip acc" title="向量语义检索，找意思相近的段落">语义模式</span>{% else %}<a class="chip" style="cursor:pointer" href="/search?q=%3F{{ q|urlencode }}" title="向量语义检索，找意思相近的段落">试试语义模式 ?</a>{% endif %}
-      <span class="spacer"></span><a class="iconbtn" href="/">← 返回阅读</a></div>
-    <div class="page-body">
-      {% if semantic and rag_error %}
-      <div class="empty">语义检索组件未就绪：{{ rag_error }}<br><span style="font-size:12px;color:var(--faint)">依赖安装：.python\python.exe -m pip install numpy onnxruntime sqlite-vec</span></div>
-      {% elif results %}
-      <div class="results">
-        {% for r in results %}
-        <a class="result" href="{{ r.url }}">
-          <div class="doc-t">{% if semantic %}<span class="mini tag">{{ r.score_label }}</span> {% endif %}{{ r.title }}{% if r.heading %} <span style="color:var(--faint);font-size:12.5px">§ {{ r.heading }}</span>{% endif %}</div>
-          <div class="r-snippet">{{ r.snippet|safe }}</div>
-          <div class="rp">{{ r.path }}</div>
+  <section class="panel page-panel srch">
+    <div class="crumb">
+      <b>{% if semantic %}语义检索{% else %}全文检索{% endif %}</b><span class="sep">·</span>“{{ q }}”
+      <span class="spacer"></span><a class="iconbtn" href="/">← 返回阅读</a>
+    </div>
+    <div class="page-body srch-body" data-reveal-group>
+
+      <div class="srch-head">
+        <span class="query-chip{% if semantic %} info{% endif %}">
+          <svg class="i i-12{% if semantic %} i-info{% else %} i-acc{% endif %}" aria-hidden="true"><use href="{% if semantic %}#i-search-semantic{% else %}#i-search-magnifier{% endif %}"/></svg>
+          <span class="q-text">{{ q }}</span>
+          <span class="q-sep">·</span>
+          <span class="q-mode">{% if semantic %}语义检索{% else %}全文检索{% endif %}</span>
+        </span>
+        {% if q %}
+        <a class="query-chip switch{% if semantic %} alt-fts{% endif %}"
+           href="{% if semantic %}/search?q={{ q|urlencode }}{% else %}/search?q=%3F{{ q|urlencode }}{% endif %}"
+           title="{% if semantic %}切回关键词全文检索{% else %}向量语义检索，找意思相近的段落{% endif %}">
+          <svg class="i i-12{% if semantic %} i-acc{% else %} i-info{% endif %}" aria-hidden="true"><use href="{% if semantic %}#i-search-magnifier{% else %}#i-search-semantic{% endif %}"/></svg>
+          <span class="pre">{% if semantic %}{% else %}?{% endif %}</span>
+          <span>{% if semantic %}切换全文{% else %}切换语义{% endif %}</span>
         </a>
-        {% endfor %}
+        {% endif %}
+        <span class="srch-meta mono-sm">{% if results %}共 {{ results|length }} 条{% endif %}</span>
       </div>
+
+      {% if semantic and rag_error %}
+      <div class="empty srch-empty">
+        <svg class="mascot" viewBox="0 0 240 170" aria-hidden="true">
+          <ellipse cx="120" cy="120" rx="100" ry="56" fill="color-mix(in oklab, var(--info), transparent 88%)"/>
+          <path d="M78 96 Q120 78 162 96 L158 140 H82 Z" fill="url(#uniformGrad)" stroke="var(--ill-line)" stroke-width="1.5"/>
+          <rect x="110" y="74" width="20" height="14" rx="5" fill="var(--ill-skin-shadow)"/>
+          <ellipse cx="120" cy="52" rx="24" ry="26" fill="var(--ill-skin)"/>
+          <path d="M96 48 Q98 26 120 26 Q142 26 144 48 Q140 36 120 36 Q100 36 96 48 Z" fill="var(--ill-hair)"/>
+          <path d="M110 48 Q114 46 118 49 M124 49 Q128 46 132 48" stroke="var(--ill-hair)" stroke-width="1.6" fill="none" stroke-linecap="round"/>
+          <circle cx="112" cy="54" r="1.8" fill="var(--ill-hair)"/><circle cx="128" cy="54" r="1.8" fill="var(--ill-hair)"/>
+          <path d="M114 64 Q120 62 126 64" stroke="var(--ill-line)" stroke-width="1.6" fill="none" stroke-linecap="round"/>
+          <circle cx="162" cy="78" r="18" stroke="var(--info)" stroke-width="1.8" fill="color-mix(in oklab, var(--info), transparent 90%)"/>
+          <path d="M175 92 L190 107" stroke="var(--info)" stroke-width="2.4" stroke-linecap="round"/>
+          <use href="#ill-bubble-question" x="36" y="22" width="30" height="30" color="var(--info)"/>
+        </svg>
+        <div class="e-title">语义检索组件未就绪</div>
+        <div class="e-desc">{{ rag_error }}<br>依赖安装：<span class="mono">.python\python.exe -m pip install numpy onnxruntime sqlite-vec</span></div>
+        <a class="e-action" href="/search?q={{ q|urlencode }}"><svg class="i" aria-hidden="true"><use href="#i-search-magnifier"/></svg>先用全文检索</a>
+      </div>
+
+      {% elif results %}
+      <div class="results-col{% if semantic %} info{% endif %}">
+        <div class="rc-head{% if semantic %} info{% endif %}">
+          <span class="mode-ic"><svg aria-hidden="true"><use href="{% if semantic %}#i-search-semantic{% else %}#i-search-magnifier{% endif %}"/></svg></span>
+          {% if semantic %}语义命中{% else %}全文命中{% endif %} · {{ results|length }}
+          <span class="n">{% if semantic %}向量近邻 · 余弦相似度{% else %}FTS5 关键词命中{% endif %}</span>
+        </div>
+        <div class="results">
+          {% for r in results %}
+          {% set rdk = r.path.split('/')[0] if '/' in r.path else r.path %}
+          <a class="result{% if semantic %} info{% endif %}" href="{{ r.url }}" data-hue="{{ rdk }}" data-reveal>
+            <div class="rh">
+              <span class="domain">
+                <svg class="i i-11" aria-hidden="true"><use href="#i-{{ rdk }}-f"/></svg>
+                {{ (LABELS.get(rdk) or {}).get('label') if (LABELS.get(rdk) or {}) is mapping else (LABELS.get(rdk) or rdk) }}
+              </span>
+              <span class="path">{{ r.path }}</span>
+              <span class="score">{% if semantic %}相似 {{ r.score_label }}{% else %}#{{ '%02d'|format(loop.index) }}{% endif %}</span>
+            </div>
+            <div class="title">{{ r.title }}{% if r.heading %} <span class="sub-sect">§ {{ r.heading }}</span>{% endif %}</div>
+            <div class="snippet">{{ r.snippet|safe }}</div>
+          </a>
+          {% endfor %}
+        </div>
+      </div>
+
       {% else %}
-      <div class="empty">{% if q %}没有匹配“{{ q }}”的文档。{% if not semantic %}试试<a href="/search?q=%3F{{ q|urlencode }}">语义模式 ?</a>，或换更短的词。{% endif %}{% else %}输入关键词开始检索。{% endif %}</div>
+      <div class="empty srch-empty">
+        <svg class="mascot" viewBox="0 0 240 170" aria-hidden="true">
+          <ellipse cx="120" cy="120" rx="100" ry="56" fill="color-mix(in oklab, var(--info), transparent 88%)"/>
+          <path d="M78 96 Q120 78 162 96 L158 140 H82 Z" fill="url(#uniformGrad)" stroke="var(--ill-line)" stroke-width="1.5"/>
+          <rect x="110" y="74" width="20" height="14" rx="5" fill="var(--ill-skin-shadow)"/>
+          <ellipse cx="120" cy="52" rx="24" ry="26" fill="var(--ill-skin)"/>
+          <path d="M96 48 Q98 26 120 26 Q142 26 144 48 Q140 36 120 36 Q100 36 96 48 Z" fill="var(--ill-hair)"/>
+          <path d="M110 48 Q114 46 118 49 M124 49 Q128 46 132 48" stroke="var(--ill-hair)" stroke-width="1.6" fill="none" stroke-linecap="round"/>
+          <circle cx="112" cy="54" r="1.8" fill="var(--ill-hair)"/><circle cx="128" cy="54" r="1.8" fill="var(--ill-hair)"/>
+          <path d="M114 64 Q120 62 126 64" stroke="var(--ill-line)" stroke-width="1.6" fill="none" stroke-linecap="round"/>
+          <circle cx="162" cy="78" r="18" stroke="var(--acc)" stroke-width="1.8" fill="color-mix(in oklab, var(--acc), transparent 90%)"/>
+          <path d="M175 92 L190 107" stroke="var(--acc)" stroke-width="2.4" stroke-linecap="round"/>
+          <use href="#ill-bubble-question" x="36" y="22" width="30" height="30" color="var(--info)"/>
+        </svg>
+        {% if q %}
+        <div class="e-title">没有匹配“{{ q }}”的文档</div>
+        <div class="e-desc">{% if not semantic %}换更短的关键词，或试试语义模式 —— 它按意思相近找段落，不要求逐字命中。{% else %}语义模式也没有找到相近的段落，换个说法再试一次。{% endif %}</div>
+        {% if not semantic %}<a class="e-action" href="/search?q=%3F{{ q|urlencode }}"><svg class="i" aria-hidden="true"><use href="#i-search-semantic"/></svg>试试语义模式 ?</a>{% endif %}
+        {% else %}
+        <div class="e-title">输入关键词开始检索</div>
+        <div class="e-desc">顶栏搜索框直接输入走全文检索；以 <span class="mono">?</span> 前缀开头走语义检索。</div>
+        {% endif %}
+      </div>
       {% endif %}
+
     </div>
   </section>
 </main>
+{% endblock %}
+{% block scripts %}
+<link rel="stylesheet" href="/static/pages/search.css?v={{ av('pages/search.css') }}">
+<script src="/static/pages/search.js?v={{ av('pages/search.js') }}" defer></script>
 {% endblock %}

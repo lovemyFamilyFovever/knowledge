@@ -1,0 +1,110 @@
+/* =====================================================================
+   知库 · Workbench 页面级样式（T1 产出 · frontend-redesign-tasks/T1-workbench-阅读.md）
+   设计基准：qwenwork/canvas/mtvq30t7ur2d66tl/index.html 第 01/02/04 屏
+   规则：只引用 T0 底座 token（--seed-*/--acc/--dh/--hairline/…），组件层零硬编码 hex；
+        不重复定义底座已有类，只做页面级叠加与覆盖。
+   ===================================================================== */
+
+/* ---- [1] 左树：hover 左竖条 scaleX 0→1，active 竖条染 --dh ---- */
+.dom-head::before,.sub::before{content:"";position:absolute;left:-8px;top:7px;bottom:7px;width:2px;border-radius:2px;
+  background:hsl(var(--dh,158) 55% 45%);transform:scaleX(0);transform-origin:left;
+  transition:transform .25s var(--ease-out),opacity .25s;opacity:0}
+.dom-head,.sub{position:relative}
+.dom-head:hover::before,.sub:hover::before{transform:scaleX(1);opacity:.55}
+.dom-head.active::before,.sub.active::before{transform:scaleX(1);opacity:1;
+  animation:breathe calc(2.6s * var(--motion-scale)) ease-in-out infinite}
+.sub::before{left:-11px}
+html[data-theme="dark"] .dom-head::before,html[data-theme="dark"] .sub::before{background:hsl(var(--dh,158) 70% 62%)}
+/* 域 glyph 走 --dh（模板已注入数字色相，底座 .dom-glyph 以 hsl(var(--dh)) 消费） */
+
+/* ---- [2] 文档列表：active 左 3px 条带呼吸 + 卡片精修 ---- */
+.doc{border-radius:var(--radius-sm)}
+.doc.active::before{width:3px;border-radius:2px;background:var(--acc);
+  animation:breathe calc(2s * var(--motion-scale)) ease-in-out infinite}
+.doc:hover{transform:translateX(2px)}
+.doc-t .star{display:inline-flex;color:var(--acc2)}
+.doc-t .star svg{width:12px;height:12px}
+/* 密度切换 */
+#p-list.density-compact .doc{padding:5px 11px;margin-bottom:1px}
+#p-list.density-compact .doc-t{font-size:12.5px;line-height:1.4}
+#p-list.density-compact .doc-meta{margin-top:3px;gap:4px}
+#p-list.density-compact .mini{padding:.5px 5px;font-size:9px}
+#p-list.density-compact .doclist{padding:5px 8px}
+
+/* ---- [3] doclist-head：密度切换胶囊（对齐设计稿 01 屏 doclist-head） ---- */
+.doclist-head{flex:none;display:flex;align-items:center;gap:6px;padding:7px 12px 5px;
+  border-bottom:1px solid var(--hairline);min-height:30px}
+.doclist-head .head-cap{font-family:var(--mono);font-size:10.5px;letter-spacing:.05em;color:var(--faint)}
+.density-toggle{margin-left:auto;display:inline-flex;border:1px solid var(--edge);border-radius:var(--radius-pill);overflow:hidden}
+.density-toggle button{display:inline-flex;align-items:center;gap:4px;padding:2px 9px;font-size:10.5px;
+  color:var(--faint);transition:.15s;cursor:pointer}
+.density-toggle button svg{width:11px;height:11px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.density-toggle button:hover{color:var(--muted)}
+.density-toggle button.on{background:var(--acc-soft);color:var(--acc);font-weight:600}
+
+/* ---- [4] 面包屑：路径/图标节奏（对齐 01 屏 crumb） ---- */
+.crumb .path{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.crumb .sep{margin:0 2px}
+
+/* ---- [5] 阅读页（对齐 04 屏）：fm-chip 化的 chips / wikilink / codeblock / mermaid ---- */
+.a-chips .chip{border-radius:var(--radius-pill);padding:2.5px 10px}
+.a-chips .chip svg{width:10px;height:10px;margin-right:2px}
+.a-body .wikilink,.a-body a.wikilink{color:var(--acc);border-bottom:1px dashed color-mix(in oklab,var(--acc),transparent 55%);
+  padding-bottom:1px;cursor:pointer}
+.a-body .wikilink:hover{border-bottom-style:solid}
+/* codeblock 顶栏（JS 包裹生成 .codeblock > .cb-head + pre） */
+.codeblock{margin:16px 0;border-radius:var(--radius);border:1px solid var(--edge);background:var(--plate);overflow:hidden;box-shadow:var(--shadow)}
+.codeblock .cb-head{display:flex;align-items:center;gap:8px;padding:6px 12px;
+  background:color-mix(in oklab,var(--seed-fg),transparent 92%);
+  font:500 10.5px/1 var(--mono);letter-spacing:.05em;text-transform:uppercase;color:var(--muted)}
+.codeblock .cb-lang{color:var(--acc)}
+.codeblock .cb-file{opacity:.6;text-transform:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.codeblock .cb-copy{margin-left:auto;display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:4px;
+  color:var(--faint);cursor:pointer;transition:.15s;border:1px solid transparent}
+.codeblock .cb-copy svg{width:11px;height:11px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.codeblock .cb-copy:hover{background:color-mix(in oklab,var(--seed-fg),transparent 88%);color:var(--acc)}
+.codeblock pre{margin:0;border:0;border-radius:0;background:none;box-shadow:none;padding:12px 14px}
+.codeblock pre code{font-size:12.5px;line-height:1.7}
+/* mermaid 卡：角标 caption */
+.mermaid{position:relative}
+.mermaid .m-cap{position:absolute;right:10px;top:8px;display:inline-flex;align-items:center;gap:4px;padding:2px 7px;
+  border-radius:4px;background:color-mix(in oklab,var(--seed-fg),transparent 92%);
+  color:var(--faint);font:500 10px/1.4 var(--mono);letter-spacing:.04em}
+.mermaid .m-cap svg{width:10px;height:10px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+
+/* ---- [6] 编辑器 overlay：backdrop-filter 蒙层 + 三按钮全 SVG ---- */
+.article-wrap{position:relative}
+.editor{position:absolute;inset:0;z-index:6;padding:14px 18px;
+  background:color-mix(in oklab,var(--seed-bg),transparent 18%);
+  backdrop-filter:blur(6px) saturate(1.05);
+  -webkit-backdrop-filter:blur(6px) saturate(1.05);
+  flex-direction:column;display:none}
+.editor.show{display:flex;animation:rise .25s var(--ease-out)}
+.editor .bar{display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:nowrap}
+.editor .bar .path{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--acc)}
+.editor .bar .ed-note{flex:none}
+.editor .bar .iconbtn{flex:none}
+.editor .editor-hint{display:flex;align-items:flex-start;gap:8px;padding:8px 10px;margin:0 0 8px;border-radius:var(--radius-sm);
+  background:color-mix(in oklab,var(--acc2),transparent 92%);border:1px solid color-mix(in oklab,var(--acc2),transparent 75%);
+  font-size:12px;line-height:1.6;color:var(--muted)}
+.editor .editor-hint svg{flex:none;margin-top:2px;color:var(--acc2)}
+.editor .editor-hint b{color:var(--acc2)}
+.editor textarea{flex:1;min-height:0}
+
+/* ---- [7] 右 rail：tab 图标节奏 + 面板提示 ---- */
+.rtab{display:flex;align-items:center;justify-content:center;gap:5px}
+.rtab svg{width:12px;height:12px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;opacity:.75}
+.rtab.active svg{opacity:1}
+.rtab:focus-visible{outline:3px solid color-mix(in oklab,var(--acc),transparent 20%);outline-offset:-2px;border-radius:6px}
+.rpane-hint{padding:6px 2px;font-size:12.5px;color:var(--faint)}
+.rpane .home-sec{font-family:var(--mono);font-size:10px;letter-spacing:.16em;color:var(--muted);text-transform:uppercase}
+
+/* ---- [8] 面板 reveal 微调：三栏不同步起跳（stagger 由 data-reveal 顺序决定） ---- */
+html.motion-ready .wb-panel{will-change:transform}
+
+/* ---- [9] 窄屏（<1280 收紧竖条偏移；整体断点归 T6） ---- */
+@media (max-width:1280px){
+  .dom-head::before{left:-6px}
+  .sub::before{left:-9px}
+  .article{padding:24px 26px 50px}
+}

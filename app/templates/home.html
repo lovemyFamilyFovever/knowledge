@@ -1,31 +1,142 @@
 {% extends "base.html" %}
 {% block title %}总览 · 知库{% endblock %}
 {% block body %}
+<link rel="stylesheet" href="/static/pages/home.css?v={{ av('pages/home.css') }}">
 <div id="view-home" class="show">
  <div class="home-inner">
   <div class="home-mark">知</div>
-  <div class="hero">
-    <div><div class="hi">{{ greet }}</div><div class="hd">{{ date }} · 单一入口，一切知识从这里进出</div></div>
-    <div class="cd"><div class="n">{{ days }}</div><div class="k">距 10·01 离职</div></div>
+
+  {# ========== hero：左巨型字 + 右 mascot（设计稿第 06 屏） ========== #}
+  <section class="home-hero" data-parallax>
+    <div class="home-hero-text">
+      <div class="hero-eyebrow"><svg aria-hidden="true"><use href="#ill-compass-mini"/></svg>{{ date }} · {{ greet }}</div>
+      <h1 class="hero-title" data-line-mask><span class="line">知</span><span class="line">库</span></h1>
+      <p class="hero-tagline">
+        <span data-reveal>把</span> <span data-reveal>散落</span> <span data-reveal>的</span> <span data-reveal>知识，</span>
+        <span data-reveal>接回</span> <span data-reveal>一个</span> <span data-reveal>入口</span>
+      </p>
+      <p class="hero-sub">Markdown 是唯一事实源，索引只是派生缓存。当前已归档 <strong>{{ pct }}%</strong>（{{ n_md }} 篇正文 / {{ inbox_n }} 篇待归档）。</p>
+      <div class="hero-cta">
+        <a class="iconbtn primary" href="/inbox" data-cursor-label="进入"><svg><use href="#i-inbox-tray"/></svg>去收件箱 · {{ inbox_n }}</a>
+        <a class="iconbtn" href="/search?q=%3F" data-magnetic="0.2"><svg><use href="#i-search-semantic"/></svg>语义检索</a>
+        <a class="iconbtn" href="/favorites" data-magnetic="0.2"><svg><use href="#i-star-outline"/></svg>收藏 · {{ stats.n_fav }}</a>
+      </div>
+    </div>
+    <div class="home-hero-visual">
+      <svg class="mascot mascot-hero" viewBox="0 0 340 260" role="img" aria-label="阅读者与其知识宇宙">
+        <title>阅读者 mascot</title>
+        <ellipse class="halo" cx="170" cy="150" rx="150" ry="90"/>
+        <circle cx="170" cy="140" r="100" stroke="var(--ill-line)" stroke-width="1" stroke-dasharray="2 6" fill="none" opacity=".4"/>
+        <use href="#ill-star-cluster" x="240" y="52" width="34" height="34" style="color:var(--warn)" opacity=".9" data-depth="0.9" class="parallax-layer"/>
+        <use href="#ill-bubble-check" x="282" y="88" width="34" height="34" style="color:var(--acc)" data-depth="1.3" class="parallax-layer"/>
+        <use href="#ill-gear-soft" x="34" y="86" width="30" height="30" style="color:var(--acc2)" opacity=".85" data-depth="0.6" class="parallax-layer"/>
+        <use href="#ill-bookmark-ribbon" x="58" y="52" width="20" height="26" style="color:var(--warn)" data-depth="1.5" class="parallax-layer"/>
+        <use href="#ill-quill-feather" x="288" y="150" width="30" height="30" style="color:var(--acc)" opacity=".9" data-depth="1.0" class="parallax-layer"/>
+        <use href="#ill-hourglass" x="24" y="180" width="24" height="24" style="color:var(--info)" opacity=".75" data-depth="0.5" class="parallax-layer"/>
+        <g data-depth="0.35" class="parallax-layer">
+          <ellipse class="shadow" cx="170" cy="220" rx="120" ry="10"/>
+          <path class="body-line" d="M120 155 Q170 130 220 155 L212 220 H128 Z" style="fill:url(#uniformGrad);stroke:color-mix(in oklab, var(--seed-fg), transparent 60%)"/>
+          <path class="shirt" d="M154 158 Q170 168 186 158 L182 182 H158 Z"/>
+          <path class="shirt-line" d="M158 168 L166 178 M174 178 L182 168"/>
+          <rect class="neck" x="158" y="130" width="24" height="18" rx="6"/>
+          <ellipse class="head" cx="170" cy="98" rx="34" ry="38"/>
+          <ellipse class="ear" cx="136" cy="98" rx="4" ry="6" fill="var(--ill-skin-shadow)"/>
+          <ellipse class="ear" cx="204" cy="98" rx="4" ry="6" fill="var(--ill-skin-shadow)"/>
+          <path class="hair" d="M136 92 Q138 60 170 60 Q202 60 204 92 Q200 76 170 76 Q140 76 136 92 Z"/>
+          <path class="glasses-lens" d="M146 92 h18 a4 4 0 0 1 4 4 v10 a4 4 0 0 1-4 4 h-18 a4 4 0 0 1-4-4 v-10 a4 4 0 0 1 4-4 Z"/>
+          <path class="glasses-lens" d="M176 92 h18 a4 4 0 0 1 4 4 v10 a4 4 0 0 1-4 4 h-18 a4 4 0 0 1-4-4 v-10 a4 4 0 0 1 4-4 Z"/>
+          <path class="glasses-arm" d="M168 100 h8 M198 100 h6 M146 100 h-6"/>
+          <path class="brow" d="M146 88 Q154 84 162 88 M178 88 Q186 84 194 88"/>
+          <circle class="eye" cx="154" cy="102" r="2.4"/><circle class="eye" cx="186" cy="102" r="2.4"/>
+          <path class="mouth" d="M160 118 Q170 122 180 118"/>
+          <ellipse class="cheek" cx="146" cy="112" rx="5" ry="3"/><ellipse class="cheek" cx="194" cy="112" rx="5" ry="3"/>
+          <path class="book-page" d="M110 200 Q170 178 230 200 L230 222 Q170 200 110 222 Z"/>
+          <path class="book" d="M110 200 Q170 178 230 200 L230 208 Q170 186 110 208 Z"/>
+          <line x1="170" y1="188" x2="170" y2="222" stroke="var(--ill-line)" stroke-width="1"/>
+          <path class="page-line" d="M126 202 h34 M126 208 h32 M126 214 h30 M180 202 h34 M180 208 h32 M180 214 h30"/>
+          <path class="bookmark" d="M196 194 l8 0 l0 20 l-4-3 l-4 3 z"/>
+          <use href="#ill-heart-mini" x="184" y="164" width="12" height="12" style="color:var(--rose)"/>
+        </g>
+      </svg>
+    </div>
+  </section>
+
+  {# ========== KPI 条：只渲染后端实传的真实数字（countUp） ========== #}
+  <div class="kpi-strip">
+    <div class="k" data-reveal><span class="kn"><span data-counter="{{ n_md }}">{{ n_md }}</span><span class="u">篇</span></span><span class="kl"><svg aria-hidden="true"><use href="#i-file"/></svg>文档总量</span></div>
+    <div class="k" data-reveal><span class="kn"><span data-counter="{{ leaves }}">{{ leaves }}</span><span class="u">个</span></span><span class="kl"><svg aria-hidden="true"><use href="#i-scope-domain"/></svg>子域</span></div>
+    <div class="k" data-reveal><span class="kn"><span data-counter="{{ stats.n_fav }}">{{ stats.n_fav }}</span><span class="u">篇</span></span><span class="kl"><svg aria-hidden="true"><use href="#i-star-outline"/></svg>已收藏</span></div>
+    <div class="k" data-reveal><span class="kn"><span data-counter="{{ days }}">{{ days }}</span><span class="u">天</span></span><span class="kl"><svg aria-hidden="true"><use href="#i-calendar-day"/></svg>距 10·01</span></div>
   </div>
-  <div class="home-sec">{{ stats.domains|length }} 大领域</div>
-  <div class="dom-grid">
-   {% for d in stats.domains %}
-   <a class="dcard" style="--dh:{{ HUES[d.id] }};animation-delay:{{ 220 + loop.index0 * 45 }}ms" href="/browse/{{ d.id }}/{{ d.subs[0].id }}">
-     <div class="dn"><span class="ic"><svg><use href="#i-{{ d.id }}"/></svg></span>{{ d.label }}<span class="dc">{{ d.n }}</span></div>
-     <div class="seg-bar">{% for s in d.subs[:5] %}<span style="width:{{ '%.1f'|format(100 * s.n / d.n) }}%;opacity:{{ '%.2f'|format(1 - loop.index0 * 0.18) }}" title="{{ s.label }} · {{ s.n }} 篇"></span>{% endfor %}</div>
-     <div class="dsub">{% for s in d.subs[:3] %}{{ s.label }} {{ s.n }}{{ " · " if not loop.last }}{% endfor %}{% if d.subs|length > 3 %} …{% endif %}</div>
-   </a>
-   {% endfor %}
+
+  {# ========== 最近更新：跑马灯（设计稿第 06 屏语言） ========== #}
+  <div class="home-sec-label">最近更新<span class="n">{{ recents|length }} 条 · 最近改动优先</span></div>
+  {% if recents %}
+  <div class="marquee"><div class="marquee-track" id="mq">
+    {% for r in recents %}
+    <a class="mq-item" {% if r.rel.startswith('_inbox') %}href="/raw/{{ r.rel }}" target="_blank"{% else %}href="/doc/{{ r.rel[:-3] }}"{% endif %}>
+      <span class="d"></span><span class="t">{{ r.title }}</span>
+      <span class="rp">{{ r.rel.rsplit('/', 1)[0] }}</span>
+      <span class="tm">{{ SOURCE_LABELS.get(r.source, r.source) }}</span>
+    </a>
+    {% endfor %}
+    {% for r in recents %}{# 第二份副本：跑马灯无缝循环，读屏隐藏 #}
+    <a class="mq-item" aria-hidden="true" tabindex="-1" {% if r.rel.startswith('_inbox') %}href="/raw/{{ r.rel }}" target="_blank"{% else %}href="/doc/{{ r.rel[:-3] }}"{% endif %}>
+      <span class="d"></span><span class="t">{{ r.title }}</span>
+      <span class="rp">{{ r.rel.rsplit('/', 1)[0] }}</span>
+      <span class="tm">{{ SOURCE_LABELS.get(r.source, r.source) }}</span>
+    </a>
+    {% endfor %}
+  </div></div>
+  {% else %}
+  <div class="empty-state">
+    <svg class="mascot" viewBox="0 0 160 120" aria-hidden="true">
+      <ellipse class="halo" cx="80" cy="70" rx="70" ry="40"/><ellipse class="shadow" cx="80" cy="106" rx="42" ry="4"/>
+      <ellipse class="head" cx="80" cy="46" rx="20" ry="22"/>
+      <path class="hair" d="M60 40 Q62 22 80 22 Q98 22 100 40 Q96 32 80 32 Q64 32 60 40 Z"/>
+      <circle class="eye" cx="73" cy="46" r="1.6"/><circle class="eye" cx="87" cy="46" r="1.6"/>
+      <path class="mouth" d="M75 55 Q80 58 85 55"/>
+      <path class="body-line" d="M58 78 Q80 68 102 78 L98 102 H62 Z" style="fill:url(#uniformGrad);stroke:color-mix(in oklab, var(--seed-fg), transparent 60%)"/>
+      <path class="bubble" d="M110 20 h34 a4 4 0 0 1 4 4 v14 a4 4 0 0 1-4 4 h-18 l-6 5 v-5 h-10 a4 4 0 0 1-4-4 V24 a4 4 0 0 1 4-4 Z"/>
+      <path class="bubble-txt" d="M118 30 l3 3 6-6"/>
+    </svg>
+    <div class="e-title">还没有更新记录</div><div class="e-desc">新内容先落到 <code>_inbox/</code>，归档后这里会出现最近的文档。</div>
   </div>
-  <div class="home-sec">最近更新</div>
-  <div class="recent">
-   {% for r in recents %}
-   <a class="rrow" {% if r.rel.startswith('_inbox') %}href="/raw/{{ r.rel }}" target="_blank"{% else %}href="/doc/{{ r.rel[:-3] }}"{% endif %}><span class="dot2"></span><span class="rt">{{ r.title }}</span><span class="rp">{{ r.rel.rsplit('/', 1)[0] }}</span><span class="when">{{ SOURCE_LABELS.get(r.source, r.source) }}</span></a>
-   {% endfor %}
+  {% endif %}
+
+  {# ========== 7 域入口 + 新建域占位 = 8 列（设计稿第 06 屏） ========== #}
+  <div class="home-sec-label">{{ stats.domains|length }} 个域入口<span class="n">hue 色相系统 · 磁吸 hover</span></div>
+  {% if stats.domains %}
+  <div class="dom-cards">
+    {% for d in stats.domains %}
+    <a class="dom-card" style="--dh:{{ HUES[d.id] }}" data-reveal data-magnetic="0.12" href="/browse/{{ d.id }}/{{ d.subs[0].id }}" title="{{ d.label }} · {{ d.n }} 篇">
+      <div class="top"><span class="glyph-wrap"><svg aria-hidden="true"><use href="#i-{{ d.id }}"/></svg></span><span class="label">{{ d.label }}</span><span class="n">{{ d.n }}</span></div>
+      <div class="seg-bar">{% for s in d.subs[:5] %}<span style="width:{{ '%.1f'|format(100 * s.n / d.n) }}%;opacity:{{ '%.2f'|format(1 - loop.index0 * 0.18) }}" title="{{ s.label }} · {{ s.n }} 篇"></span>{% endfor %}</div>
+      <div class="dsub">{% for s in d.subs[:3] %}{{ s.label }} {{ s.n }}{{ " · " if not loop.last }}{% endfor %}{% if d.subs|length > 3 %} …{% endif %}</div>
+    </a>
+    {% endfor %}
+    <div class="dom-card new-card" data-reveal data-magnetic="0.18" title="新域 = 改 content/_meta/taxonomy.json，刷新即生效">
+      <div class="top"><span class="glyph-wrap"><svg aria-hidden="true"><use href="#i-plus-circle"/></svg></span></div>
+      <div class="new-note">新建域 · 改 <code>taxonomy.json</code></div>
+    </div>
   </div>
-  <div class="home-sec">归档管线</div>
-  <div class="pipeline">
+  {% else %}
+  <div class="empty-state">
+    <svg class="mascot" viewBox="0 0 160 120" aria-hidden="true">
+      <ellipse class="halo" cx="80" cy="70" rx="70" ry="40"/><ellipse class="shadow" cx="80" cy="106" rx="42" ry="4"/>
+      <ellipse class="head" cx="80" cy="46" rx="20" ry="22"/>
+      <path class="hair" d="M60 40 Q62 22 80 22 Q98 22 100 40 Q96 32 80 32 Q64 32 60 40 Z"/>
+      <circle class="eye" cx="102" cy="60" r="1.8"/>
+      <path class="mouth" d="M74 58 Q80 55 86 58"/>
+      <path class="body-line" d="M58 78 Q80 68 102 78 L98 102 H62 Z" style="fill:url(#uniformGrad);stroke:color-mix(in oklab, var(--seed-fg), transparent 60%)"/>
+    </svg>
+    <div class="e-title">还没有任何域</div><div class="e-desc">编辑 <code>content/_meta/taxonomy.json</code> 定义域与子域后，这里会出现入口卡。</div>
+  </div>
+  {% endif %}
+
+  {# ========== 归档管线：现状真实模块保留，按设计语言重绘（第 06 屏无此模块，见差异清单） ========== #}
+  <div class="home-sec-label">归档管线<span class="n">新内容只从 _inbox 进</span></div>
+  <div class="home-pipe" data-reveal>
    {% for ic, label, st in [("i-scan","全量扫描","done"),("i-inbox-s","收件箱 " ~ inbox_n,"done"),("i-grid","归档分类","active"),("i-database","全文索引 " ~ n_md,"done"),("i-commit","Git 提交","done")] %}
    <div class="pipe-node {{ st }}"><span class="pic"><svg><use href="#{{ ic }}"/></svg></span><span class="pl">{{ label }}</span></div>
    {% if not loop.last %}<span class="pipe-line"></span>{% endif %}
@@ -33,4 +144,7 @@
   </div>
  </div>
 </div>
+{% endblock %}
+{% block scripts %}
+<script src="/static/pages/home.js?v={{ av('pages/home.js') }}" defer></script>
 {% endblock %}

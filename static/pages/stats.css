@@ -1,0 +1,133 @@
+/* 知库 stats.css · T4 月度统计页（设计基准 v0.4 第 07 屏）
+   依赖 T0：--seed-* / --hex-* / --dh-* / --ill-* token、--glass、--edge、--mono/--disp
+   组件级零硬编码 hex；双主题靠 token 自动切换 */
+
+/* ── 页面骨架 ─────────────────────────────────────── */
+.stats-body{display:flex;flex-direction:column;gap:14px;padding:14px 4px;color:var(--seed-fg)}
+.stats-body .kpi-row{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+
+/* html.motion-ready 进场（JS 降级路径用；GSAP 路径由 motion.js 接管） */
+html.motion-ready .stats-body [data-reveal]{opacity:0;transform:translateY(18px);
+  transition:opacity .7s cubic-bezier(.22,.61,.36,1),transform .7s cubic-bezier(.22,.61,.36,1)}
+html.motion-ready .stats-body [data-reveal].in{opacity:1;transform:none}
+@media (prefers-reduced-motion: reduce){
+  html.motion-ready .stats-body [data-reveal]{opacity:1;transform:none;transition:none}
+}
+
+/* ── KPI 玻璃卡 ──────────────────────────────────── */
+.kpi-card{position:relative;overflow:hidden;padding:12px 14px;border-radius:var(--radius);
+  background:linear-gradient(165deg,
+    color-mix(in oklab,var(--seed-surface),transparent 15%),
+    color-mix(in oklab,var(--seed-surface),transparent 40%));
+  border:1px solid color-mix(in oklab,var(--seed-fg),transparent 92%)}
+.kpi-card .label{display:flex;align-items:center;gap:6px;font-size:11px;font-weight:600;
+  letter-spacing:.04em;text-transform:uppercase;color:var(--muted)}
+.kpi-card .label svg{width:12px;height:12px;color:var(--faint)}
+.kpi-card .num{margin-top:4px;font:600 26px/1.1 var(--disp);letter-spacing:-.01em;
+  color:color-mix(in oklab,var(--seed-fg),transparent 5%);
+  font-variant-numeric:tabular-nums;font-feature-settings:"tnum"}
+.kpi-card .num .unit{margin-left:3px;font:400 13px/1 var(--sans);color:var(--muted)}
+
+.kpi-card .delta{display:inline-flex;align-items:center;gap:3px;margin-top:6px;
+  padding:2px 7px;border-radius:var(--radius-pill);
+  font:500 11px/1.5 var(--mono);font-variant-numeric:tabular-nums}
+.kpi-card .delta svg{width:10px;height:10px;stroke-width:2;flex:none}
+.kpi-card .delta.up{color:var(--acc);background:var(--acc-soft);border:1px solid var(--acc-edge)}
+.kpi-card .delta.down{color:var(--warn);background:var(--warn-soft);border:1px solid var(--warn-edge)}
+.kpi-card .delta.flat{color:var(--faint);border:1px solid var(--edge)}
+
+.kpi-card .mini-spark{height:26px;margin-top:8px}
+.kpi-card .mini-spark svg{display:block;width:100%;height:26px}
+.kpi-card .mini-spark .spark-fill{opacity:.14}
+.kpi-card .mini-spark .spark-dot{r:2}
+.kpi-card .st-spark-none{display:flex;align-items:center;height:26px;
+  font:500 10px/1 var(--mono);color:var(--faint);letter-spacing:.04em}
+
+/* 读完文档占比条 */
+.kpi-card .st-ratio{display:flex;align-items:center;gap:8px;margin-top:8px}
+.kpi-card .st-ratio .sbar{flex:1;margin-top:0}
+.kpi-card .st-ratio-n{font:500 10.5px/1 var(--mono);color:var(--faint);font-variant-numeric:tabular-nums}
+.kpi-card .sbar{height:4px;border-radius:4px;background:var(--edge);overflow:hidden}
+.kpi-card .sbar i{display:block;height:100%;border-radius:4px;
+  background:linear-gradient(90deg,var(--acc),var(--acc2))}
+
+/* KPI 卡角落 mascot（阅读者拿放大镜 · 迷你） */
+.kpi-card .mascot-corner{position:absolute;right:6px;top:6px;width:36px;height:36px;opacity:.9}
+
+/* mascot 部位（页面级；色相全走 --ill-* token，双主题自动切换） */
+svg.mascot .head{fill:var(--ill-skin)}
+svg.mascot .hair{fill:var(--ill-hair)}
+svg.mascot .eye{fill:var(--ill-line)}
+svg.mascot .mouth{fill:none;stroke:var(--ill-line);stroke-width:1.4;stroke-linecap:round}
+svg.mascot .body-line{stroke:var(--ill-line);stroke-width:1.4}
+svg.mascot .halo{fill:var(--ill-halo)}
+svg.mascot .shadow{fill:var(--ill-shadow)}
+svg.mascot .bubble{fill:var(--ill-bubble);stroke:var(--ill-line);stroke-width:1.2}
+
+/* ── 图表卡（每日条形图 / 文档榜 共用外壳） ─────────── */
+.chart-card{position:relative;padding:16px 18px;border-radius:var(--radius-lg);
+  border:1px solid var(--edge);
+  background:color-mix(in oklab,var(--seed-surface),transparent 45%)}
+.chart-card .chart-head{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+.chart-card .chart-title{font-size:15px;font-family:var(--disp);letter-spacing:.01em;
+  color:color-mix(in oklab,var(--seed-fg),transparent 8%)}
+.chart-card .chart-hint{display:inline-flex;align-items:center;gap:12px;margin-left:auto;
+  font-size:11px;color:var(--faint)}
+.chart-card .legend{display:inline-flex;align-items:center;gap:6px;font-size:11px;color:var(--muted)}
+.chart-card .legend .sw{width:10px;height:10px;border-radius:2px;background:var(--acc)}
+.chart-card .legend .sw.a{background:var(--acc2)}
+
+/* 条形图区：右下角为放大镜 mascot 预留 */
+.st-chart-wrap{position:relative;padding-right:150px}
+.st-chart-wrap svg{display:block}
+.st-chart-wrap .st-bar{cursor:default}
+.st-chart-wrap .st-bar-hot{}
+.st-note{margin-top:6px;font:500 10.5px/1.7 var(--mono);color:var(--faint);
+  font-variant-numeric:tabular-nums}
+.st-note b{color:var(--muted);font-weight:500}
+
+.st-magnifier{position:absolute;right:0;bottom:22px;width:150px;height:112px;
+  pointer-events:none;opacity:.92}
+@media (max-width:1100px){.st-magnifier{display:none}.st-chart-wrap{padding-right:0}}
+
+/* ── 文档榜（LB 结构：hue glyph + title + path + pct + 分钟数） ── */
+.st-leaderboard{display:flex;flex-direction:column}
+.lb-row{display:grid;grid-template-columns:16px 1fr 110px;gap:10px;align-items:center;
+  padding:7px 0;font-size:12.5px;color:var(--seed-fg);text-decoration:none;
+  border-bottom:1px dashed color-mix(in oklab,var(--seed-fg),transparent 92%);
+  --dh:var(--acc);transition:background .2s}
+.lb-row:last-child{border-bottom:none}
+.lb-row:hover{background:color-mix(in oklab,var(--dh),transparent 94%)}
+.lb-row[data-hue="baike"]{--dh:var(--dh-baike)}
+.lb-row[data-hue="articles"]{--dh:var(--dh-articles)}
+.lb-row[data-hue="interview"]{--dh:var(--dh-interview)}
+.lb-row[data-hue="projects"]{--dh:var(--dh-projects)}
+.lb-row[data-hue="handbook"]{--dh:var(--dh-handbook)}
+.lb-row[data-hue="career"]{--dh:var(--dh-career)}
+.lb-row[data-hue="ai"]{--dh:var(--dh-ai)}
+.lb-row[data-hue="ai_assets"]{--dh:var(--dh-ai)}
+.lb-row .lb-icw{width:16px;display:flex;justify-content:center}
+.lb-row .lb-ic{width:14px;height:14px;stroke:var(--dh);fill:none;stroke-width:1.8}
+.lb-row .lb-t{font-weight:500;color:color-mix(in oklab,var(--seed-fg),transparent 10%)}
+.lb-row .lb-p{margin-left:8px;font:500 10.5px/1 var(--mono);color:var(--faint);
+  word-break:break-all}
+.lb-row .lb-bar{display:block;margin-top:4px;height:6px;border-radius:3px;
+  background:color-mix(in oklab,var(--seed-fg),transparent 92%);overflow:hidden}
+.lb-row .lb-bar>i{display:block;height:100%;border-radius:3px;background:var(--dh)}
+.lb-row .lb-min{text-align:right;font-family:var(--mono);font-size:11px;color:var(--acc);
+  font-variant-numeric:tabular-nums}
+.lb-row .lb-opens{display:block;color:var(--faint)}
+
+/* ── 空态微调（容器样式继承 style.css .empty） ───────── */
+.empty .mascot ellipse.head{fill:var(--ill-skin)}
+
+/* ── 响应式（T6 全站窄屏收口前的页面级兜底） ─────────── */
+@media (max-width:1280px){
+  .stats-body .kpi-row{grid-template-columns:repeat(2,1fr)}
+}
+@media (max-width:780px){
+  .stats-body .kpi-row{grid-template-columns:1fr}
+  .chart-card .chart-hint{margin-left:0;width:100%}
+  .lb-row{grid-template-columns:16px 1fr 84px}
+  .lb-row .lb-opens{display:none}
+}

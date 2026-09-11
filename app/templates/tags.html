@@ -3,123 +3,67 @@
 {% block body %}
 <main class="single">
   <section class="panel page-panel">
-    <div class="crumb"><b>标签管理</b><span class="sep">·</span>{{ tags|length }} 个标签<span class="spacer"></span><a class="iconbtn" href="/">← 返回阅读</a></div>
+    <div class="crumb"><b>标签管理</b><span class="sep">·</span>{{ tags|length }} 个标签<span class="spacer"></span><a class="iconbtn" href="/"><svg class="i i-12"><use href="#i-chev-left"/></svg>返回阅读</a></div>
     <div class="page-body">
       {% if tags %}
-      <div class="tag-cloud">
-        {% for tag, docs in tags %}
-        <div class="tag-group">
-          <div class="tag-header" onclick="this.parentElement.classList.toggle('open')">
-            <input type="checkbox" class="tag-check" data-tag="{{ tag|e }}" onclick="event.stopPropagation(); tagSelUpdate()">
-            <span class="tag-name">{{ tag }}</span>
-            <span class="tag-count">{{ docs|length }} 篇</span>
-            <button class="iconbtn tag-merge" title="把这个标签并入另一个标签" onclick="mergeTagPrompt('{{ tag|e }}'); event.stopPropagation();">并入...</button>
-            <span class="tag-arrow">▸</span>
-          </div>
-          <div class="tag-docs">
-            {% for d in docs %}
-            <a class="result" href="/doc/{{ d.domain }}/{{ d.sub }}/{{ d.name }}">
-              <div class="doc-t">{{ d.title }}</div>
-              <div class="rp">{{ d.domain_label }} / {{ d.sub_label }}</div>
-            </a>
-            {% endfor %}
-          </div>
+      {% set maxn = tags[0][1]|length %}
+      <div class="t5-sec" data-reveal>
+        <div class="sub-h">标签云<span class="n">字号 = 文档数（big / md / sm / xs 四档） · 高亮 = 高频标签</span></div>
+        <div class="tcloud" id="tag-cloud">
+          {% for tag, docs in tags %}
+          {% set n = docs|length %}
+          <span class="t {{ 'big' if n >= maxn * 0.55 else ('md' if n >= maxn * 0.25 else ('sm' if n >= maxn * 0.06 else 'xs')) }}{{ ' hot' if loop.index <= 3 }}" data-tag="{{ tag|e }}" data-count="{{ n }}" title="{{ n }} 篇文档">
+            <input type="checkbox" class="t-check" aria-label="选择标签 {{ tag|e }}">
+            <span class="t-name">{{ tag }}</span>
+            <span class="n">{{ n }}</span>
+            <button type="button" class="t-merge" title="把这个标签并入另一个标签" data-merge="{{ tag|e }}"><svg aria-hidden="true"><use href="#i-move-arrow"/></svg></button>
+          </span>
+          {% endfor %}
         </div>
-        {% endfor %}
       </div>
-      <div class="tag-selbar" id="tag-selbar">
+      <div class="t5-sec" id="sugg-sec" hidden data-reveal>
+        <div class="sub-h">相似标签建议<span class="n">仅页面预览 · 实际合并走两段确认；批量治理可先跑 scripts/govern_tags.py --dry-run</span></div>
+        <div class="merge-grid" id="merge-suggest"></div>
+      </div>
+      <div class="t5-sec" id="tag-drawer" hidden>
+        <div class="sub-h" id="drawer-h"></div>
+        <div class="results" id="drawer-docs"></div>
+      </div>
+      <div class="tag-selbar" id="tag-selbar" hidden>
         <span id="tag-sel-count">未选择标签</span>
         <span class="spacer"></span>
-        <button class="iconbtn" onclick="tagClearSel()">清除</button>
-        <button class="iconbtn primary" id="tag-merge-sel" onclick="mergeSelectedTags()" disabled>⇎ 合并到…</button>
+        <button class="iconbtn" id="tag-clear">清除</button>
+        <button class="iconbtn primary" id="tag-merge-sel" disabled><svg class="i i-12"><use href="#i-commit"/></svg>合并到…</button>
       </div>
       {% else %}
-      <div class="empty">还没有任何标签。编辑文档的 frontmatter 添加 `tags: [标签1, 标签2]`，标签会自动出现在这里。</div>
+      <div class="empty">
+        <svg class="mascot" viewBox="0 0 160 120" aria-hidden="true">
+          <ellipse class="halo" cx="80" cy="70" rx="70" ry="40"/>
+          <ellipse class="shadow" cx="80" cy="108" rx="40" ry="4"/>
+          <ellipse class="head" cx="80" cy="46" rx="20" ry="22"/>
+          <ellipse class="ear" cx="58" cy="46" rx="3" ry="4.5"/><ellipse class="ear" cx="102" cy="46" rx="3" ry="4.5"/>
+          <path class="hair" d="M60 40 Q62 22 80 22 Q98 22 100 40 Q96 32 80 32 Q64 32 60 40 Z"/>
+          <circle class="eye" cx="73" cy="46" r="1.6"/><circle class="eye" cx="87" cy="46" r="1.6"/>
+          <path class="mouth" d="M75 55 Q80 58 85 55"/>
+          <ellipse class="blush" cx="64" cy="52" rx="4" ry="2"/><ellipse class="blush" cx="96" cy="52" rx="4" ry="2"/>
+          <path class="body" d="M58 78 Q80 68 102 78 L98 104 H62 Z"/>
+          <path class="body-line" d="M58 78 Q80 68 102 78 L98 104 H62 Z"/>
+          <path class="shirt" d="M70 70 Q80 76 90 70 L88 82 H72 Z"/>
+          <path class="arm" d="M58 82 Q48 76 46 66"/><path class="arm" d="M102 82 Q112 76 114 66"/>
+          <rect class="tag-capsule" x="112" y="56" width="34" height="18" rx="9"/>
+          <circle class="tag-hole" cx="139" cy="65" r="2.4"/>
+        </svg>
+        <div class="e-title">还没有任何标签</div>
+        <div class="e-desc">编辑文档 frontmatter 添加 <span class="mono">tags: [标签1, 标签2]</span>，标签会自动出现在这里。</div>
+        <a class="e-action" href="/"><svg class="i i-11"><use href="#i-chev-left"/></svg>返回阅读，给文档打上第一个标签</a>
+      </div>
       {% endif %}
     </div>
   </section>
 </main>
 {% endblock %}
-
 {% block scripts %}
-<script>
-function tagSel() { return [...document.querySelectorAll(".tag-check:checked")].map(c => c.dataset.tag); }
-function tagSelUpdate() {
-  const n = tagSel().length;
-  document.getElementById("tag-sel-count").textContent = n ? `已选 ${n} 个标签` : "未选择标签";
-  document.getElementById("tag-merge-sel").disabled = !n;
-}
-function tagClearSel() {
-  document.querySelectorAll(".tag-check:checked").forEach(c => c.checked = false);
-  tagSelUpdate();
-}
-async function mergeSelectedTags() {
-  const srcs = tagSel();
-  if (!srcs.length) return;
-  const listHtml = srcs.map(t => `<div class="kbm-li">${esc(t)}</div>`).join("");
-  const res = await kbModal({
-    title: `批量合并 ${srcs.length} 个标签`,
-    body: `以下标签将全部并入同一目标标签（受影响文档的 frontmatter 会被改写，FTS 重建）：
-      <div class="kbm-list">${listHtml}</div>`,
-    inputs: [{ key: "dst", label: "目标标签", placeholder: "例如：AI资产" }],
-    confirmText: "预览影响",
-  });
-  if (!res || !res.dst) return;
-  const dst = res.dst;
-  const affected = [];
-  for (const src of srcs) {
-    if (src === dst) continue;
-    const r1 = await fetch("/api/tag/merge", { method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ src, dst, apply: false }) });
-    const d1 = await r1.json();
-    if (d1.ok && d1.n_docs) affected.push({ src, n: d1.n_docs });
-  }
-  if (!affected.length) { toast("所选标签均无可合并文档"); return; }
-  const total = affected.reduce((s, x) => s + x.n, 0);
-  const affHtml = affected.map(x => `<div class="kbm-li">${esc(x.src)} · ${x.n} 篇</div>`).join("");
-  const res2 = await kbModal({
-    title: "确认批量合并",
-    body: `共 <b>${total}</b> 篇文档受影响：<div class="kbm-list">${affHtml}</div>`,
-    danger: true, confirmText: "执行合并",
-  });
-  if (!res2) return;
-  let okN = 0;
-  for (const { src } of affected) {
-    const r2 = await fetch("/api/tag/merge", { method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ src, dst, apply: true }) });
-    const d2 = await r2.json();
-    if (d2.ok) okN += d2.n_docs;
-  }
-  toast(`已合并 ${okN} 篇 · ${affected.length} 个标签 → 「${dst}」 · FTS 已重建`);
-  setTimeout(() => location.reload(), 1400);
-}
-async function mergeTagPrompt(src) {
-  const res = await kbModal({
-    title: "标签合并",
-    body: "把「<b>" + esc(src) + "</b>」并入另一个标签：受影响文档的 frontmatter 会被改写，FTS 重建。先预览受影响清单，确认后才写盘。",
-    inputs: [{ key: "dst", label: "目标标签", value: src, placeholder: "例如：AI资产" }],
-    confirmText: "预览影响",
-  });
-  if (!res || !res.dst || res.dst === src) return;
-  const dst = res.dst;
-  const r1 = await fetch("/api/tag/merge", { method: "POST", headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ src, dst, apply: false }) });
-  const d1 = await r1.json();
-  if (!d1.ok) { toast("预览失败"); return; }
-  if (!d1.n_docs) { toast("「" + src + "」没有可合并的文档"); return; }
-  const listHtml = d1.docs.slice(0, 12).map(x => `<div class="kbm-li">${esc(x.path)}</div>`).join("")
-    + (d1.n_docs > 12 ? `<div class="kbm-li">… 共 ${d1.n_docs} 篇</div>` : "");
-  const res2 = await kbModal({
-    title: "确认合并",
-    body: `将把 <b>${d1.n_docs}</b> 篇文档的「<b>${esc(src)}</b>」改为「<b>${esc(dst)}</b>」：<div class="kbm-list">${listHtml}</div>`,
-    danger: true, confirmText: "执行合并",
-  });
-  if (!res2) return;
-  const r2 = await fetch("/api/tag/merge", { method: "POST", headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ src, dst, apply: true }) });
-  const d2 = await r2.json();
-  if (d2.ok) { toast("已合并 " + d2.n_docs + " 篇 · FTS 已重建"); setTimeout(() => location.reload(), 1200); }
-  else toast("合并失败");
-}
-</script>
+<link rel="stylesheet" href="/static/pages/misc.css?v={{ av('pages/misc.css') }}">
+<script defer src="/static/pages/misc.js?v={{ av('pages/misc.js') }}"></script>
+<script type="application/json" id="tags-data">[{% for tag, docs in tags %}{"t":{{ tag|tojson }},"n":{{ docs|length }},"docs":[{% for d in docs %}{"u":{{ ('/doc/' ~ d.domain ~ '/' ~ d.sub ~ '/' ~ d.name)|tojson }},"t":{{ d.title|tojson }},"p":{{ ((d.domain_label ~ ' / ' ~ d.sub_label) if d.domain_label is defined else (d.domain ~ ' / ' ~ d.sub))|tojson }}}{% if not loop.last %},{% endif %}{% endfor %}]}{% if not loop.last %},{% endif %}{% endfor %}]</script>
 {% endblock %}

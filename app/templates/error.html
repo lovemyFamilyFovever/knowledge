@@ -3,8 +3,32 @@
 {% block body %}
 <main class="single">
   <section class="panel page-panel">
-    <div class="crumb"><b>出错了</b></div>
-    <div class="page-body"><div class="empty">{{ message }} <br><br><a class="iconbtn" href="/">← 返回首页</a></div></div>
+    <div class="err-wrap">
+      <svg class="mascot" viewBox="0 0 160 120" aria-hidden="true">
+        <ellipse class="halo" cx="80" cy="70" rx="70" ry="40" style="fill:color-mix(in oklab,var(--warn),transparent 86%)"/>
+        <ellipse class="shadow" cx="80" cy="108" rx="40" ry="4"/>
+        <ellipse class="head" cx="80" cy="46" rx="20" ry="22"/>
+        <ellipse class="ear" cx="58" cy="46" rx="3" ry="4.5"/><ellipse class="ear" cx="102" cy="46" rx="3" ry="4.5"/>
+        <path class="hair" d="M60 40 Q62 22 80 22 Q98 22 100 40 Q96 32 80 32 Q64 32 60 40 Z"/>
+        <circle class="eye" cx="73" cy="46" r="1.6"/><circle class="eye" cx="87" cy="46" r="1.6"/>
+        <path class="brow" d="M68 39 Q73 37 78 40"/><path class="brow" d="M82 40 Q87 37 92 39"/>
+        <path class="mouth" d="M74 58 Q80 53 86 58"/>
+        <ellipse class="blush" cx="63" cy="52" rx="4" ry="2"/><ellipse class="blush" cx="97" cy="52" rx="4" ry="2"/>
+        <path class="body" d="M58 78 Q80 68 102 78 L98 104 H62 Z"/>
+        <path class="body-line" d="M58 78 Q80 68 102 78 L98 104 H62 Z"/>
+        <path class="shirt" d="M70 70 Q80 76 90 70 L88 82 H72 Z"/>
+        <path class="arm" d="M58 80 Q48 76 50 66"/><path class="arm" d="M102 80 Q112 76 110 66"/>
+        <path class="bubble" d="M110 12 h38 a5 5 0 0 1 5 5 v20 a5 5 0 0 1 -5 5 h-22 l-8 7 v-7 h-8 a5 5 0 0 1 -5 -5 V17 a5 5 0 0 1 5 -5 Z"/>
+        <path class="bubble-ic" d="M129 19 v11" style="stroke:var(--warn)"/>
+        <circle cx="129" cy="36" r="1.6" fill="var(--warn)" stroke="none"/>
+      </svg>
+      <div class="e-title">出错了</div>
+      <div class="e-desc">{{ message }}</div>
+      <a class="mbtn primary" href="/"><svg aria-hidden="true"><use href="#i-chev-left"/></svg>返回首页</a>
+    </div>
   </section>
 </main>
+{% endblock %}
+{% block scripts %}
+<link rel="stylesheet" href="/static/pages/misc.css?v={{ av('pages/misc.css') }}">
 {% endblock %}

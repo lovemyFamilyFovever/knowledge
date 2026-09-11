@@ -3,21 +3,48 @@
 {% block body %}
 <main class="single">
   <section class="panel page-panel">
-    <div class="crumb"><b>收藏</b><span class="sep">·</span>{{ items|length }} 篇<span class="spacer"></span><a class="iconbtn" href="/">← 返回阅读</a></div>
+    <div class="crumb"><b>收藏</b><span class="sep">·</span>{{ items|length }} 篇<span class="spacer"></span><a class="iconbtn" href="/"><svg class="i i-12"><use href="#i-chev-left"/></svg>返回阅读</a></div>
     <div class="page-body">
       {% if items %}
-      <div class="results">
+      <div class="results" data-reveal-group data-reveal>
         {% for it in items %}
-        <a class="result" href="/doc/{{ it.domain }}/{{ it.sub }}/{{ it.name }}">
-          <div class="doc-t">{% if it.has_html %}<span class="star">◈</span>{% endif %}{{ it.title }}</div>
-          <div class="rp">{{ it.domain }} / {{ it.sub }}</div>
+        <a class="result fav-card" href="/doc/{{ it.domain }}/{{ it.sub }}/{{ it.name }}" data-hue="{{ it.domain }}">
+          <div class="doc-t">
+            <svg class="i i-12 i-acc" aria-hidden="true"><use href="{{ '#i-file-code' if it.has_html else '#i-file-md' }}"/></svg>
+            {{ it.title }}
+            <svg class="i i-12 i-warn" style="margin-left:auto" aria-hidden="true"><use href="#i-star-filled"/></svg>
+          </div>
+          <div class="rp">{{ it.domain_label if it.domain_label is defined else it.domain }} / {{ it.sub }}</div>
         </a>
         {% endfor %}
       </div>
       {% else %}
-      <div class="empty">还没有收藏。阅读时点右下角的「☆ 收藏」，标记会写进 frontmatter，Obsidian 里同样可见。</div>
+      <div class="empty">
+        <svg class="mascot" viewBox="0 0 160 120" aria-hidden="true">
+          <ellipse class="halo" cx="80" cy="70" rx="70" ry="40" style="fill:color-mix(in oklab,var(--rose),transparent 86%)"/>
+          <ellipse class="shadow" cx="80" cy="108" rx="40" ry="4"/>
+          <ellipse class="head" cx="80" cy="46" rx="20" ry="22"/>
+          <ellipse class="ear" cx="58" cy="46" rx="3" ry="4.5"/><ellipse class="ear" cx="102" cy="46" rx="3" ry="4.5"/>
+          <path class="hair" d="M60 40 Q62 22 80 22 Q98 22 100 40 Q96 32 80 32 Q64 32 60 40 Z"/>
+          <circle class="eye" cx="73" cy="45" r="1.8"/><circle class="eye" cx="87" cy="45" r="1.8"/>
+          <path class="mouth" d="M74 54 Q80 60 86 54"/>
+          <ellipse class="blush" cx="63" cy="52" rx="4.5" ry="2.2"/><ellipse class="blush" cx="97" cy="52" rx="4.5" ry="2.2"/>
+          <path class="body" d="M58 78 Q80 68 102 78 L98 104 H62 Z"/>
+          <path class="body-line" d="M58 78 Q80 68 102 78 L98 104 H62 Z"/>
+          <path class="shirt" d="M70 70 Q80 76 90 70 L88 82 H72 Z"/>
+          <path class="arm" d="M58 82 Q46 74 48 62"/>
+          <path class="bubble" d="M104 40 l7 -7 5 5 9 -9" style="display:none"/>
+          <path fill="var(--rose)" stroke="none" d="M120 44 l10 -10 a6 6 0 0 1 8.6 8.4 L120 62 101.4 42.4 A6 6 0 0 1 110 34 Z" transform="scale(.62) translate(76 30)"/>
+        </svg>
+        <div class="e-title">还没有收藏</div>
+        <div class="e-desc">阅读时点右下角的「收藏」，标记会写进 frontmatter，Obsidian 里同样可见。</div>
+        <a class="e-action" href="/"><svg class="i i-11"><use href="#i-chev-left"/></svg>去阅读第一篇想收藏的文档</a>
+      </div>
       {% endif %}
     </div>
   </section>
 </main>
+{% endblock %}
+{% block scripts %}
+<link rel="stylesheet" href="/static/pages/misc.css?v={{ av('pages/misc.css') }}">
 {% endblock %}

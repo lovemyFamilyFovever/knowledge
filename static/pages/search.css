@@ -1,0 +1,87 @@
+/* =====================================================================
+   知库 · 搜索结果页 v0.4（T3 产出 · frontend-redesign-tasks/T3-search.md）
+   基准：设计稿第 05 屏「搜索结果 · FTS + 语义 ?」
+   规则：颜色全部走 --seed-* / --acc / --acc2 / --dh-* token，零硬编码 hex；
+        仅挂载于 /search 路由（search.html 末尾 link 引入）。
+   ===================================================================== */
+
+/* [1] 页头：查询 chip + 通道切换 ===== */
+.srch-body{padding:20px 28px;display:flex;flex-direction:column;gap:14px}
+.srch-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.query-chip{display:inline-flex;align-items:center;gap:7px;padding:5px 13px;border-radius:var(--radius-pill);
+  background:color-mix(in oklab,var(--seed-fg),transparent 95%);border:1px solid var(--edge);
+  font-family:var(--mono);font-size:12px;color:var(--seed-fg);max-width:100%}
+.query-chip .q-text{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:32ch}
+.query-chip .q-sep{color:var(--faint)}
+.query-chip .q-mode{font-weight:600;color:var(--acc);letter-spacing:.03em}
+.query-chip.info .q-mode{color:var(--info)}
+.query-chip.switch{cursor:pointer;transition:border-color .2s,background .2s;color:var(--muted)}
+.query-chip.switch:hover{border-color:var(--edge-hi);color:var(--seed-fg)}
+.query-chip.switch .pre{color:var(--info);font-weight:600}
+.query-chip.switch.alt-fts .pre{color:var(--acc)}
+.srch-meta{margin-left:auto}
+
+/* [2] 双通道结果列（设计稿 .results-col：FTS 绿 / 语义蓝） ===== */
+.results-col{padding:14px 16px;border:1px solid var(--edge);border-radius:var(--radius-lg);
+  background:color-mix(in oklab,var(--seed-surface),transparent 45%);display:flex;flex-direction:column;gap:8px}
+.results-col.info{border-color:color-mix(in oklab,var(--info),transparent 68%)}
+.rc-head{display:flex;align-items:center;gap:8px;padding-bottom:8px;margin-bottom:2px;
+  border-bottom:1px solid var(--edge);font-size:11.5px;color:var(--muted);
+  letter-spacing:.05em;text-transform:uppercase;font-weight:600}
+.rc-head .mode-ic{width:22px;height:22px;padding:3px;border-radius:6px;flex:none;
+  background:color-mix(in oklab,var(--acc),transparent 88%);color:var(--acc);
+  display:inline-flex;align-items:center;justify-content:center}
+.rc-head .mode-ic svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.rc-head.info .mode-ic{background:color-mix(in oklab,var(--info),transparent 88%);color:var(--info)}
+.rc-head .n{margin-left:auto;font-family:var(--mono);text-transform:none;letter-spacing:0;color:var(--faint);font-size:11px;font-weight:500}
+
+/* 结果卡：域 hue 图标 chip + 面包屑 + mono path + score + title + snippet */
+.results{display:flex;flex-direction:column;gap:8px}
+.result{display:flex;flex-direction:column;gap:5px;padding:12px 14px;border:1px solid var(--edge);
+  border-radius:var(--radius);background:color-mix(in oklab,var(--seed-surface),transparent 45%);
+  transition:border-color .18s,transform .18s,box-shadow .18s;position:relative}
+.result:hover{border-color:color-mix(in oklab,var(--acc),transparent 55%);
+  transform:translateX(4px);box-shadow:var(--glow-accent)}
+.result.info{border-color:color-mix(in oklab,var(--info),transparent 60%)}
+.result.info:hover{border-color:var(--info);box-shadow:0 0 0 1px color-mix(in oklab,var(--info),transparent 65%),0 10px 28px color-mix(in oklab,var(--info),transparent 86%)}
+.result .rh{display:flex;align-items:baseline;gap:8px;font-size:12.5px;min-width:0}
+.result .domain{display:inline-flex;align-items:center;gap:5px;padding:1.5px 8px;border-radius:var(--radius-pill);
+  background:color-mix(in oklab,var(--dh,var(--acc)),transparent 88%);color:var(--dh,var(--acc));
+  font-size:10.5px;letter-spacing:.02em;font-weight:600;white-space:nowrap}
+.result .domain svg{stroke:currentColor;fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.result.info .domain{background:color-mix(in oklab,var(--info),transparent 88%);color:var(--info)}
+.result .path{font:500 11px/1 var(--mono);color:var(--faint);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.result .score{margin-left:auto;flex:none;font:500 10.5px/1 var(--mono);color:var(--acc);
+  padding:2.5px 7px;border-radius:var(--radius-pill);background:color-mix(in oklab,var(--acc),transparent 90%);font-variant-numeric:tabular-nums}
+.result.info .score{color:var(--info);background:color-mix(in oklab,var(--info),transparent 90%)}
+.result .title{font-family:var(--disp);font-size:14.5px;font-weight:600;letter-spacing:.01em;
+  color:color-mix(in oklab,var(--seed-fg),transparent 5%);line-height:1.55}
+.result .title .sub-sect{font-family:var(--mono);font-size:11.5px;font-weight:500;color:var(--faint)}
+.result .snippet{font-size:12.5px;color:var(--muted);line-height:1.65;overflow-wrap:break-word}
+
+/* <mark> 命中高亮：FTS 绿系 / 语义蓝系（覆盖兼容层 [10] 的 warn 黄） */
+.result .snippet mark,.result .title mark{background:color-mix(in oklab,var(--acc),transparent 82%);
+  color:color-mix(in oklab,var(--seed-fg),transparent 5%);padding:0 3px;border-radius:2px;font-weight:600}
+.result.info .snippet mark,.result.info .title mark{background:color-mix(in oklab,var(--info),transparent 82%)}
+
+/* 7 域 hue 映射（taxonomy 权威；oklch token 见 style.css [2]） */
+.result[data-hue="baike"]{--dh:var(--dh-baike)}
+.result[data-hue="articles"]{--dh:var(--dh-articles)}
+.result[data-hue="interview"]{--dh:var(--dh-interview)}
+.result[data-hue="projects"]{--dh:var(--dh-projects)}
+.result[data-hue="handbook"]{--dh:var(--dh-handbook)}
+.result[data-hue="career"]{--dh:var(--dh-career)}
+.result[data-hue="ai-assets"]{--dh:var(--dh-ai)}
+
+/* [3] 空态插画 ===== */
+.srch-empty{padding:26px 14px 34px;gap:10px}
+.srch-empty .mascot{width:200px;height:142px;flex:none}
+.srch-empty .e-desc .mono{color:var(--info);font-size:11.5px}
+
+/* [4] 响应式（T6 会统一收口，这里只保底） ===== */
+@media (max-width:820px){
+  .srch-body{padding:14px 12px}
+  .result .rh{flex-wrap:wrap;gap:6px}
+  .result .path{flex-basis:100%;white-space:normal}
+  .result .score{margin-left:0}
+}
