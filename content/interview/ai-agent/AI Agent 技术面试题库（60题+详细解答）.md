@@ -1629,6 +1629,7 @@ TruLens
 ：提供反馈函数的评估框架
 LangSmith
 ：LangChain的评估和监控平台
+```python
 # RAGAS评估示例
 from ragas import evaluate
 from ragas.metrics import faithfulness, answer_relevancy, context_precision
@@ -1646,6 +1647,7 @@ result = evaluate(
     dataset=eval_dataset,
     metrics=[faithfulness, answer_relevancy, context_precision]
 )
+```
 关键知识点
 RAG评估需要同时评估检索和生成
 忠实度是RAG最重要的指标

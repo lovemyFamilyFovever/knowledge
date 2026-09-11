@@ -14,7 +14,7 @@ status: "imported"
 source_path: "frontend/javascript/instanceof-static-super.md"
 ---
 
-[[toc]]
+
 
 ## instanceof 
 
