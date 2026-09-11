@@ -1,6 +1,6 @@
 ---
 title: "Shell 脚本详解"
-tags: []
+tags: [计算机体系结构, 操作系统, Linux, Shell]
 source: "baike"
 source_path: "开发术语 / 操作系统与Linux"
 collected: "2026-09-05"
@@ -8,6 +8,12 @@ status: "imported"
 ---
 
 # Shell 脚本详解
+
+## 概述
+
+**一句话定义：** 本文系统梳理 Bash Shell 脚本编程的语法与实战要点——变量、条件、循环、函数、数组、字符串操作、正则、管道与重定向、awk/sed 进阶、调试技巧与可复用脚本模板。
+
+> 多义说明：本文是 Shell 脚本的**完整参考**；快速入门见 [[Shell脚本编程]]，常用命令见 [[Linux 命令速查手册]]。以下以 Bash（bash 4+）为准，部分特性（关联数组、`^^`/`,,` 大小写转换）在 POSIX sh/dash 中不支持。
 
 ## 变量（定义/引用/环境变量/局部变量）
 
@@ -377,7 +383,7 @@ awk 'NR==FNR{a[$1]=$2; next} {if($1 in a) print $0, a[$1]}' users.txt orders.txt
 
 ```bash
 # 多行处理
-sed -N 's/\n/ /' file.txt                  # 合并每两行为一行
+sed 'N;s/\n/ /' file.txt                  # 合并每两行为一行
 sed ':a;N;$!ba;s/\n/ /g' file.txt         # 所有行合并为一行
 
 # 分支和标签
@@ -584,3 +590,20 @@ done
 
 echo "共处理 $count 个文件"
 ```
+
+---
+
+## 常见误区
+
+- 变量赋值等号两边不能有空格；引用变量应加双引号（`"$var"`）以防单词分割与通配展开。
+- `[ ]` 是 test 命令、`[[ ]]` 是 Bash 关键字：后者支持 `=~` 正则与 `&&`/`||`、且不必给变量加引号，但非 POSIX、dash 不支持。
+- `set -e` 在管道、命令替换、条件语境下有诸多「不触发退出」的例外，需配合 `set -o pipefail` 并理解其边界。
+- `#!/bin/sh` 与 `#!/bin/bash` 不同：许多发行版 `/bin/sh` 指向 dash，不支持数组、`[[ ]]` 等 Bash 特性。
+
+## 相关术语
+
+[[Shell脚本编程]]、[[Linux 命令速查手册]]、[[进程管理详解]]、[[操作系统核心]]
+
+## 参考资料
+
+建议人工核验：可参考 GNU Bash 官方手册、`bash(1)`/`sed(1)`/`awk(1)` man page、Google Shell Style Guide 与 ShellCheck 工具。
