@@ -48,6 +48,13 @@ scripts/            迁移与维护脚本（rag_search.py 是 Agent 检索入口
 - 提交前跑上面三套测试——pre-commit 钩子会自动跑（`git config core.hooksPath .githooks` 已设置）。
 - push 是备份链的一环（另有 Windows 计划任务每日自动 commit+push，见 `scripts/daily_backup.ps1`）。
 
+## 工作交接（Handoff）
+
+- 交接文档统一放在 `docs/`，命名规则 **`YYYYMMDDNN.md`**（年月日 + 两位当日序号），如 `2026091201.md` = 2026-09-12 当天第 1 份；同日多份序号递增（`…02`、`…03`）。
+- 不再使用无日期的 `HANDOFF.md`；每次交接**新建**一份带日期的文件，旧的原样保留归档（历史交接即 `docs/2026*.md`，如 `docs/2026091101.md`）。
+- 每份 handoff **必含五节，缺内容写「无」不省略**：① 我们在做什么任务 ② 已经完成了什么 ③ 当前卡在哪 ④ 下一步计划 ⑤ 踩过的坑（绝对不要再踩）。建议另附「项目速览 / 关键约定 / 相关文件索引 / 给新会话的第一句话」。
+- 面向**完全没有上下文**的新会话：先读最新 handoff，再读本 `AGENTS.md`，即可接手；接手第一步 `git log --oneline` 确认 HEAD、`git status` 看工作区。
+
 ## 跨机器坑备忘
 
 - git 输出含中文文件名时默认转义为带引号的八进制串（如 `"\347\231\276….md"`），行尾多出的引号使 `\.md$` 类正则大面积漏计（实测 baike 目录 245 个文件只命中 9 个）。统计/匹配 git 路径输出一律加 `-c core.quotepath=false`。
