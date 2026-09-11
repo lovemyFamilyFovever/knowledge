@@ -4,7 +4,7 @@
   --wash1:rgba(24,140,100,.10); --wash2:rgba(40,120,190,.08);
   --wash3:rgba(235,140,80,.07); --wash4:rgba(24,150,120,.09);
   --blob1:rgba(60,200,150,.30); --blob2:rgba(70,160,220,.22); --blob3:rgba(235,150,90,.14);
-  --ink:#22312c; --muted:#5c716c; --faint:#93a49e;
+  --ink:#22312c; --muted:#5c716c; --faint:#6f827c;
   --acc:#0c9a6a; --acc-soft:rgba(12,154,106,.10); --acc-edge:rgba(12,154,106,.30);
   --acc2:#0f86b8; --warn:#ad6b00; --warn-soft:rgba(173,107,0,.08); --warn-edge:rgba(173,107,0,.35);
   --rose:#c2417f;
@@ -24,7 +24,7 @@ html[data-theme="dark"]{
   --wash1:rgba(24,120,96,.34); --wash2:rgba(28,110,150,.30);
   --wash3:rgba(88,52,140,.22); --wash4:rgba(16,104,88,.26);
   --blob1:rgba(55,230,166,.34); --blob2:rgba(56,205,240,.26); --blob3:rgba(240,89,155,.14);
-  --ink:#e2ece8; --muted:#93a8a2; --faint:#5d7370;
+  --ink:#e2ece8; --muted:#93a8a2; --faint:#68807d;
   --acc:#37e6a6; --acc-soft:rgba(55,230,166,.10); --acc-edge:rgba(55,230,166,.30);
   --acc2:#38cdf0; --warn:#f0b438; --warn-soft:rgba(240,180,56,.10); --warn-edge:rgba(240,180,56,.32);
   --rose:#f0599b;
