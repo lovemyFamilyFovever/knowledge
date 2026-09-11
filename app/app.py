@@ -199,8 +199,13 @@ def create_app(root: Path | None = None) -> Flask:
         if p.suffix == ".html":
             body = raw
         html_twin = p.with_name(p.stem + ".html")
-        subs = next(d for d in domains if d["id"] == domain)["subs"]
-        sobj = next(s for s in subs if s["id"] == sub)
+        dom_obj = next((d for d in domains if d["id"] == domain), None)
+        if not dom_obj:
+            return None
+        subs = dom_obj["subs"]
+        sobj = next((s for s in subs if s["id"] == sub), None)
+        if not sobj:
+            return None
         doc_size = f"{p.stat().st_size / 1024:.1f} KB"
         src_raw = str(fm.get("source", ""))
         doc = {
@@ -689,7 +694,7 @@ def create_app(root: Path | None = None) -> Flask:
             abort(404, "文档不存在")
         raw = p.read_text(encoding="utf-8", errors="replace")
         fm, body = parse_frontmatter(raw)
-        headings = len(re.findall(r"^#{1,6}\\s+", body, re.M))
+        headings = len(re.findall(r"^#{1,6}\s+", body, re.M))
         code_blocks = len(re.findall(r"^```", body, re.M)) // 2
         links = len(extract_wikilinks(body))
         cjk_n = len(re.findall(r"[\u4e00-\u9fff]", body))

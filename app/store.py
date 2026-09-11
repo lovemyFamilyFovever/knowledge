@@ -267,6 +267,8 @@ def _scan_sub(sdir: Path, sid: str, label: str, files=None) -> dict:
 
 def find_doc(content: Path, domain: str, sub: str, name: str):
     """Locate a document; returns (abs_path, rel_posix) or None."""
+    if str(domain).startswith("_") or str(sub).startswith("_"):
+        return None  # 拒绝 _trash/_inbox/_meta/_assets 等下划线目录（不变量 2）
     base = content / domain
     sdir = base / sub if sub != "_root" else base
     if not base.is_dir() or not sdir.is_dir():

@@ -555,7 +555,7 @@ function kbModal(opt) {
     const inputs = opt.inputs || [];
     ov.innerHTML = `<div class="kbm" role="dialog" aria-modal="true">
       <div class="kbm-title">${esc(opt.title || "")}</div>
-      ${opt.body ? `<div class="kbm-body">${esc(opt.body)}</div>` : ""}
+      ${opt.body ? `<div class="kbm-body">${opt.body}</div>` : ""}
       ${opt.html ? `<div class="kbm-body">${opt.html}</div>` : ""}
       ${inputs.map(i => `<label class="kbm-label">${esc(i.label || "")}
         <input class="kbm-input" data-k="${esc(i.key)}" value="${esc(i.value ?? "")}"
