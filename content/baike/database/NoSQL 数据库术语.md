@@ -1,6 +1,6 @@
 ---
 title: "NoSQL 数据库术语"
-tags: []
+tags: [数据库, NoSQL, Redis, MongoDB]
 source: "baike"
 source_path: "开发术语 / 数据库"
 collected: "2026-09-05"
@@ -8,6 +8,8 @@ status: "imported"
 ---
 
 # NoSQL 数据库术语
+
+> 📌 **导航**：本文是 **NoSQL 数据库全景**（键值 Redis/Memcached、文档 MongoDB、搜索 Elasticsearch、宽列 HBase/Cassandra、图 Neo4j、时序 InfluxDB 等）与 SQL/NoSQL 选型对比。其中 Redis 详见 [[Redis深入]]、MongoDB 详见 [[MongoDB实践]]、Elasticsearch 详见 [[ElasticSearch搜索]]；CAP 取舍见 [[CAP 定理]]。
 
 ---
 
@@ -476,3 +478,13 @@ db.orders.find({
 **为什么需要它：** 没有万能的数据库。SQL 适合需要强一致性和复杂查询的场景，NoSQL 适合需要高扩展性和灵活 schema 的场景。实际系统常常混合使用。
 
 **与相关术语的对比和区分：** CAP 定理是理解 SQL vs NoSQL 的理论基础——分布式系统中一致性(C)、可用性(A)、分区容错性(P) 三者只能满足两个。SQL 通常选 CP，NoSQL 通常选 AP。
+
+---
+
+## 相关术语
+
+[[Redis深入]]、[[MongoDB实践]]、[[ElasticSearch搜索]]、[[CAP 定理]]、[[数据库设计术语]]、[[分布式存储术语百科]]
+
+## 参考资料
+
+建议人工核验：可参考各数据库官方文档（Redis / MongoDB / Elasticsearch / HBase / Cassandra / Neo4j / InfluxDB），以及《NoSQL 精粹》(Martin Fowler, *NoSQL Distilled*)、Brewer 的 CAP 猜想。
