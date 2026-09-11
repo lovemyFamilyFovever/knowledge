@@ -19,6 +19,7 @@
     "ai-and-llm": "AI 与大模型", "machine-learning": "机器学习", "data-science": "数据科学与大数据",
     "frontend-concepts": "前端概念", "frontend-frameworks": "前端框架", "mobile": "移动开发",
     "middleware": "消息与中间件", "web-backend": "Web 后端",
+    "graphics-multimedia": "图形学与多媒体", "hci": "人机交互",
     "javascript": "JavaScript", "vue2": "Vue2", "vue3": "Vue3", "css": "CSS", "html": "HTML",
     "typescript": "TypeScript", "debugging": "调试", "pinia": "Pinia", "optimization": "性能优化",
     "tutorials": "教程", "single-file": "单文件版", "git": "Git",
