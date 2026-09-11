@@ -242,6 +242,8 @@ def create_app(root: Path | None = None) -> Flask:
         con = open_db(indexes)
         try:
             fts_n = con.execute("SELECT count(*) FROM docs").fetchone()[0]
+        except Exception:
+            fts_n = 0
         finally:
             con.close()
         inbox_n = inbox_count(content)
@@ -386,6 +388,8 @@ def create_app(root: Path | None = None) -> Flask:
     def api_save():
         data = request.get_json(force=True)
         p = safe_rel(data.get("path", ""), WRITABLE_EXTS)
+        if any(part.startswith("_") for part in p.relative_to(content.resolve()).parts):
+            abort(400, "不能写入 _ 前缀目录（回收站/暂存/元数据）")
         body = data.get("content", "")
         if not body.endswith("\n"):
             body += "\n"
@@ -743,7 +747,10 @@ def create_app(root: Path | None = None) -> Flask:
             k = 8
         domain = request.args.get("domain") or None
         sub = request.args.get("sub") or None
-        hits = query_rag(rstore, emb, q, k=k, domain=domain, sub=sub)
+        try:
+            hits = query_rag(rstore, emb, q, k=k, domain=domain, sub=sub)
+        except Exception as e:
+            return jsonify({"error": "rag query failed", "detail": str(e)}), 503
         return jsonify({"q": q, "hits": hits})
 
     @app.get("/api/rag/status")

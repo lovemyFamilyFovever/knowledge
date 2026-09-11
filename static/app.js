@@ -5,6 +5,8 @@ const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
 const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const toast = m => { const t = $("#toast"); t.innerHTML = m; t.classList.add("show"); clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove("show"), 2600); };
+/* 统一构造 /doc URL：域根文档补 _root 段，逐段 encode，避免 404 */
+const docUrl = rel => { let s = String(rel).replace(/\.md$/, "").split("/").filter(Boolean); if (s.length === 2) s = [s[0], "_root", s[1]]; return "/doc/" + s.map(encodeURIComponent).join("/"); };
 
 /* ---------- 主题 ---------- */
 function applyTheme(t) {
@@ -246,7 +248,7 @@ async function navigate(url, push) {
   }
   closeEditor();
   const path = url.split("?")[0];
-  const segs = path.split("/").filter(Boolean).map(decodeURIComponent);
+  const segs = path.split("/").filter(Boolean).map(s => { try { return decodeURIComponent(s); } catch (e) { return s; } });
   // /doc/<domain>/<sub>/<name...>
   if (segs[0] === "doc" && segs.length >= 4) {
     const domain = segs[1], sub = segs[2], name = segs.slice(3).join("/");
@@ -442,9 +444,9 @@ function loadLinks() {
     .then(r => r.json())
     .then(d => {
       const back = d.incoming.map(x =>
-        `<a class="result" href="/doc/${x.path}"><div class="doc-t">${esc(x.title)}</div><div class="rp">${esc(x.path)}</div></a>`).join("");
+        `<a class="result" href="${docUrl(x.path)}"><div class="doc-t">${esc(x.title)}</div><div class="rp">${esc(x.path)}</div></a>`).join("");
       const fwd = d.outgoing.map(x => x.resolved
-        ? `<a class="result" href="/doc/${esc(x.path)}"><div class="doc-t">${esc(x.title)}</div><div class="rp">${esc(x.path)}</div></a>`
+        ? `<a class="result" href="${docUrl(x.path)}"><div class="doc-t">${esc(x.title)}</div><div class="rp">${esc(x.path)}</div></a>`
         : `<div class="result"><div class="doc-t" style="color:var(--warn)">未解析：${esc(x.raw)}</div><div class="rp">没有匹配的文档——整理时顺手修掉或删除</div></div>`).join("");
       pane.innerHTML =
         `<div class="home-sec" style="margin-top:4px">谁引用了它 · ${d.incoming.length}</div>` +
@@ -472,8 +474,9 @@ function openPretty() {
     ov.addEventListener("click", e => { if (e.target === ov) closePretty(); });
   }
   ov.querySelector("#pretty-title").textContent = DOC.title + " · 美化版";
-  ov.querySelector("#pretty-newtab").href = "/raw/" + DOC.html_rel;
-  ov.querySelector("iframe").src = "/raw/" + DOC.html_rel;
+  const prettyUrl = "/raw/" + String(DOC.html_rel).split("/").map(encodeURIComponent).join("/");
+  ov.querySelector("#pretty-newtab").href = prettyUrl;
+  ov.querySelector("iframe").src = prettyUrl;
   ov.classList.add("show");
 }
 function closePretty() {
