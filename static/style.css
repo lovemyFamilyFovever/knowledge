@@ -546,8 +546,12 @@ html[data-theme="dark"] .mv-tree{background:rgba(6,10,14,.45)}
 .mv-side{display:flex;flex-direction:column}
 .mv-dst-label{font-size:11px;letter-spacing:1px;color:var(--faint);font-family:var(--mono);margin-bottom:6px}
 .mv-dst{font-family:var(--mono);font-size:12px;color:var(--acc);word-break:break-all;border:1px dashed var(--acc-edge);
-  border-radius:9px;padding:10px 12px;background:var(--acc-soft);min-height:38px}
+  border-radius:9px;padding:10px 12px;background:var(--acc-soft);min-height:38px;line-height:1.7}
+.mv-dst-dir{color:var(--muted)}
+.mv-dst-file{color:var(--acc);font-weight:700}
+.mv-dst-empty{color:var(--faint);font-style:italic}
 .mv-dst.mv-dst-same{color:var(--faint);border-color:var(--edge);background:transparent}
+.mv-dst.mv-dst-same .mv-dst-file{color:var(--faint)}
 .mv-hint{font-size:11px;line-height:1.7;color:var(--faint);margin-top:auto;padding-top:10px}
 
 /* 目录统计：兄弟目录排行（可点击切换） */

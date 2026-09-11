@@ -745,10 +745,16 @@ async function moveDocPrompt(rel) {
     const sub = dom && dom.subs.find(s => s.id === state.sub);
     const nm = nameEl.value.trim();
     const invalidName = !nm || /[\\/:*?"<>|]/.test(nm);
-    dstEl.textContent = sub ? `${subDirOf(dom, state.sub)}/${nm || "（未命名）"}.md` : "先在左侧选择目标目录";
-    dstEl.classList.toggle("mv-dst-same", sub && `${subDirOf(dom, state.sub)}/${nm}.md` === rel);
-    okBtn.disabled = !sub || invalidName || `${subDirOf(dom, state.sub)}/${nm}.md` === rel;
-    okBtn.textContent = `${subDirOf(dom, state.sub)}/${nm}.md` === rel ? "未变化" : "移动";
+    const same = !!(sub && `${subDirOf(dom, state.sub)}/${nm}.md` === rel);
+    if (!sub) {
+      dstEl.innerHTML = `<span class="mv-dst-empty">← 先在左侧选择目标目录</span>`;
+    } else {
+      const dir = subDirOf(dom, state.sub);
+      dstEl.innerHTML = `<span class="mv-dst-dir">${esc(dir)}/</span><span class="mv-dst-file">${esc(nm || "（未命名）")}</span><span class="mv-dst-dir">.md</span>`;
+    }
+    dstEl.classList.toggle("mv-dst-same", same);
+    okBtn.disabled = !sub || invalidName || same;
+    okBtn.innerHTML = same ? "未变化" : `${icon("check", 13)} 移动`;
   }
   function renderTreeNodes() {
     const kw = filterEl.value.trim().toLowerCase();
