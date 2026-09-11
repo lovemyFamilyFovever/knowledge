@@ -149,9 +149,18 @@ def create_app(root: Path | None = None) -> Flask:
     @app.context_processor
     def chrome():
         tax = load_taxonomy(content)
+
+        def av(name):
+            """静态资源版本号：按文件 mtime 自动失效，改完刷新即生效，免手动 ?v=。"""
+            try:
+                return int((root / "static" / name).stat().st_mtime)
+            except OSError:
+                return 0
+
         return {"LABELS": tax["domains"], "SUB_LABELS": tax["subs"],
                 "SOURCE_LABELS": tax["sources"], "STATUS_LABELS": tax["status"],
                 "HUES": tax["hues"],
+                "av": av,
                 "obsidian_connected": obsidian_vault_connected(content)}
 
     @app.route("/")

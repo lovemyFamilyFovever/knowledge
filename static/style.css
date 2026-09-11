@@ -416,8 +416,9 @@ html[data-theme="dark"] #ctx-menu{background:#0d1412}
 .kbm{width:min(500px,92vw);max-height:82vh;display:flex;flex-direction:column;
   background:var(--bg0);backdrop-filter:blur(24px) saturate(1.15);
   border:1px solid var(--edge-hi);border-radius:14px;box-shadow:0 24px 70px rgba(0,0,0,.42);padding:20px 22px}
+.kbm.kbm-stats{width:min(760px,94vw)}
 .kbm-title{font-family:var(--disp);font-size:17px;font-weight:700;color:var(--ink);margin-bottom:10px}
-.kbm-body{font-size:13px;line-height:1.85;color:var(--muted);margin-bottom:12px;overflow-y:auto}
+.kbm-body{flex:1 1 auto;min-height:0;font-size:13px;line-height:1.85;color:var(--muted);margin-bottom:12px;overflow-y:auto}
 .kbm-body .mono{font-family:var(--mono);font-size:11.5px;color:var(--acc);word-break:break-all}
 .kbm-body b{color:var(--ink)}
 .kbm-list{margin-top:8px;border:1px solid var(--edge);border-radius:9px;background:rgba(255,255,255,.35);
@@ -482,6 +483,15 @@ html[data-theme="dark"] .kbm-input{background:rgba(6,10,14,.5)}
 
 /* ---------- v16：目录统计弹窗（showSubStats） ---------- */
 .ss-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:6px}
+/* 统计弹窗顶部 KPI hero：一条带分隔的仪表带，非四个灰盒 */
+.gkpi{display:grid;grid-template-columns:repeat(4,1fr);margin-bottom:14px;border:1px solid var(--edge);border-radius:12px;overflow:hidden;background:color-mix(in oklab,var(--ink),transparent 97%)}
+.gkpi .g{padding:14px 14px;border-left:1px solid var(--edge)}
+.gkpi .g:first-child{border-left:0}
+.gkpi .lab{font-family:var(--mono);font-size:10px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:var(--faint)}
+.gkpi .num{font-family:var(--num);font-weight:700;font-size:clamp(22px,3vw,30px);line-height:1.1;margin-top:6px;color:var(--ink);font-variant-numeric:tabular-nums;letter-spacing:-.5px}
+.gkpi .num .u{font-size:12px;font-weight:500;color:var(--muted);margin-left:3px;letter-spacing:0}
+.gkpi .num.acc{color:var(--acc)}.gkpi .num.warn{color:var(--warn)}.gkpi .num.rose{color:var(--rose)}
+.gkpi .sub{font-size:10.5px;color:var(--muted);margin-top:4px;white-space:nowrap}
 .ss-cell{border:1px solid var(--edge);border-radius:10px;padding:12px 10px;text-align:center;background:color-mix(in oklab, var(--ink), transparent 95%)}
 html[data-theme="dark"] .ss-cell{background:color-mix(in oklab, var(--ink), transparent 92%)}
 .ss-cell .ss-n{font-family:var(--num);font-size:20px;font-weight:700;color:var(--acc);font-variant-numeric:tabular-nums}
@@ -490,6 +500,7 @@ html[data-theme="dark"] .ss-cell{background:color-mix(in oklab, var(--ink), tran
 .ss-tags{display:flex;flex-direction:column;gap:5px;max-height:200px;overflow-y:auto}
 .ss-tag{display:flex;align-items:center;gap:10px}
 .ss-tag-name{flex:0 0 110px;font-size:12px;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:right}
+.ss-dot{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:6px;flex:none}
 .ss-bar{flex:1;height:6px;border-radius:3px;background:var(--edge);overflow:hidden}
 .ss-bar i{display:block;height:100%;border-radius:3px;background:linear-gradient(90deg,var(--acc),var(--acc2))}
 .ss-tag-n{flex:0 0 26px;font-family:var(--num);font-size:12px;color:var(--ink);text-align:left}

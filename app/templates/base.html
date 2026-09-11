@@ -4,13 +4,13 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>{% block title %}知库{% endblock %}</title>
-<link rel="stylesheet" href="/static/style.css">
-<link rel="stylesheet" href="/static/hljs-github-dark.min.css">
+<link rel="stylesheet" href="/static/style.css?v={{ av('style.css') }}">
+<link rel="stylesheet" href="/static/hljs-github-dark.min.css?v={{ av('hljs-github-dark.min.css') }}">
 <script>window.LABELS={{ LABELS|tojson }};window.HUES={{ HUES|tojson }};window.SUB_LABELS={{ SUB_LABELS|tojson }};window.SOURCE_LABELS={{ SOURCE_LABELS|tojson }};</script>
 <script src="/static/marked.umd.js" defer></script>
 <script src="/static/purify.min.js" defer></script>
 <script src="/static/highlight.min.js" defer></script>
-<script src="/static/app.js?v=18" defer></script>
+<script src="/static/app.js?v={{ av('app.js') }}" defer></script>
 </head>
 <body>
 <svg xmlns="http://www.w3.org/2000/svg" style="display:none" aria-hidden="true">

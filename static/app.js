@@ -612,9 +612,9 @@ async function showSubStats(dom, sub) {
   const ov = document.createElement("div");
   ov.className = "kbm-ov";
   ov.id = "ss-ov";
-  ov.innerHTML = `<div class="kbm" role="dialog" aria-modal="true">
+  ov.innerHTML = `<div class="kbm kbm-stats" role="dialog" aria-modal="true">
     <div class="kbm-title">📊 ${esc(s.domain_label)} / ${esc(s.label)} · 目录统计</div>
-    <div class="kbm-body" style="max-height:none;overflow:visible">
+    <div class="kbm-body">
     <div class="ss-grid">
       <div class="ss-cell"><div class="ss-n">${s.n_docs}</div><div class="ss-l">文档数</div></div>
       <div class="ss-cell"><div class="ss-n">${s.total_cjk.toLocaleString()}</div><div class="ss-l">总字数（CJK）</div></div>
@@ -648,9 +648,9 @@ async function showGlobalStats() {
   const ov = document.createElement("div");
   ov.className = "kbm-ov";
   ov.id = "gs-ov";
-  ov.innerHTML = `<div class="kbm" role="dialog" aria-modal="true">
+  ov.innerHTML = `<div class="kbm kbm-stats" role="dialog" aria-modal="true">
     <div class="kbm-title">全库统计</div>
-    <div class="kbm-body" id="gs-body" style="max-height:none;overflow:visible">统计中…</div>
+    <div class="kbm-body" id="gs-body">统计中…</div>
     <div class="kbm-btns"><button class="iconbtn primary ss-close">关闭</button></div></div>`;
   document.body.appendChild(ov);
   const close = () => ov.remove();
@@ -669,17 +669,19 @@ async function showGlobalStats() {
   const maxTag = Math.max(1, ...(d.top_tags || []).map(t => t.n));
   const L = d.links || { total: 0, dead: 0, dead_docs: 0 };
   bodyEl.innerHTML = `
-    <div class="ss-grid">
-      <div class="ss-cell"><div class="ss-n">${d.n_docs.toLocaleString()}</div><div class="ss-l">文档</div></div>
-      <div class="ss-cell"><div class="ss-n">${d.total_cjk.toLocaleString()}</div><div class="ss-l">总字数（CJK）</div></div>
-      <div class="ss-cell"><div class="ss-n">${d.tagged_pct}%</div><div class="ss-l">标签覆盖</div></div>
-      <div class="ss-cell"><div class="ss-n" style="color:${L.dead ? "var(--rose)" : "var(--acc)"}">${L.dead}</div><div class="ss-l">死链 / 共 ${L.total} 链</div></div>
+    <div class="gkpi">
+      <div class="g"><div class="lab">文档</div><div class="num acc">${d.n_docs.toLocaleString()}</div><div class="sub">美化版 ${d.n_html} · 收藏 ${d.n_fav}</div></div>
+      <div class="g"><div class="lab">总字数</div><div class="num">${d.total_cjk.toLocaleString()}</div><div class="sub">CJK 字符</div></div>
+      <div class="g"><div class="lab">标签覆盖</div><div class="num ${d.tagged_pct < 50 ? "warn" : "acc"}">${d.tagged_pct}<span class="u">%</span></div><div class="sub">共 ${d.n_tag_types} 种标签</div></div>
+      <div class="g"><div class="lab">双链健康</div><div class="num ${L.dead ? "rose" : "acc"}">${L.dead}</div><div class="sub">死链 / 共 ${L.total} 链</div></div>
     </div>
     <div class="ss-sec">各域分布 · ${d.domains.length} 域</div>
-    <div class="ss-tags">${d.domains.map(x => `
-      <div class="ss-tag"><span class="ss-tag-name">${esc(x.label)}</span>
-        <span class="ss-bar"><i style="width:${Math.round(100 * x.n / maxDom)}%"></i></span>
-        <span class="ss-tag-n">${x.n}</span></div>`).join("")}</div>
+    <div class="ss-tags">${d.domains.map(x => {
+      const h = (window.HUES && HUES[x.id]) || 158;
+      return `
+      <div class="ss-tag"><span class="ss-tag-name"><i class="ss-dot" style="background:hsl(${h} 58% 45%)"></i>${esc(x.label)}</span>
+        <span class="ss-bar"><i style="width:${Math.round(100 * x.n / maxDom)}%;background:linear-gradient(90deg,hsl(${h} 52% 40%),hsl(${h} 68% 55%))"></i></span>
+        <span class="ss-tag-n">${x.n}</span></div>`;}).join("")}</div>
     <div class="ss-sec">Top 标签 · 共 ${d.n_tag_types} 种</div>
     <div class="ss-tags">${(d.top_tags || []).map(t => `
       <div class="ss-tag"><span class="ss-tag-name">${esc(t.tag)}</span>
