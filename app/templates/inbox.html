@@ -25,8 +25,8 @@
             <div class="rp">{{ it.rel }} · {{ it.size }}</div>
           </div>
           <a class="iconbtn" href="/raw/{{ it.rel }}" target="_blank">阅读</a>
-          <button class="iconbtn" onclick="inboxMove(this.closest('.inbox-row'))">⇄ 归档 / 移动…</button>
-          <button class="iconbtn danger" onclick="inboxDelete(this.closest('.inbox-row'))">🗑 丢弃</button>
+          <button class="iconbtn" onclick="inboxMove(this.closest('.inbox-row'))"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-.15em"><use href="#i-swap"/></svg> 归档 / 移动…</button>
+          <button class="iconbtn danger" onclick="inboxDelete(this.closest('.inbox-row'))"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-.15em"><use href="#i-trash"/></svg> 丢弃</button>
         </div>
         {% endfor %}
       </div>

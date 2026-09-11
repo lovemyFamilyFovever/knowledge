@@ -8,10 +8,13 @@ const toast = m => { const t = $("#toast"); t.innerHTML = m; t.classList.add("sh
 /* 统一构造 /doc URL：域根文档补 _root 段，逐段 encode，避免 404 */
 const docUrl = rel => { let s = String(rel).replace(/\.md$/, "").split("/").filter(Boolean); if (s.length === 2) s = [s[0], "_root", s[1]]; return "/doc/" + s.map(encodeURIComponent).join("/"); };
 
+/* 统一图标：引用 base.html 精灵表 #i-<name>，替代所有彩色 emoji */
+const icon = (n, s = 14) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex:none;display:inline-block;vertical-align:-.15em"><use href="#i-${n}"/></svg>`;
+
 /* ---------- 主题 ---------- */
 function applyTheme(t) {
   document.documentElement.setAttribute("data-theme", t);
-  const b = $("#theme-btn"); if (b) b.textContent = t === "dark" ? "☾" : "☀";
+  const b = $("#theme-btn"); if (b) b.innerHTML = icon(t === "dark" ? "moon" : "sun", 15);
   window.dispatchEvent(new CustomEvent("theme-changed", { detail: t }));
   try { localStorage.setItem("kb-theme", t); } catch (e) {}
 }
@@ -216,9 +219,9 @@ function renderCrumb() {
   const dirs = DOC.rel.split("/").slice(0, -1).join("/");
   crumb.innerHTML = `content<b>/</b>${esc(dirs)}<span class="sep">·</span><b>${esc(DOC.title)}</b><span class="spacer"></span>
     ${DOC.has_html ? `<button class="iconbtn" onclick="openPretty()" title="弹窗打开整页美化版">◈ 美化版</button>` : ""}
-    ${!DOC.is_html ? `<button class="iconbtn" onclick="openEditor()">✎ 编辑</button>
-    <button class="iconbtn" onclick="deleteDoc()" title="移入 content/_trash/">🗑 删除</button>` : ""}
-    <button class="iconbtn primary ${DOC.favorite ? "faved" : ""}" id="fav-btn" onclick="toggleFav()">${DOC.favorite ? "★ 已收藏" : "☆ 收藏"}</button>`;
+    ${!DOC.is_html ? `<button class="iconbtn" onclick="openEditor()">${icon("edit",13)} 编辑</button>
+    <button class="iconbtn" onclick="deleteDoc()" title="移入 content/_trash/">${icon("trash",13)} 删除</button>` : ""}
+    <button class="iconbtn primary ${DOC.favorite ? "faved" : ""}" id="fav-btn" onclick="toggleFav()">${icon("star",13)} ${DOC.favorite ? "已收藏" : "收藏"}</button>`;
 }
 
 function renderInfo() {
@@ -373,7 +376,7 @@ async function toggleFav() {
   const data = await r.json();
   DOC.favorite = data.favorite;
   const b = $("#fav-btn");
-  b.textContent = data.favorite ? "★ 已收藏" : "☆ 收藏";
+  b.innerHTML = `${icon("star",13)} ${data.favorite ? "已收藏" : "收藏"}`;
   b.classList.toggle("faved", data.favorite);
   // 同步树缓存里的收藏标记，收藏页/列表星星即时一致
   const s = findSub(DOC.domain, DOC.sub);
@@ -394,18 +397,18 @@ async function deleteDoc() {
   const btn = [...document.querySelectorAll("#crumb .iconbtn")].find(b => b.textContent.includes("删除"));
   if (!deleteArmed) {
     deleteArmed = true;
-    btn.textContent = "⚠ 确认删除？";
+    btn.innerHTML = `${icon("warn",13)} 确认删除？`;
     btn.style.borderColor = "var(--warn-edge)";
     btn.style.color = "var(--warn)";
     deleteArmTimer = setTimeout(() => {
       deleteArmed = false;
-      btn.textContent = "🗑 删除";
+      btn.innerHTML = `${icon("trash",13)} 删除`;
       btn.style.borderColor = ""; btn.style.color = "";
     }, 3000);
     return;
   }
   clearTimeout(deleteArmTimer); deleteArmed = false;
-  btn.textContent = "🗑 删除"; btn.style.borderColor = ""; btn.style.color = "";
+  btn.innerHTML = `${icon("trash",13)} 删除`; btn.style.borderColor = ""; btn.style.color = "";
   // 乐观更新：先改 UI，后台请求失败再提示（文档在回收站可找回）
   const rel = DOC.rel, deletedTitle = DOC.title;
   const s = findSub(DOC.domain, DOC.sub);
@@ -503,7 +506,7 @@ function openCtxMenu(x, y, items) {
   m.id = "ctx-menu";
   m.innerHTML = items.map((it, i) =>
     it === "-" ? `<div class="ctx-sep"></div>` :
-    `<button class="ctx-item ${it.danger ? "danger" : ""}" data-i="${i}">${esc(it.label)}</button>`).join("");
+    `<button class="ctx-item ${it.danger ? "danger" : ""}" data-i="${i}">${it.icon ? `<span class="ctx-ic">${it.icon}</span>` : ""}<span>${esc(it.label)}</span></button>`).join("");
   document.body.appendChild(m);
   const r = m.getBoundingClientRect();
   m.style.left = Math.min(x, innerWidth - r.width - 8) + "px";
@@ -613,7 +616,7 @@ async function showSubStats(dom, sub) {
   ov.className = "kbm-ov";
   ov.id = "ss-ov";
   ov.innerHTML = `<div class="kbm kbm-stats" role="dialog" aria-modal="true">
-    <div class="kbm-title">📊 ${esc(s.domain_label)} / ${esc(s.label)} · 目录统计</div>
+    <div class="kbm-title">${icon("chart", 16)} ${esc(s.domain_label)} / ${esc(s.label)} · 目录统计</div>
     <div class="kbm-body">
     <div class="ss-grid">
       <div class="ss-cell"><div class="ss-n">${s.n_docs}</div><div class="ss-l">文档数</div></div>
@@ -708,7 +711,7 @@ async function moveDocPrompt(rel) {
   ov.className = "kbm-ov";
   ov.id = "mv-ov";
   ov.innerHTML = `<div class="kbm kbm-mv" role="dialog" aria-modal="true">
-    <div class="kbm-title">⇄ 移动 / 重命名</div>
+    <div class="kbm-title">${icon("swap", 16)} 移动 / 重命名</div>
     <div class="mv-src mono">${esc(rel)}</div>
     <div class="mv-cols">
       <div class="mv-treebox">
@@ -759,12 +762,12 @@ async function moveDocPrompt(rel) {
           const isCur = dir === srcDir;
           const sel = state.dom === d.id && state.sub === s.id;
           return `<div class="mv-node mv-sub ${sel ? "sel" : ""} ${isCur ? "cur" : ""}" data-dom="${esc(d.id)}" data-sub="${esc(s.id)}">
-            <span class="mv-tw"></span><span class="mv-ic">📄</span>
+            <span class="mv-tw"></span><span class="mv-ic">${icon("file", 13)}</span>
             <span class="mv-lb">${esc(s.label)}</span><span class="mv-n">${s.n}</span></div>`;
         }).join("");
       return `<div class="mv-domrow ${state.open.has(d.id) ? "open" : ""}">
           <div class="mv-node mv-dom" data-dom="${esc(d.id)}">
-            <span class="mv-tw">${open ? "▾" : "▸"}</span><span class="mv-ic">🗂</span>
+            <span class="mv-tw">${open ? "▾" : "▸"}</span><span class="mv-ic">${icon("folder", 13)}</span>
             <span class="mv-lb">${esc(d.label)}</span><span class="mv-n">${d.n}</span></div>
           ${open ? subs : ""}
         </div>`;
@@ -907,11 +910,11 @@ document.addEventListener("contextmenu", e => {
       const rel = docRelOf(CUR.domain, CUR.sub, name);
       const title = (docA.querySelector(".doc-t") || {}).textContent || name;
       openCtxMenu(e.clientX, e.clientY, [
-        { label: "📈 统计信息", fn: () => showStats(rel) },
-        { label: "⧉ 复制 [[双链]]", fn: () => copyText(`[[${title.trim()}]]`, "已复制双链") },
-        { label: "⧉ 复制 Obsidian URI", fn: () => copyText(`obsidian://open?vault=${encodeURIComponent("knowledge")}&file=${encodeURIComponent(rel.replace(/\.md$/, ""))}`, "已复制 URI") },
+        { icon: icon("trend"), label: "统计信息", fn: () => showStats(rel) },
+        { icon: icon("copy"), label: "复制 [[双链]]", fn: () => copyText(`[[${title.trim()}]]`, "已复制双链") },
+        { icon: icon("copy"), label: "复制 Obsidian URI", fn: () => copyText(`obsidian://open?vault=${encodeURIComponent("knowledge")}&file=${encodeURIComponent(rel.replace(/\.md$/, ""))}`, "已复制 URI") },
         "-",
-        { label: "⇄ 移动 / 重命名…", fn: () => moveDocPrompt(rel) },
+        { icon: icon("swap"), label: "移动 / 重命名…", fn: () => moveDocPrompt(rel) },
       ]);
       return;
     }
@@ -921,7 +924,7 @@ document.addEventListener("contextmenu", e => {
       const dom = subA.dataset.dom, sub = subA.dataset.sub;
       const base = sub === "_root" ? dom : `${dom}/${sub}`;
       openCtxMenu(e.clientX, e.clientY, [
-        { label: "📂 在此新建文档…", fn: async () => {
+        { icon: icon("folder-open"), label: "在此新建文档…", fn: async () => {
             const res = await kbModal({
               title: "新建文档",
               body: `将在 <span class='mono'>${esc(base)}/</span> 下创建 Markdown 文件，首行自动写入标题。`,
@@ -936,7 +939,7 @@ document.addEventListener("contextmenu", e => {
             if (r.ok) { TREE = null; localStorage.removeItem(LS_TREE); location.href = "/doc/" + rel.slice(0, -3).split("/").map(encodeURIComponent).join("/"); }
             else toast("创建失败：" + r.status);
           } },
-        { label: "⧉ 复制目录路径", fn: () => copyText(base, "已复制路径") },
+        { icon: icon("copy"), label: "复制目录路径", fn: () => copyText(base, "已复制路径") },
       ]);
     }
     return;
@@ -949,9 +952,9 @@ document.addEventListener("contextmenu", e => {
     if (!m) return;
     const [_, dom, firstSub] = m;
     openCtxMenu(e.clientX, e.clientY, [
-      { label: "📊 统计信息", fn: () => showSubStats(dom, firstSub) },
-      { label: "📂 进入该目录", fn: () => { location.href = dcard.getAttribute("href"); } },
-      { label: "⧉ 复制目录路径", fn: () => copyText(dom, "已复制路径") },
+      { icon: icon("chart"), label: "统计信息", fn: () => showSubStats(dom, firstSub) },
+      { icon: icon("folder"), label: "进入该目录", fn: () => { location.href = dcard.getAttribute("href"); } },
+      { icon: icon("copy"), label: "复制目录路径", fn: () => copyText(dom, "已复制路径") },
     ]);
     return;
   }
@@ -965,9 +968,9 @@ document.addEventListener("contextmenu", e => {
     if (!dm) { copyText(rp || title, "已复制路径"); return; } // _inbox 外链行：只给路径
     const rel = decodeURIComponent(dm[1]) + ".md";
     openCtxMenu(e.clientX, e.clientY, [
-      { label: "📈 统计信息", fn: () => showStats(rel) },
-      { label: "⧉ 复制 [[双链]]", fn: () => copyText(`[[${title.trim()}]]`, "已复制双链") },
-      { label: "⇄ 移动 / 重命名…", fn: () => moveDocPrompt(rel) },
+      { icon: icon("trend"), label: "统计信息", fn: () => showStats(rel) },
+      { icon: icon("copy"), label: "复制 [[双链]]", fn: () => copyText(`[[${title.trim()}]]`, "已复制双链") },
+      { icon: icon("swap"), label: "移动 / 重命名…", fn: () => moveDocPrompt(rel) },
     ]);
   }
 });

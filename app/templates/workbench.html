@@ -48,9 +48,9 @@
     <div class="crumb" id="crumb">
       content<b>/</b>{{ doc.rel.split('/')[0:-1]|join('/') }}<span class="sep">·</span><b>{{ doc.title }}</b><span class="spacer"></span>
       {% if doc.has_html %}<a class="iconbtn" href="/raw/{{ doc.html_rel }}" target="_blank" title="打开整页美化版">◈ 美化版</a>{% endif %}
-      {% if not doc.is_html %}<button class="iconbtn" onclick="openEditor()">✎ 编辑</button>
-      <button class="iconbtn" onclick="deleteDoc()" title="移入 content/_trash/">🗑 删除</button>{% endif %}
-      <button class="iconbtn primary" id="fav-btn" onclick="toggleFav()">{% if doc.favorite %}★ 已收藏{% else %}☆ 收藏{% endif %}</button>
+      {% if not doc.is_html %}<button class="iconbtn" onclick="openEditor()"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-.15em"><use href="#i-edit"/></svg> 编辑</button>
+      <button class="iconbtn" onclick="deleteDoc()" title="移入 content/_trash/"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-.15em"><use href="#i-trash"/></svg> 删除</button>{% endif %}
+      <button class="iconbtn primary{% if doc.favorite %} faved{% endif %}" id="fav-btn" onclick="toggleFav()"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-.15em"><use href="#i-star"/></svg> {% if doc.favorite %}已收藏{% else %}收藏{% endif %}</button>
     </div>
     <div class="article"><div class="article-inner" id="article"></div></div>
     <div class="editor" id="editor">
