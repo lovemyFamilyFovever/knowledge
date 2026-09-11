@@ -637,6 +637,56 @@ function openCtxStats(dom, sub) {
   showSubStats(dom, sub);
 }
 
+/* ---------- 全库聚合统计（顶栏全局「统计」按钮）----------
+   与目录统计共用 .ss-* 视觉；数据来自 /api/globalstats。 */
+async function showGlobalStats() {
+  const prev = document.getElementById("gs-ov");
+  if (prev) prev.remove();
+  const ov = document.createElement("div");
+  ov.className = "kbm-ov";
+  ov.id = "gs-ov";
+  ov.innerHTML = `<div class="kbm" role="dialog" aria-modal="true">
+    <div class="kbm-title">全库统计</div>
+    <div class="kbm-body" id="gs-body" style="max-height:none;overflow:visible">统计中…</div>
+    <div class="kbm-btns"><button class="iconbtn primary ss-close">关闭</button></div></div>`;
+  document.body.appendChild(ov);
+  const close = () => ov.remove();
+  ov.querySelector(".ss-close").onclick = close;
+  ov.addEventListener("mousedown", e => { if (e.target === ov) close(); });
+  ov.addEventListener("keydown", e => { if (e.key === "Escape") close(); });
+  ov.querySelector(".ss-close").focus();
+  const bodyEl = ov.querySelector("#gs-body");
+  let d;
+  try {
+    const r = await fetch("/api/globalstats");
+    if (!r.ok) { bodyEl.textContent = "统计失败：" + r.status; return; }
+    d = await r.json();
+  } catch (e) { bodyEl.textContent = "统计失败：" + e; return; }
+  const maxDom = Math.max(1, ...d.domains.map(x => x.n));
+  const maxTag = Math.max(1, ...(d.top_tags || []).map(t => t.n));
+  const L = d.links || { total: 0, dead: 0, dead_docs: 0 };
+  bodyEl.innerHTML = `
+    <div class="ss-grid">
+      <div class="ss-cell"><div class="ss-n">${d.n_docs.toLocaleString()}</div><div class="ss-l">文档</div></div>
+      <div class="ss-cell"><div class="ss-n">${d.total_cjk.toLocaleString()}</div><div class="ss-l">总字数（CJK）</div></div>
+      <div class="ss-cell"><div class="ss-n">${d.tagged_pct}%</div><div class="ss-l">标签覆盖</div></div>
+      <div class="ss-cell"><div class="ss-n" style="color:${L.dead ? "var(--rose)" : "var(--acc)"}">${L.dead}</div><div class="ss-l">死链 / 共 ${L.total} 链</div></div>
+    </div>
+    <div class="ss-sec">各域分布 · ${d.domains.length} 域</div>
+    <div class="ss-tags">${d.domains.map(x => `
+      <div class="ss-tag"><span class="ss-tag-name">${esc(x.label)}</span>
+        <span class="ss-bar"><i style="width:${Math.round(100 * x.n / maxDom)}%"></i></span>
+        <span class="ss-tag-n">${x.n}</span></div>`).join("")}</div>
+    <div class="ss-sec">Top 标签 · 共 ${d.n_tag_types} 种</div>
+    <div class="ss-tags">${(d.top_tags || []).map(t => `
+      <div class="ss-tag"><span class="ss-tag-name">${esc(t.tag)}</span>
+        <span class="ss-bar"><i style="width:${Math.round(100 * t.n / maxTag)}%"></i></span>
+        <span class="ss-tag-n">${t.n}</span></div>`).join("") || `<div class="kbm-li">无标签</div>`}</div>
+    <div class="ss-sec">其他</div>
+    <div class="kbm-li">美化版 HTML ${d.n_html} 份 · 收藏 ${d.n_fav} 篇 · 收件箱待归档 ${d.inbox}</div>
+    ${L.dead ? `<div class="kbm-li" style="color:var(--rose)">${L.dead} 条死链分布在 ${L.dead_docs} 篇文档中</div>` : ""}`;
+}
+
 /* ---------- 移动 / 重命名：目录树选择器 ----------
    树节点 = 真实目录（域可展开为子目录）；目标目录点击选择，
    文件名可改，路径实时预览；同名冲突/越界/空名前端拦截，后端 /api/move 兜底。 */
@@ -973,10 +1023,4 @@ if (docData) {
   } catch (e) { console.error("初始渲染失败", e); }
 }
 if (WORKBENCH) wireDragMove();
-// 左栏「分类目录」header 的独立统计按钮：统计当前域/子目录
-const dirStatsBtn = document.getElementById("dir-stats-btn");
-if (dirStatsBtn) dirStatsBtn.onclick = () => {
-  if (!CUR) { toast("先打开一个文档再统计"); return; }
-  showSubStats(CUR.domain, CUR.sub);
-};
 loadTree().then(() => renderTree());

@@ -44,6 +44,7 @@
     <kbd>/</kbd>
   </div>
   <div class="top-right">
+    <button class="pill" id="global-stats-btn" onclick="showGlobalStats()" title="全库统计：总量 / 各域分布 / 标签覆盖 / 双链健康"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex:none;display:block"><path d="M3 3v18h18"/><path d="m7 15 4-6 4 3 5-8"/></svg><span>统计</span></button>
     <a class="pill" href="/inbox" title="收件箱：新收录的待整理内容先进这里，阅读后归档进各领域"><span>收件箱</span><span class="n">{{ inbox_n|default(0) }}</span></a>
     <button class="pill ok" onclick="const q=document.getElementById('q'); q.focus(); q.select();" title="全文索引已就绪；点击聚焦搜索框（快捷键 / 支持语义检索，前缀 ?）"><span class="dot"></span><span>全文检索</span><span class="n">{{ n_md|default(fts_n)|default(0) }}</span></button>
     <button class="pill" id="theme-btn" title="切换白天 / 夜间">☀</button>

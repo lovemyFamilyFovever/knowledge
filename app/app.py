@@ -591,6 +591,61 @@ def create_app(root: Path | None = None) -> Flask:
                             "subs": sorted(subs, key=lambda x: -x["n"])})
         return jsonify({"domains": domains})
 
+    @app.get("/api/globalstats")
+    def api_globalstats():
+        """全库聚合统计（顶栏全局「统计」按钮）：总量 / 总字数 / 各域分布 /
+        标签覆盖率与 Top 标签 / 双链健康度。与目录统计共用同一套 .ss-* 视觉。"""
+        domains = domains_cached()
+        tax = load_taxonomy(content)
+        n_docs = n_tagged = total_cjk = untagged = fav = 0
+        tag_count = {}
+        per_domain = []
+        for dom in domains:
+            dom_cjk = dom_untag = 0
+            for sobj in dom["subs"]:
+                for d in sobj["docs"]:
+                    n_docs += 1
+                    if d.get("favorite"):
+                        fav += 1
+                    tags = d.get("tags") or []
+                    if tags:
+                        n_tagged += 1
+                        for t in tags:
+                            tag_count[t] = tag_count.get(t, 0) + 1
+                    else:
+                        dom_untag += 1
+                        untagged += 1
+                    p = find_doc(content, dom["id"], sobj["id"], d["name"])
+                    if p:
+                        _, body = parse_frontmatter(p.read_text(encoding="utf-8", errors="replace"))
+                        cjk = len(re.findall(r"[\u4e00-\u9fff]", body))
+                        total_cjk += cjk
+                        dom_cjk += cjk
+            per_domain.append({"id": dom["id"], "label": domain_label(tax, dom["id"]),
+                               "n": dom["n"], "cjk": dom_cjk, "untagged": dom_untag})
+        n_html = sum(1 for p in content.rglob("*.html")
+                     if not any(part in SKIP_DIRS or part.startswith("_") for part in p.parts))
+        n_links = n_dead = dead_docs = 0
+        try:
+            con = open_db(indexes)
+            try:
+                n_links, = con.execute("SELECT count(*) FROM links").fetchone()
+                n_dead, = con.execute("SELECT count(*) FROM links WHERE resolved=0").fetchone()
+                dead_docs, = con.execute("SELECT count(DISTINCT src) FROM links WHERE resolved=0").fetchone()
+            finally:
+                con.close()
+        except Exception:
+            pass  # FTS 索引缺失/损坏时双链健康度缺省为 0，不阻塞统计弹窗
+        top_tags = [{"tag": t, "n": n} for t, n in sorted(tag_count.items(), key=lambda kv: -kv[1])[:10]]
+        return jsonify({
+            "n_docs": n_docs, "n_html": n_html, "n_fav": fav, "inbox": inbox_count(content),
+            "total_cjk": total_cjk, "untagged": untagged,
+            "tagged_pct": round(100 * n_tagged / max(1, n_docs)),
+            "top_tags": top_tags, "n_tag_types": len(tag_count),
+            "domains": per_domain,
+            "links": {"total": n_links, "dead": n_dead, "dead_docs": dead_docs},
+        })
+
     @app.get("/api/substats")
     def api_substats():
         """目录级统计：某 domain/sub 下所有文档的篇数/字数(CJK)/标签分布/最近更新。"""
