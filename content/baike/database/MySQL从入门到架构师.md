@@ -1,6 +1,6 @@
 ---
 title: "MySQL从入门到架构师"
-tags: []
+tags: [数据库, MySQL]
 source: "baike"
 source_path: "技术文章 / 数据库与存储"
 collected: "2026-09-05"
@@ -9,7 +9,7 @@ status: "imported"
 
 # MySQL从入门到架构师
 
-# MySQL从入门到架构师完整指南
+> 📌 **导航**：本文是 **MySQL 从入门到架构师全景**——存储引擎（Buffer Pool / Change Buffer / Redo / Undo / Binlog）、B+树索引与优化（聚簇 / 二级 / 覆盖 / ICP / MRR）、事务隔离与 MVCC、锁机制（行锁 / 间隙锁 / Next-Key / MDL）、查询优化与慢查询。索引与查询优化详见 [[索引与查询优化术语]]；事务与并发控制详见 [[事务与并发控制术语]]；表结构设计详见 [[数据库设计术语]]；分库分表见 [[分库分表]]；读写分离见 [[读写分离]]；同类深入见 [[MySQL深入]]。
 
 ## 一、存储引擎深度解析
 
@@ -722,3 +722,12 @@ SET SESSION long_query_time = 0.5;
 ```bash
 # 使用mysqldumpslow
 mysqldumpslow -s t -t 10 /var/log/mysql/s
+```
+
+## 相关术语
+
+[[MySQL深入]]、[[索引与查询优化术语]]、[[事务与并发控制术语]]、[[数据库设计术语]]、[[分库分表]]、[[读写分离]]、[[NoSQL 数据库术语]]
+
+## 参考资料
+
+建议人工核验：可参考 MySQL 官方手册（dev.mysql.com/doc）、*High Performance MySQL* (Schwartz 等)、《MySQL 技术内幕：InnoDB 存储引擎》(姜承尧)。

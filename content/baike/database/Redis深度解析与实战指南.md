@@ -1,6 +1,6 @@
 ---
 title: "Redis深度解析与实战指南"
-tags: []
+tags: [数据库, Redis]
 source: "baike"
 source_path: "技术文章 / 数据库与存储"
 collected: "2026-09-05"
@@ -9,7 +9,7 @@ status: "imported"
 
 # Redis深度解析与实战指南
 
-# Redis深度解析与实战指南
+> 📌 **导航**：本文是 **Redis 深度解析与实战指南**——数据结构（String/Hash/List/Set/ZSet/Stream/HyperLogLog/Bitmap/Geo）、底层实现（SDS/ziplist/quicklist/skiplist/intset/hashtable）、内存淘汰与碎片、持久化（RDB/AOF/混合）、主从复制与 Sentinel、Cluster 分片、分布式锁（SETNX/Redlock）。同类深入见 [[Redis深入]]；NoSQL 全景见 [[NoSQL 数据库术语]]；分库分表见 [[分库分表]]；读写分离见 [[读写分离]]。
 
 ## 1) Redis数据结构详解
 
@@ -364,7 +364,7 @@ Redis 4.0+ 提供8种淘汰策略：
 ```conf
 # redis.conf 配置
 maxmemory 4gb
-maxmemory-policy allkeys-lru  # 默认策略
+maxmemory-policy allkeys-lru  # 常用策略之一（Redis 默认是 noeviction）
 ```
 
 **策略详解**：
@@ -947,3 +947,12 @@ class Redlock:
                     'resource': resource,
                     'value': str(uuid.uuid4()),
                     'validity_time
+```
+
+## 相关术语
+
+[[Redis深入]]、[[NoSQL 数据库术语]]、[[分库分表]]、[[读写分离]]、[[数据库设计术语]]
+
+## 参考资料
+
+建议人工核验：可参考 Redis 官方文档（redis.io/docs）、*Redis 设计与实现*(黄健宏)、*Redis 实战*(Josiah Carlson)。
