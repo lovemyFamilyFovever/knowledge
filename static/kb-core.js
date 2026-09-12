@@ -16,7 +16,7 @@
   if (window.KB && window.KB.__coreLoaded) return;
   var KB = (window.KB = window.KB || {});
   KB.__coreLoaded = true;
-  KB.VERSION = 1;
+  KB.VERSION = 2; // v2：KB.overlay 原语 + palette 客户端路由 + dropCache
 
   /* ==================================================================
      [1] util —— 被 pages/*.js 复用（app.js 的 $ / esc / toast 是 const，外部读不到）
@@ -107,6 +107,58 @@
   };
 
   /* ==================================================================
+     [1.5] overlay —— 弹层原语（问题13：弹层无焦点管理的统一收口）
+     KB.overlay.open({ className, html, onClose, initialFocus })
+       → { root, close(reason) }
+     契约：插入 body 的容器带 role=dialog / aria-modal；Tab 被困在弹层内；
+     Esc 关闭并回调 onClose("esc")；关闭后焦点归还打开前的元素。
+     所有弹层（kbModal / 统计 / 右键菜单 / 美化版弹窗）必须经此原语，
+     不得再各写一套 Esc 监听（此前 overlay 不聚焦导致 Esc「碰巧能用」）。
+     ================================================================== */
+  var FOCUSABLE = 'a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])';
+  KB.overlay = { openCount: 0, open: function (opt) {
+    opt = opt || {};
+    KB.overlay.openCount++;
+      var lastFocus = document.activeElement;
+      var root = document.createElement("div");
+      root.className = opt.className || "kbm-ov";
+      root.setAttribute("role", "dialog");
+      root.setAttribute("aria-modal", "true");
+      if (opt.html != null) root.innerHTML = opt.html;
+      document.body.appendChild(root);
+      var closed = false;
+      function onKey(e) {
+        if (e.key === "Escape") { e.stopPropagation(); e.preventDefault(); close("esc"); return; }
+        if (e.key !== "Tab" || closed) return;
+        var f = Array.prototype.filter.call(root.querySelectorAll(FOCUSABLE), function (x) { return x.offsetParent !== null; });
+        if (!f.length) return;
+        var first = f[0], last = f[f.length - 1];
+        if (e.shiftKey && (document.activeElement === first || !root.contains(document.activeElement))) {
+          e.preventDefault(); last.focus();
+        } else if (!e.shiftKey && document.activeElement === last) {
+          e.preventDefault(); first.focus();
+        }
+      }
+      function close(reason) {
+        if (closed) return;
+        closed = true;
+        KB.overlay.openCount--;
+        document.removeEventListener("keydown", onKey, true);
+        if (root.parentNode) root.remove();
+        if (opt.returnFocus !== false && lastFocus && typeof lastFocus.focus === "function") {
+          try { lastFocus.focus(); } catch (e) {}
+        }
+        if (opt.onClose) opt.onClose(reason);
+      }
+      document.addEventListener("keydown", onKey, true);
+      var init = typeof opt.initialFocus === "function" ? opt.initialFocus(root) : null;
+      var target = init || root.querySelector(FOCUSABLE);
+      if (target) { try { target.focus(); } catch (e) {} }
+      return { root: root, close: close };
+    }
+  };
+
+  /* ==================================================================
      [2] api —— 全部后端接口的 fetch 封装，统一 ok/error 信封
      ================================================================== */
   var ERR_TEXT = {
@@ -189,12 +241,14 @@
      只写 4 个 CSS 变量；主题永远走 applyTheme() + kb-theme，不进这里
      ================================================================== */
   var LS_PREF = "kb-readpref";
-  var PREF_DEF = { scale: 1.0, measure: 760, font: "sans", line: 1.75 };
+  /* 行宽限宽已取消（用户要求正文撑满）——measure 保留为 null 仅作旧 localStorage 兼容，
+     get()/set()/apply() 均忽略它，--kb-measure 恒为 none。 */
+  var PREF_DEF = { scale: 1.0, font: "sans", line: 1.75 };
   var FONT_MAP = { sans: "var(--sans)", serif: "var(--disp)", mono: "var(--mono)" };
 
   var prefs = (KB.prefs = {
     LS: LS_PREF,
-    def: function () { return { scale: 1.0, measure: 760, font: "sans", line: 1.75 }; },
+    def: function () { return { scale: 1.0, font: "sans", line: 1.75 }; },
     get: function () {
       var v = util.getJSON(LS_PREF, null) || {};
       /* 注意：字段缺失时必须显式回落到 PREF_DEF。
@@ -202,7 +256,6 @@
          而 0.85 是 truthy，|| 永远不生效，会导致首次访问的用户拿到 0.85 倍字号 / 520px 行宽。 */
       return {
         scale: (v.scale == null || v.scale === "") ? PREF_DEF.scale : util.clamp(v.scale, 0.85, 1.6),
-        measure: (v.measure == null || v.measure === "") ? PREF_DEF.measure : Math.round(util.clamp(v.measure, 520, 1100)),
         font: FONT_MAP[v.font] ? v.font : PREF_DEF.font,
         line: (v.line == null || v.line === "") ? PREF_DEF.line : util.clamp(v.line, 1.3, 2.4)
       };
@@ -211,7 +264,6 @@
       var cur = prefs.get();
       Object.keys(patch || {}).forEach(function (k) { cur[k] = patch[k]; });
       cur.scale = util.clamp(cur.scale, 0.85, 1.6);
-      cur.measure = Math.round(util.clamp(cur.measure, 520, 1100));
       cur.line = util.clamp(cur.line, 1.3, 2.4);
       if (!FONT_MAP[cur.font]) cur.font = PREF_DEF.font;
       util.setJSON(LS_PREF, cur);
@@ -223,11 +275,12 @@
       prefs.apply();
       return prefs.get();
     },
-    /** 只写 4 个 CSS 变量到 documentElement.style（内联优先级最高，不用 !important） */
+    /** 只写 3 个 CSS 变量到 documentElement.style（内联优先级最高，不用 !important）。
+        行宽限宽已取消：--kb-measure 恒为 none（正文撑满），不再由偏好控制。 */
     apply: function () {
       var p = prefs.get(), s = document.documentElement.style;
       s.setProperty("--kb-fs-scale", String(p.scale));
-      s.setProperty("--kb-measure", p.measure + "px");
+      s.setProperty("--kb-measure", "none");
       s.setProperty("--kb-font", FONT_MAP[p.font] || FONT_MAP.sans);
       s.setProperty("--kb-line", String(p.line));
       return p;
@@ -243,11 +296,6 @@
         '  <label for="kb-pref-scale">正文字号</label>' +
         '  <input type="range" id="kb-pref-scale" min="0.85" max="1.6" step="0.05" value="' + p.scale + '">' +
         '  <output id="kb-pref-scale-o">' + p.scale.toFixed(2) + '×</output>' +
-        "</div>" +
-        '<div class="kb-pref-row">' +
-        '  <label for="kb-pref-measure">行宽</label>' +
-        '  <input type="range" id="kb-pref-measure" min="520" max="1100" step="20" value="' + p.measure + '">' +
-        '  <output id="kb-pref-measure-o">' + p.measure + "px</output>" +
         "</div>" +
         '<div class="kb-pref-row">' +
         '  <label for="kb-pref-line">行高</label>' +
@@ -269,16 +317,11 @@
       if (!root || root.dataset.bound) return;
       root.dataset.bound = "1";
       var scale = root.querySelector("#kb-pref-scale");
-      var measure = root.querySelector("#kb-pref-measure");
       var line = root.querySelector("#kb-pref-line");
       var font = root.querySelector("#kb-pref-font");
       if (scale) scale.addEventListener("input", function () {
         root.querySelector("#kb-pref-scale-o").textContent = Number(scale.value).toFixed(2) + "×";
         prefs.set({ scale: Number(scale.value) });
-      });
-      if (measure) measure.addEventListener("input", function () {
-        root.querySelector("#kb-pref-measure-o").textContent = measure.value + "px";
-        prefs.set({ measure: Number(measure.value) });
       });
       if (line) line.addEventListener("input", function () {
         root.querySelector("#kb-pref-line-o").textContent = Number(line.value).toFixed(2);
@@ -289,7 +332,6 @@
       if (reset) reset.addEventListener("click", function () {
         var d = prefs.reset();
         if (scale) { scale.value = d.scale; root.querySelector("#kb-pref-scale-o").textContent = d.scale.toFixed(2) + "×"; }
-        if (measure) { measure.value = d.measure; root.querySelector("#kb-pref-measure-o").textContent = d.measure + "px"; }
         if (line) { line.value = d.line; root.querySelector("#kb-pref-line-o").textContent = d.line.toFixed(2); }
         if (font) font.value = d.font;
         util.toast("阅读偏好已恢复默认");
@@ -486,6 +528,13 @@
       util.toast("未识别的命令：" + util.esc(key));
       return false;
     }
+    /* 问题12：目标是阅读页内文档/分类且当前就在 workbench → 走 app.js 客户端路由
+       （~20ms 换文档，且经 dirty guard 保护）；否则整页跳转。 */
+    if (a && typeof window.navigate === "function" && document.getElementById("article")
+        && /^\/(doc|browse)\//.test(a)) {
+      window.navigate(a, true);
+      return true;
+    }
     if (a) { location.href = a; return true; }
     return false;
   }
@@ -653,6 +702,9 @@
       palette.toggle();
       return true;
     }
+    /* KB.overlay 系弹层在场时让位：Esc 由弹层自身处理（问题13），
+       其余按键一律不劫持，防止「弹层开着按 j 也翻列表」的双动作。 */
+    if (KB.overlay && KB.overlay.openCount > 0) return false;
     /* ② Escape：关补全 → 关面板 → 关帮助 → 关编辑器（保留 app.js 原有行为） */
     if (e.key === "Escape") {
       if (KB.wl && KB.wl.suggestOpen && KB.wl.suggestOpen()) { KB.wl.hideSuggest(); e.preventDefault(); return true; }
@@ -857,7 +909,7 @@
         return orig.apply(self, args);
       };
       if (typeof window.kbModal === "function") {
-        return window.kbModal({ title: util.icon("i-warning-triangle", 15) + " 存在断链", body: body, danger: true, confirmText: "仍然保存" })
+        return window.kbModal({ title: util.icon("i-warning-triangle", 15) + " 存在断链", body: body, danger: true, confirmText: "仍然保存", cancelText: "回去改" })
           .then(function (res) { return proceed(!!res); });
       }
       return Promise.resolve(proceed(window.confirm("检测到 " + wl.dead.length + " 处断链（" + names + more + "）。\n确定现在保存？")));

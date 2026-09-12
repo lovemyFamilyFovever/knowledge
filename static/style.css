@@ -170,6 +170,15 @@ html[data-theme="dark"] .brand .zh{background:linear-gradient(92deg,var(--brand-
 .searchbox kbd{font:500 10.5px/1 var(--mono);color:var(--faint);border:1px solid var(--edge);border-radius:4px;padding:2px 6px}
 .searchbox.semantic kbd{color:var(--info);border-color:color-mix(in oklab,var(--info),transparent 60%)}
 .top-right{display:flex;align-items:center;gap:8px}
+/* 一级导航（问题12）：阅读/复习/术语/统计显式入口，服务端渲染 active 高亮 */
+.topnav{display:flex;gap:2px;margin-left:4px}
+.topnav .tn{font:600 12.5px/1 var(--sans);letter-spacing:.06em;color:var(--muted);padding:8px 12px;border-radius:9px;
+  text-decoration:none;transition:.15s;white-space:nowrap}
+.topnav .tn:hover{color:var(--seed-fg);background:var(--acc-soft)}
+.topnav .tn.on{color:var(--acc);background:var(--acc-soft)}
+/* 降级后的图标 pill（统计快照 / 收件箱 badge） */
+.pill.icon-only{padding:0 9px}
+.pill.icon-only .n{margin-left:5px}
 .pill{display:inline-flex;align-items:center;gap:6px;height:26px;padding:0 4px 0 8px;border-radius:var(--radius-pill);
   border:1px solid var(--edge);background:color-mix(in oklab,var(--seed-surface),transparent 40%);
   font-size:11.5px;font-weight:500;color:color-mix(in oklab,var(--seed-fg),transparent 15%);letter-spacing:.02em;cursor:pointer;transition:.2s;white-space:nowrap}
@@ -340,9 +349,14 @@ html[data-theme="dark"] .html-frame{background:color-mix(in oklab,var(--seed-sur
 /* [9] 右栏 rail ===== */
 .rail{display:flex;flex-direction:column;min-height:0}
 .rtabs{flex:none;display:flex;border-bottom:1px solid var(--hairline);position:relative}
-.rtab{flex:1;text-align:center;padding:11px 0;font-size:11.5px;letter-spacing:.14em;color:var(--faint);cursor:pointer;font-family:var(--mono);border-bottom:2px solid transparent;transition:.18s;user-select:none}
+.rtab{flex:1;text-align:center;padding:11px 0;font-size:11.5px;letter-spacing:.14em;color:var(--faint);cursor:pointer;font-family:var(--mono);border:0;border-bottom:2px solid transparent;transition:.18s;user-select:none;background:none}
 .rtab:hover{color:var(--muted)}
 .rtab.active{color:var(--acc);border-bottom-color:var(--acc)}
+.rtab:focus-visible{outline:2px solid var(--acc-edge);outline-offset:-2px}
+/* 加载骨架（问题14：openDoc fetch 期间 3 行灰条，慢盘/索引重建时不再静默） */
+.kb-skeleton{padding:20px 4px;display:flex;flex-direction:column;gap:14px}
+.kb-skeleton i{height:14px;border-radius:7px;background:linear-gradient(90deg,var(--edge) 25%,var(--edge-hi) 50%,var(--edge) 75%);background-size:200% 100%;animation:kbSkl 1.2s linear infinite}
+@keyframes kbSkl{from{background-position:200% 0}to{background-position:-200% 0}}
 .rpane{flex:1;overflow-y:auto;padding:14px;display:none}
 .rpane.active{display:block;animation:rise .3s var(--ease-out)}
 .toc a{display:block;font-size:13px;color:var(--muted);text-decoration:none;padding:6px 9px;border-radius:6px;border-left:2px solid transparent;transition:.15s;line-height:1.5;cursor:pointer}
@@ -476,8 +490,8 @@ html[data-theme="dark"] .kbm-input{background:color-mix(in oklab,var(--seed-surf
 .kbm-input:focus{border-color:var(--acc-edge);box-shadow:0 0 0 3px var(--acc-soft)}
 .kbm-btns{display:flex;justify-content:flex-end;gap:8px;margin-top:6px}
 .kbm-btns .primary.danger{color:var(--danger);background:color-mix(in oklab,var(--danger),transparent 90%);border-color:color-mix(in oklab,var(--danger),transparent 55%)}
-/* 右键菜单 */
-#ctx-menu{position:fixed;z-index:90;border:1px solid var(--edge-hi);border-radius:10px;padding:5px;min-width:208px;
+/* 右键菜单（#ctx-menu 旧 id / .ctx-menu KB.overlay 实例并存） */
+#ctx-menu,.ctx-menu{position:fixed;z-index:90;border:1px solid var(--edge-hi);border-radius:10px;padding:5px;min-width:208px;
   background:var(--glass-strong);backdrop-filter:blur(22px) saturate(1.15);
   box-shadow:var(--shadow-hi);animation:rise .15s var(--ease-out)}
 .ctx-item{display:flex;align-items:center;gap:9px;width:100%;text-align:left;padding:8px 16px;border:none;background:none;
@@ -772,7 +786,7 @@ html.cursor-on,html.cursor-on *{cursor:none !important}
    ===================================================================== */
 :root{
   --kb-fs-scale:1;
-  --kb-measure:760px;
+  --kb-measure:none;
   --kb-font:var(--sans);
   --kb-line:1.75;
 }

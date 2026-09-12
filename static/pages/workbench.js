@@ -51,12 +51,13 @@
   }
 
   /* ---------- [2] rail tabs 键盘可达 ---------- */
+  /* rtab 为原生 button（问题13）：Enter/Space 由浏览器原生触发 click，
+     这里只补 tablist 惯例的 ←→ 切换；aria-selected 由 app.js tab() 维护。 */
   function bindTabs() {
     $$(".rtab").forEach(function (t) {
       if (t.dataset.kbBound) return;
       t.dataset.kbBound = "1";
       t.addEventListener("keydown", function (e) {
-        if (e.key === "Enter" || e.key === " ") { e.preventDefault(); t.click(); }
         if (e.key === "ArrowRight" || e.key === "ArrowLeft") {
           var tabs = $$(".rtab");
           var i = tabs.indexOf(t);
@@ -89,23 +90,6 @@
   }
   document.addEventListener("kb:links-rendered", enhanceRoamLinks);
 
-  /* ---------- 编辑器删除按钮状态同步（复用 app.js 两步确认；阶段2问题11 统一删除） ---------- */
-  var _origDelete = window.deleteDoc;
-  if (typeof _origDelete === "function") {
-    window.deleteDoc = function () {
-      var r = _origDelete.apply(this, arguments);
-      syncEditorDelete();
-      if (r && typeof r.then === "function") r.then(syncEditorDelete, syncEditorDelete);
-      return r;
-    };
-  }
-  function syncEditorDelete() {
-    var ed = $("#ed-del");
-    if (!ed) return;
-    var crumbDel = $$("#crumb .iconbtn").filter(function (b) { return b.textContent.indexOf("删除") >= 0; })[0];
-    if (crumbDel) ed.innerHTML = crumbDel.innerHTML;
-  }
-
   /* ---------- 动效：正文渲染完成后刷新 reveal（显式事件，非 observer） ---------- */
   document.addEventListener("kb:article-rendered", function () {
     if (!window.Motion || window.Motion.reduced) return;
@@ -115,7 +99,6 @@
   function init() {
     buildDensityToggle();
     bindTabs();
-    syncEditorDelete();
     enhanceRoamLinks(); // 服务端已渲染双链面板时（首屏直开 links tab 极少），兜底跑一次
   }
 

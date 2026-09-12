@@ -101,7 +101,8 @@ def main() -> int:
         r = c.get("/home")
         home = r.get_data(as_text=True)
         check("/home 渲染统计", r.status_code == 200 and "个域入口" in home)  # 领域数已动态化：{{ stats.domains|length }} 个域入口
-        check("/home 收件箱计数为 1", bool(re.search(r'收件箱</span><span class="n">1</span>', home)))
+        # 顶栏重排（交互方案问题12）后收件箱 pill 降级为图标 badge，计数断言改锚 home 的「去收件箱 · N」
+        check("/home 收件箱计数为 1", bool(re.search(r"去收件箱\s*·\s*1", home)))
         check("/home 最近更新含 B", "职业笔记B" in home)
 
         r = c.get("/search?q=量子")

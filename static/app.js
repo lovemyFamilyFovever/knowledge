@@ -1,5 +1,5 @@
 /* 知库 reader 前端：主题、面板折叠、客户端路由、正文渲染、编辑/备注/收藏/删除、双链、快捷键 */
-window.APP_JS_VERSION = 21;
+window.APP_JS_VERSION = 22;
 
 const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
@@ -98,7 +98,8 @@ async function loadTree() {
 
 /* ---------- 右栏 tabs ---------- */
 function tab(id, el) {
-  $$(".rtab").forEach(t => t.classList.remove("active")); el.classList.add("active");
+  $$(".rtab").forEach(t => { t.classList.remove("active"); t.setAttribute("aria-selected", "false"); });
+  el.classList.add("active"); el.setAttribute("aria-selected", "true");
   $$(".rpane").forEach(p => p.classList.remove("active")); $("#pane-" + id).classList.add("active");
   if (id === "links") loadLinks();
 }
@@ -120,19 +121,16 @@ function renderArticle(forceMd) {
     // 绝不走 marked+DOMPurify 管线——大 HTML 过 markdown 解析会把源码平铺成数万节点 DOM，卡且不可读
     const srcRel = DOC.is_html ? DOC.rel : DOC.html_rel;
     const rawHref = rawUrl(srcRel);
-    /* 问题4 修复：学习闭环此前只渲染在 md 分支，interview 域默认走 pretty 分支时
-       「已读完/已掌握」整条链路断裂。finish-bar 按钮按 id 被 refreshDocMark/renderDocMark
-       查找，两分支共用同一套 id 与样式，天然兼容。 */
-    el.innerHTML = `<div class="kb-finish-bar" id="kb-finish-bar">
+    /* 用户要求：finish-bar 在最底部；美化版内部 .container 的 1200px 行宽注入覆盖为撑满
+       （iframe 同源，onload 后向外层文档注入一条样式即可；不同美化版结构不一，用宽谱选择器） */
+    el.innerHTML = `<div class="html-frame-wrap"><iframe class="html-frame" src="${rawHref}"
+        sandbox="allow-same-origin allow-popups" title="${esc(DOC.title)}"
+        onload="try{const d=this.contentDocument;d.head.insertAdjacentHTML('beforeend','<style>.container,body>main,body>div{max-width:100%!important;padding-left:1.4rem!important;padding-right:1.4rem!important}</style>')}catch(e){}"></iframe></div>
+      <div class="kb-finish-bar" id="kb-finish-bar">
         <span class="kb-finish-q">读完这篇了？</span>
         <button type="button" class="kb-btn" id="mark-read-btn" onclick="toggleDocMark('read')" title="标记已读完（存本地复习库，不写语料）">已读完</button>
         <button type="button" class="kb-btn" id="mark-mastered-btn" onclick="toggleDocMark('mastered')" title="标记已掌握 —— 术语门户会显示为已掌握">已掌握</button>
-      </div>
-      <div class="html-frame-wrap"><iframe class="html-frame" src="${rawHref}"
-        sandbox="allow-same-origin allow-popups" title="${esc(DOC.title)}"></iframe></div>
-      <p class="pretty-foot">
-        ${DOC.is_html ? "" : '<a class="iconbtn" onclick="renderArticle(true)" title="切回 Markdown 渲染视图"><svg class="i i-12"><use href="#i-file-md"/></svg> Markdown 源</a>'}
-        <a class="iconbtn" href="${rawHref}" target="_blank">↗ 新标签页打开原页面</a></p>`;
+      </div>`;
   } else {
     const chips = [
       `<span class="chip acc">${esc(DOC.source_label)}</span>`,
@@ -355,8 +353,18 @@ async function openDoc(domain, sub, name) {
   const s = findSub(domain, sub);
   if (s) renderDocList(s.docs, s.label, name);
   renderTree();
+  /* 问题14：加载反馈——fetch 期间放骨架（3 行灰条）。本地通常 <50ms 无感知，
+     但磁盘冷读 / 索引重建时不能让正文区挂着一篇旧文档静默等待。 */
+  const artEl = $("#article");
+  if (artEl) artEl.innerHTML = `<div class="kb-skeleton" aria-busy="true" aria-label="文档加载中">
+    <i style="width:62%"></i><i style="width:93%"></i><i style="width:78%"></i></div>`;
   const r = await fetch(`/api/doc?domain=${encodeURIComponent(domain)}&sub=${encodeURIComponent(sub)}&name=${encodeURIComponent(name)}`);
-  if (!r.ok) { toast(r.status === 404 ? "文档不存在（可能已被删除）" : "加载失败 " + r.status); return; }
+  if (!r.ok) {
+    if (artEl) artEl.innerHTML = `<div class="a-kicker">无法打开</div><h1 class="a-title">${esc(name)}</h1>
+      <div class="a-rule"></div><div class="a-body"><p>${r.status === 404 ? "文档不存在（可能已被删除或移动）。" : "加载失败 " + r.status + "。"}</p></div>`;
+    toast(r.status === 404 ? "文档不存在（可能已被删除）" : "加载失败 " + r.status);
+    return;
+  }
   const data = await r.json();
   DOC = data.doc;
   renderArticle();
@@ -453,30 +461,29 @@ function closeEditor() {
   $("#article").style.display = "";
   ED_OPEN = false;
 }
-/* 未保存确认弹窗：kbModal 只有两键，这里按其视觉规范做一个三键弹层。
-   resolve "save" | "discard" | null（继续编辑 / Esc / 遮罩）。 */
+/* 未保存确认弹窗：kbModal 只有两键，按其视觉规范做三键弹层（问题11 前例）。
+   resolve "save" | "discard" | null（继续编辑 / Esc / 遮罩）。问题13：走 KB.overlay 原语。 */
 function confirmUnsavedChanges() {
   return new Promise(resolve => {
     UC_OPEN = true;
-    const ov = document.createElement("div");
-    ov.className = "kbm-ov";
-    ov.innerHTML = `<div class="kbm" role="dialog" aria-modal="true">
+    const ov = KB.overlay.open({
+      html: `<div class="kbm" role="document">
       <div class="kbm-title">${icon("warn", 16)} 编辑器有未保存的修改</div>
       <div class="kbm-body">关闭会丢失未写回的修改。先保存，还是直接丢弃？</div>
       <div class="kbm-btns">
         <button class="iconbtn uc-keep">继续编辑</button>
-        <button class="iconbtn uc-discard">丢弃修改</button>
+        <button class="iconbtn danger uc-discard">丢弃修改</button>
         <button class="iconbtn primary uc-save">保存并关闭</button>
-      </div></div>`;
-    document.body.appendChild(ov);
-    const done = v => { UC_OPEN = false; ov.remove(); document.removeEventListener("keydown", onKey, true); resolve(v); };
-    const onKey = e => { if (e.key === "Escape") { e.stopPropagation(); done(null); } };
-    ov.querySelector(".uc-keep").onclick = () => done(null);
-    ov.querySelector(".uc-discard").onclick = () => done("discard");
-    ov.querySelector(".uc-save").onclick = () => done("save");
-    ov.addEventListener("mousedown", e => { if (e.target === ov) done(null); });
-    document.addEventListener("keydown", onKey, true);
-    ov.querySelector(".uc-keep").focus();
+      </div></div>`,
+      onClose: () => { UC_OPEN = false; resolve(null); },
+      initialFocus: root => root.querySelector(".uc-keep"),
+    });
+    let settled = false;
+    const done = v => { if (settled) return; settled = true; resolve(v); ov.close("btn"); };
+    ov.root.querySelector(".uc-keep").onclick = () => done(null);
+    ov.root.querySelector(".uc-discard").onclick = () => done("discard");
+    ov.root.querySelector(".uc-save").onclick = () => done("save");
+    ov.root.addEventListener("mousedown", e => { if (e.target === ov.root) done(null); });
   });
 }
 /* 唯一的「关编辑器」入口：无改动直接关；有改动先问。返回 true = 编辑器已可关闭。 */
@@ -539,13 +546,17 @@ if (edText) edText.onkeydown = e => {
 /* ---------- 备注 ---------- */
 async function addNote() {
   const i = $("#ni"); const text = i.value.trim(); if (!text) return;
-  const r = await fetch("/api/note", { method: "POST", headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ path: DOC.rel, text }) });
-  if (!r.ok) { toast("备注失败"); return; }
-  const data = await r.json(); i.value = "";
-  DOC.notes = data.notes;
-  renderNotes();
-  toast("备注已写入旁挂 <span class='mono'>.notes.md</span>");
+  const btn = i.closest(".note-input").querySelector("button"); // 问题14：pending 防连点
+  if (btn) btn.disabled = true;
+  try {
+    const r = await fetch("/api/note", { method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ path: DOC.rel, text }) });
+    if (!r.ok) { toast("备注失败"); return; }
+    const data = await r.json(); i.value = "";
+    DOC.notes = data.notes;
+    renderNotes();
+    toast("备注已写入旁挂 <span class='mono'>.notes.md</span>");
+  } finally { if (btn) btn.disabled = false; }
 }
 
 /* ---------- 已读完 / 已掌握（文档级标记，存 indexes/reading.db 的 doc_marks，不写语料） ---------- */
@@ -569,8 +580,12 @@ async function toggleDocMark(kind) {
   if (!DOC || !DOC.rel) return;
   const btn = document.getElementById(kind === "read" ? "mark-read-btn" : "mark-mastered-btn");
   const cur = btn.classList.contains("mark-on");
-  const r = await fetch("/api/docmark", { method: "POST", headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ path: DOC.rel, mark: kind, on: !cur }) });
+  btn.disabled = true; // 问题14：pending 防连点（连点会把 on/off 序列打到后端）
+  let r;
+  try {
+    r = await fetch("/api/docmark", { method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ path: DOC.rel, mark: kind, on: !cur }) });
+  } finally { btn.disabled = false; }
   if (!r.ok) { toast("标记失败：" + (await r.text()).slice(0, 100)); return; }
   const j = await r.json();
   renderDocMark(j);
@@ -581,12 +596,16 @@ async function toggleDocMark(kind) {
 
 /* ---------- 收藏 ---------- */
 async function toggleFav() {
-  const r = await fetch("/api/favorite", { method: "POST", headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ path: DOC.rel }) });
+  const b = $("#fav-btn");
+  if (b) b.disabled = true; // 问题14：pending 防连点
+  let r;
+  try {
+    r = await fetch("/api/favorite", { method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ path: DOC.rel }) });
+  } finally { if (b) b.disabled = false; }
   if (!r.ok) { toast("操作失败"); return; }
   const data = await r.json();
   DOC.favorite = data.favorite;
-  const b = $("#fav-btn");
   b.innerHTML = `${icon("star",13)} ${data.favorite ? "已收藏" : "收藏"}`;
   b.classList.toggle("faved", data.favorite);
   // 同步树缓存里的收藏标记，收藏页/列表星星即时一致
@@ -633,29 +652,17 @@ async function afterMutation() {
 }
 window.afterMutation = afterMutation;
 
-/* ---------- 删除（软删除：移入 _trash，两步确认，列表实时更新） ---------- */
-let deleteArmed = false, deleteArmTimer = null;
+/* ---------- 删除（软删除：移入 _trash，kbModal 统一确认，问题11） ---------- */
 async function deleteDoc() {
   if (!DOC || DOC.is_html) return;
-  const btn = [...document.querySelectorAll("#crumb .iconbtn")].find(b => b.textContent.includes("删除"));
-  if (!deleteArmed) {
-    deleteArmed = true;
-    btn.innerHTML = `${icon("warn",13)} 确认删除？`;
-    btn.style.borderColor = "var(--warn-edge)";
-    btn.style.color = "var(--warn)";
-    deleteArmTimer = setTimeout(() => {
-      deleteArmed = false;
-      btn.innerHTML = `${icon("trash",13)} 删除`;
-      btn.style.borderColor = ""; btn.style.color = "";
-    }, 3000);
-    return;
-  }
-  clearTimeout(deleteArmTimer); deleteArmed = false;
-  btn.innerHTML = `${icon("trash",13)} 删除`; btn.style.borderColor = ""; btn.style.color = "";
-  // 问题2 修复：悲观更新——先等 /api/delete 真正落盘（软删除 = 移入 _trash，本地无感知延迟），
-  // 成功后才动 UI 与树缓存；失败保持原状。此前的假乐观更新会在失败时留下
-  // 「列表没了、文件还在」的错误状态，还被 persistTree 写进缓存，直到刷新才恢复。
   const rel = DOC.rel, deletedTitle = DOC.title;
+  const c = await kbModal({
+    title: icon("trash", 16) + " 删除这篇文档？",
+    body: `《<b>${esc(deletedTitle)}</b>》及其旁挂美化版 / 备注将整体移入 <span class="mono">content/_trash/</span>（软删除，可找回；git 历史是第二重保险）。`,
+    danger: true, confirmText: "移入回收站", cancelText: "取消",
+  });
+  if (!c) return;
+  // 问题2：悲观更新——先等 /api/delete 落盘，成功后才动 UI 与树缓存；失败保持原状。
   const delBtns = [...document.querySelectorAll("#crumb .iconbtn, #ed-del")].filter(b => b.textContent.includes("删除") || b.id === "ed-del");
   delBtns.forEach(b => { b.disabled = true; });
   let r;
@@ -720,39 +727,35 @@ function loadLinks() {
     .catch(() => { pane.innerHTML = `<div class="empty" style="padding:10px 2px">加载失败，稍后再试。</div>`; linksLoadedFor = null; });
 }
 
-/* ---------- 美化版弹窗 ---------- */
+/* ---------- 美化版弹窗（KB.overlay：Esc/遮罩/焦点归还统一，问题13） ---------- */
+let PRETTY_OV = null;
 function openPretty() {
   if (!DOC || !DOC.has_html) return;
-  let ov = document.getElementById("pretty-ov");
-  if (!ov) {
-    ov = document.createElement("div");
-    ov.id = "pretty-ov";
-    ov.className = "pretty-ov";
-    ov.innerHTML = `<div class="pretty-box">
-      <div class="pretty-bar"><span class="pt" id="pretty-title"></span>
-        <a class="iconbtn" id="pretty-newtab" target="_blank">↗ 新窗口</a>
-        <button class="iconbtn" onclick="closePretty()">✕ 关闭</button></div>
-      <iframe id="pretty-frame"></iframe></div>`;
-    document.body.appendChild(ov);
-    ov.addEventListener("click", e => { if (e.target === ov) closePretty(); });
-  }
-  ov.querySelector("#pretty-title").textContent = DOC.title + " · 美化版";
-  const prettyUrl = rawUrl(DOC.html_rel);
-  ov.querySelector("#pretty-newtab").href = prettyUrl;
-  ov.querySelector("iframe").src = prettyUrl;
-  ov.classList.add("show");
+  if (PRETTY_OV) PRETTY_OV.close("re-open");
+  const rawHref = rawUrl(DOC.html_rel);
+  const ov = KB.overlay.open({
+    className: "pretty-ov show",
+    html: `<div class="pretty-box">
+      <div class="pretty-bar"><span class="pt">${esc(DOC.title)} · 美化版</span>
+        <a class="iconbtn" id="pretty-newtab" href="${rawHref}" target="_blank">${icon("external-link", 12)} 新窗口</a>
+        <button class="iconbtn pp-close">${icon("cancel-x", 12)} 关闭</button></div>
+      <iframe src="${rawHref}" sandbox="allow-same-origin allow-popups" title="${esc(DOC.title)}"></iframe></div>`,
+    onClose: () => { PRETTY_OV = null; },
+  });
+  PRETTY_OV = ov;
+  ov.root.querySelector(".pp-close").onclick = () => ov.close("btn");
+  ov.root.addEventListener("mousedown", e => { if (e.target === ov.root) ov.close("mask"); });
 }
-function closePretty() {
-  const ov = document.getElementById("pretty-ov");
-  if (ov) { ov.classList.remove("show"); ov.querySelector("iframe").src = "about:blank"; }
-}
+function closePretty() { if (PRETTY_OV) PRETTY_OV.close("api"); }
 
-/* ---------- 右键菜单：文档移动 / 复制双链 / 统计信息 ---------- */
+/* ---------- 右键菜单：文档移动 / 复制双链 / 统计信息 ----------
+   问题13：改走 KB.overlay——Esc 关闭、关闭归还焦点、Tab 被困在菜单内；
+   新增 ↑↓ 导航 + 打开即聚焦首项，配合下方 ContextMenu/Shift+F10 唤起入口。 */
 let CTX = null; // 当前菜单目标 {kind:'doc'|'sub', rel|domain, sub, name}
+let CTX_OV = null;
 
 function closeCtxMenu() {
-  const m = document.getElementById("ctx-menu");
-  if (m) { m.remove(); document.removeEventListener("click", closeCtxMenu); }
+  if (CTX_OV) { const o = CTX_OV; CTX_OV = null; o.close("api"); }
   CTX = null;
 }
 
@@ -761,24 +764,43 @@ function docRelOf(domain, sub, name) {
 }
 
 function openCtxMenu(x, y, items) {
-  closeCtxMenu();
-  const m = document.createElement("div");
-  m.id = "ctx-menu";
-  m.innerHTML = items.map((it, i) =>
-    it === "-" ? `<div class="ctx-sep"></div>` :
-    `<button class="ctx-item ${it.danger ? "danger" : ""}" data-i="${i}">${it.icon ? `<span class="ctx-ic">${it.icon}</span>` : ""}<span>${esc(it.label)}</span></button>`).join("");
-  document.body.appendChild(m);
-  const r = m.getBoundingClientRect();
-  m.style.left = Math.min(x, innerWidth - r.width - 8) + "px";
-  m.style.top = Math.min(y, innerHeight - r.height - 8) + "px";
-  m.addEventListener("click", e => {
+  if (CTX_OV) { const o = CTX_OV; CTX_OV = null; o.close("re-open"); }
+  const ov = KB.overlay.open({
+    className: "ctx-menu",
+    html: items.map((it, i) =>
+      it === "-" ? `<div class="ctx-sep"></div>` :
+      `<button class="ctx-item ${it.danger ? "danger" : ""}" data-i="${i}">${it.icon ? `<span class="ctx-ic">${it.icon}</span>` : ""}<span>${esc(it.label)}</span></button>`).join(""),
+    returnFocus: true,
+  });
+  CTX_OV = ov;
+  const r = ov.root.getBoundingClientRect();
+  ov.root.style.left = Math.min(x, innerWidth - r.width - 8) + "px";
+  ov.root.style.top = Math.min(y, innerHeight - r.height - 8) + "px";
+  ov.root.addEventListener("click", e => {
     const b = e.target.closest(".ctx-item");
     if (!b) return;
     const it = items[+b.dataset.i];
-    closeCtxMenu();
+    CTX_OV = null; ov.close("pick");
     if (it && it.fn) it.fn();
   });
-  setTimeout(() => document.addEventListener("click", closeCtxMenu), 0);
+  ov.root.addEventListener("keydown", e => {
+    const btns = [...ov.root.querySelectorAll(".ctx-item")];
+    if (!btns.length) return;
+    const i = btns.indexOf(document.activeElement);
+    if (e.key === "ArrowDown") { e.preventDefault(); btns[(i + 1) % btns.length].focus(); }
+    else if (e.key === "ArrowUp") { e.preventDefault(); btns[(i - 1 + btns.length) % btns.length].focus(); }
+    else if (e.key === "Home") { e.preventDefault(); btns[0].focus(); }
+    else if (e.key === "End") { e.preventDefault(); btns[btns.length - 1].focus(); }
+  });
+  setTimeout(() => {
+    const first = ov.root.querySelector(".ctx-item"); if (first) first.focus();
+    // 点击菜单外任意处关闭（once + isConnected 守卫，close 后自动失效）
+    document.addEventListener("mousedown", function off(ev) {
+      if (!ov.root.isConnected) return;
+      if (!ov.root.contains(ev.target)) { CTX_OV = null; ov.close("outside"); }
+      else document.addEventListener("mousedown", off, { once: true });
+    }, { once: true });
+  }, 0);
 }
 
 async function copyText(t, okMsg) {
@@ -803,53 +825,52 @@ async function showStats(rel) {
     ["来源", s.source || "—"], ["收录", s.collected || "—"],
     ["文件", kb + " KB · 修改 " + new Date(s.mtime * 1000).toLocaleString()],
   ];
-  const ov = document.createElement("div");
-  ov.className = "pretty-ov";
-  ov.innerHTML = `<div class="pretty-box stats-box"><div class="pretty-bar"><span class="pt">统计信息</span><button class="iconbtn" onclick="this.closest('.pretty-ov').remove()">✕ 关闭</button></div>
-    <div class="stats-body">${rows.map(([k, v]) => `<div class="meta-row"><span class="k">${esc(k)}</span><span class="v">${esc(v)}</span></div>`).join("")}</div></div>`;
-  ov.addEventListener("click", e => { if (e.target === ov) ov.remove(); });
-  document.body.appendChild(ov);
+  const ov = KB.overlay.open({
+    className: "pretty-ov",
+    html: `<div class="pretty-box stats-box"><div class="pretty-bar"><span class="pt">统计信息</span><button class="iconbtn gs-close">${icon("cancel-x", 12)} 关闭</button></div>
+    <div class="stats-body">${rows.map(([k, v]) => `<div class="meta-row"><span class="k">${esc(k)}</span><span class="v">${esc(v)}</span></div>`).join("")}</div></div>`,
+  });
+  ov.root.querySelector(".gs-close").onclick = () => ov.close("btn");
+  ov.root.addEventListener("mousedown", e => { if (e.target === ov.root) ov.close("mask"); });
 }
 
 /* ---------- 通用弹窗（替代系统 prompt/alert/confirm） ----------
-   kbModal({ title, body, html, inputs:[{key,label,value,placeholder}], confirmText, danger })
-   → Promise<null | { values:{key:value} }>；Esc / 取消 / 点击遮罩返回 null。 */
+   kbModal({ title, body, html, inputs:[{key,label,value,placeholder}], confirmText, cancelText, danger })
+   → Promise<null | { values:{key:value} }>；Esc / 取消 / 点击遮罩返回 null。
+   问题13：焦点管理（Tab 陷阱 / 关闭归还）统一委托 KB.overlay 原语，不再各写 Esc。 */
 function kbModal(opt) {
   return new Promise(resolve => {
-    const ov = document.createElement("div");
-    ov.className = "kbm-ov";
     const inputs = opt.inputs || [];
-    ov.innerHTML = `<div class="kbm" role="dialog" aria-modal="true">
-      <div class="kbm-title">${esc(opt.title || "")}</div>
+    const ov = KB.overlay.open({
+      html: `<div class="kbm" role="document">
+      <div class="kbm-title">${opt.title && opt.title.indexOf("<") >= 0 ? opt.title : esc(opt.title || "")}</div>
       ${opt.body ? `<div class="kbm-body">${opt.body}</div>` : ""}
       ${opt.html ? `<div class="kbm-body">${opt.html}</div>` : ""}
       ${inputs.map(i => `<label class="kbm-label">${esc(i.label || "")}
         <input class="kbm-input" data-k="${esc(i.key)}" value="${esc(i.value ?? "")}"
           placeholder="${esc(i.placeholder || "")}" spellcheck="false"></label>`).join("")}
       <div class="kbm-btns">
-        <button class="iconbtn kbm-cancel">取消</button>
+        <button class="iconbtn kbm-cancel">${esc(opt.cancelText || "取消")}</button>
         <button class="iconbtn primary kbm-ok ${opt.danger ? "danger" : ""}">${esc(opt.confirmText || "确定")}</button>
-      </div></div>`;
-    document.body.appendChild(ov);
-    const done = val => { ov.remove(); document.removeEventListener("keydown", onKey); resolve(val); };
+      </div></div>`,
+      onClose: () => resolve(null), // Esc / 遮罩（未显式完成时）统一按「取消」结算
+      initialFocus: root => { const i = root.querySelector(".kbm-input"); return i || null; },
+    });
+    let settled = false;
+    const done = val => { if (settled) return; settled = true; resolve(val); ov.close("done"); };
     const collect = () => {
       const values = {};
-      ov.querySelectorAll(".kbm-input").forEach(inp => values[inp.dataset.k] = inp.value.trim());
+      ov.root.querySelectorAll(".kbm-input").forEach(inp => values[inp.dataset.k] = inp.value.trim());
       return values;
     };
-    const onOk = () => done(collect());
-    const onCancel = () => done(null);
-    const onKey = e => {
-      if (e.key === "Escape") onCancel();
-      if (e.key === "Enter" && (e.metaKey || e.ctrlKey || !inputs.length)) onOk();
-    };
-    ov.querySelector(".kbm-ok").onclick = onOk;
-    ov.querySelector(".kbm-cancel").onclick = onCancel;
-    ov.addEventListener("mousedown", e => { if (e.target === ov) onCancel(); });
-    document.addEventListener("keydown", onKey);
-    const first = ov.querySelector(".kbm-input");
+    ov.root.querySelector(".kbm-ok").onclick = () => done(collect());
+    ov.root.querySelector(".kbm-cancel").onclick = () => done(null);
+    ov.root.addEventListener("mousedown", e => { if (e.target === ov.root) done(null); });
+    ov.root.addEventListener("keydown", e => {
+      if (e.key === "Enter" && (e.metaKey || e.ctrlKey || !inputs.length)) { e.preventDefault(); done(collect()); }
+    });
+    const first = ov.root.querySelector(".kbm-input");
     if (first) { first.focus(); first.select(); }
-    else ov.querySelector(".kbm-ok").focus();
   });
 }
 
@@ -872,10 +893,8 @@ async function showSubStats(dom, sub) {
       <span class="ss-sib-bar"><i style="width:${Math.round(100 * x.n / Math.max(1, domObj.subs[0].n))}%"></i></span>
       <span class="ss-sib-n">${x.n} 篇 · ${Math.round(x.cjk / 1000)}k 字</span>
     </button>`).join("") || `<div class="kbm-li">本域仅此一个目录</div>`;
-  const ov = document.createElement("div");
-  ov.className = "kbm-ov";
-  ov.id = "ss-ov";
-  ov.innerHTML = `<div class="kbm kbm-stats" role="dialog" aria-modal="true">
+  let ov = KB.overlay.open({ // 目录统计层实例（兄弟切换须走 close，见模块级 SUBSTATS_OV）
+    html: `<div class="kbm kbm-stats" role="document">
     <div class="kbm-title">${icon("chart", 16)} ${esc(s.domain_label)} / ${esc(s.label)} · 目录统计</div>
     <div class="kbm-body">
     <div class="gkpi">
@@ -890,38 +909,32 @@ async function showSubStats(dom, sub) {
     <div class="kbm-li">《${esc(s.newest.title || "—")}》 · ${esc(s.newest.when)}</div>
     ${siblings.length ? `<div class="ss-sec">${esc(s.domain_label)} · 其他目录</div><div class="ss-sibs">${sibRows}</div>` : ""}
     </div>
-    <div class="kbm-btns"><button class="iconbtn primary ss-close">关闭</button></div></div>`;
-  ov.querySelector(".ss-close").onclick = () => ov.remove();
-  ov.addEventListener("mousedown", e => { if (e.target === ov) ov.remove(); });
-  ov.addEventListener("keydown", e => { if (e.key === "Escape") ov.remove(); });
-  document.body.appendChild(ov);
-  ov.querySelector(".ss-close").focus();
+    <div class="kbm-btns"><button class="iconbtn primary ss-close">关闭</button></div></div>`,
+  });
+  SUBSTATS_OV = ov;
+  ov.root.querySelector(".ss-close").onclick = () => ov.close("btn");
+  ov.root.addEventListener("mousedown", e => { if (e.target === ov.root) ov.close("mask"); });
 }
+let SUBSTATS_OV = null; // 当前目录统计层实例
 function openCtxStats(dom, sub) {
-  const ov = document.getElementById("ss-ov");
-  if (ov) ov.remove();
+  if (SUBSTATS_OV) SUBSTATS_OV.close("switch"); // 兄弟目录切换：走 close，别裸 remove（会泄漏监听与计数）
   showSubStats(dom, sub);
 }
 
 /* ---------- 全库聚合统计（顶栏全局「统计」按钮）----------
    与目录统计共用 .ss-* 视觉；数据来自 /api/globalstats。 */
+let GS_OV = null; // 当前全库统计层实例（重开时 close 旧的）
 async function showGlobalStats() {
-  const prev = document.getElementById("gs-ov");
-  if (prev) prev.remove();
-  const ov = document.createElement("div");
-  ov.className = "kbm-ov";
-  ov.id = "gs-ov";
-  ov.innerHTML = `<div class="kbm kbm-stats" role="dialog" aria-modal="true">
-    <div class="kbm-title">${icon("chart", 16)} 全库统计</div>
-    <div class="kbm-body" id="gs-body">统计中…</div>
-    <div class="kbm-btns"><button class="iconbtn primary ss-close">关闭</button></div></div>`;
-  document.body.appendChild(ov);
-  const close = () => ov.remove();
-  ov.querySelector(".ss-close").onclick = close;
-  ov.addEventListener("mousedown", e => { if (e.target === ov) close(); });
-  ov.addEventListener("keydown", e => { if (e.key === "Escape") close(); });
-  ov.querySelector(".ss-close").focus();
-  const bodyEl = ov.querySelector("#gs-body");
+  if (GS_OV) GS_OV.close("re-open"); // 重开时走 close，防监听/计数泄漏
+  const ov = KB.overlay.open({
+    html: `<div class="kbm kbm-stats" role="document">
+    <div class="kbm-title">${icon("chart", 16)} 全库统计<span class="spacer" style="flex:1"></span><a class="iconbtn" href="/stats" title="月度阅读趋势在统计页" style="margin-left:auto">${icon("trend", 13)} 查看月度趋势 →</a><button class="iconbtn primary ss-close" style="margin-left:8px">关闭</button></div>
+    <div class="kbm-body" id="gs-body">统计中…</div></div>`,
+  });
+  GS_OV = ov;
+  ov.root.querySelector(".ss-close").onclick = () => ov.close("btn");
+  ov.root.addEventListener("mousedown", e => { if (e.target === ov.root) ov.close("mask"); });
+  const bodyEl = ov.root.querySelector("#gs-body");
   let d;
   try {
     const r = await fetch("/api/globalstats");
@@ -1168,51 +1181,62 @@ function wireDragMove() {
   }));
 }
 
+/* 右键菜单 items（鼠标 contextmenu 与键盘 ContextMenu/Shift+F10 共用，问题13） */
+function ctxDocItems(docA) {
+  const name = docA.dataset.name;
+  const rel = docRelOf(CUR.domain, CUR.sub, name);
+  const title = (docA.querySelector(".doc-t") || {}).textContent || name;
+  return [
+    { icon: icon("trend"), label: "统计信息", fn: () => showStats(rel) },
+    { icon: icon("copy"), label: "复制 [[双链]]", fn: () => copyText(`[[${title.trim()}]]`, "已复制双链") },
+    { icon: icon("copy"), label: "复制 Obsidian URI", fn: () => copyText(`obsidian://open?vault=${encodeURIComponent("knowledge")}&file=${encodeURIComponent(rel.replace(/\.md$/, ""))}`, "已复制 URI") },
+    "-",
+    { icon: icon("swap"), label: "移动 / 重命名…", fn: () => moveDocPrompt(rel) },
+  ];
+}
+function ctxSubItems(subA) {
+  const dom = subA.dataset.dom, sub = subA.dataset.sub;
+  const base = sub === "_root" ? dom : `${dom}/${sub}`;
+  return [
+    { icon: icon("folder-open"), label: "在此新建文档…", fn: async () => {
+        const res = await kbModal({
+          title: "新建文档",
+          body: `将在 <span class='mono'>${esc(base)}/</span> 下创建 Markdown 文件，首行自动写入标题。`,
+          inputs: [{ key: "nm", label: "文件名（不含 .md）", placeholder: "示例：RAG 切块策略" }],
+          confirmText: "创建",
+        });
+        if (!res || !res.nm) return;
+        const nm = res.nm;
+        const rel = `${base}/${nm}.md`;
+        const r = await fetch("/api/save", { method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ path: rel, content: `# ${nm}\n\n` }) });
+        if (r.ok) {
+          await afterMutation();
+          await navigate(docUrl(rel), true); // 问题9：客户端打开新文档，不整页跳转
+        }
+        else toast("创建失败：" + r.status);
+      } },
+    { icon: icon("copy"), label: "复制目录路径", fn: () => copyText(base, "已复制路径") },
+  ];
+}
+/* 问题13：键盘唤起——文档列表项或树子域获得焦点后按 Menu 键 / Shift+F10，
+   菜单锚定在该元素下方（触摸设备右键不可达的键盘补偿路径） */
+document.addEventListener("keydown", e => {
+  if (!WORKBENCH || (e.key !== "ContextMenu" && !(e.shiftKey && e.key === "F10"))) return;
+  const a = e.target.closest && (e.target.closest("#doclist .doc") || e.target.closest("#tree .sub"));
+  if (!a) return;
+  e.preventDefault();
+  const r = a.getBoundingClientRect();
+  openCtxMenu(r.left + 8, r.bottom + 2, a.classList.contains("doc") ? ctxDocItems(a) : ctxSubItems(a));
+});
+
 document.addEventListener("contextmenu", e => {
   // 工作台（阅读页）：文档列表 / 分类树的右键
   if (WORKBENCH) {
     const docA = e.target.closest("#doclist .doc");
-    if (docA) {
-      e.preventDefault();
-      const name = docA.dataset.name;
-      const rel = docRelOf(CUR.domain, CUR.sub, name);
-      const title = (docA.querySelector(".doc-t") || {}).textContent || name;
-      openCtxMenu(e.clientX, e.clientY, [
-        { icon: icon("trend"), label: "统计信息", fn: () => showStats(rel) },
-        { icon: icon("copy"), label: "复制 [[双链]]", fn: () => copyText(`[[${title.trim()}]]`, "已复制双链") },
-        { icon: icon("copy"), label: "复制 Obsidian URI", fn: () => copyText(`obsidian://open?vault=${encodeURIComponent("knowledge")}&file=${encodeURIComponent(rel.replace(/\.md$/, ""))}`, "已复制 URI") },
-        "-",
-        { icon: icon("swap"), label: "移动 / 重命名…", fn: () => moveDocPrompt(rel) },
-      ]);
-      return;
-    }
+    if (docA) { e.preventDefault(); openCtxMenu(e.clientX, e.clientY, ctxDocItems(docA)); return; }
     const subA = e.target.closest("#tree .sub");
-    if (subA) {
-      e.preventDefault();
-      const dom = subA.dataset.dom, sub = subA.dataset.sub;
-      const base = sub === "_root" ? dom : `${dom}/${sub}`;
-      openCtxMenu(e.clientX, e.clientY, [
-        { icon: icon("folder-open"), label: "在此新建文档…", fn: async () => {
-            const res = await kbModal({
-              title: "新建文档",
-              body: `将在 <span class='mono'>${esc(base)}/</span> 下创建 Markdown 文件，首行自动写入标题。`,
-              inputs: [{ key: "nm", label: "文件名（不含 .md）", placeholder: "示例：RAG 切块策略" }],
-              confirmText: "创建",
-            });
-            if (!res || !res.nm) return;
-            const nm = res.nm;
-            const rel = `${base}/${nm}.md`;
-            const r = await fetch("/api/save", { method: "POST", headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ path: rel, content: `# ${nm}\n\n` }) });
-            if (r.ok) {
-              await afterMutation();
-              await navigate(docUrl(rel), true); // 问题9：客户端打开新文档，不整页跳转
-            }
-            else toast("创建失败：" + r.status);
-          } },
-        { icon: icon("copy"), label: "复制目录路径", fn: () => copyText(base, "已复制路径") },
-      ]);
-    }
+    if (subA) { e.preventDefault(); openCtxMenu(e.clientX, e.clientY, ctxSubItems(subA)); return; }
     return;
   }
   // 总览页：领域卡片 / 最近更新行的右键（此前被 WORKBENCH 门禁整体挡掉）
