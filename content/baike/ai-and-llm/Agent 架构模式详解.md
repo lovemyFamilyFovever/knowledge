@@ -5,6 +5,7 @@ source: "baike"
 source_path: "开发术语 / AI与大模型"
 collected: "2026-09-05"
 status: "imported"
+favorite: false
 ---
 
 # Agent 架构模式详解
