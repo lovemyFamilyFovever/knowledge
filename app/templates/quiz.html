@@ -1,30 +1,83 @@
 {% extends "base.html" %}
 {% block title %}面试刷题 · 知库{% endblock %}
 {% block body %}
-<main class="wrap learn-page" id="quiz-root">
-  <h1 class="learn-title">面试刷题</h1>
-  <p class="learn-sub" id="quiz-sub">正在载入…</p>
-  <div class="learn-body" id="quiz-body">
-    <noscript>本页需要 JavaScript：刷题模式依赖 /api/learn/cards 与 /api/learn/review。</noscript>
+<link rel="stylesheet" href="/static/pages/learn.css?v={{ av('pages/learn.css') }}">
+<main class="wrap learn-page" id="kb-learn" data-kind="quiz">
+
+  <div class="kb-learn-head">
+    <h1 class="kb-learn-title">面试刷题</h1>
+    <p class="kb-learn-sub" id="kb-learn-sub">正在载入面试题库…</p>
   </div>
+
+  <div class="kb-learn-grid">
+    {# ================= 主区：卡片 + 评分区 ================= #}
+    <section class="kb-learn-main">
+      <div id="kb-stage">
+        <div class="kb-card" id="kb-card" hidden>
+          <div class="kb-card-pad">
+            <div class="kb-card-kicker">
+              <span class="kb-dot"></span>
+              <span id="kb-card-kicker">面试题</span>
+            </div>
+            <div class="kb-card-term" id="kb-card-term"></div>
+            <div class="kb-card-q" id="kb-card-front"></div>
+
+            <div class="kb-face-back" id="kb-card-back-wrap" hidden>
+              <div class="kb-blab">参考答案</div>
+              <div class="kb-card-a" id="kb-card-back"></div>
+              <div class="kb-card-hint" id="kb-card-hint" hidden>
+                <svg class="i" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                     stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#i-hint-bulb"/></svg>
+                <div><b>类比 · </b><span id="kb-card-hint-t"></span></div>
+              </div>
+            </div>
+
+            <div class="kb-card-src" id="kb-card-src"></div>
+            <div class="kb-tags" id="kb-card-tags"></div>
+          </div>
+        </div>
+
+        <div class="kb-learn-cta" id="kb-learn-cta"></div>
+        <div class="kb-grades" id="kb-grades" hidden></div>
+        <div class="kb-learn-foot" id="kb-learn-foot"></div>
+      </div>
+    </section>
+
+    {# ================= 侧栏：进度环 + 统计 + 子域筛选 ================= #}
+    <aside class="kb-learn-side">
+      <div class="kb-side-box kb-side-ring">
+        <div class="kb-ring" id="kb-ring" role="img" aria-label="今日刷题进度">
+          <svg viewBox="0 0 100 100" aria-hidden="true">
+            <circle class="kb-ring-bg" cx="50" cy="50" r="44"></circle>
+            <circle class="kb-ring-fg" id="kb-ring-fg" cx="50" cy="50" r="44"
+                    stroke-dasharray="276.46" stroke-dashoffset="276.46"></circle>
+          </svg>
+          <div class="kb-ring-txt"><b id="kb-ring-n">0%</b><span id="kb-ring-l">今日进度</span></div>
+        </div>
+        <div class="kb-side-stats" id="kb-side-stats"></div>
+      </div>
+
+      <div class="kb-side-box">
+        <div class="kb-side-h">子域筛选</div>
+        <div class="kb-sub-filters" id="kb-sub-filters"><span style="font-size:11.5px;color:var(--faint)">载入中…</span></div>
+      </div>
+
+      <div class="kb-side-box">
+        <div class="kb-side-h">快捷键</div>
+        <div class="kb-side-keys">
+          <div><kbd>Space</kbd><span>翻面看答案</span></div>
+          <div><kbd>1</kbd><span>不会</span></div>
+          <div><kbd>2</kbd><span>会</span></div>
+          <div><kbd>j</kbd><span>跳过这题</span></div>
+          <div><kbd>?</kbd><span>全部快捷键</span></div>
+        </div>
+      </div>
+    </aside>
+  </div>
+
+  <noscript>本页需要 JavaScript：面试卡队列与评分在浏览器里完成。</noscript>
 </main>
 {% endblock %}
 {% block scripts %}
-<script>
-  // 后端占位页（后端批交付时前端尚未完成）。前端接手后替换本文件即可，
-  // 数据契约见 /api/learn/cards?kind=interview_qa 与 /api/learn/review。
-  (function () {
-    var sub = document.getElementById('quiz-sub');
-    fetch('/api/learn/cards?kind=interview_qa&limit=5')
-      .then(function (r) { return r.json(); })
-      .then(function (j) {
-        if (!j.ok) { sub.textContent = '载入失败：' + (j.detail || j.error); return; }
-        sub.textContent = '题库共 ' + j.total + ' 张';
-        document.getElementById('quiz-body').innerHTML = j.items.map(function (c) {
-          return '<pre style="white-space:pre-wrap">' + c.front + '\n\n' + c.back + '</pre>';
-        }).join('<hr>');
-      })
-      .catch(function (e) { sub.textContent = '载入失败：' + e; });
-  })();
-</script>
+<script src="/static/pages/learn.js?v={{ av('pages/learn.js') }}" defer></script>
 {% endblock %}

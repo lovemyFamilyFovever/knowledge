@@ -1,0 +1,122 @@
+/* =====================================================================
+   知库 · learn.css —— 复习 / 刷题页（需求1 闪卡 / 需求2 刷题 / 需求3 掌握度）
+   review.html 与 quiz.html 共用本表；两者 DOM 一致，仅 data-kind 与文案不同。
+   依赖：static/kb-core.css 提供的卡片 / 评分 / 进度环通用件。
+   ===================================================================== */
+
+.learn-page{padding:22px 24px 60px;max-width:1180px;margin:0 auto;width:100%}
+.kb-learn-head{margin-bottom:18px}
+.kb-learn-title{font-family:var(--disp);font-size:clamp(1.4rem,2.4vw,2rem);font-weight:600;letter-spacing:-.02em;color:var(--seed-fg);margin:0}
+.kb-learn-sub{font-size:12.5px;color:var(--faint);margin-top:5px;line-height:1.6}
+.kb-learn-sub .kb-ok{color:var(--acc)}
+.kb-learn-sub .kb-warn{color:var(--warn)}
+
+.kb-learn-grid{display:grid;grid-template-columns:minmax(0,1fr) 264px;gap:18px;align-items:start}
+.kb-learn-main{min-width:0}
+.kb-learn-side{display:flex;flex-direction:column;gap:12px;position:sticky;top:16px}
+
+/* ---- 卡片 ---- */
+.kb-card{transition:transform .18s var(--ease-out),box-shadow .18s}
+.kb-face{min-height:210px;display:flex;flex-direction:column;justify-content:flex-start}
+.kb-face-back{border-top:1px dashed var(--edge);margin-top:14px;padding-top:14px}
+.kb-face-back .kb-blab{
+  font:500 10px/1 var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--acc);margin-bottom:6px;
+}
+.kb-card-src{margin-top:14px;font:400 10.5px/1.5 var(--mono);color:var(--faint);word-break:break-all}
+.kb-card-src a{color:var(--acc)}
+
+/* 翻面动画（尊重 prefers-reduced-motion） */
+.kb-flip-in{animation:kb-flip-in .28s var(--ease-out) both}
+@keyframes kb-flip-in{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.kb-flip-shown{animation:kb-flip-reveal .34s var(--ease-out) both}
+@keyframes kb-flip-reveal{
+  0%{opacity:0;transform:perspective(900px) rotateX(-14deg) translateY(6px)}
+  100%{opacity:1;transform:perspective(900px) rotateX(0) translateY(0)}
+}
+@media (prefers-reduced-motion: reduce){
+  .kb-flip-in,.kb-flip-shown{animation:none;opacity:1;transform:none}
+}
+
+/* ---- 主 CTA（显示答案 / 跳转原文） ---- */
+.kb-learn-cta{margin-top:14px;display:flex;flex-wrap:wrap;gap:9px;align-items:center}
+.kb-btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:40px;
+  padding:0 16px;border-radius:var(--radius);border:1px solid var(--edge);cursor:pointer;
+  background:var(--glass);color:var(--seed-fg);font-size:13px;transition:transform .16s var(--ease-out),box-shadow .16s,border-color .16s;
+}
+.kb-btn svg{color:currentColor}
+.kb-btn:hover{transform:translateY(-1px);box-shadow:var(--shadow);border-color:var(--edge-hi)}
+.kb-btn.primary{background:var(--acc);color:color-mix(in oklab,var(--seed-surface),white 5%);border-color:color-mix(in oklab,var(--acc),transparent 40%);font-weight:500}
+.kb-btn.ghost{background:transparent;color:var(--muted)}
+.kb-btn:disabled{opacity:.45;cursor:not-allowed;transform:none;box-shadow:none}
+.kb-cta-tip{font-size:11px;color:var(--faint);margin-left:auto}
+
+/* ---- 评分区 ---- */
+.kb-grades{margin-top:14px}
+
+/* ---- 底部小字 / 会话统计 ---- */
+.kb-learn-foot{
+  display:flex;flex-wrap:wrap;align-items:center;gap:12px;margin-top:14px;
+  font-size:11.5px;color:var(--faint);
+}
+.kb-learn-foot .kb-sess{font-family:var(--mono)}
+.kb-learn-foot .kb-next{margin-left:auto}
+
+/* ---- 侧栏 ---- */
+.kb-side-box{border:1px solid var(--edge);border-radius:var(--radius);background:var(--glass);padding:14px 15px}
+.kb-side-h{
+  font:500 10px/1 var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--faint);margin-bottom:10px;
+}
+.kb-side-ring{display:flex;align-items:center;gap:14px}
+.kb-side-stats{display:grid;grid-template-columns:1fr 1fr;gap:8px 10px;min-width:0;flex:1}
+.kb-side-stats div{min-width:0}
+.kb-side-stats b{display:block;font-family:var(--num);font-size:16px;font-weight:600;color:var(--seed-fg);font-variant-numeric:tabular-nums;line-height:1.2}
+.kb-side-stats span{font-size:10px;color:var(--faint)}
+.kb-side-mastery{margin-top:10px;font-size:11px;color:var(--faint);line-height:1.6}
+
+.kb-sub-filters{display:flex;flex-wrap:wrap;gap:6px;max-height:220px;overflow-y:auto}
+.kb-sub-chip{
+  font-size:11.5px;padding:5px 10px;border-radius:var(--radius-pill);cursor:pointer;
+  border:1px solid var(--edge);color:var(--muted);background:transparent;transition:.15s;
+}
+.kb-sub-chip:hover{color:var(--seed-fg);border-color:var(--edge-hi)}
+.kb-sub-chip.on{background:var(--acc-soft);border-color:var(--acc-edge);color:var(--acc);font-weight:600}
+.kb-side-keys{display:flex;flex-direction:column;gap:6px}
+.kb-side-keys div{display:flex;align-items:center;gap:9px;font-size:11.5px;color:var(--muted)}
+.kb-side-keys kbd{
+  flex:none;min-width:26px;text-align:center;font:500 10px/1 var(--mono);color:var(--acc);
+  background:var(--acc-soft);border:1px solid var(--acc-edge);border-radius:4px;padding:4px 5px;
+}
+
+/* ---- 完成 / 空态 ---- */
+.kb-done{
+  border:1px solid var(--acc-edge);border-radius:var(--radius-lg);background:var(--acc-soft);
+  padding:26px 24px;text-align:center;
+}
+.kb-done .kb-done-t{font-family:var(--disp);font-size:19px;font-weight:600;color:var(--acc);margin-bottom:6px}
+.kb-done .kb-done-d{font-size:13px;color:var(--muted);line-height:1.7;max-width:44ch;margin:0 auto}
+.kb-done .kb-done-acts{display:flex;flex-wrap:wrap;gap:9px;justify-content:center;margin-top:16px}
+.kb-skel-line{height:12px;border-radius:6px;background:var(--edge);margin:10px 0;position:relative;overflow:hidden}
+.kb-skel-line::after{
+  content:"";position:absolute;inset:0;
+  background:linear-gradient(90deg,transparent,color-mix(in oklab,var(--seed-surface),transparent 40%),transparent);
+  animation:kb-shimmer 1.5s ease-in-out infinite;
+}
+@keyframes kb-shimmer{0%{transform:translateX(-100%)}100%{transform:translateX(100%)}}
+
+/* ---- 响应式（<720 / <480 由 kb-core.css 统一兜底，这里补细节） ---- */
+@media (max-width:720px){
+  .learn-page{padding:16px 14px 44px}
+  .kb-learn-grid{grid-template-columns:minmax(0,1fr);gap:14px}
+  .kb-learn-side{position:static;order:-1}
+  .kb-face{min-height:0}
+  .kb-cta-tip{display:none}
+}
+@media (max-width:480px){
+  .learn-page{padding:12px 10px 36px}
+  .kb-card-pad{padding:16px 15px}
+  .kb-side-ring{flex-direction:row;gap:12px}
+  .kb-side-stats{grid-template-columns:1fr 1fr}
+  .kb-btn{min-height:44px;width:100%}
+  .kb-learn-cta .kb-btn{flex:1 1 100%}
+}

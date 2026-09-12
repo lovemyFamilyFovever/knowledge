@@ -1,33 +1,46 @@
 {% extends "base.html" %}
 {% block title %}术语百科 · 知库{% endblock %}
 {% block body %}
-<main class="wrap learn-page" id="glossary-root">
-  <h1 class="learn-title">术语百科</h1>
-  <p class="learn-sub" id="glossary-sub">正在载入…</p>
-  <div class="learn-body" id="glossary-body">
-    <noscript>本页需要 JavaScript：术语索引依赖 /api/glossary。</noscript>
+<link rel="stylesheet" href="/static/pages/glossary.css?v={{ av('pages/glossary.css') }}">
+<main class="wrap learn-page kb-glossary" id="kb-glossary">
+
+  <div class="kb-gl-head">
+    <h1 class="kb-learn-title">术语百科</h1>
+    <p class="kb-gl-sub" id="kb-gl-sub">正在载入术语索引…</p>
   </div>
+
+  {# 工具条：本地即时过滤 + 子域切换 #}
+  <div class="kb-gl-toolbar">
+    <div class="kb-gl-search">
+      <svg class="i" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#i-search-magnifier"/></svg>
+      <input id="kb-gl-q" type="text" placeholder="过滤术语（本地即时，不发请求）" autocomplete="off" spellcheck="false" aria-label="过滤术语">
+      <button type="button" id="kb-gl-clear" title="清空过滤" aria-label="清空过滤">
+        <svg class="i" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="2" stroke-linecap="round" aria-hidden="true"><use href="#i-cancel-x"/></svg>
+      </button>
+    </div>
+    <div class="kb-gl-subs" id="kb-gl-subs"></div>
+  </div>
+
+  {# A–Z + # 首字母桶（sticky，横向滚动） #}
+  <div class="kb-gl-buckets" id="kb-gl-buckets" role="tablist" aria-label="首字母分桶"></div>
+
+  {# 串学路径（?roam=<term> 时渲染） #}
+  <div class="kb-roam" id="kb-roam" hidden></div>
+
+  {# 术语网格：按子域分组 #}
+  <div class="kb-gl-body" id="kb-gl-body">
+    <div class="kb-skel-grid" aria-hidden="true">
+      <div class="kb-skel-cell"></div><div class="kb-skel-cell"></div><div class="kb-skel-cell"></div>
+      <div class="kb-skel-cell"></div><div class="kb-skel-cell"></div><div class="kb-skel-cell"></div>
+      <div class="kb-skel-cell"></div><div class="kb-skel-cell"></div><div class="kb-skel-cell"></div>
+    </div>
+  </div>
+
+  <noscript>本页需要 JavaScript：术语索引来自 /api/glossary，过滤与分桶在前端完成。</noscript>
 </main>
 {% endblock %}
 {% block scripts %}
-<script>
-  // 后端占位页（后端批交付时前端尚未完成）。前端接手后替换本文件即可，
-  // 数据契约见 /api/glossary（total / buckets / groups / items_flat）。
-  (function () {
-    var sub = document.getElementById('glossary-sub');
-    fetch('/api/glossary')
-      .then(function (r) { return r.json(); })
-      .then(function (j) {
-        if (!j.ok) { sub.textContent = '载入失败：' + (j.detail || j.error); return; }
-        sub.textContent = '共 ' + j.total + ' 个词条 · ' + j.groups.length + ' 个子域 · 首字母桶 '
-          + j.buckets.map(function (b) { return b.letter + '(' + b.n + ')'; }).join(' ');
-        document.getElementById('glossary-body').innerHTML = j.groups.map(function (g) {
-          return '<h3>' + g.sub_label + '</h3><ul>' + g.items.map(function (it) {
-            return '<li><a href="' + it.url + '">' + it.term + '</a></li>';
-          }).join('') + '</ul>';
-        }).join('');
-      })
-      .catch(function (e) { sub.textContent = '载入失败：' + e; });
-  })();
-</script>
+<script src="/static/pages/glossary.js?v={{ av('pages/glossary.js') }}" defer></script>
 {% endblock %}

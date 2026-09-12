@@ -102,6 +102,17 @@ html[data-theme="dark"] .dom-head::before,html[data-theme="dark"] .sub::before{b
 /* ---- [8] 面板 reveal 微调：三栏不同步起跳（stagger 由 data-reveal 顺序决定） ---- */
 html.motion-ready .wb-panel{will-change:transform}
 
+/* ---- [10] v1.1 追加：双链面板「→ 加入串学」（需求4，pages/workbench.js 注入） ---- */
+.kb-roam-link{
+  display:inline-flex;align-items:center;gap:5px;margin:-2px 0 8px;padding:3px 9px;border-radius:var(--radius-pill);
+  border:1px dashed var(--acc-edge);background:transparent;color:var(--acc);
+  font-size:10.5px;text-decoration:none;transition:background .15s,border-color .15s;
+}
+.kb-roam-link svg{width:11px;height:11px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.kb-roam-link:hover{background:var(--acc-soft);border-style:solid}
+@media (max-width:480px){.kb-roam-link{min-height:36px;padding:6px 12px;font-size:11.5px}}
+
+
 /* ---- [9] 窄屏（<1280 收紧竖条偏移；整体断点归 T6） ---- */
 @media (max-width:1280px){
   .dom-head::before{left:-6px}

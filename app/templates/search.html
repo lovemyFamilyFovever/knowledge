@@ -28,6 +28,11 @@
         <span class="srch-meta mono-sm">{% if results %}共 {{ results|length }} 条{% endif %}</span>
       </div>
 
+      {# ===== 需求11：分面 chips + 精确命中（由 pages/search.js 调 /api/search 渲染） ===== #}
+      <div class="kb-srch-facets" id="kb-facets"></div>
+      <div class="kb-srch-exact" id="kb-exact"></div>
+      <div class="kb-srch-hits" id="kb-hits">
+
       {% if semantic and rag_error %}
       <div class="empty srch-empty">
         <svg class="mascot" viewBox="0 0 240 170" aria-hidden="true">
@@ -99,6 +104,8 @@
         {% endif %}
       </div>
       {% endif %}
+
+      </div>{# /#kb-hits #}
 
     </div>
   </section>

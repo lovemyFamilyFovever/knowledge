@@ -69,6 +69,15 @@
     <div class="k" data-reveal><span class="kn"><span data-counter="{{ days }}">{{ days }}</span><span class="u">天</span></span><span class="kl"><svg aria-hidden="true"><use href="#i-calendar-day"/></svg>距 10·01</span></div>
   </div>
 
+  {# ========== 今日学习（需求3）：真实数字，由 pages/home.js 调 /api/learn/today + /api/learn/mastery 渲染 ========== #}
+  <section class="kb-today" id="kb-today" data-reveal aria-label="今日学习">
+    <div class="kb-today-h">
+      <svg class="i i-14" aria-hidden="true"><use href="#i-clock-heartbeat"/></svg>
+      <b>今日学习</b>
+      <span class="kb-today-date">载入中…</span>
+    </div>
+  </section>
+
   {# ========== 最近更新：跑马灯（设计稿第 06 屏语言） ========== #}
   <div class="home-sec-label">最近更新<span class="n">{{ recents|length }} 条 · 最近改动优先</span></div>
   {% if recents %}

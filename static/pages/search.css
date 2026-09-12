@@ -85,3 +85,47 @@
   .result .path{flex-basis:100%;white-space:normal}
   .result .score{margin-left:0}
 }
+
+/* =====================================================================
+   [5] v1.1 追加 —— 需求11 检索增强：分面 chips + 精确命中置顶
+   （DOM 由 pages/search.js 渲染；新 class 一律 kb- 前缀）
+   ===================================================================== */
+.kb-srch-facets{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px}
+.kb-srch-facets[hidden]{display:none}
+.kb-facet-group{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
+.kb-facet-t{font:500 10px/1 var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--faint);margin-right:2px}
+.kb-facet{
+  display:inline-flex;align-items:center;gap:6px;min-height:30px;padding:0 11px;border-radius:var(--radius-pill);
+  border:1px solid var(--edge);background:transparent;color:var(--muted);font-size:11.5px;cursor:pointer;
+  transition:border-color .15s,color .15s,background .15s;
+}
+.kb-facet:hover{color:var(--seed-fg);border-color:var(--edge-hi)}
+.kb-facet.on{background:var(--acc-soft);border-color:var(--acc-edge);color:var(--acc);font-weight:600}
+.kb-facet .kb-facet-n{font:500 10px/1 var(--mono);color:var(--faint);font-variant-numeric:tabular-nums}
+.kb-facet.on .kb-facet-n{color:var(--acc)}
+.kb-facet.clear{margin-left:auto;border-style:dashed;color:var(--warn);border-color:var(--warn-edge)}
+.kb-facet-warn{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;color:var(--warn)}
+.kb-facet-warn svg{color:var(--warn)}
+
+.kb-srch-exact{display:flex;flex-direction:column;gap:8px}
+.kb-srch-exact[hidden]{display:none}
+.kb-badge-exact{
+  display:inline-flex;align-items:center;gap:4px;flex:none;margin-left:2px;
+  font:600 10px/1 var(--mono);letter-spacing:.03em;color:var(--acc);
+  background:var(--acc-soft);border:1px solid var(--acc-edge);border-radius:var(--radius-pill);padding:3px 8px;
+}
+.result.kb-exact{
+  border-color:var(--acc-edge);
+  background:linear-gradient(100deg,var(--acc-soft),color-mix(in oklab,var(--seed-surface),transparent 45%) 60%);
+}
+.kb-res-tags{display:flex;flex-wrap:wrap;gap:5px;margin-top:2px}
+.kb-srch-hits{display:flex;flex-direction:column;gap:12px}
+
+@media (max-width:720px){
+  .kb-srch-facets{gap:6px 10px}
+  .kb-facet-group{width:100%}
+}
+@media (max-width:480px){
+  .kb-facet{min-height:44px;padding:0 14px;font-size:12.5px}
+  .kb-facet-t{width:100%}
+}
