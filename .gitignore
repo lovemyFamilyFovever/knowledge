@@ -14,6 +14,8 @@ content/_trash/
 # 便携 Python 运行时与本地嵌入模型（机器本地，可重建）
 .python/
 app/rag_models/
+# reading.db 本地滚动备份（复习进度是用户数据，但二进制不入 git；由 daily_backup 每日滚动）
+backups/
 
 # ---------- Agent / 工作流产物（不入库）----------
 # QwenWork Canvas 会话工作区（含设计稿、doT.min.js、.design.json、.canvas-meta.json 等）

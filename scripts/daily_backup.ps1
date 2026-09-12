@@ -45,6 +45,19 @@ try {
             Log "no changes"
         }
     }
+
+    # reading.db 滚动备份：复习排期/掌握度是唯一不可再生的用户数据（indexes/ 不在 git 覆盖内）。
+    # sqlite 在线 backup API 拷贝（直接 Copy 正在写的库可能截断）；脚本内部保留最近 7 份。
+    $bkScript = Join-Path $scriptDir "backup_reading.py"
+    $bkOut = $null
+    & python $bkScript 2>$null
+    if ($LASTEXITCODE -ne 0) {
+        $bkOut = & py -3 $bkScript 2>&1
+        if ($LASTEXITCODE -eq 0) { Log "reading.db backed up ($($bkOut -join ' '))" }
+        else { Log ("WARN: reading.db backup failed: " + ($bkOut -join " ")) }
+    } else {
+        Log "reading.db backed up"
+    }
 } catch {
     Log "ERROR: $($_.Exception.Message)"
     exit 1
