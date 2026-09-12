@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% block title %}收件箱 · 知库{% endblock %}
+{% block head %}<link rel="stylesheet" href="/static/pages/misc.css?v={{ av('pages/misc.css') }}">{% endblock %}
 {% block body %}
 <main class="single">
   <section class="panel page-panel">
@@ -23,9 +24,9 @@
             </div>
             <div class="meta"><span class="src">inbox</span><span>{{ it.rel }} · {{ it.size }}</span></div>
             <div class="acts">
-              <a class="mini-act" href="/raw/{{ it.rel }}" target="_blank"><svg aria-hidden="true"><use href="#i-preview-eye"/></svg>阅读</a>
-              <button type="button" class="mini-act" data-act="move"><svg aria-hidden="true"><use href="#i-swap"/></svg>归档 / 移动…</button>
-              <button type="button" class="mini-act danger" data-act="del"><svg aria-hidden="true"><use href="#i-trash-outline"/></svg>丢弃</button>
+              <a class="mini-act" href="/raw/{{ it.rel }}" target="_blank"><svg class="i i-11" aria-hidden="true"><use href="#i-preview-eye"/></svg>阅读</a>
+              <button type="button" class="mini-act" data-act="move"><svg class="i i-11" aria-hidden="true"><use href="#i-swap"/></svg>归档 / 移动…</button>
+              <button type="button" class="mini-act danger" data-act="del"><svg class="i i-11" aria-hidden="true"><use href="#i-trash-outline"/></svg>丢弃</button>
             </div>
           </div>
           {% endfor %}
@@ -67,6 +68,5 @@
 </main>
 {% endblock %}
 {% block scripts %}
-<link rel="stylesheet" href="/static/pages/misc.css?v={{ av('pages/misc.css') }}">
 <script defer src="/static/pages/misc.js?v={{ av('pages/misc.js') }}"></script>
 {% endblock %}

@@ -201,7 +201,7 @@ async function loadDirTree(force) {
 
 function renderDocList(docs, subLabel, activeName) {
   const title = $("#list-title");
-  if (title) title.innerHTML = `${esc(subLabel)}<button class="fold dir-stats-btn" onclick="showSubStats(CUR.domain, CUR.sub)" title="目录统计：当前目录篇数/字数/标签分布，含兄弟目录对比"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="m7 15 4-6 4 3 5-8"/></svg><span>统计</span></button><span class="cnt">${docs.length}</span><button class="fold" onclick="togglePanel('list')" title="收起列表"><svg><use href="#i-fold-l"/></svg></button>`;
+  if (title) title.innerHTML = `${esc(subLabel)}<button class="fold dir-stats-btn" onclick="showSubStats(CUR.domain, CUR.sub)" title="目录统计：当前目录篇数/字数/标签分布，含兄弟目录对比">${icon("chart", 13)}<span>统计</span></button><span class="cnt">${docs.length}</span><button class="fold" onclick="togglePanel('list')" title="收起列表"><svg><use href="#i-fold-l"/></svg></button>`;
   const list = $("#doclist"); if (!list) return;
   list.innerHTML = docs.map(d => `
     <a class="doc ${d.name === activeName ? "active" : ""}" data-name="${esc(d.name)}" draggable="true" href="/doc/${CUR.domain}/${CUR.sub}/${d.name.split("/").map(encodeURIComponent).join("/")}">
@@ -662,11 +662,11 @@ async function showSubStats(dom, sub) {
   ov.innerHTML = `<div class="kbm kbm-stats" role="dialog" aria-modal="true">
     <div class="kbm-title">${icon("chart", 16)} ${esc(s.domain_label)} / ${esc(s.label)} · 目录统计</div>
     <div class="kbm-body">
-    <div class="ss-grid">
-      <div class="ss-cell"><div class="ss-n">${s.n_docs}</div><div class="ss-l">文档数</div></div>
-      <div class="ss-cell"><div class="ss-n">${s.total_cjk.toLocaleString()}</div><div class="ss-l">总字数（CJK）</div></div>
-      <div class="ss-cell"><div class="ss-n">${s.avg_cjk.toLocaleString()}</div><div class="ss-l">篇均字数</div></div>
-      <div class="ss-cell"><div class="ss-n">${s.n_untagged}</div><div class="ss-l">未打标</div></div>
+    <div class="gkpi">
+      <div class="g"><div class="lab">文档</div><div class="num acc">${s.n_docs}</div><div class="sub">本目录篇数</div></div>
+      <div class="g"><div class="lab">总字数</div><div class="num">${s.total_cjk.toLocaleString()}</div><div class="sub">CJK 字符</div></div>
+      <div class="g"><div class="lab">篇均字数</div><div class="num">${s.avg_cjk.toLocaleString()}</div><div class="sub">字 / 篇</div></div>
+      <div class="g"><div class="lab">未打标</div><div class="num ${s.n_untagged ? "warn" : "acc"}">${s.n_untagged}</div><div class="sub">待补 tags</div></div>
     </div>
     <div class="ss-sec">标签分布 Top ${s.tags.length}</div>
     <div class="ss-tags">${tagRows}</div>
@@ -696,7 +696,7 @@ async function showGlobalStats() {
   ov.className = "kbm-ov";
   ov.id = "gs-ov";
   ov.innerHTML = `<div class="kbm kbm-stats" role="dialog" aria-modal="true">
-    <div class="kbm-title">全库统计</div>
+    <div class="kbm-title">${icon("chart", 16)} 全库统计</div>
     <div class="kbm-body" id="gs-body">统计中…</div>
     <div class="kbm-btns"><button class="iconbtn primary ss-close">关闭</button></div></div>`;
   document.body.appendChild(ov);
@@ -1088,4 +1088,12 @@ if (docData) {
   } catch (e) { console.error("初始渲染失败", e); }
 }
 if (WORKBENCH) wireDragMove();
-loadTree().then(() => renderTree());
+loadTree().then(() => {
+  renderTree();
+  /* 整页加载（例：从主页文章卡片直接进 /doc/...）时，第二列面板头 #list-title 由模板服务端渲染，
+     不含「统计」按钮（dir-stats-btn）；而客户端路由 openDoc() 会调 renderDocList() 补上它。
+     这里在树就绪后补一次同样的重绘，保证「整页进入」与「点树切换」两条路径产出一致；
+     findSub 未命中（比如文档已不在树里）时不动作，保持幂等、不报错。 */
+  const s = WORKBENCH && CUR ? findSub(CUR.domain, CUR.sub) : null;
+  if (s && !document.querySelector("#list-title .dir-stats-btn")) renderDocList(s.docs, s.label, CUR.name);
+});

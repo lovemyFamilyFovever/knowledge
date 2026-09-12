@@ -1,140 +1,237 @@
-/* 知库 stats.js · T4 月度统计页（设计基准 v0.4 第 07 屏）
-   数据来源：仅 /stats 模板内嵌的真实统计数据（#st-daily-data，来自 ReadingStore.monthly）。
-   不造假数据：无序列的图直接不渲染，不填充占位。
-   依赖 T0：window.Motion（reduced 标志、refresh）；GSAP 缺失时全部静态呈现。 */
+/* 知库 stats.js · 月度统计页（问题13 重构）
+   数据来源：仅模板内嵌的真实统计数据（#st-daily-data，来自 ReadingStore.monthly）。
+   设计要点：
+   1. 横轴按**日历**定位（1..当月天数），缺失日 0 高但保留刻度；
+      不再用 plotW/len 那种「按数组下标均分」的畸形柱位。
+   2. 只有真正有数据时才画图：无序列直接返回，不写 "NO SERIES"、不留空白图卡。
+   3. 图表全部内联 SVG（零外链），配色只用已有 CSS 变量（--acc/--acc2/--edge）。
+   4. 揭示动画兜底：任何 [data-reveal] 若被卡成隐形，超时后强制可见。
+   依赖 T0：window.Motion（可选，缺失即静态呈现）。 */
 (function () {
   "use strict";
 
-  var raw = document.getElementById("st-daily-data");
-  var daily = [];
-  try { daily = JSON.parse(raw && raw.textContent || "[]") || []; } catch (e) { daily = []; }
-  var reduced = window.Motion && window.Motion.reduced;
-
   var SVGNS = "http://www.w3.org/2000/svg";
+  var H = 240;                                   // svg 逻辑高度（与模板一致）
+  var PAD = { l: 44, r: 18, t: 20, b: 34 };
+  var reduced = !!(window.Motion && window.Motion.reduced);
+
   function el(tag, attrs) {
     var n = document.createElementNS(SVGNS, tag);
-    for (var k in attrs) n.setAttribute(k, attrs[k]);
+    if (attrs) for (var k in attrs) if (attrs[k] !== null && attrs[k] !== undefined) n.setAttribute(k, attrs[k]);
     return n;
   }
+  function say(node, s) { node.textContent = s; return node; }
+  function niceCeil(v) {
+    if (!(v > 0)) return 1;
+    var pow = Math.pow(10, Math.floor(Math.log(v) / Math.LN10));
+    var f = v / pow;
+    var n = f <= 1 ? 1 : f <= 2 ? 2 : f <= 5 ? 5 : 10;
+    return n * pow;
+  }
+  function dayNum(s) {
+    var m = /(\d{4})-(\d{2})-(\d{2})/.exec(String(s == null ? "" : s));
+    if (m) return +m[3];
+    var n = parseInt(s, 10);
+    return isFinite(n) ? n : NaN;
+  }
 
-  /* ---------- KPI 迷你 sparkline（内联 SVG polyline） ---------- */
+  /* ---------- 读原始序列 ---------- */
+  var daily = (function () {
+    var raw = document.getElementById("st-daily-data");
+    try { return JSON.parse((raw && raw.textContent) || "[]") || []; } catch (e) { return []; }
+  })();
+
+  /* ---------- 月份信息（当月天数，来自模板 [data-ym]） ---------- */
+  function monthInfo() {
+    var host = document.querySelector("[data-ym]");
+    var ym = host ? (host.getAttribute("data-ym") || "") : "";
+    var m = /^(\d{4})-(\d{1,2})$/.exec(ym);
+    if (m) return { y: +m[1], m: +m[2], days: new Date(+m[1], +m[2], 0).getDate() };
+    return null;
+  }
+
+  /* 把（可能稀疏的）daily 序列铺成「当月每一天」的连续序列，下标即日 */
+  function buildSeries() {
+    var info = monthInfo();
+    var maxDay = 0;
+    daily.forEach(function (d) { var k = dayNum(d.day); if (isFinite(k) && k > maxDay) maxDay = k; });
+    var N = (info && info.days) || maxDay || daily.length || 1;
+    var rows = [];
+    for (var i = 0; i < N; i++) rows.push({ day: i + 1, minutes: 0, docs: 0 });
+    daily.forEach(function (d, i) {
+      var k = dayNum(d.day);
+      if (!isFinite(k) || k < 1 || k > N) k = i + 1;   // 无日期字段时退回下标
+      var r = rows[k - 1];
+      if (r) { r.minutes += (+d.minutes || 0); r.docs += (+d.docs || 0); }
+    });
+    return { N: N, rows: rows };
+  }
+
+  var SERIES = buildSeries();
+
+  /* ---------- KPI 迷你 sparkline（无数据不画、不写占位） ---------- */
   function sparkline(container, values, stroke) {
-    if (!container || !values.length) return;
-    var w = 100, h = 24, max = Math.max.apply(null, values) || 1;
+    var max = Math.max.apply(null, values.concat([0]));
+    if (values.length < 2 || !(max > 0)) return false;
+    var w = 100, h = 24, pad = 3;
     var pts = values.map(function (v, i) {
-      var x = values.length > 1 ? i * w / (values.length - 1) : 0;
-      return x.toFixed(1) + "," + (h - 2 - (v / max) * (h - 4)).toFixed(1);
+      var x = i * w / (values.length - 1);
+      var y = h - pad - (v / max) * (h - pad * 2);
+      return [x.toFixed(1), y.toFixed(1)];
     });
     var svg = el("svg", { viewBox: "0 0 " + w + " " + h, preserveAspectRatio: "none" });
-    svg.appendChild(el("polygon", {
-      class: "spark-fill", fill: stroke, stroke: "none",
-      points: "0," + h + " " + pts.join(" ") + " " + w + "," + h
-    }));
-    svg.appendChild(el("polyline", {
-      fill: "none", stroke: stroke, "stroke-width": "1.5",
-      "stroke-linecap": "round", "stroke-linejoin": "round", points: pts.join(" ")
-    }));
-    var last = pts[pts.length - 1].split(",");
-    svg.appendChild(el("circle", {
-      class: "spark-dot", fill: stroke, cx: last[0], cy: last[1]
-    }));
+    var poly = pts.map(function (p) { return p.join(","); }).join(" ");
+    svg.appendChild(el("polygon", { class: "spark-fill", fill: stroke, stroke: "none",
+      points: "0," + h + " " + poly + " " + w + "," + h }));
+    svg.appendChild(el("polyline", { fill: "none", stroke: stroke, "stroke-width": "1.6",
+      "stroke-linecap": "round", "stroke-linejoin": "round", points: poly }));
+    var last = pts[pts.length - 1];
+    svg.appendChild(el("circle", { class: "spark-dot", fill: stroke, cx: last[0], cy: last[1] }));
     container.appendChild(svg);
+    return true;
   }
 
   function initSparks() {
-    var minutes = daily.map(function (d) { return d.minutes; });
-    var docs = daily.map(function (d) { return d.docs; });
-    var presence = daily.map(function (d) { return d.minutes > 0 ? 1 : 0; });
+    var minutes = SERIES.rows.map(function (r) { return r.minutes; });
+    var docs = SERIES.rows.map(function (r) { return r.docs; });
+    var presence = SERIES.rows.map(function (r) { return r.minutes > 0 ? 1 : 0; });
     var map = { minutes: [minutes, "var(--acc)"], docs: [docs, "var(--acc2)"], presence: [presence, "var(--acc)"] };
     Array.prototype.forEach.call(document.querySelectorAll("[data-spark]"), function (c) {
-      var cfg = map[c.dataset.spark];
-      if (cfg && cfg[0].length) sparkline(c, cfg[0], cfg[1]);
-      else c.innerHTML = '<span class="st-spark-none">NO SERIES</span>';
+      var cfg = map[c.getAttribute("data-spark")];
+      c.textContent = "";
+      if (!cfg) return;
+      sparkline(c, cfg[0], cfg[1]);
     });
   }
 
-  /* ---------- 每日条形图：双色柱（阅读分钟 --acc · 打开文档数 --acc2） ---------- */
-  function buildChart() {
+  /* ---------- 每日柱状图：柱=阅读分钟（左轴），折线=打开文档数（右轴） ---------- */
+  function drawDaily() {
     var svg = document.getElementById("stDailyChart");
-    if (!svg || !daily.length) return;
-    var W = 900, H = 200, padL = 34, padR = 10, base = 180, top = 14;
-    var maxMin = Math.max.apply(null, daily.map(function (d) { return d.minutes; })) || 1;
-    var maxDoc = Math.max.apply(null, daily.map(function (d) { return d.docs; })) || 1;
-    /* 整数档刻度：向上取整到 1/2/5×10^n 的 nice step */
-    function niceMax(v) {
-      var pow = Math.pow(10, Math.floor(Math.log(v || 1) / Math.LN10));
-      var f = v / pow;
-      var n = f <= 1 ? 1 : f <= 2 ? 2 : f <= 5 ? 5 : 10;
-      return n * pow;
-    }
-    maxMin = niceMax(maxMin);
-    var plotW = W - padL - padR;
-    var slot = plotW / daily.length;
-    var barW = Math.min(18, Math.max(6, slot * 0.42));
-    var ticks = 4;
+    if (!svg) return false;
+    var rows = SERIES.rows, N = SERIES.N;
+    var sumMin = rows.reduce(function (s, r) { return s + r.minutes; }, 0);
+    var sumDoc = rows.reduce(function (s, r) { return s + r.docs; }, 0);
+    while (svg.firstChild) svg.removeChild(svg.firstChild);     // 幂等重绘
+    if (!(sumMin > 0) && !(sumDoc > 0)) return false;           // 无数据 → 不渲染
 
-    /* 网格 + mono 坐标（分钟轴，左） */
-    var grid = el("g", { stroke: "var(--edge)", "stroke-width": "1", fill: "none" });
-    var labels = el("g", { "font-family": "var(--mono)", "font-size": "9", fill: "var(--faint)", stroke: "none" });
-    for (var t = 0; t <= ticks; t++) {
-      var yv = base - t * (base - top) / ticks;
-      var v = maxMin * t / ticks;
-      grid.appendChild(el("line", {
-        x1: padL, y1: yv, x2: W - padR, y2: yv,
-        "stroke-dasharray": t === 0 ? "" : "2 4", opacity: t === 0 ? "1" : ".5"
-      }));
-      var txt = el("text", { x: padL - 6, y: yv + 3, "text-anchor": "end" });
-      txt.textContent = Math.round(v);
-      labels.appendChild(txt);
-    }
-    svg.appendChild(grid);
-    svg.appendChild(labels);
+    var W = Math.max(320, Math.round(svg.clientWidth || (svg.parentNode && svg.parentNode.clientWidth) || 900));
+    svg.setAttribute("viewBox", "0 0 " + W + " " + H);
+    svg.setAttribute("preserveAspectRatio", "none");
 
-    /* 柱：主序列分钟（--acc）+ 副序列文档数（--acc2，独立归一） */
-    var bars = el("g");
-    var days = el("g", { "font-family": "var(--mono)", "font-size": "8", fill: "var(--faint)", stroke: "none" });
-    var peak = daily.reduce(function (a, b) { return b.minutes > a.minutes ? b : a; }, daily[0]);
-    daily.forEach(function (d, i) {
-      var cx = padL + slot * i + slot / 2;
-      var hMin = Math.max(2, (d.minutes / maxMin) * (base - top));
-      var g = el("g", { class: "st-bar" + (d === peak ? " st-bar-hot" : "") });
-      var title = el("title");
-      title.textContent = d.day + "：" + d.minutes + " 分钟 / " + d.docs + " 篇";
-      g.appendChild(title);
-      g.appendChild(el("rect", {
-        x: (cx - barW - 1).toFixed(1), y: (base - hMin).toFixed(1),
-        width: barW, height: hMin.toFixed(1), rx: "2", fill: "var(--acc)"
-      }));
-      if (d.docs > 0) {
-        var hDoc = Math.max(2, (d.docs / maxDoc) * (base - top));
-        g.appendChild(el("rect", {
-          x: (cx + 1).toFixed(1), y: (base - hDoc).toFixed(1),
-          width: barW, height: hDoc.toFixed(1), rx: "2", fill: "var(--acc2)", opacity: ".85"
-        }));
+    var plotW = W - PAD.l - PAD.r;
+    var base = H - PAD.b, top = PAD.t;
+    var slot = plotW / N;
+
+    var maxMin = niceCeil(Math.max.apply(null, rows.map(function (r) { return r.minutes; }).concat([0])));
+    var maxDoc = niceCeil(Math.max.apply(null, rows.map(function (r) { return r.docs; }).concat([0])));
+    var yTicks = 4, t, y;
+
+    /* 纵轴网格 + 分钟刻度（左） */
+    var grid = el("g");
+    var ylbl = el("g");
+    for (t = 0; t <= yTicks; t++) {
+      y = base - t * (base - top) / yTicks;
+      if (t > 0) grid.appendChild(el("line", { class: "st-grid", x1: PAD.l, y1: y.toFixed(1), x2: W - PAD.r, y2: y.toFixed(1) }));
+      ylbl.appendChild(say(el("text", { class: "st-lbl", x: PAD.l - 8, y: (y + 3).toFixed(1), "text-anchor": "end" }),
+        String(Math.round(maxMin * t / yTicks))));
+    }
+    /* 右轴：文档数刻度（淡） */
+    var ylblDoc = el("g");
+    if (maxDoc > 0) {
+      for (t = 0; t <= yTicks; t++) {
+        y = base - t * (base - top) / yTicks;
+        ylblDoc.appendChild(say(el("text", { class: "st-lbl-doc", x: W - PAD.r + 6, y: (y + 3).toFixed(1), "text-anchor": "start" }),
+          String(Math.round(maxDoc * t / yTicks))));
       }
-      var dt = el("text", { x: cx.toFixed(1), y: base + 14, "text-anchor": "middle" });
-      dt.textContent = d.day.slice(8);
-      days.appendChild(dt);
+    }
+    grid.appendChild(el("line", { class: "st-axis", x1: PAD.l, y1: base, x2: W - PAD.r, y2: base }));
+    svg.appendChild(grid); svg.appendChild(ylbl); svg.appendChild(ylblDoc);
+
+    /* 柱 + 折线 */
+    var barW = Math.max(3, Math.min(18, slot * 0.56));
+    var bars = el("g");
+    var docPts = [];
+    var peak = rows.reduce(function (a, b) { return b.minutes > a.minutes ? b : a; }, rows[0]);
+    rows.forEach(function (r) {
+      var cx = PAD.l + (r.day - 1) * slot + slot / 2;
+      var g = el("g", { class: "st-bar" + (r === peak && r.minutes > 0 ? " st-bar-hot" : "") });
+      g.appendChild(say(el("title"), "第 " + r.day + " 天：" + r.minutes + " 分钟 / " + r.docs + " 篇"));
+      if (r.minutes > 0) {
+        var hMin = Math.max(2, (r.minutes / maxMin) * (base - top));
+        g.appendChild(el("rect", { x: (cx - barW / 2).toFixed(1), y: (base - hMin).toFixed(1),
+          width: barW.toFixed(1), height: hMin.toFixed(1), rx: 2, fill: "var(--acc)" }));
+      } else {
+        /* 缺失/零数据日：留一条极细基线刻度，保证日历连续可读 */
+        g.appendChild(el("rect", { x: (cx - barW / 2).toFixed(1), y: (base - 1.5).toFixed(1),
+          width: barW.toFixed(1), height: 1.5, rx: 0.6, fill: "var(--edge)" }));
+      }
       bars.appendChild(g);
+      docPts.push([cx, base - (maxDoc > 0 ? (r.docs / maxDoc) * (base - top) : 0), r.docs]);
     });
     svg.appendChild(bars);
-    svg.appendChild(days);
 
-    /* 峰值注释（mono，真实数据） */
+    if (maxDoc > 0) {
+      svg.appendChild(el("polyline", { class: "st-doc-line",
+        points: docPts.map(function (p) { return p[0].toFixed(1) + "," + p[1].toFixed(1); }).join(" ") }));
+      docPts.forEach(function (p) {
+        if (p[2] > 0) svg.appendChild(el("circle", { class: "st-doc-dot", cx: p[0].toFixed(1), cy: p[1].toFixed(1), r: 2 }));
+      });
+    }
+
+    /* 横轴刻度：1、每 5 天一个、末尾补最后一天 */
+    var xlbl = el("g");
+    var marks = [1];
+    for (var d = 5; d <= N; d += 5) marks.push(d);
+    if (N - marks[marks.length - 1] >= 2) marks.push(N);
+    marks.forEach(function (d) {
+      var cx = PAD.l + (d - 1) * slot + slot / 2;
+      xlbl.appendChild(say(el("text", { class: "st-lbl", x: cx.toFixed(1), y: base + 15, "text-anchor": "middle" }), String(d)));
+    });
+    xlbl.appendChild(say(el("text", { class: "st-lbl", x: W - PAD.r, y: base + 29, "text-anchor": "end" }), "日"));
+    svg.appendChild(xlbl);
+
+    /* 峰值标注（真实数值，不让高度独自表意） */
+    if (peak.minutes > 0) {
+      var pcx = PAD.l + (peak.day - 1) * slot + slot / 2;
+      var pcy = base - Math.max(2, (peak.minutes / maxMin) * (base - top));
+      svg.appendChild(say(el("text", { class: "st-peak-lbl", x: pcx.toFixed(1), y: (pcy - 6).toFixed(1), "text-anchor": "middle" }),
+        peak.minutes + "\u2032"));
+    }
+
+    /* 底部文案 */
     var note = document.getElementById("stChartNote");
     if (note) {
-      var avg = daily.reduce(function (s, d) { return s + d.minutes; }, 0) / daily.length;
-      note.innerHTML = "峰值 <b>" + peak.day.slice(5) + " · " + peak.minutes + " 分钟</b>"
-        + " · 有记录 " + daily.length + " 天 · 日均 " + avg.toFixed(1) + " 分钟"
-        + " · 悬停柱体查看每日明细 · 峰值日描边高亮";
-      var hot = svg.querySelector(".st-bar-hot rect");
-      if (hot) hot.setAttribute("stroke", "var(--warn)"), hot.setAttribute("stroke-width", "1.5");
+      var activeDays = rows.filter(function (r) { return r.minutes > 0; }).length;
+      note.innerHTML = "峰值 <b>第 " + peak.day + " 天 · " + peak.minutes + " 分钟</b>"
+        + " · 有记录 " + activeDays + " 天 · 日均 " + (sumMin / N).toFixed(1) + " 分钟"
+        + " · 悬停柱体看每日明细";
     }
+    return true;
+  }
+
+  /* ---------- 揭示动画兜底 ---------- */
+  function ensureRevealed() {
+    Array.prototype.forEach.call(document.querySelectorAll(".stats-body [data-reveal]"), function (n) {
+      if (parseFloat(getComputedStyle(n).opacity) < 0.99) {
+        n.classList.add("in");
+        n.style.opacity = "";
+        n.style.transform = "";
+      }
+    });
+  }
+
+  var resizeTimer = null;
+  function onResize() {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(function () { drawDaily(); }, 180);
   }
 
   function init() {
     initSparks();
-    buildChart();
+    drawDaily();
+    if (!(window.gsap && window.Motion && !reduced)) ensureRevealed();   // GSAP 未就绪 → 立即显示
+    setTimeout(ensureRevealed, 1200);                                   // 失败安全：超时仍隐形就强制显示
+    window.addEventListener("resize", onResize);
     if (window.Motion && typeof window.Motion.refresh === "function") window.Motion.refresh();
   }
 

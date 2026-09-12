@@ -111,7 +111,7 @@
 .mascot .arm{stroke:var(--ill-skin-shadow);stroke-width:5;stroke-linecap:round;fill:none}
 
 /* [G] 错误页（全屏错误态 + mascot + mbtn.primary） */
-.err-wrap{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;
+.err-wrap{flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;
   padding:48px 30px;text-align:center;animation:rise .4s var(--ease-out)}
 .err-wrap .e-title{font-family:var(--disp);font-size:24px;font-weight:700;color:var(--seed-fg);letter-spacing:-.01em}
 .err-wrap .e-desc{font-size:13.5px;color:var(--muted);max-width:52ch;line-height:1.8}

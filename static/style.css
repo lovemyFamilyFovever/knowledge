@@ -110,6 +110,11 @@ body{font:var(--fs-body)/1.75 var(--sans);color:var(--seed-fg);background:var(--
 a{color:inherit;text-decoration:none}
 button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer}
 svg{display:block}
+/* 兜底：未显式指定尺寸的内联 <svg>（图标 <use> 载体）不得按替换元素默认 300×150 渲染，
+   否则在页面级样式表尚未生效的首帧（FOUC）会放出"所有图标都巨大"的错误画面。
+   用 :where() 把特异度压到元素级（0,0,1），任何自带的 svg 尺寸规则（.x svg）都能覆盖它；
+   排除 [width] / [class] / [style]，避免误伤图表、插画（mascot）与精灵表容器。 */
+svg:where(:not([width]):not([class]):not([style])){width:16px;height:16px}
 code,kbd,.mono{font-family:var(--mono)}
 h1,h2,h3,h4{font-family:var(--disp);font-weight:600;letter-spacing:-.01em}
 :focus-visible{outline:3px solid color-mix(in oklab,var(--acc),transparent 20%);outline-offset:2px;border-radius:4px}
@@ -449,7 +454,7 @@ html[data-theme="dark"] .pretty-ov{background:color-mix(in oklab,var(--hex-plate
 .kbm{width:min(500px,92vw);max-height:82vh;display:flex;flex-direction:column;
   background:var(--glass-strong);backdrop-filter:blur(24px) saturate(1.15);
   border:1px solid var(--edge-hi);border-radius:var(--radius-lg);box-shadow:var(--shadow-hi);padding:20px 22px}
-.kbm.kbm-stats{width:min(760px,94vw)}
+.kbm.kbm-stats{width:min(920px,94vw)}
 .kbm-title{font-family:var(--disp);font-size:17px;font-weight:700;color:var(--seed-fg);margin-bottom:10px}
 .kbm-body{flex:1 1 auto;min-height:0;font-size:13px;line-height:1.85;color:var(--muted);margin-bottom:12px;overflow-y:auto}
 .kbm-body .mono{font-family:var(--mono);font-size:11.5px;color:var(--acc);word-break:break-all}
@@ -495,29 +500,34 @@ html[data-theme="dark"] .kbm-input{background:color-mix(in oklab,var(--seed-surf
 html[data-theme="dark"] .ss-cell{background:color-mix(in oklab,var(--seed-fg),transparent 92%)}
 .ss-cell .ss-n{font-family:var(--num);font-size:20px;font-weight:700;color:var(--acc);font-variant-numeric:tabular-nums}
 .ss-cell .ss-l{font-size:10.5px;color:var(--muted);margin-top:3px}
-.ss-sec{font-family:var(--mono);font-size:10px;letter-spacing:.16em;color:var(--muted);margin:12px 0 6px;text-transform:uppercase}
-.ss-tags{display:flex;flex-direction:column;gap:5px;max-height:200px;overflow-y:auto}
-.ss-tag{display:flex;align-items:center;gap:10px}
-.ss-tag-name{flex:0 0 110px;font-size:12px;color:var(--seed-fg);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:right}
+.ss-sec{font-family:var(--mono);font-size:10px;letter-spacing:.16em;color:var(--muted);margin:14px 0 7px;text-transform:uppercase}
+/* 分布列表排成两栏网格：避免长条逐行堆叠。
+   关键：这里**不再**设 max-height / overflow-y —— 整块内容交给 .kbm-body 单条滚动，
+   否则右侧会同时出现「外层 .kbm-body + 内层 .ss-tags/.ss-sibs」几条滚动条（用户报的 bug）。 */
+.ss-tags{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px 18px}
+.ss-tag{display:flex;align-items:center;gap:10px;min-width:0}
+.ss-tag-name{flex:0 0 96px;font-size:12px;color:var(--seed-fg);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:right}
 .ss-dot{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:6px;flex:none}
-.ss-bar{flex:1;height:6px;border-radius:3px;background:var(--edge);overflow:hidden}
+.ss-bar{flex:1;height:6px;border-radius:3px;background:var(--edge);overflow:hidden;min-width:24px}
 .ss-bar i{display:block;height:100%;border-radius:3px;background:linear-gradient(90deg,var(--acc),var(--acc2))}
 .ss-tag-n{flex:0 0 26px;font-family:var(--num);font-size:12px;color:var(--seed-fg);text-align:left}
-.ss-sibs{display:flex;flex-direction:column;gap:4px;max-height:180px;overflow-y:auto}
+.ss-sibs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
 .ss-sib{display:flex;align-items:center;gap:10px;padding:6px 10px;border:1px solid var(--edge);border-radius:8px;
-  background:none;cursor:pointer;font:12px var(--sans);color:var(--seed-fg);text-align:left;transition:.15s}
+  background:none;cursor:pointer;font:12px var(--sans);color:var(--seed-fg);text-align:left;transition:.15s;min-width:0}
 .ss-sib:hover{border-color:var(--acc-edge);background:var(--acc-soft);color:var(--acc)}
-.ss-sib-l{flex:0 0 120px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.ss-sib-bar{flex:1;height:5px;border-radius:3px;background:var(--edge);overflow:hidden}
+.ss-sib-l{flex:1 1 auto;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ss-sib-bar{flex:0 0 72px;height:5px;border-radius:3px;background:var(--edge);overflow:hidden}
 .ss-sib-bar i{display:block;height:100%;border-radius:3px;background:linear-gradient(90deg,var(--acc),var(--acc2))}
 .ss-sib-n{flex:none;font-family:var(--mono);font-size:10.5px;color:var(--faint)}
+/* 统计弹窗窄屏：两栏收敛为单栏，避免挤压 */
+@media (max-width:720px){.ss-tags,.ss-sibs{grid-template-columns:1fr}.ss-tag-name{flex:0 0 80px}}
 /* 移动 / 重命名：目录树选择器 */
-.kbm-mv{width:min(640px,94vw)}
+.kbm-mv{width:min(900px,94vw)}
 .mv-src{font-family:var(--mono);font-size:11px;color:var(--faint);word-break:break-all;margin-bottom:12px}
 .mv-cols{display:grid;grid-template-columns:1.2fr 1fr;gap:14px;margin-bottom:4px}
 .mv-treebox{display:flex;flex-direction:column;min-height:0}
 .mv-filter{margin-bottom:8px;height:30px;font-size:12px}
-.mv-tree{flex:1;min-height:220px;max-height:300px;overflow-y:auto;border:1px solid var(--edge);border-radius:9px;
+.mv-tree{flex:1;min-height:220px;max-height:min(52vh,520px);overflow-y:auto;border:1px solid var(--edge);border-radius:9px;
   background:color-mix(in oklab,var(--seed-surface),transparent 55%);padding:6px;outline:none}
 html[data-theme="dark"] .mv-tree{background:color-mix(in oklab,var(--seed-surface),transparent 76%)}
 .mv-domrow{margin-bottom:1px}

@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% block title %}出错了 · 知库{% endblock %}
+{% block head %}<link rel="stylesheet" href="/static/pages/misc.css?v={{ av('pages/misc.css') }}">{% endblock %}
 {% block body %}
 <main class="single">
   <section class="panel page-panel">
@@ -28,7 +29,4 @@
     </div>
   </section>
 </main>
-{% endblock %}
-{% block scripts %}
-<link rel="stylesheet" href="/static/pages/misc.css?v={{ av('pages/misc.css') }}">
 {% endblock %}

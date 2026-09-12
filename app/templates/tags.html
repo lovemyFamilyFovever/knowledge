@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% block title %}标签 · 知库{% endblock %}
+{% block head %}<link rel="stylesheet" href="/static/pages/misc.css?v={{ av('pages/misc.css') }}">{% endblock %}
 {% block body %}
 <main class="single">
   <section class="panel page-panel">
@@ -16,7 +17,7 @@
             <input type="checkbox" class="t-check" aria-label="选择标签 {{ tag|e }}">
             <span class="t-name">{{ tag }}</span>
             <span class="n">{{ n }}</span>
-            <button type="button" class="t-merge" title="把这个标签并入另一个标签" data-merge="{{ tag|e }}"><svg aria-hidden="true"><use href="#i-move-arrow"/></svg></button>
+            <button type="button" class="t-merge" title="把这个标签并入另一个标签" data-merge="{{ tag|e }}"><svg class="i i-11" aria-hidden="true"><use href="#i-move-arrow"/></svg></button>
           </span>
           {% endfor %}
         </div>
@@ -63,7 +64,6 @@
 </main>
 {% endblock %}
 {% block scripts %}
-<link rel="stylesheet" href="/static/pages/misc.css?v={{ av('pages/misc.css') }}">
 <script defer src="/static/pages/misc.js?v={{ av('pages/misc.js') }}"></script>
 <script type="application/json" id="tags-data">[{% for tag, docs in tags %}{"t":{{ tag|tojson }},"n":{{ docs|length }},"docs":[{% for d in docs %}{"u":{{ ('/doc/' ~ d.domain ~ '/' ~ d.sub ~ '/' ~ d.name)|tojson }},"t":{{ d.title|tojson }},"p":{{ ((d.domain_label ~ ' / ' ~ d.sub_label) if d.domain_label is defined else (d.domain ~ ' / ' ~ d.sub))|tojson }}}{% if not loop.last %},{% endif %}{% endfor %}]}{% if not loop.last %},{% endif %}{% endfor %}]</script>
 {% endblock %}

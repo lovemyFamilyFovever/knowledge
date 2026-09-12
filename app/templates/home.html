@@ -1,7 +1,22 @@
 {% extends "base.html" %}
 {% block title %}总览 · 知库{% endblock %}
-{% block body %}
+{# 页面级样式放进 <head>：避免首帧只吃到 style.css / kb-core.css，
+   页面内的裸 <svg><use/></svg> 按替换元素默认尺寸渲染成 300×150 巨幅图标（FOUC）。 #}
+{% block head %}
 <link rel="stylesheet" href="/static/pages/home.css?v={{ av('pages/home.css') }}">
+{% endblock %}
+{% block body %}
+{# 统一的文档链接：两段 rel 的「域根文档」补 _root 段，逐段 URL 编码。
+   与 static/kb-core.js 的 KB.util.docUrl / static/app.js 的 docUrl() 保持同一套规则，
+   否则 /doc/<domain>/<sub>/<name> 三段路由匹配不上 → 404。 #}
+{% macro doc_href(rel) -%}
+{%- set p = rel[:-3].split('/') -%}
+{%- if p|length == 2 -%}
+/doc/{{ p[0]|urlencode }}/_root/{{ p[1]|urlencode }}
+{%- else -%}
+/doc/{{ p|map('urlencode')|join('/') }}
+{%- endif -%}
+{%- endmacro %}
 <div id="view-home" class="show">
  <div class="home-inner">
   <div class="home-mark">知</div>
@@ -23,39 +38,27 @@
       </div>
     </div>
     <div class="home-hero-visual">
-      <svg class="mascot mascot-hero" viewBox="0 0 340 260" role="img" aria-label="阅读者与其知识宇宙">
-        <title>阅读者 mascot</title>
-        <ellipse class="halo" cx="170" cy="150" rx="150" ry="90"/>
-        <circle cx="170" cy="140" r="100" stroke="var(--ill-line)" stroke-width="1" stroke-dasharray="2 6" fill="none" opacity=".4"/>
-        <use href="#ill-star-cluster" x="240" y="52" width="34" height="34" style="color:var(--warn)" opacity=".9" data-depth="0.9" class="parallax-layer"/>
-        <use href="#ill-bubble-check" x="282" y="88" width="34" height="34" style="color:var(--acc)" data-depth="1.3" class="parallax-layer"/>
-        <use href="#ill-gear-soft" x="34" y="86" width="30" height="30" style="color:var(--acc2)" opacity=".85" data-depth="0.6" class="parallax-layer"/>
-        <use href="#ill-bookmark-ribbon" x="58" y="52" width="20" height="26" style="color:var(--warn)" data-depth="1.5" class="parallax-layer"/>
-        <use href="#ill-quill-feather" x="288" y="150" width="30" height="30" style="color:var(--acc)" opacity=".9" data-depth="1.0" class="parallax-layer"/>
-        <use href="#ill-hourglass" x="24" y="180" width="24" height="24" style="color:var(--info)" opacity=".75" data-depth="0.5" class="parallax-layer"/>
-        <g data-depth="0.35" class="parallax-layer">
-          <ellipse class="shadow" cx="170" cy="220" rx="120" ry="10"/>
-          <path class="body-line" d="M120 155 Q170 130 220 155 L212 220 H128 Z" style="fill:url(#uniformGrad);stroke:color-mix(in oklab, var(--seed-fg), transparent 60%)"/>
-          <path class="shirt" d="M154 158 Q170 168 186 158 L182 182 H158 Z"/>
-          <path class="shirt-line" d="M158 168 L166 178 M174 178 L182 168"/>
-          <rect class="neck" x="158" y="130" width="24" height="18" rx="6"/>
-          <ellipse class="head" cx="170" cy="98" rx="34" ry="38"/>
-          <ellipse class="ear" cx="136" cy="98" rx="4" ry="6" fill="var(--ill-skin-shadow)"/>
-          <ellipse class="ear" cx="204" cy="98" rx="4" ry="6" fill="var(--ill-skin-shadow)"/>
-          <path class="hair" d="M136 92 Q138 60 170 60 Q202 60 204 92 Q200 76 170 76 Q140 76 136 92 Z"/>
-          <path class="glasses-lens" d="M146 92 h18 a4 4 0 0 1 4 4 v10 a4 4 0 0 1-4 4 h-18 a4 4 0 0 1-4-4 v-10 a4 4 0 0 1 4-4 Z"/>
-          <path class="glasses-lens" d="M176 92 h18 a4 4 0 0 1 4 4 v10 a4 4 0 0 1-4 4 h-18 a4 4 0 0 1-4-4 v-10 a4 4 0 0 1 4-4 Z"/>
-          <path class="glasses-arm" d="M168 100 h8 M198 100 h6 M146 100 h-6"/>
-          <path class="brow" d="M146 88 Q154 84 162 88 M178 88 Q186 84 194 88"/>
-          <circle class="eye" cx="154" cy="102" r="2.4"/><circle class="eye" cx="186" cy="102" r="2.4"/>
-          <path class="mouth" d="M160 118 Q170 122 180 118"/>
-          <ellipse class="cheek" cx="146" cy="112" rx="5" ry="3"/><ellipse class="cheek" cx="194" cy="112" rx="5" ry="3"/>
-          <path class="book-page" d="M110 200 Q170 178 230 200 L230 222 Q170 200 110 222 Z"/>
-          <path class="book" d="M110 200 Q170 178 230 200 L230 208 Q170 186 110 208 Z"/>
-          <line x1="170" y1="188" x2="170" y2="222" stroke="var(--ill-line)" stroke-width="1"/>
-          <path class="page-line" d="M126 202 h34 M126 208 h32 M126 214 h30 M180 202 h34 M180 208 h32 M180 214 h30"/>
-          <path class="bookmark" d="M196 194 l8 0 l0 20 l-4-3 l-4 3 z"/>
-          <use href="#ill-heart-mini" x="184" y="164" width="12" height="12" style="color:var(--rose)"/>
+      <svg class="mascot mascot-hero" viewBox="0 0 340 260" role="img" aria-label="知识节点连成的星座">
+        <title>知识星座：术语、文档与双链连成的网络</title>
+        <circle cx="170" cy="128" r="84" fill="var(--ill-halo)" opacity=".45"/>
+        <g stroke="var(--ill-line)" stroke-width="1.1" opacity=".55" fill="none" class="parallax-layer" data-depth="0.3">
+          <path d="M170 128 L108 74 M170 128 L242 82 M170 128 L92 176 M170 128 L246 182 M170 128 L160 214"/>
+          <path d="M108 74 L242 82 M92 176 L246 182 M108 74 L92 176"/>
+        </g>
+        <g class="parallax-layer" data-depth="0.55">
+          <circle cx="108" cy="74" r="7" fill="var(--acc)"/>
+          <circle cx="242" cy="82" r="6" fill="var(--acc2)"/>
+          <circle cx="92" cy="176" r="8" fill="var(--warn)"/>
+          <circle cx="246" cy="182" r="5.5" fill="var(--rose)"/>
+          <circle cx="160" cy="214" r="6.5" fill="var(--info)"/>
+          <circle cx="300" cy="140" r="4" fill="var(--acc)" opacity=".6"/>
+          <circle cx="44" cy="118" r="4.5" fill="var(--acc2)" opacity=".6"/>
+        </g>
+        <g class="parallax-layer" data-depth="0.8">
+          <circle cx="170" cy="128" r="30" fill="var(--acc)" opacity=".14"/>
+          <circle cx="170" cy="128" r="19" fill="var(--acc)"/>
+          <circle cx="170" cy="128" r="7" fill="var(--seed-bg)"/>
+          <circle cx="170" cy="128" r="30" fill="none" stroke="var(--acc)" stroke-width="1" stroke-dasharray="2 5" opacity=".5"/>
         </g>
       </svg>
     </div>
@@ -83,14 +86,14 @@
   {% if recents %}
   <div class="marquee"><div class="marquee-track" id="mq">
     {% for r in recents %}
-    <a class="mq-item" {% if r.rel.startswith('_inbox') %}href="/raw/{{ r.rel }}" target="_blank"{% else %}href="/doc/{{ r.rel[:-3] }}"{% endif %}>
+    <a class="mq-item" {% if r.rel.startswith('_inbox') %}href="/raw/{{ r.rel }}" target="_blank"{% else %}href="{{ doc_href(r.rel) }}"{% endif %}>
       <span class="d"></span><span class="t">{{ r.title }}</span>
       <span class="rp">{{ r.rel.rsplit('/', 1)[0] }}</span>
       <span class="tm">{{ SOURCE_LABELS.get(r.source, r.source) }}</span>
     </a>
     {% endfor %}
     {% for r in recents %}{# 第二份副本：跑马灯无缝循环，读屏隐藏 #}
-    <a class="mq-item" aria-hidden="true" tabindex="-1" {% if r.rel.startswith('_inbox') %}href="/raw/{{ r.rel }}" target="_blank"{% else %}href="/doc/{{ r.rel[:-3] }}"{% endif %}>
+    <a class="mq-item" aria-hidden="true" tabindex="-1" {% if r.rel.startswith('_inbox') %}href="/raw/{{ r.rel }}" target="_blank"{% else %}href="{{ doc_href(r.rel) }}"{% endif %}>
       <span class="d"></span><span class="t">{{ r.title }}</span>
       <span class="rp">{{ r.rel.rsplit('/', 1)[0] }}</span>
       <span class="tm">{{ SOURCE_LABELS.get(r.source, r.source) }}</span>

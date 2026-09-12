@@ -90,11 +90,13 @@
 .mq-item .rp{font-family:var(--mono);font-size:10.5px;color:var(--faint)}
 .mq-item .tm{font:500 10.5px/1 var(--mono);color:var(--faint);font-variant-numeric:tabular-nums}
 
-/* ---------- 域卡：7 域 + 新建域 = 8 列；hover 光晕中心色 --dh ---------- */
-.dom-cards{display:grid;grid-template-columns:repeat(8,1fr);gap:12px}
+/* ---------- 域卡：7 域 + 新建域 = 8 列；hover 光晕中心色 --dh ----------
+   轨道用 minmax(0,1fr)：1fr === minmax(auto,1fr) 会把轨道抬到 min-content
+   （.dsub 的 nowrap 文本可达 200px+），8 列总宽溢出容器被裁掉。 */
+.dom-cards{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:12px}
 .dom-card{padding:11px 10px;border:1px solid var(--edge);border-radius:var(--radius-lg);
   background:var(--glass);backdrop-filter:blur(18px);cursor:pointer;position:relative;display:flex;
-  flex-direction:column;gap:8px;min-height:118px;transition:.25s var(--ease-out);
+  flex-direction:column;gap:8px;min-height:118px;min-width:0;transition:.25s var(--ease-out);
   box-shadow:var(--shadow);text-decoration:none}
 .dom-card:hover{transform:translateY(-3px);border-color:color-mix(in oklab,hsl(var(--dh,158) 55% 45%),transparent 45%);
   box-shadow:0 0 0 1px color-mix(in oklab,hsl(var(--dh,158) 55% 45%),transparent 65%),
@@ -112,7 +114,7 @@ html[data-theme="dark"] .dom-card .n{color:hsl(var(--dh,158) 70% 66%)}
 .dom-card .seg-bar{display:flex;gap:2px;height:4px;margin-top:auto}
 .dom-card .seg-bar span{display:block;border-radius:2px;background:hsl(var(--dh,158) 55% 45%)}
 .dom-card .dsub{font-family:var(--mono);font-size:9.5px;color:var(--faint);letter-spacing:.02em;
-  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .dom-card.new-card .glyph-wrap{background:color-mix(in oklab,var(--acc),transparent 90%);color:var(--acc)}
 .dom-card.new-card .new-note{font-size:11px;color:var(--faint);line-height:1.5;margin-top:auto}
 .dom-card.new-card .new-note code{font-size:10px;color:var(--acc)}
@@ -152,13 +154,13 @@ html.motion-ready .dom-cards [data-reveal].in,
 html.motion-ready .home-pipe[data-reveal].in{opacity:1;transform:none}
 .hero-title .line{will-change:transform}
 
-@media (max-width:1080px){.dom-cards{grid-template-columns:repeat(4,1fr)}}
+@media (max-width:1080px){.dom-cards{grid-template-columns:repeat(4,minmax(0,1fr))}}
 @media (max-width:780px){
   .home-hero{grid-template-columns:1fr;min-height:auto}
   .home-hero-visual{min-height:220px}
   .kpi-strip{grid-template-columns:repeat(2,1fr);gap:16px}
   .kpi-strip .k{border-left:0;padding-left:0}
-  .dom-cards{grid-template-columns:repeat(2,1fr)}
+  .dom-cards{grid-template-columns:repeat(2,minmax(0,1fr))}
   .home-pipe{flex-wrap:wrap;gap:10px}
   .home-pipe .pipe-line{display:none}
 }

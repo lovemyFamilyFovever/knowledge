@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% block title %}搜索：{{ q }} · 知库{% endblock %}
+{% block head %}<link rel="stylesheet" href="/static/pages/search.css?v={{ av('pages/search.css') }}">{% endblock %}
 {% block body %}
 <main class="single">
   <section class="panel page-panel srch">
@@ -112,6 +113,5 @@
 </main>
 {% endblock %}
 {% block scripts %}
-<link rel="stylesheet" href="/static/pages/search.css?v={{ av('pages/search.css') }}">
 <script src="/static/pages/search.js?v={{ av('pages/search.js') }}" defer></script>
 {% endblock %}

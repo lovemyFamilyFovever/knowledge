@@ -264,15 +264,24 @@ html [hidden]{display:none}
 .kb-mastery-row .kb-bar i{background:linear-gradient(90deg,hsl(var(--dh,150) 55% 45%),hsl(var(--dh,150) 65% 60%))}
 .kb-today-cta{display:flex;flex-wrap:wrap;gap:9px;margin-top:14px}
 
-/* [8b] main.single 的 flex 收缩兜底 =====
-   style.css 给 `main{}` 上了 workbench 四栏网格，非 workbench 页面靠 `main.single`
-   退成 flex column。但 main 是高度受限的 flex 项（body 里 flex:1），内容一旦超出，
-   直系子块就按 flex-shrink 被压缩 —— 而 `overflow != visible` 的子块自动最小尺寸为 0，
-   **只有它会被无限压缩**。术语门户的 A–Z 索引条（.kb-gl-buckets 有 overflow-x:auto）
-   就是这样从 ~34px 被压到 19px，11.5px 的字母只剩顶部一丝。
-   统一让 main.single 的直系子块不参与收缩：正常内容本来就不该被压缩，
-   超出时交给页面滚动，而不是把某个带滚动条的子块挤扁。 */
-main.single > *{flex:none}
+/* [8b] main.single 的滚动职责 =====
+   非 workbench 页面靠 `main.single` 退成 flex column（body 里 flex:1 的高度受限项）。
+   契约：主内容面板 `section.panel.page-panel` 是唯一弹性子块，
+   由 style.css 的 `.page-panel{flex:1;min-height:0}` + `.panel{overflow:hidden}` 给足高度，
+   滚动交给面板内的 `.page-body{flex:1;overflow-y:auto}`。
+   历史教训（勿重蹈）：上一轮曾用 `main.single > *{flex:none}`（特异性 (0,1,1)）
+   去压 `.page-panel{flex:1}`（(0,1,0)），本意只是修 A–Z 索引条被压扁，
+   却把面板锁成「内容高度」→ `.page-body` 拿到完整内容高度、内部滚动条永不出现，
+   而 main 自身无 overflow，溢出被 `body{overflow:hidden}` 裁掉 →
+   /tags /stats /inbox /search /favorites 全部滚不到底。
+   索引条 .kb-gl-buckets 已在 glossary.css 里显式 `flex:none`，无需全局兜底。 */
+main.single > .page-panel{flex:1;min-height:0}
+
+/* [8c] 没有 .page-panel 的 main.single（如术语门户 glossary）由 main 自身滚动 =====
+   glossary 把内容直接摊在 main.single 下（无 page-panel），需要 main 承担滚动，
+   否则同样被 body{overflow:hidden} 裁掉。用 :has() 精确收口，不误伤分栏/面板页。
+   （本库已依赖 color-mix(in oklab) 等特性，运行环境 Chrome ≥111，:has() 可用。） */
+main.single:not(:has(> .page-panel)){overflow-y:auto}
 
 /* [9] 响应式断点（需求10）：只新增 <720 / <480，不动已有 1280/820/640/440 ===== */
 @media (max-width:720px){
