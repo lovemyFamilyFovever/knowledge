@@ -143,6 +143,23 @@ def main() -> int:
         r = c.post("/api/note", json={"path": "ai/llm-and-agents/A.md", "text": "第一条备注"})
         check("/api/note 写入旁挂", r.status_code == 200 and (root / "content/ai/llm-and-agents/A.md.notes.md").is_file())
 
+        # ── B2/B3 回归：备注旁挂与嵌套 _ 目录不得进树 / 不得可路由 ──
+        tree = c.get("/api/tree").get_json()
+        names = [doc["name"] for d in tree["domains"] for s in d["subs"] for doc in s["docs"]]
+        check("备注旁挂不进分类树", not any("notes" in n for n in names),
+              str([n for n in names if "notes" in n]))
+        r = c.get("/doc/ai/llm-and-agents/A.md.notes")
+        check("备注旁挂直连 URL 404", r.status_code == 404, f"got {r.status_code}")
+        hid = root / "content/ai/llm-and-agents/_tmp"
+        hid.mkdir(parents=True, exist_ok=True)
+        (hid / "leak.md").write_text("---\ntitle: 泄漏\n---\n\nx\n", encoding="utf-8")
+        tree = c.get("/api/tree").get_json()
+        names2 = [doc["name"] for d in tree["domains"] for s in d["subs"] for doc in s["docs"]]
+        check("嵌套 _ 目录文档不进树", not any("_tmp" in n for n in names2),
+              str([n for n in names2 if "_tmp" in n]))
+        r = c.get("/doc/ai/llm-and-agents/_tmp/leak")
+        check("嵌套 _ 目录文档直连 URL 404", r.status_code == 404, f"got {r.status_code}")
+
         r = c.post("/api/favorite", json={"path": "ai/llm-and-agents/A.md"})
         check("/api/favorite 置为 true", r.get_json()["favorite"] is True)
         check("favorite 写进 frontmatter", "favorite: true" in (root / "content/ai/llm-and-agents/A.md").read_text(encoding="utf-8"))

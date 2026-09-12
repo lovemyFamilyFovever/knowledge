@@ -268,14 +268,39 @@ def prepend_original_fm(path: Path, body: str) -> str | None:
 
 
 # ---------------- 语料扫描 ----------------
+def is_visible_doc(rel_posix: str) -> bool:
+    """树 / FTS / RAG / 签名共用的可见性谓词（B2/B3 修复）：
+
+    · 路径任一 `_` 前缀段（_inbox/_trash/_assets/_meta/嵌套 _tmp…）不可见 —— 不变量 2；
+    · `.notes.md` 备注旁挂不是文档 —— 否则写第一条备注就凭空多出一篇可路由的幽灵文档。
+    """
+    parts = [x for x in str(rel_posix).split("/") if x]
+    return not (any(p.startswith("_") for p in parts)
+                or (parts and parts[-1].endswith(".notes.md")))
+
+
 def md_files(content: Path):
-    """全库 md 文件迭代器（(abs_path, rel_posix)）；跳过 _ 前缀与 SKIP_DIRS。"""
+    """全库 md 文件迭代器（(abs_path, rel_posix)）；跳过 _ 前缀与 SKIP_DIRS 与备注旁挂。"""
     for dirpath, dirnames, filenames in os.walk(content):
         dirnames[:] = [d for d in dirnames if d not in SKIP_DIRS and not d.startswith("_")]
         for fn in filenames:
-            if fn.endswith(".md"):
+            if fn.endswith(".md") and not fn.endswith(".notes.md"):
                 p = Path(dirpath) / fn
                 yield p, p.relative_to(content).as_posix()
+
+
+def _visible_sub_files(sdir: Path) -> list[Path]:
+    """子域目录内可见文件（B2/B3）：os.walk 剪掉嵌套 `_` 目录，排除备注旁挂。
+    替代旧 rglob —— 它会把 baike/algorithms/_tmp/x.md 之类当成文档列进树。"""
+    out: list[Path] = []
+    for dirpath, dirnames, filenames in os.walk(sdir):
+        dirnames[:] = [d for d in dirnames if not d.startswith("_")]
+        for fn in filenames:
+            if fn.endswith(".notes.md"):
+                continue
+            if fn.endswith(tuple(SERVABLE_EXTS)):
+                out.append(Path(dirpath) / fn)
+    return sorted(out)
 
 
 def _tree_sig(content: Path) -> str:
@@ -285,6 +310,8 @@ def _tree_sig(content: Path) -> str:
     for dirpath, dirnames, filenames in os.walk(content):
         dirnames[:] = [d for d in dirnames if d not in SKIP_DIRS and not d.startswith("_")]
         for fn in filenames:
+            if fn.endswith(".notes.md"):
+                continue  # 旁挂备注不可见（B2），计入签名会让每次记备注都白白失效一轮缓存
             if fn.endswith((".md", ".html")):
                 p = Path(dirpath) / fn
                 parts.append(f"{p.relative_to(content).as_posix()}:{p.stat().st_mtime_ns}")
@@ -317,8 +344,11 @@ def scan_corpus(content: Path) -> list[dict]:
         if not ddir.is_dir() or ddir.name in SKIP_DIRS or ddir.name.startswith("_"):
             continue
         dom = {"id": ddir.name, "label": domain_label(tax, ddir.name), "subs": [], "n": 0}
-        loose = sorted(p for p in ddir.iterdir() if p.is_file() and p.suffix in SERVABLE_EXTS)
-        sdirs = sorted(p for p in ddir.iterdir() if p.is_dir() and p.name not in SKIP_DIRS)
+        loose = sorted(p for p in ddir.iterdir()
+                       if p.is_file() and p.suffix in SERVABLE_EXTS
+                       and not p.name.endswith(".notes.md"))  # B2：域根文档的备注旁挂同样不可见
+        sdirs = sorted(p for p in ddir.iterdir()
+                       if p.is_dir() and p.name not in SKIP_DIRS and not p.name.startswith("_"))
         for sdir in sdirs:
             label = sub_label(tax, ddir.name, sdir.name)
             dom["subs"].append(_scan_sub(sdir, sdir.name, label))
@@ -333,10 +363,9 @@ def scan_corpus(content: Path) -> list[dict]:
 
 def _scan_sub(sdir: Path, sid: str, label: str, files=None) -> dict:
     """递归收集：嵌套目录（如 dsh-agent/architecture、vue2/Details）的文档
-    以子路径作为文档名（<path:name> 路由支持带斜杠的 name）。"""
-    files = files if files is not None else sorted(
-        p for p in sdir.rglob("*") if p.is_file() and p.suffix in SERVABLE_EXTS
-    )
+    以子路径作为文档名（<path:name> 路由支持带斜杠的 name）。
+    B2/B3：默认文件清单走 _visible_sub_files（剪嵌套 _ 目录、排除备注旁挂）。"""
+    files = files if files is not None else _visible_sub_files(sdir)
     md_rel = {p.relative_to(sdir).with_suffix("").as_posix() for p in files if p.suffix == ".md"}
     docs = []
     for p in files:
@@ -378,7 +407,14 @@ def find_doc(content: Path, domain: str, sub: str, name: str):
     sdir = base if sub == "_root" else base / sub
     if not base.is_dir() or not sdir.is_dir():
         return None
+    # B2/B3 纵深防御：树已不再列出的不可见文件（嵌套 _ 目录、备注旁挂），
+    # 直接构造 URL 也一律 404 —— 「树给的 path」与「路由能解析的 path」必须同集合。
+    nm = str(name)
+    if any(seg.startswith("_") for seg in nm.split("/") if seg):
+        return None
     for cand in (sdir / f"{name}.md", sdir / name, sdir / f"{name}.html"):
+        if cand.name.endswith(".notes.md"):
+            continue  # 旁挂备注永远不是文档（不误伤恰以 .notes 命名的正常文件）
         if cand.is_file() and cand.suffix in SERVABLE_EXTS:
             return cand
     return None
