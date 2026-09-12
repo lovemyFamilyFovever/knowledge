@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>首页插画候选 · 5 选 1</title>
+<style>
+  /* 与实站 static/style.css 一致的主题变量（浅色） */
+  :root{
+    --seed-bg:#f2efe7; --seed-fg:#22312c;
+    --seed-primary:#0c9a6a; --seed-accent:#0f86b8; --seed-surface:#ffffff;
+    --acc:var(--seed-primary); --acc2:var(--seed-accent); --info:var(--seed-accent);
+    --warn:#a5680b; --rose:#b53d75; --danger:#b23a3a;
+    --ill-book:color-mix(in oklab,var(--seed-fg),white 10%);
+    --ill-paper:color-mix(in oklab,var(--seed-surface),var(--seed-bg) 40%);
+    --ill-line:color-mix(in oklab,var(--seed-fg),transparent 55%);
+    --ill-halo:color-mix(in oklab,var(--seed-primary),transparent 82%);
+    --ill-shadow:color-mix(in oklab,var(--seed-fg),transparent 88%);
+    --ill-hair:#2a3833; --ill-skin:#e8cba9; --ill-skin-shadow:#c9a482;
+    --muted:color-mix(in oklab,var(--seed-fg),var(--seed-bg) 42%);
+    --faint:color-mix(in oklab,var(--seed-fg),var(--seed-bg) 68%);
+    --edge:color-mix(in oklab,var(--seed-fg),transparent 87%);
+    --hairline:color-mix(in oklab,var(--seed-fg),transparent 92%);
+    --card:color-mix(in oklab,var(--seed-surface),transparent 45%);
+    --stage:color-mix(in oklab,var(--seed-bg),transparent 30%);
+  }
+  /* 深色主题（实站同一套） */
+  html[data-theme="dark"]{
+    --seed-bg:#060a0e; --seed-fg:#e2ece8;
+    --seed-primary:#37e6a6; --seed-accent:#38cdf0; --seed-surface:#0f1a20;
+    --warn:#f0b438; --rose:#f0599b; --danger:#ff6b6b;
+    --ill-book:#e2ece8; --ill-paper:#22312c;
+    --ill-hair:#0d1714; --ill-skin:#c9a483; --ill-skin-shadow:#a58467;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;padding:26px 32px 64px;background:var(--seed-bg);color:var(--seed-fg);
+    font:13px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif;-webkit-font-smoothing:antialiased}
+  .hd{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+  .hd h1{font-size:21px;font-weight:700;letter-spacing:-.01em;margin:0}
+  .hd .tip{font-size:12.5px;color:var(--muted)}
+  .tbtn{margin-left:auto;font:12px system-ui;font-weight:500;padding:6px 14px;border-radius:999px;
+    border:1px solid var(--edge);background:var(--card);color:var(--seed-fg);cursor:pointer}
+  .tbtn:hover{border-color:color-mix(in oklab,var(--seed-fg),transparent 70%)}
+  .hint{font-size:12.5px;line-height:1.8;color:var(--muted);border-left:2px solid var(--acc);
+    padding:8px 0 8px 13px;margin:16px 0 26px;max-width:940px}
+  .hint b{color:var(--seed-fg)}
+  code{font-family:ui-monospace,Consolas,monospace;font-size:11.5px;
+    background:color-mix(in oklab,var(--seed-fg),transparent 93%);padding:1px 5px;border-radius:4px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(310px,1fr));gap:20px}
+  .cand{border:1px solid var(--edge);border-radius:12px;overflow:hidden;background:var(--card)}
+  .cand-head{display:flex;align-items:baseline;gap:9px;padding:11px 15px;border-bottom:1px solid var(--hairline)}
+  .cand-no{font:700 11px ui-monospace,Consolas,monospace;color:var(--acc);
+    border:1px solid currentColor;border-radius:5px;padding:1px 6px}
+  .cand-name{font-size:13.5px;font-weight:600}
+  .cand-tag{font-size:11px;color:var(--faint);margin-left:auto}
+  .cand-body{padding:16px 15px;display:flex;justify-content:center;align-items:center;
+    min-height:248px;background:var(--stage)}
+  .cand svg{width:100%;max-width:296px;height:auto;display:block}
+  .cand-desc{padding:11px 15px 14px;font-size:12px;line-height:1.75;color:var(--muted);
+    border-top:1px solid var(--hairline)}
+  .cand-desc b{color:var(--seed-fg);font-weight:600}
+  .pick{font:11px ui-monospace,Consolas,monospace;color:var(--acc);white-space:nowrap}
+</style>
+</head>
+<body>
+
+<div class="hd">
+  <h1>首页右上角插画 · 5 个候选</h1>
+  <span class="tip">选一个，告诉我编号</span>
+  <button class="tbtn" id="theme">切换深 / 浅</button>
+</div>
+
+<div class="hint">
+  <b>怎么看：</b>这是「右上角 hero 区」的候选，渲染尺寸与实站一致（最大约 300px 宽）。<br>
+  <b>配色：</b>全部用实站真实主题变量（<code>--ill-*</code> / <code>--acc</code> / <code>--warn</code>…），<b>深浅主题都会自动适配</b>——点右上角切换看看。<br>
+  <b>动效：</b>带 <code>parallax-layer</code> 的元素在实站里会跟随鼠标做轻微视差。<br>
+  <b>技术：</b>纯内联 SVG、零外部依赖、<code>viewBox="0 0 340 260"</code>（与原插画同尺寸，可直接替换）。
+</div>
+
+<div class="grid">
+
+  <div class="cand">
+    <div class="cand-head"><span class="cand-no">01</span><span class="cand-name">叠书与微光</span><span class="cand-tag">极简几何</span></div>
+    <div class="cand-body">
+      <svg viewBox="0 0 340 260" role="img" aria-label="叠放的书与微光">
+        <ellipse cx="170" cy="196" rx="118" ry="26" fill="var(--ill-halo)" opacity=".75"/>
+        <circle cx="170" cy="104" r="62" fill="var(--ill-halo)" opacity=".5" class="parallax-layer" data-depth="0.25"/>
+        <g class="parallax-layer" data-depth="0.9">
+          <path d="M170 42l4.6 10.4 10.4 4.6-10.4 4.6L170 72l-4.6-10.4L155 57l10.4-4.6z" fill="var(--warn)"/>
+          <circle cx="126" cy="70" r="3.4" fill="var(--acc)" opacity=".85"/>
+          <circle cx="216" cy="82" r="2.6" fill="var(--acc2)" opacity=".8"/>
+        </g>
+        <g class="parallax-layer" data-depth="0.45">
+          <rect x="112" y="176" width="116" height="20" rx="6" fill="var(--ill-book)"/>
+          <rect x="112" y="176" width="116" height="7" rx="3.5" fill="var(--ill-paper)" opacity=".55"/>
+          <rect x="122" y="154" width="96" height="20" rx="6" fill="var(--acc)"/>
+          <rect x="122" y="154" width="96" height="7" rx="3.5" fill="var(--seed-surface)" opacity=".32"/>
+          <rect x="130" y="132" width="82" height="20" rx="6" fill="var(--ill-book)"/>
+          <rect x="130" y="132" width="82" height="7" rx="3.5" fill="var(--ill-paper)" opacity=".55"/>
+          <rect x="152" y="112" width="38" height="18" rx="5" fill="var(--acc2)"/>
+          <line x1="196" y1="184" x2="212" y2="184" stroke="var(--ill-line)" stroke-width="1.6" stroke-linecap="round"/>
+          <line x1="204" y1="162" x2="216" y2="162" stroke="var(--seed-surface)" stroke-width="1.6" stroke-linecap="round" opacity=".5"/>
+        </g>
+        <ellipse cx="170" cy="206" rx="92" ry="7" fill="var(--ill-shadow)"/>
+      </svg>
+    </div>
+    <div class="cand-desc"><b>去掉人物，只留"积累"。</b>三本书的层叠高度 + 一颗星，表达"读得越多越高"。几何、克制、占地小，最不容易出错。<span class="pick">回「01」</span></div>
+  </div>
+
+  <div class="cand">
+    <div class="cand-head"><span class="cand-no">02</span><span class="cand-name">翻开的书与飞页</span><span class="cand-tag">动态</span></div>
+    <div class="cand-body">
+      <svg viewBox="0 0 340 260" role="img" aria-label="翻开的书与飞出的纸页">
+        <ellipse cx="170" cy="200" rx="112" ry="22" fill="var(--ill-halo)" opacity=".7"/>
+        <g class="parallax-layer" data-depth="1.1">
+          <rect x="214" y="52" width="30" height="38" rx="3" fill="var(--ill-paper)" stroke="var(--ill-line)" stroke-width="1.2" transform="rotate(18 229 71)"/>
+          <line x1="221" y1="64" x2="237" y2="64" stroke="var(--ill-line)" stroke-width="1" transform="rotate(18 229 71)"/>
+          <line x1="221" y1="72" x2="234" y2="72" stroke="var(--ill-line)" stroke-width="1" transform="rotate(18 229 71)"/>
+          <rect x="248" y="96" width="24" height="30" rx="3" fill="var(--ill-paper)" stroke="var(--ill-line)" stroke-width="1.1" opacity=".8" transform="rotate(32 260 111)"/>
+          <rect x="192" y="34" width="20" height="25" rx="3" fill="var(--ill-paper)" stroke="var(--ill-line)" stroke-width="1" opacity=".55" transform="rotate(-8 202 46)"/>
+        </g>
+        <g class="parallax-layer" data-depth="0.4">
+          <path d="M170 178 Q126 152 96 168 L96 198 Q126 182 170 204 Z" fill="var(--ill-paper)" stroke="var(--ill-line)" stroke-width="1.2"/>
+          <path d="M170 178 Q214 152 244 168 L244 198 Q214 182 170 204 Z" fill="var(--ill-paper)" stroke="var(--ill-line)" stroke-width="1.2"/>
+          <path d="M96 168 Q78 172 76 186 L76 206 Q96 194 96 198 Z" fill="var(--ill-book)" opacity=".85"/>
+          <path d="M244 168 Q262 172 264 186 L264 206 Q244 194 244 198 Z" fill="var(--ill-book)" opacity=".85"/>
+          <line x1="170" y1="178" x2="170" y2="206" stroke="var(--ill-line)" stroke-width="1.4"/>
+          <path d="M112 178 h34 M116 186 h30 M110 194 h26 M194 178 h34 M192 186 h30 M196 194 h26"
+                stroke="var(--acc)" stroke-width="1.5" opacity=".55" stroke-linecap="round"/>
+        </g>
+        <ellipse cx="170" cy="212" rx="88" ry="7" fill="var(--ill-shadow)"/>
+      </svg>
+    </div>
+    <div class="cand-desc"><b>最有"动作感"。</b>纸页从书里挣脱飞散，暗示知识被抽出来（正好呼应闪卡功能）。动势强，但飞行页片与背景的对比要留意。<span class="pick">回「02」</span></div>
+  </div>
+
+  <div class="cand">
+    <div class="cand-head"><span class="cand-no">03</span><span class="cand-name">知识星座</span><span class="cand-tag">抽象网络</span></div>
+    <div class="cand-body">
+      <svg viewBox="0 0 340 260" role="img" aria-label="知识节点连成的星座">
+        <circle cx="170" cy="128" r="84" fill="var(--ill-halo)" opacity=".45"/>
+        <g stroke="var(--ill-line)" stroke-width="1.1" opacity=".55" fill="none" class="parallax-layer" data-depth="0.3">
+          <path d="M170 128 L108 74 M170 128 L242 82 M170 128 L92 176 M170 128 L246 182 M170 128 L160 214"/>
+          <path d="M108 74 L242 82 M92 176 L246 182 M108 74 L92 176"/>
+        </g>
+        <g class="parallax-layer" data-depth="0.55">
+          <circle cx="108" cy="74" r="7" fill="var(--acc)"/>
+          <circle cx="242" cy="82" r="6" fill="var(--acc2)"/>
+          <circle cx="92" cy="176" r="8" fill="var(--warn)"/>
+          <circle cx="246" cy="182" r="5.5" fill="var(--rose)"/>
+          <circle cx="160" cy="214" r="6.5" fill="var(--info)"/>
+          <circle cx="300" cy="140" r="4" fill="var(--acc)" opacity=".6"/>
+          <circle cx="44" cy="118" r="4.5" fill="var(--acc2)" opacity=".6"/>
+        </g>
+        <g class="parallax-layer" data-depth="0.8">
+          <circle cx="170" cy="128" r="30" fill="var(--acc)" opacity=".14"/>
+          <circle cx="170" cy="128" r="19" fill="var(--acc)"/>
+          <circle cx="170" cy="128" r="7" fill="var(--seed-bg)"/>
+          <circle cx="170" cy="128" r="30" fill="none" stroke="var(--acc)" stroke-width="1" stroke-dasharray="2 5" opacity=".5"/>
+        </g>
+      </svg>
+    </div>
+    <div class="cand-desc"><b>最贴"知识网络"这个隐喻。</b>节点 + 连线 + 中心枢纽，对应双链、反链、术语门户。中性耐看、缩放不糊，但和"阅读"的情感连接弱。<span class="pick">回「03」</span></div>
+  </div>
+
+  <div class="cand">
+    <div class="cand-head"><span class="cand-no">04</span><span class="cand-name">远山与日</span><span class="cand-tag">风景 / 积累</span></div>
+    <div class="cand-body">
+      <svg viewBox="0 0 340 260" role="img" aria-label="层叠远山与日出">
+        <circle cx="170" cy="128" r="74" fill="var(--ill-halo)" opacity=".55"/>
+        <circle cx="228" cy="74" r="26" fill="var(--warn)" opacity=".9" class="parallax-layer" data-depth="1.2"/>
+        <circle cx="228" cy="74" r="38" fill="var(--warn)" opacity=".16" class="parallax-layer" data-depth="1.2"/>
+        <g class="parallax-layer" data-depth="0.16" opacity=".38">
+          <path d="M20 200 L86 108 L152 200 Z" fill="var(--acc2)"/>
+        </g>
+        <g class="parallax-layer" data-depth="0.26" opacity=".55">
+          <path d="M108 200 L176 96 L244 200 Z" fill="var(--acc2)"/>
+        </g>
+        <g class="parallax-layer" data-depth="0.42">
+          <path d="M186 200 L252 120 L318 200 Z" fill="var(--acc)"/>
+        </g>
+        <g class="parallax-layer" data-depth="0.6">
+          <rect x="26" y="196" width="120" height="17" rx="5" fill="var(--ill-book)"/>
+          <rect x="26" y="196" width="120" height="6" rx="3" fill="var(--ill-paper)" opacity=".5"/>
+          <line x1="34" y1="212" x2="46" y2="204" stroke="var(--ill-line)" stroke-width="1.4" stroke-linecap="round" opacity=".6"/>
+          <line x1="120" y1="212" x2="96" y2="212" stroke="var(--ill-line)" stroke-width="1.4" stroke-linecap="round" opacity=".6"/>
+        </g>
+        <line x1="16" y1="200" x2="324" y2="200" stroke="var(--ill-line)" stroke-width="1.4" stroke-linecap="round"/>
+      </svg>
+    </div>
+    <div class="cand-desc"><b>最"安静"。</b>山象征长期积累，日象征每天一点（呼应"连续复习天数"）。用透明度拉开层次，没有细节噪音，窄屏也稳。<span class="pick">回「04」</span></div>
+  </div>
+
+  <div class="cand">
+    <div class="cand-head"><span class="cand-no">05</span><span class="cand-name">夜读者</span><span class="cand-tag">氛围剪影</span></div>
+    <div class="cand-body">
+      <svg viewBox="0 0 340 260" role="img" aria-label="台灯下的阅读者剪影">
+        <circle cx="170" cy="120" r="80" fill="var(--ill-halo)" opacity=".42"/>
+        <g class="parallax-layer" data-depth="0.9" opacity=".55">
+          <path d="M236 44 L188 148 L284 148 Z" fill="var(--warn)"/>
+        </g>
+        <g class="parallax-layer" data-depth="0.7">
+          <path d="M236 44 l15 -12 4 5 -13 12 z" fill="var(--ill-line)"/>
+          <path d="M238 46 L252 34" stroke="var(--ill-line)" stroke-width="1.6" stroke-linecap="round"/>
+          <rect x="240" y="142" width="56" height="7" rx="3.5" fill="var(--ill-book)"/>
+        </g>
+        <g class="parallax-layer" data-depth="0.3">
+          <path d="M132 200 v-42 a38 38 0 0 1 76 0 v42 z" fill="var(--ill-hair)"/>
+          <circle cx="170" cy="132" r="30" fill="var(--ill-hair)"/>
+          <path d="M110 200 h120" stroke="var(--ill-hair)" stroke-width="9" stroke-linecap="round"/>
+          <circle cx="196" cy="146" r="8" fill="var(--ill-skin)" opacity=".85"/>
+        </g>
+        <g class="parallax-layer" data-depth="0.5">
+          <path d="M118 206 Q170 184 222 206 L222 220 Q170 198 118 220 Z" fill="var(--ill-paper)" stroke="var(--ill-line)" stroke-width="1.2"/>
+          <line x1="170" y1="194" x2="170" y2="220" stroke="var(--ill-line)" stroke-width="1.2"/>
+          <path d="M132 206 h30 M136 213 h24 M178 206 h30 M174 213 h24" stroke="var(--ill-line)" stroke-width="1" opacity=".6"/>
+        </g>
+        <ellipse cx="170" cy="228" rx="76" ry="6" fill="var(--ill-shadow)"/>
+      </svg>
+    </div>
+    <div class="cand-desc"><b>最有"气氛"。</b>台灯光锥 + 阅读者剪影（<b>没有五官，所以不会出现"脸画歪"</b>）。一个人夜读的感觉，和"个人知识库"的私密气质契合。<span class="pick">回「05」</span></div>
+  </div>
+
+</div>
+
+<script>
+  var btn = document.getElementById('theme');
+  var saved = localStorage.getItem('heropick-theme') || 'light';
+  document.documentElement.dataset.theme = saved;
+  btn.onclick = function () {
+    var next = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
+    document.documentElement.dataset.theme = next;
+    localStorage.setItem('heropick-theme', next);
+  };
+</script>
+</body>
+</html>
