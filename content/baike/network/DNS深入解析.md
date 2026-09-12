@@ -9,6 +9,9 @@ status: "imported"
 
 # DNS深入解析
 
+
+> 📌 **导航**：本文是 **DNS深入解析** 词条，属于 network 术语集。相关枢纽：[[DNS深入解析]]、[[TCP深入]]、[[网络基础]]。
+
 ## 定义
 
 **一句话定义：** DNS（Domain Name System，域名系统）是把人类易记的域名（如 www.example.com）解析为机器可路由的 IP 地址的**分布式分层命名系统**，是互联网的基础设施之一。

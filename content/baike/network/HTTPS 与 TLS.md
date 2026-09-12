@@ -9,6 +9,9 @@ status: "imported"
 
 # HTTPS 与 TLS
 
+
+> 📌 **导航**：本文是 **HTTPS 与 TLS** 词条，属于 network 术语集。相关枢纽：[[DNS深入解析]]、[[TCP深入]]、[[网络基础]]。
+
 ## 定义
 
 **一句话定义：** HTTPS 是运行在 TLS/SSL 之上的 HTTP,用于在客户端与服务器之间建立加密通道;TLS(Transport Layer Security,前身 SSL)是传输层安全协议,提供机密性、完整性与身份认证,防止窃听、篡改与中间人攻击。

@@ -9,6 +9,9 @@ status: "imported"
 
 # OSI 参考模型
 
+
+> 📌 **导航**：本文是 **OSI 参考模型** 词条，属于 network 术语集。相关枢纽：[[DNS深入解析]]、[[TCP深入]]、[[网络基础]]。
+
 ## 定义
 
 **一句话定义：** OSI 参考模型(Open Systems Interconnection Reference Model)是由 ISO 提出的**概念性七层网络架构**,自下而上为物理层、数据链路层、网络层、传输层、会话层、表示层、应用层,用于标准化和描述不同系统间的通信功能划分。
