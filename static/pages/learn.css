@@ -120,3 +120,25 @@
   .kb-btn{min-height:44px;width:100%}
   .kb-learn-cta .kb-btn{flex:1 1 100%}
 }
+
+/* ---------- 模拟面试（quiz 页）：侧栏入口 + 成绩单 ---------- */
+.kb-mock-box{margin-top:14px}
+.kb-mock-t{display:flex;align-items:center;gap:6px;font:600 12px/1 var(--sans);color:var(--muted);margin-bottom:9px}
+.kb-mock-t svg{color:var(--acc)}
+.kb-mock-choose{display:flex;gap:6px;margin-bottom:9px}
+.kb-mock-choose button{flex:1;padding:6px 0;border:1px solid var(--edge);border-radius:8px;background:none;
+  color:var(--muted);cursor:pointer;font:500 12px var(--sans);transition:.15s}
+.kb-mock-choose button:hover{color:var(--seed-fg);border-color:var(--edge-hi)}
+.kb-mock-choose button.on{color:var(--acc);border-color:var(--acc);background:var(--acc-soft)}
+.kb-mock-note{font-size:11px;line-height:1.6;color:var(--faint);margin-top:8px}
+.kb-rep{text-align:center}
+.kb-rep-score{font-family:var(--num);font-size:56px;font-weight:700;line-height:1.05;color:var(--acc);
+  font-variant-numeric:tabular-nums;margin:6px 0 2px}
+.kb-rep-score i{font-style:normal;font-size:22px;font-weight:500;color:var(--faint)}
+.kb-rep-meta{font-size:12.5px;color:var(--muted);margin:8px 0 16px}
+.kb-rep-meta b{color:var(--seed-fg)}
+.kb-rep-subs{border:1px solid var(--edge);border-radius:10px;padding:6px 14px;margin:0 auto 18px;max-width:420px;text-align:left}
+.kb-rep-row{display:flex;justify-content:space-between;gap:12px;padding:6px 0;font-size:12.5px;
+  color:var(--muted);border-top:1px solid var(--hairline)}
+.kb-rep-row:first-child{border-top:0}
+.kb-rep-row b{font-family:var(--num);color:var(--seed-fg);font-variant-numeric:tabular-nums}

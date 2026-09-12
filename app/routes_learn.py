@@ -183,6 +183,21 @@ def api_due():
                     "new_n": r["new_n"], "total_n": r["total_n"], "limit": limit})
 
 
+@learn_bp.get("/api/learn/mock")
+@_guard
+def api_mock():
+    """模拟面试：从面试卡全库随机抽 n 张（不看排期，纯随机）。
+    作答仍走 /api/learn/review —— 模拟即复习，会/不会照常推进 SM-2 排期。"""
+    n = _int_arg("n", 10, 1, 50)
+    ls = LearnStore(_indexes(), _content())
+    try:
+        ls.ensure_synced(_content())
+        rows = ls.mock_cards(n)
+    finally:
+        ls.close()
+    return jsonify({"ok": True, "n": len(rows), "cards": [_card_public(c) for c in rows]})
+
+
 @learn_bp.post("/api/learn/review")
 @_guard
 def api_review():

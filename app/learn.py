@@ -440,6 +440,15 @@ class LearnStore:
             "total_n": due_n + new_n, "limit": limit,
         }
 
+    def mock_cards(self, n: int = 10) -> list[dict]:
+        """模拟面试：从面试卡全库随机抽 n 张（不看排期，纯随机，可重复抽到复习过的）。"""
+        n = max(1, min(int(n or 10), 50))
+        return [dict(r) for r in self.con.execute(
+            f"SELECT c.*, {self._STATE_COLS}, 0 AS is_new FROM cards c "
+            "LEFT JOIN review_state rs ON rs.card_id=c.card_id "
+            "WHERE c.active=1 AND c.kind='interview_qa' "
+            "ORDER BY RANDOM() LIMIT ?", (n,))]
+
     def submit_review(self, card_id: str, q: int, elapsed_ms: int = 0) -> dict:
         """提交一次评分：写事件 + 推进 SM-2 状态，单事务。
 

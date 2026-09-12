@@ -97,19 +97,26 @@ function tab(id, el) {
 let DOC = null;
 let CUR = null; // {domain, sub, name}
 
-function renderArticle() {
+function renderArticle(forceMd) {
   const el = $("#article");
   if (!el || !DOC) return;
   refreshDocMark(); // 已读/已掌握按钮状态（异步，不阻塞渲染）
-  if (DOC.is_html) {
-    // 整页 HTML 文档：iframe 沙箱内嵌直通 /raw/（保留自带样式/脚本），
-    // 绝不走 marked+DOMPurify 管线——0.3MB HTML 过 markdown 解析会把源码平铺成数万节点 DOM，卡且不可读
-    el.innerHTML = `<div class="a-kicker">HTML 文档</div>
+  /* interview 域的题库类文档以美化版 HTML 为主（用户指定）：
+     有旁挂 .html 且未强制 Markdown 视图时，直接内嵌美化版（forceMd=true 可切回） */
+  const pretty = DOC.is_html || (DOC.has_html && DOC.domain === "interview" && !forceMd);
+  if (pretty) {
+    // 整页 HTML：iframe 沙箱内嵌直通 /raw/（保留自带样式/脚本），
+    // 绝不走 marked+DOMPurify 管线——大 HTML 过 markdown 解析会把源码平铺成数万节点 DOM，卡且不可读
+    const srcRel = DOC.is_html ? DOC.rel : DOC.html_rel;
+    const rawHref = "/raw/" + srcRel.split("/").map(encodeURIComponent).join("/");
+    el.innerHTML = `<div class="a-kicker">${DOC.is_html ? "HTML 文档" : "美化版 · " + esc(DOC.domain_label)}</div>
       <h1 class="a-title">${esc(DOC.title)}</h1>
       <div class="a-rule"></div>
-      <div class="html-frame-wrap"><iframe class="html-frame" src="/raw/${DOC.rel.split("/").map(encodeURIComponent).join("/")}"
-        sandbox="allow-same-origin allow-popups" title="${esc(DOC.title)} 美化版"></iframe></div>
-      <p style="margin-top:10px"><a class="iconbtn" href="/raw/${DOC.rel.split("/").map(encodeURIComponent).join("/")}" target="_blank">↗ 新标签页打开原页面</a></p>`;
+      <div class="html-frame-wrap"><iframe class="html-frame" src="${rawHref}"
+        sandbox="allow-same-origin allow-popups" title="${esc(DOC.title)}"></iframe></div>
+      <p style="margin-top:10px;display:flex;gap:12px">
+        ${DOC.is_html ? "" : '<a class="iconbtn" onclick="renderArticle(true)" title="切回 Markdown 渲染视图"><svg class="i i-12"><use href="#i-file-md"/></svg> Markdown 源</a>'}
+        <a class="iconbtn" href="${rawHref}" target="_blank">↗ 新标签页打开原页面</a></p>`;
   } else {
     const chips = [
       `<span class="chip acc">${esc(DOC.source_label)}</span>`,

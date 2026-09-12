@@ -79,7 +79,8 @@
     graded: {}, busy: false, fetching: false,
     sub: "", domain: "", subs: [],
     stats: { due_n: 0, new_n: 0, total_n: 0 },
-    doneN: 0, startedAt: 0, loaded: false
+    doneN: 0, startedAt: 0, loaded: false,
+    mock: null, mockN: 10   /* 模拟面试：null=普通模式；{n,startedAt,answers[]} */
   };
 
   function icon(n, s) { return U.icon(n, s); }
@@ -176,7 +177,15 @@
     renderGrades();
     el.grades.hidden = true;
     renderCta();
-    renderFoot();
+    if (S.mock) renderMockFoot(); else renderFoot();
+  }
+
+  function renderMockFoot() {
+    var n = S.queue.length, i = S.idx + 1;
+    var ok = S.mock ? S.mock.answers.filter(function (x) { return x.ok; }).length : 0;
+    el.foot.innerHTML =
+      '<span class="kb-sess">模拟面试 · 第 ' + i + " / " + n + " 题 · 目前答对 " + ok + "</span>" +
+      '<span class="kb-next"><kbd>Space</kbd> 翻面 · <kbd>1</kbd> 不会 · <kbd>2</kbd> 会</span>';
   }
 
   function renderFoot() {
@@ -201,6 +210,12 @@
 
   function advance() {
     S.idx++;
+    if (S.mock) {   /* 模拟面试：固定卷子，不补队列，答完出成绩单 */
+      if (S.idx >= S.queue.length) { showMockReport(); return; }
+      renderMockFoot();
+      showCard();
+      return;
+    }
     var remain = S.queue.length - S.idx;
     if (remain < 3) {
       loadQueue().then(function () { showCard(); });
@@ -218,6 +233,13 @@
     API.review({ card_id: card.card_id, q: q, elapsed_ms: ms }).then(function (j) {
       S.graded[card.card_id] = true;
       S.doneN++;
+      if (S.mock) {   /* 模拟即复习：会/不会照常推进 SM-2，但不弹「N 天后再见」 */
+        S.mock.answers.push({ card_id: card.card_id, sub: card.sub || "",
+          sub_label: card.sub_label || "", q: q, ok: q >= 3 });
+        S.busy = false;
+        advance();
+        return;
+      }
       var days = j && j.next ? j.next.due_in_days : 0;
       U.toast(U.dueText(days));
       S.busy = false;
@@ -266,6 +288,102 @@
     el.sub.innerHTML = first
       ? '<span class="kb-warn">队列为空</span> · 到期 ' + S.stats.due_n + " · 未学 " + S.stats.new_n
       : "本轮完成 " + S.doneN + " 张 · " + '<span class="kb-ok">已全部过完</span>';
+  }
+
+  /* ---------------- 模拟面试（quiz 页专属）：随机卷 + 计时 + 成绩单 ---------------- */
+  function startMock(n) {
+    S.mock = { n: n, startedAt: Date.now(), answers: [] };
+    S.queue = []; S.idx = 0; S.graded = {}; S.doneN = 0; S.cur = null;
+    el.sub.textContent = "模拟面试出卷中…";
+    el.stage.innerHTML = '<div class="kb-done"><div class="kb-done-t">随机抽题中…</div></div>';
+    el.card.hidden = true; el.cta.innerHTML = ""; el.grades.hidden = true; el.foot.innerHTML = "";
+    fetch("/api/learn/mock?n=" + n).then(function (r) { return r.json(); }).then(function (j) {
+      if (!j.ok || !(j.cards || []).length) {
+        U.toast(j && j.detail ? j.detail : "出卷失败：面试题库为空");
+        exitMock();
+        return;
+      }
+      S.queue = j.cards;
+      S.idx = 0;
+      el.sub.textContent = "模拟面试 · " + S.queue.length + " 题 · 计时开始";
+      showCard();
+    }).catch(function () {
+      U.toast("出卷失败：网络错误");
+      exitMock();
+    });
+  }
+
+  function exitMock() {
+    S.mock = null;
+    S.queue = []; S.idx = 0; S.graded = {}; S.doneN = 0; S.cur = null;
+    el.sub.textContent = "正在载入…";
+    loadQueue().then(function () { showCard(); refreshStats(); });
+  }
+
+  function showMockReport() {
+    var a = S.mock.answers, total = a.length;
+    var ok = a.filter(function (x) { return x.ok; }).length;
+    var secs = Math.max(1, Math.round((Date.now() - S.mock.startedAt) / 1000));
+    var mm = Math.floor(secs / 60), ss = ("0" + (secs % 60)).slice(-2);
+    var bySub = {};
+    a.forEach(function (x) {
+      var k = x.sub_label || x.sub || "未分类";
+      bySub[k] = bySub[k] || { ok: 0, n: 0 };
+      bySub[k].n++;
+      if (x.ok) bySub[k].ok++;
+    });
+    var rows = Object.keys(bySub).sort(function (x, y) { return bySub[y].n - bySub[x].n; }).map(function (k) {
+      return '<div class="kb-rep-row"><span>' + U.esc(k) + "</span><b>" + bySub[k].ok + " / " + bySub[k].n + "</b></div>";
+    }).join("");
+    var pct = total ? Math.round(100 * ok / total) : 0;
+    el.card.hidden = true;
+    el.cta.innerHTML = ""; el.grades.hidden = true; el.foot.innerHTML = "";
+    el.stage.innerHTML =
+      '<div class="kb-done kb-rep">' +
+      '  <div class="kb-done-t">模拟面试 · 成绩单</div>' +
+      '  <div class="kb-rep-score">' + ok + "<i> / " + total + "</i></div>" +
+      '  <div class="kb-rep-meta">正确率 <b>' + pct + "%</b> · 用时 " + mm + ":" + ss +
+      " · 本次作答已计入复习排期</div>" +
+      (rows ? '<div class="kb-rep-subs">' + rows + "</div>" : "") +
+      '  <div class="kb-done-acts">' +
+      '    <button type="button" class="kb-btn primary" id="kb-mock-again">' + icon("i-clock-heartbeat", 13) + "再来一轮</button>" +
+      '    <button type="button" class="kb-btn" id="kb-mock-exit">返回普通刷题</button>' +
+      "  </div>" +
+      "</div>";
+    el.sub.innerHTML = "模拟面试完成 · 答对 " + ok + " / " + total + " · 正确率 " + pct + "%";
+  }
+
+  function bindMockReport() {
+    el.stage.addEventListener("click", function (e) {
+      if (!S.mock || S.idx < S.queue.length) return;   /* 只在成绩单态响应 */
+      if (e.target.closest("#kb-mock-again")) { startMock(S.mock.n); return; }
+      if (e.target.closest("#kb-mock-exit")) { exitMock(); }
+    });
+  }
+
+  function injectMockEntry() {
+    if (!IS_QUIZ || !el.filters || !el.filters.parentElement) return;
+    var box = document.createElement("div");
+    box.className = "kb-side-box kb-mock-box";
+    box.innerHTML =
+      '<div class="kb-mock-t">' + icon("i-interview", 13) + "模拟面试</div>" +
+      '<div class="kb-mock-choose">' +
+      '  <button type="button" data-n="5">5 题</button>' +
+      '  <button type="button" data-n="10" class="on">10 题</button>' +
+      '  <button type="button" data-n="20">20 题</button>' +
+      "</div>" +
+      '<button type="button" class="kb-btn primary kb-mock-start" id="kb-mock-start">' + icon("i-clock-heartbeat", 13) + "随机抽题开考</button>" +
+      '<div class="kb-mock-note">从全部面试题随机出卷，计时作答，交卷出成绩单；作答照常计入复习排期。</div>';
+    el.filters.parentElement.insertBefore(box, el.filters.nextSibling);
+    box.addEventListener("click", function (e) {
+      var chip = e.target.closest(".kb-mock-choose button");
+      if (chip) {
+        S.mockN = Number(chip.dataset.n) || 10;
+        U.$$(".kb-mock-choose button", box).forEach(function (b) { b.classList.toggle("on", b === chip); });
+        return;
+      }
+      if (e.target.closest("#kb-mock-start")) startMock(S.mockN);
+    });
   }
 
   /* ---------------- 侧栏：进度环 / 统计 / 子域筛选 ---------------- */
@@ -329,6 +447,7 @@
     if (b) grade(Number(b.dataset.q));
   });
   el.filters.addEventListener("click", function (e) {
+    if (S.mock) { U.toast("模拟面试进行中 —— 交卷后再切换子域"); return; }
     var b = e.target.closest(".kb-sub-chip");
     if (!b) return;
     S.sub = b.dataset.sub || "";
@@ -353,6 +472,8 @@
   });
 
   /* ---------------- 启动 ---------------- */
+  injectMockEntry();
+  bindMockReport();
   el.sub.textContent = "正在载入…";
   loadQueue().then(function () {
     S.loaded = true;
