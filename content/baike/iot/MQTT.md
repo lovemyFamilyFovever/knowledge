@@ -9,6 +9,9 @@ status: "imported"
 
 # MQTT
 
+
+> 📌 **导航**：本文是 **MQTT** 词条，属于 iot 术语集。相关枢纽：[[MQTT]]、[[物联网与嵌入式基础]]。
+
 ## 定义
 
 **一句话定义：** MQTT(Message Queuing Telemetry Transport)是一种轻量级的发布/订阅消息传输协议,基于 TCP,专为低带宽、高延迟、网络不稳定、设备资源受限的物联网场景设计,是 IoT 设备通信的事实标准之一。
