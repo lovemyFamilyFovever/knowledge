@@ -32,6 +32,16 @@ html .a-body h1,html .a-body h2{font-size:calc(var(--fs-h2) * var(--kb-fs-scale)
 html .a-body .chip,
 html .article-inner .a-kicker{font-size:calc(11px * var(--kb-fs-scale))}
 
+/* [2b] `hidden` 属性兜底 =====
+   UA 样式表的 `[hidden]{display:none}` 只是 (0,1,0)，作者样式里任何一句
+   `.kb-grades{display:grid}` / `.kb-card-hint{display:flex}` 都会把它压过
+   （同优先级作者表优先），于是「设了 hidden 却照样可见可点」。
+   不逐条补 `[hidden]{display:none}`（漏一个就复发），这里用 `html ` 前缀
+   把特异性提到 (0,1,1)，一条覆盖全文件 + 各页 CSS。
+   已确认全仓库唯一的 id 级 display 声明是 `#kb-palette{display:none}`，
+   而它走的是 `.show` 类而非 hidden 属性，不受影响。 */
+html [hidden]{display:none}
+
 /* [3] 通用卡片 / 评分 / 进度条（review / quiz / glossary 共用） ===== */
 .kb-card{
   position:relative;border:1px solid var(--edge);border-radius:var(--radius-lg);
@@ -253,6 +263,16 @@ html .article-inner .a-kicker{font-size:calc(11px * var(--kb-fs-scale))}
 .kb-mastery-row .kb-mv{text-align:right;font:500 11px/1 var(--mono);color:var(--faint);font-variant-numeric:tabular-nums}
 .kb-mastery-row .kb-bar i{background:linear-gradient(90deg,hsl(var(--dh,150) 55% 45%),hsl(var(--dh,150) 65% 60%))}
 .kb-today-cta{display:flex;flex-wrap:wrap;gap:9px;margin-top:14px}
+
+/* [8b] main.single 的 flex 收缩兜底 =====
+   style.css 给 `main{}` 上了 workbench 四栏网格，非 workbench 页面靠 `main.single`
+   退成 flex column。但 main 是高度受限的 flex 项（body 里 flex:1），内容一旦超出，
+   直系子块就按 flex-shrink 被压缩 —— 而 `overflow != visible` 的子块自动最小尺寸为 0，
+   **只有它会被无限压缩**。术语门户的 A–Z 索引条（.kb-gl-buckets 有 overflow-x:auto）
+   就是这样从 ~34px 被压到 19px，11.5px 的字母只剩顶部一丝。
+   统一让 main.single 的直系子块不参与收缩：正常内容本来就不该被压缩，
+   超出时交给页面滚动，而不是把某个带滚动条的子块挤扁。 */
+main.single > *{flex:none}
 
 /* [9] 响应式断点（需求10）：只新增 <720 / <480，不动已有 1280/820/640/440 ===== */
 @media (max-width:720px){

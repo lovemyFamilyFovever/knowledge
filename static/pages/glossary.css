@@ -31,6 +31,11 @@
   background:color-mix(in oklab,var(--seed-bg),transparent 12%);
   border-bottom:1px solid var(--hairline);
   scrollbar-width:thin;
+  /* 它是 main.single（高度受限的 flex column）的直系子块，而 overflow-x:auto
+     让它的自动最小尺寸归 0 —— 不锁住 flex 就会被 flex-shrink 压成一条线
+     （实测 19px，字母只剩顶部一丝）。kb-core.css 的 `main.single > *` 已统一兜底，
+     这里再显式写一遍，避免日后被包进别的容器后失效。 */
+  flex:none;
 }
 .kb-bucket{
   flex:none;min-width:32px;padding:5px 8px;border-radius:var(--radius-sm);cursor:pointer;
