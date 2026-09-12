@@ -5,8 +5,11 @@
    - 全部幂等（dataset.motionBound 防重复绑定），可重复调用 refresh()
    - 声明式挂载：data-reveal / data-counter / data-magnetic / data-line-mask / data-scrub-underline
    - prefers-reduced-motion: reduce → 全部 no-op（不隐藏内容、不做补间）
-   - GSAP / ScrollTrigger 缺失时自动降级：reveal 走 IntersectionObserver + CSS 过渡，
-     counter 直接置终值，其余跳过；页面始终完整可读 */
+   - reveal 一律走 IntersectionObserver + CSS 过渡（style.css 的 html.motion-ready [data-reveal] + .in）。
+     历史：曾用 gsap.fromTo(opacity:0,y) 先藏后放，ScrollTrigger 异常时元素会永久卡在
+     中间态（2026-09-13 用户实测复现：收件箱占位空条、tagline stagger 错位）——已废弃，
+     初态归 CSS、JS 只加 .in，过渡一旦开始必然完成。
+     counter/magnetize/lineMask/scrub 仍可用 gsap（无卡死风险） */
 (function () {
   "use strict";
   var reduced = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -14,7 +17,36 @@
   var hasST = hasGsap && typeof window.ScrollTrigger !== "undefined";
   if (hasGsap && hasST) { try { window.gsap.registerPlugin(window.ScrollTrigger); } catch (e) { hasST = false; } }
 
-  /* ---------- 1. revealGroup：进视口依次淡入 + translateY ---------- */
+  /* ---------- 1. reveal：进视口淡入 + 上移归位（IO + CSS 类，不用 gsap.fromTo） ----------
+     初态由 style.css 的 html.motion-ready [data-reveal] 提供（opacity:0 + translateY），
+     本函数只负责在元素接近视口时加 .in；无 IO 时立即显示。 */
+  function revealByClass(els, staggerMs) {
+    var list = Array.prototype.slice.call(els);
+    if (!list.length) return;
+    var show = function (el) {
+      requestAnimationFrame(function () {
+        requestAnimationFrame(function () { el.classList.add("in"); });
+      });
+    };
+    if ("IntersectionObserver" in window) {
+      var io = new IntersectionObserver(function (entries) {
+        entries.forEach(function (en) {
+          if (!en.isIntersecting) return;
+          io.unobserve(en.target);
+          var i = list.indexOf(en.target);
+          en.target.style.transitionDelay = ((i > 0 ? i : 0) * staggerMs) + "ms";
+          show(en.target);
+        });
+      }, { rootMargin: "0px 0px -12% 0px" }); /* 近似原 start:"top 88%" */
+      list.forEach(function (el) { io.observe(el); });
+    } else {
+      list.forEach(function (el, i) {
+        el.style.transitionDelay = (i * staggerMs) + "ms";
+        show(el);
+      });
+    }
+  }
+
   function revealGroup(container, opts) {
     if (reduced) return;
     opts = opts || {};
@@ -22,22 +54,8 @@
     var items = root.querySelectorAll("[data-reveal]:not([data-motion-bound])");
     if (!items.length) return;
     var stagger = opts.stagger != null ? opts.stagger : 0.05;
-    var y = opts.y != null ? opts.y : 40;
-    var duration = opts.duration != null ? opts.duration : 0.8;
     Array.prototype.forEach.call(items, function (el) { el.dataset.motionBound = "1"; });
-    if (hasGsap && hasST) {
-      window.gsap.fromTo(items,
-        { opacity: 0, y: y },
-        { opacity: 1, y: 0, duration: duration, stagger: stagger, ease: "power3.out",
-          scrollTrigger: { trigger: opts.trigger || items[0], start: "top 88%", once: true },
-          clearProps: "transform" });
-    } else {
-      /* CSS 降级：style.css 的 html.motion-ready [data-reveal] 过渡 + .in */
-      Array.prototype.forEach.call(items, function (el, i) {
-        el.style.transitionDelay = (i * stagger * 1000) + "ms";
-        requestAnimationFrame(function () { requestAnimationFrame(function () { el.classList.add("in"); }); });
-      });
-    }
+    revealByClass(items, stagger * 1000);
   }
 
   /* ---------- 2. countUp：数字从 0 计到 data-count ---------- */
@@ -139,17 +157,7 @@
     Object.keys(groups).forEach(function (k) {
       var groupEls = groups[k];
       groupEls.forEach(function (el) { el.dataset.motionBound = "1"; });
-      if (hasGsap && hasST) {
-        window.gsap.fromTo(groupEls,
-          { opacity: 0, y: parseFloat(groupEls[0].dataset.revealY) || 22 },
-          { opacity: 1, y: 0, duration: 0.7, stagger: 0.05, ease: "power3.out", clearProps: "transform",
-            scrollTrigger: { trigger: groupEls[0], start: "top 88%", once: true } });
-      } else {
-        groupEls.forEach(function (el, i) {
-          el.style.transitionDelay = (i * 50) + "ms";
-          requestAnimationFrame(function () { requestAnimationFrame(function () { el.classList.add("in"); }); });
-        });
-      }
+      revealByClass(groupEls, 50);
     });
     Array.prototype.forEach.call(els.querySelectorAll("[data-counter]:not([data-motion-bound])"), function (el) { countUp(el); });
     Array.prototype.forEach.call(els.querySelectorAll("[data-magnetic]:not([data-motion-bound])"), function (el) { magnetize(el, { strength: parseFloat(el.dataset.magnetic) || 0.2 }); });
