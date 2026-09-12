@@ -9,6 +9,9 @@ status: "imported"
 
 # Kafka深入
 
+
+> 📌 **导航**：本文是 **Kafka深入** 词条，属于 middleware 术语集。相关枢纽：[[ESB 与服务网格（Service Mesh）]]、[[GraphQL实践]]、[[Kafka深入]]、[[RabbitMQ vs Kafka vs Pulsar]]、[[gRPC深入]]。
+
 ## 定义
 
 **一句话定义：** Kafka 是一个分布式、可持久化、可水平扩展的**流处理平台/消息系统**，以「分区日志（partitioned log）」为核心模型，具备高吞吐、可重放、生态完善的特点，广泛用于日志、事件流与数据管道。

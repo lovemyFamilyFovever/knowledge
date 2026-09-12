@@ -9,6 +9,9 @@ status: "imported"
 
 # gRPC深入
 
+
+> 📌 **导航**：本文是 **gRPC深入** 词条，属于 middleware 术语集。相关枢纽：[[ESB 与服务网格（Service Mesh）]]、[[GraphQL实践]]、[[Kafka深入]]、[[RabbitMQ vs Kafka vs Pulsar]]、[[gRPC深入]]。
+
 ## 定义
 
 **一句话定义：** gRPC 是 Google 开源的高性能**远程过程调用（RPC）**框架，基于 HTTP/2 传输、以 Protocol Buffers 作为接口定义语言（IDL）与序列化格式，支持多语言与双向流式通信。

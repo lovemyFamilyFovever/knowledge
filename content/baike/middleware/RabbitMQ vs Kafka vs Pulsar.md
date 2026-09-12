@@ -9,6 +9,9 @@ status: "imported"
 
 # RabbitMQ vs Kafka vs Pulsar
 
+
+> 📌 **导航**：本文是 **RabbitMQ vs Kafka vs Pulsar** 词条，属于 middleware 术语集。相关枢纽：[[ESB 与服务网格（Service Mesh）]]、[[GraphQL实践]]、[[Kafka深入]]、[[RabbitMQ vs Kafka vs Pulsar]]、[[gRPC深入]]。
+
 ## 定义
 
 **一句话定义：** 本文对比三款主流消息/流处理系统——RabbitMQ（灵活路由的消息代理）、Kafka（高吞吐的分布式日志/流平台）、Pulsar（计算存储分离的云原生统一消息系统），帮助按场景选型。

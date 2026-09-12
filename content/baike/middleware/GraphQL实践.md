@@ -9,6 +9,9 @@ status: "imported"
 
 # GraphQL实践
 
+
+> 📌 **导航**：本文是 **GraphQL实践** 词条，属于 middleware 术语集。相关枢纽：[[ESB 与服务网格（Service Mesh）]]、[[GraphQL实践]]、[[Kafka深入]]、[[RabbitMQ vs Kafka vs Pulsar]]、[[gRPC深入]]。
+
 ## 定义
 
 **一句话定义：** GraphQL 是 Facebook 开源的 **API 查询语言与运行时**，让客户端依据一份强类型 Schema 按需精确获取数据（一次请求拿齐所需字段），替代 REST 的多端点与固定返回结构。
