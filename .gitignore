@@ -43,3 +43,5 @@ content/**/_probe*.md
 # pip/重定向误建文件（如 `pip install "numpy>=4.25.8"` 少写引号）与本地一次性脚本/日志
 /=[0-9]*
 /scripts/_batch*.log
+# Node 工具链（ESLint/stylelint devDependencies；Agent 2026-09-13 引入）
+node_modules/

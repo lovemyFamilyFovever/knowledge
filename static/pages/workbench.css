@@ -1,7 +1,7 @@
 /* =====================================================================
    知库 · Workbench 页面级样式（T1 产出 · frontend-redesign-tasks/T1-workbench-阅读.md）
    设计基准：qwenwork/canvas/mtvq30t7ur2d66tl/index.html 第 01/02/04 屏
-   规则：只引用 T0 底座 token（--seed-*/--acc/--dh/--hairline/…），组件层零硬编码 hex；
+   规则：只引用 T0 底座 token（--seed-*、--acc、--dh、--hairline 等），组件层零硬编码 hex 色值
         不重复定义底座已有类，只做页面级叠加与覆盖。
    ===================================================================== */
 
