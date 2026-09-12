@@ -9,7 +9,10 @@ status: "imported"
 
 # Next.js全栈开发实战
 
-# Next.js 全栈开发实战指南（基于 App Router）
+
+> 📌 **导航**：本文是 **Next.js全栈开发实战** 词条，属于 frontend-frameworks 术语集。相关枢纽：[[GraphQL从入门到精通]]、[[WebAssembly完全指南]]、[[Web性能优化完全指南]]、[[现代前端工程化完全指南]]。
+
+## Next.js 全栈开发实战指南（基于 App Router）
 
 欢迎来到 Next.js 全栈开发的世界！Next.js 13 引入的 App Router 是一个革命性的框架重构，它基于 React Server Components (RSC)，提供了更强大的架构、更精细的性能优化和更优秀的开发体验。本指南将带你深入实战，从核心概念到部署上线，全方位掌握 Next.js 全栈开发。
 
@@ -1186,3 +1189,12 @@ export async function POST(request: Request) {
     )
   } catch (error: any) {
     return new Response(`
+```
+
+## 相关术语
+
+[[GraphQL从入门到精通]]、[[WebAssembly完全指南]]、[[Web性能优化完全指南]]、[[现代前端工程化完全指南]]
+
+## 参考资料
+
+建议人工核验：本词条内容建议对照相关技术官方文档、权威教材与论文做准确性复核；未编造文献编号、标准号或 URL，如需引用请补充具体出处。

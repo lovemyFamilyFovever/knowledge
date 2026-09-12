@@ -9,7 +9,10 @@ status: "imported"
 
 # GraphQL从入门到精通
 
-# GraphQL 从入门到精通完全指南
+
+> 📌 **导航**：本文是 **GraphQL从入门到精通** 词条，属于 frontend-frameworks 术语集。相关枢纽：[[GraphQL从入门到精通]]、[[WebAssembly完全指南]]、[[Web性能优化完全指南]]、[[现代前端工程化完全指南]]。
+
+## GraphQL 从入门到精通完全指南
 
 ## 1. GraphQL vs REST：深度对比与适用场景
 
@@ -1396,3 +1399,12 @@ function UserProfile({ userId }) {
         };
       },
     });
+```
+
+## 相关术语
+
+[[Next.js全栈开发实战]]、[[WebAssembly完全指南]]、[[Web性能优化完全指南]]、[[现代前端工程化完全指南]]
+
+## 参考资料
+
+建议人工核验：本词条内容建议对照相关技术官方文档、权威教材与论文做准确性复核；未编造文献编号、标准号或 URL，如需引用请补充具体出处。
