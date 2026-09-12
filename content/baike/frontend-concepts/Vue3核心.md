@@ -9,6 +9,9 @@ status: "imported"
 
 # Vue3核心
 
+
+> 📌 **导航**：本文是 **Vue3核心** 词条，属于 frontend-concepts 术语集。相关枢纽：[[HTML & CSS 核心概念]]、[[JavaScript 基础核心概念]]、[[React深入]]、[[Vue3核心]]、[[前端工程化核心概念]]。
+
 ## Composition API
 
 ```javascript
@@ -50,3 +53,11 @@ const state = new Proxy(target, {
 - PatchFlag标记动态节点
 - Block Tree扁平化
 - 事件缓存
+
+## 相关术语
+
+[[HTML & CSS 核心概念]]、[[JavaScript 基础核心概念]]、[[React深入]]、[[前端工程化]]、[[前端工程化核心概念]]、[[前端框架核心概念]]
+
+## 参考资料
+
+建议人工核验：本词条内容建议对照相关技术官方文档、权威教材与论文做准确性复核；未编造文献编号、标准号或 URL，如需引用请补充具体出处。
