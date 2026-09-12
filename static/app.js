@@ -1138,7 +1138,7 @@ document.addEventListener("contextmenu", e => {
             const rel = `${base}/${nm}.md`;
             const r = await fetch("/api/save", { method: "POST", headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ path: rel, content: `# ${nm}\n\n` }) });
-            if (r.ok) { TREE = null; localStorage.removeItem(LS_TREE); location.href = "/doc/" + rel.slice(0, -3).split("/").map(encodeURIComponent).join("/"); }
+            if (r.ok) { invalidateCaches(); location.href = "/doc/" + rel.slice(0, -3).split("/").map(encodeURIComponent).join("/"); }
             else toast("创建失败：" + r.status);
           } },
         { icon: icon("copy"), label: "复制目录路径", fn: () => copyText(base, "已复制路径") },

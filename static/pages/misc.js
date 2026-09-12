@@ -346,7 +346,7 @@ function initInbox() {
       toast(`已批量归档 ${d.n_ok} 篇 → <span class='mono'>${esc(dir)}</span>`);
       rows.forEach(rw => pushRecent(rw.dataset.rel, dir));
     }
-    TREE = null; localStorage.removeItem(LS_TREE);
+    if (window.invalidateCaches) invalidateCaches(); // 统一失效入口（app.js）
     setTimeout(() => location.reload(), d.n_fail ? 1600 : 900);
   }
 

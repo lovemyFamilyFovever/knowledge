@@ -651,7 +651,8 @@
       if (palette.isOpen()) { if (palette.mode === "readpref") { palette.mode = "palette"; palRender(); } else palette.close(); e.preventDefault(); return true; }
       var helpEl = document.getElementById("kb-help");
       if (helpEl && helpEl.classList.contains("show")) { toggleHelp(false); e.preventDefault(); return true; }
-      if (typeof window.closeEditor === "function") window.closeEditor();
+      if (typeof window.tryCloseEditor === "function") window.tryCloseEditor();
+      else if (typeof window.closeEditor === "function") window.closeEditor();
       return false;
     }
     /* ③ 输入态一律放行（j/k、/、? 都不劫持），只允许上面两条 */
@@ -833,15 +834,25 @@
     if (typeof window.saveDoc !== "function" || window.saveDoc.__kbGuarded) return;
     var orig = window.saveDoc;
     var wrapped = function () {
-      if (wl.dead && wl.dead.length) {
-        var names = wl.dead.slice(0, 3).map(function (d) { return d.raw; }).join("、");
-        var more = wl.dead.length > 3 ? " 等 " + wl.dead.length + " 处" : "";
-        if (!window.confirm("检测到 " + wl.dead.length + " 处断链（" + names + more + "）。\n断链不会阻止保存，但右栏「双链」会一直显示未解析。\n\n确定现在保存？")) {
-          util.toast("已取消保存 —— 内容还在编辑器里，改完再点保存");
-          return Promise.resolve();
-        }
+      var self = this, args = arguments;
+      /* 问题6 修复：kb-core 曾在全仓库唯一一处用原生 window.confirm（与本仓
+         「自研 kbModal 替代 prompt/confirm」的约定冲突）。断链确认改走 kbModal：
+         danger 样式 + 「仍然保存 / 回去改」；kbModal 由 app.js 顶层函数声明挂到
+         window，保存动作必然发生在 app.js 加载之后，可安全依赖；极端缺席时退回原生 confirm。 */
+      if (!wl.dead || !wl.dead.length) return orig.apply(self, args);
+      var names = wl.dead.slice(0, 3).map(function (d) { return d.raw; }).join("、");
+      var more = wl.dead.length > 3 ? " 等 " + wl.dead.length + " 处" : "";
+      var body = "检测到 <b>" + wl.dead.length + "</b> 处断链（" + util.esc(names) + util.esc(more) + "）。<br>" +
+        "断链不会阻止保存，但右栏「双链」会一直显示未解析。";
+      var proceed = function (ok) {
+        if (!ok) { util.toast("已取消保存 —— 内容还在编辑器里，改完再点保存"); return Promise.resolve(); }
+        return orig.apply(self, args);
+      };
+      if (typeof window.kbModal === "function") {
+        return window.kbModal({ title: util.icon("i-warning-triangle", 15) + " 存在断链", body: body, danger: true, confirmText: "仍然保存" })
+          .then(function (res) { return proceed(!!res); });
       }
-      return orig.apply(this, arguments);
+      return Promise.resolve(proceed(window.confirm("检测到 " + wl.dead.length + " 处断链（" + names + more + "）。\n确定现在保存？")));
     };
     wrapped.__kbGuarded = true;
     window.saveDoc = wrapped;

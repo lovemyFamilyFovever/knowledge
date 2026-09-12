@@ -150,6 +150,7 @@
     });
     var ex = picked.filter(function (r) { return r.match === "exact"; });
     var rest = picked.filter(function (r) { return r.match !== "exact"; });
+    S.shown = picked.length; // 问题5：屏幕实际条数（分面过滤后），meta 以此为准
 
     if (exactEl) {
       exactEl.hidden = !ex.length;
@@ -194,8 +195,16 @@
       renderFacets(j.facets || {});
       renderResults(j);
       var meta = document.querySelector(".srch-meta");
-      if (meta) meta.textContent = "共 " + (j.total || 0) + " 条 · " + (j.took_ms || 0) + " ms · " +
-        (j.mode === "semantic" ? "语义" : "全文");
+      if (meta) {
+        // 问题5 修复（方案 a）：「共 N 条」以屏幕实际渲染结果为准（picked = exact + hits，
+        // 已含分面多选前端过滤）；后端 j.total 是多选只传首值时的未过滤命中数，单独标注，不混用口径。
+        var shown = (S.shown == null ? S.items.length : S.shown);
+        var total = (j.total == null ? shown : j.total);
+        var modeText = (j.mode === "semantic" ? "语义" : "全文");
+        var text = "共 " + shown + " 条 · " + (j.took_ms || 0) + " ms · " + modeText;
+        if (total !== shown) text += "（后端未过滤命中 " + total + " 条）";
+        meta.textContent = text;
+      }
       if (S.semantic === false && S.raw.charAt(0) === "?" && j.rag_error) {
         var sw = document.querySelector(".query-chip.switch");
         if (sw) { sw.setAttribute("title", "语义检索不可用：" + j.rag_error); sw.style.opacity = ".5"; }
