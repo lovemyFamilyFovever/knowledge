@@ -1,4 +1,5 @@
 ---
+title: "怎样让记忆力变强"
 tags: [随笔, 学习方法]
 source: "myblog"
 collected: "2026-09-05"
