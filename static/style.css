@@ -748,3 +748,38 @@ html.cursor-on,html.cursor-on *{cursor:none !important}
   .kinetic-underline{background-size:0 0;padding-bottom:6px}
   .progress-bar{width:0}
 }
+
+/* =====================================================================
+   [17] v1.1 追加（只允许追加，不修改任何已有规则）
+   - 阅读偏好 4 个 --kb-* 默认值（实际值由 KB.prefs 写在 documentElement 内联样式上）
+   - 需求10 响应式：新增 <720 / <480 两档；已有 1280/820/640/440 保持不动
+   详细组件样式见 static/kb-core.css（与 kb-core.js 同批加载）
+   ===================================================================== */
+:root{
+  --kb-fs-scale:1;
+  --kb-measure:760px;
+  --kb-font:var(--sans);
+  --kb-line:1.75;
+}
+
+@media (max-width:720px){
+  /* 学习页 / 术语门户 / 首页 widget 的主辅双栏 → 单栏 */
+  .learn-page{padding:16px 14px 40px}
+  .learn-body{grid-template-columns:minmax(0,1fr)}
+  .kb-today{padding:14px 15px;margin:16px 0 6px}
+  .kb-today-grid{grid-template-columns:minmax(0,1fr)}
+  .srch-body{padding:14px 12px}
+  .srch-head{flex-wrap:wrap;gap:8px}
+  .results-col{min-width:0}
+}
+
+@media (max-width:480px){
+  /* 触控友好：交互元素最小 44px；正文与卡片不再留大侧边 */
+  .learn-page{padding:12px 10px 36px}
+  .learn-title{font-size:20px}
+  .srch-head .query-chip{max-width:100%;overflow:hidden;text-overflow:ellipsis}
+  .result{padding:12px 13px}
+  .kb-today-stats{grid-template-columns:repeat(3,1fr);gap:6px}
+  .kb-ring{width:88px;height:88px}
+  .kb-ring-txt b{font-size:18px}
+}

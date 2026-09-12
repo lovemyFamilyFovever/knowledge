@@ -1,5 +1,5 @@
 /* 知库 reader 前端：主题、面板折叠、客户端路由、正文渲染、编辑/备注/收藏/删除、双链、快捷键 */
-window.APP_JS_VERSION = 18;
+window.APP_JS_VERSION = 19;
 
 const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
@@ -1013,7 +1013,14 @@ function setTrackingDoc(rel) {
 }
 
 /* ---------- 快捷键与搜索 ---------- */
+/* 全局 keydown 统一交给 kb-core.js 的 KB.keys 分发器（需求7）。
+   kb-core.js 在本文件之前 defer 加载；若它没起来，退回 v18 的原始行为，
+   保证 `/` 聚焦搜索、Escape 关编辑器不丢。 */
 document.addEventListener("keydown", e => {
+  if (window.KB && KB.keys && typeof KB.keys.handle === "function") {
+    if (!e.__kbHandled) { e.__kbHandled = true; KB.keys.handle(e); } // kb-core 已在捕获阶段处理过就不再重复
+    return;
+  }
   if (e.key === "/" && !["INPUT", "TEXTAREA"].includes(document.activeElement.tagName)) { e.preventDefault(); const q = $("#q"); q && q.focus(); }
   if (e.key === "Escape") { closeEditor(); }
 });

@@ -9,6 +9,8 @@
 <link rel="stylesheet" href="/static/style.css?v={{ av('style.css') }}">
 <link rel="stylesheet" href="/static/hljs-github-dark.min.css?v={{ av('hljs-github-dark.min.css') }}">
 <script>window.LABELS={{ LABELS|tojson }};window.HUES={{ HUES|tojson }};window.SUB_LABELS={{ SUB_LABELS|tojson }};window.SOURCE_LABELS={{ SOURCE_LABELS|tojson }};</script>
+<link rel="stylesheet" href="/static/kb-core.css?v={{ av('kb-core.css') }}">
+<script src="/static/kb-core.js?v={{ av('kb-core.js') }}" defer></script>
 <script src="/static/marked.umd.js" defer></script>
 <script src="/static/purify.min.js" defer></script>
 <script src="/static/highlight.min.js" defer></script>
@@ -219,6 +221,8 @@
   <span class="right"><span>localhost:5001</span></span>
 </div>
 <div id="toast"></div>
+{# 命令面板 / 阅读偏好面板容器（kb-core.js 在首次打开时注入内部结构） #}
+<div id="kb-palette"></div>
 {% block scripts %}{% endblock %}
 </body>
 </html>
