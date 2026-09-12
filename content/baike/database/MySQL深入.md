@@ -9,6 +9,9 @@ status: "imported"
 
 # MySQL深入
 
+
+> 📌 **导航**：本文是 **MySQL深入** 词条，属于 database 术语集。相关枢纽：[[MySQL从入门到架构师]]、[[MySQL深入]]、[[Redis深入]]、[[Redis深度解析与实战指南]]、[[SQL 基础术语]]。
+
 ## 定义
 
 **一句话定义：** 本文聚焦 MySQL（InnoDB 引擎）的核心机制——B+ 树索引、事务隔离、MVCC、锁与慢查询优化，是理解 MySQL 高性能与一致性的关键。

@@ -9,6 +9,9 @@ status: "imported"
 
 # LSM 树
 
+
+> 📌 **导航**：本文是 **LSM 树** 词条，属于 database 术语集。相关枢纽：[[MySQL从入门到架构师]]、[[MySQL深入]]、[[Redis深入]]、[[Redis深度解析与实战指南]]、[[SQL 基础术语]]。
+
 ## 定义
 
 **一句话定义：** LSM 树(Log-Structured Merge Tree,日志结构合并树)是一种面向**写优化**的存储数据结构,它把随机写转化为顺序写:新数据先写入内存表并追加日志,再周期性刷入磁盘分层文件并在后台合并,广泛用于 NoSQL 与新型数据库的存储引擎。
@@ -60,4 +63,3 @@ status: "imported"
 ## 参考资料
 
 建议人工核验:LSM-Tree 由 O'Neil 等人于 1996 年提出;可参考 RocksDB/LevelDB 文档与 Kleppmann《Designing Data-Intensive Applications》存储引擎章节。
-

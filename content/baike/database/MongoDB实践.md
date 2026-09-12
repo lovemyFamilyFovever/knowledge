@@ -9,6 +9,9 @@ status: "imported"
 
 # MongoDB实践
 
+
+> 📌 **导航**：本文是 **MongoDB实践** 词条，属于 database 术语集。相关枢纽：[[MySQL从入门到架构师]]、[[MySQL深入]]、[[Redis深入]]、[[Redis深度解析与实战指南]]、[[SQL 基础术语]]。
+
 ## 定义
 
 **一句话定义：** MongoDB 是以**文档（BSON）**为数据模型的 NoSQL 数据库，Schema 灵活、支持嵌套与数组、原生提供分片与副本集，适合结构多变、读多写多的业务。

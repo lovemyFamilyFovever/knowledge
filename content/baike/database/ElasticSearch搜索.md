@@ -9,6 +9,9 @@ status: "imported"
 
 # ElasticSearch搜索
 
+
+> 📌 **导航**：本文是 **ElasticSearch搜索** 词条，属于 database 术语集。相关枢纽：[[MySQL从入门到架构师]]、[[MySQL深入]]、[[Redis深入]]、[[Redis深度解析与实战指南]]、[[SQL 基础术语]]。
+
 ## 定义
 
 **一句话定义：** Elasticsearch（ES）是基于 Lucene 的分布式搜索与分析引擎，以**倒排索引**为核心，提供近实时的全文检索、结构化搜索、分析与聚合能力。

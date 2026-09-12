@@ -9,6 +9,9 @@ status: "imported"
 
 # SQL 基础术语
 
+
+> 📌 **导航**：本文是 **SQL 基础术语** 词条，属于 database 术语集。相关枢纽：[[MySQL从入门到架构师]]、[[MySQL深入]]、[[Redis深入]]、[[Redis深度解析与实战指南]]、[[SQL 基础术语]]。
+
 ---
 
 ## DDL（Data Definition Language，数据定义语言）

@@ -9,6 +9,9 @@ status: "imported"
 
 # PostgreSQL高级特性
 
+
+> 📌 **导航**：本文是 **PostgreSQL高级特性** 词条，属于 database 术语集。相关枢纽：[[MySQL从入门到架构师]]、[[MySQL深入]]、[[Redis深入]]、[[Redis深度解析与实战指南]]、[[SQL 基础术语]]。
+
 ## 定义
 
 **一句话定义：** PostgreSQL（PG）是功能强大的开源**对象-关系型数据库**，以标准兼容、可扩展与丰富的高级特性（JSONB、窗口函数、CTE、全文搜索、GIS、自定义类型等）著称。
