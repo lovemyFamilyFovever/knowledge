@@ -9,6 +9,9 @@ status: "imported"
 
 # 函数式编程（Functional Programming）概念
 
+
+> 📌 **导航**：本文是 **函数式编程（Functional Programming）概念** 词条，属于 programming-languages 术语集。相关枢纽：[[Go语言核心]]、[[Python高级编程完全指南]]、[[Rust系统编程入门到精通]]、[[Rust编程基础]]、[[TypeScript深入]]。
+
 ---
 
 ## 纯函数（Pure Function）
@@ -736,3 +739,11 @@ const result = map(filter(naturals, x => x % 2 === 0), x => x * 10);
 **为什么需要它：** 惰性求值节省内存和计算资源，特别适合处理无限序列和大数据流。
 
 **与相关术语对比：** 惰性求值 vs 急切求值——惰性按需计算，急切立即计算所有值；Python 生成器是惰性的，列表是急切的。
+
+## 相关术语
+
+[[并发编程（Concurrent Programming）概念]]、[[面向对象编程（OOP）概念]]、[[Flutter跨平台开发实战]]、[[Go语言核心]]、[[Go语言系统编程指南]]、[[Python全栈开发教程]]
+
+## 参考资料
+
+建议人工核验：本词条内容建议对照相关技术官方文档、权威教材与论文做准确性复核；未编造文献编号、标准号或 URL，如需引用请补充具体出处。

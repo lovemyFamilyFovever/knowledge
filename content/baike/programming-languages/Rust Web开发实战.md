@@ -9,7 +9,10 @@ status: "imported"
 
 # Rust Web开发实战
 
-# Rust Web 开发实战指南
+
+> 📌 **导航**：本文是 **Rust Web开发实战** 词条，属于 programming-languages 术语集。相关枢纽：[[Go语言核心]]、[[Python高级编程完全指南]]、[[Rust系统编程入门到精通]]、[[Rust编程基础]]、[[TypeScript深入]]。
+
+## Rust Web 开发实战指南
 
 ## 第一部分：Rust Web 生态概览
 
@@ -1226,3 +1229,12 @@ async fn request_response_pattern() {
         // 一些异步操作
         tokio::time::sleep(Duration::from_secs(1)).await;
         let result =
+```
+
+## 相关术语
+
+[[Rust系统编程入门到精通]]、[[Rust编程基础]]、[[Flutter跨平台开发实战]]、[[Go语言核心]]、[[Go语言系统编程指南]]、[[Python全栈开发教程]]
+
+## 参考资料
+
+建议人工核验：本词条内容建议对照相关技术官方文档、权威教材与论文做准确性复核；未编造文献编号、标准号或 URL，如需引用请补充具体出处。

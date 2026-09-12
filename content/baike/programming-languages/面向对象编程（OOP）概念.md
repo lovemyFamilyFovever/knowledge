@@ -9,6 +9,9 @@ status: "imported"
 
 # 面向对象编程（OOP）概念
 
+
+> 📌 **导航**：本文是 **面向对象编程（OOP）概念** 词条，属于 programming-languages 术语集。相关枢纽：[[Go语言核心]]、[[Python高级编程完全指南]]、[[Rust系统编程入门到精通]]、[[Rust编程基础]]、[[TypeScript深入]]。
+
 ---
 
 ## 类（Class）
@@ -723,3 +726,11 @@ function getArea(shape) { return shape.area(); }
 **为什么需要它：** LSP 是面向对象设计的基本原则，保证继承体系的正确性和可替换性。
 
 **与相关术语对比：** LSP 是 SOLID 原则之一，关注子类能否安全替换父类；与开闭原则（对扩展开放、对修改关闭）紧密相关。
+
+## 相关术语
+
+[[函数式编程（Functional Programming）概念]]、[[并发编程（Concurrent Programming）概念]]、[[Flutter跨平台开发实战]]、[[Go语言核心]]、[[Go语言系统编程指南]]、[[Python全栈开发教程]]
+
+## 参考资料
+
+建议人工核验：本词条内容建议对照相关技术官方文档、权威教材与论文做准确性复核；未编造文献编号、标准号或 URL，如需引用请补充具体出处。

@@ -9,6 +9,9 @@ status: "imported"
 
 # 并发编程（Concurrent Programming）概念
 
+
+> 📌 **导航**：本文是 **并发编程（Concurrent Programming）概念** 词条，属于 programming-languages 术语集。相关枢纽：[[Go语言核心]]、[[Python高级编程完全指南]]、[[Rust系统编程入门到精通]]、[[Rust编程基础]]、[[TypeScript深入]]。
+
 ---
 
 ## 并发（Concurrency）vs 并行（Parallelism）
@@ -1227,3 +1230,11 @@ asyncio.run(main())
 **为什么需要它：** 事件循环是 asyncio 的核心调度器，管理所有异步任务的执行和切换。
 
 **与相关术语对比：** 事件循环 vs 线程池——事件循环是单线程协作式调度，线程池是多线程抢占式调度；事件循环更适合IO密集型，线程池更适合CPU密集型。
+
+## 相关术语
+
+[[函数式编程（Functional Programming）概念]]、[[面向对象编程（OOP）概念]]、[[Flutter跨平台开发实战]]、[[Go语言核心]]、[[Go语言系统编程指南]]、[[Python全栈开发教程]]
+
+## 参考资料
+
+建议人工核验：本词条内容建议对照相关技术官方文档、权威教材与论文做准确性复核；未编造文献编号、标准号或 URL，如需引用请补充具体出处。
