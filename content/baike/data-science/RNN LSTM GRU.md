@@ -9,6 +9,9 @@ status: "imported"
 
 # RNN/LSTM/GRU
 
+
+> 📌 **导航**：本文是 **RNN/LSTM/GRU** 词条，属于 data-science 术语集。相关枢纽：[[A B测试与实验设计]]、[[ETL]]、[[MLOps实践]]、[[RNN LSTM GRU]]、[[卷积神经网络(CNN)]]。
+
 ## RNN（循环神经网络）
 
 ```python
@@ -88,3 +91,11 @@ h_concat = torch.cat([h_forward, h_backward], dim=-1)
 | 机器翻译 | Transformer | 长依赖+并行 |
 | 情感分析 | BERT(Transformer) | 预训练优势 |
 | 股票预测 | LSTM+Attention | 时序+重要时刻 |
+
+## 相关术语
+
+[[A B测试与实验设计]]、[[ETL]]、[[MLOps实践]]、[[卷积神经网络(CNN)]]、[[可解释AI(XAI)]]、[[因果推断]]
+
+## 参考资料
+
+建议人工核验：本词条内容建议对照相关技术官方文档、权威教材与论文做准确性复核；未编造文献编号、标准号或 URL，如需引用请补充具体出处。

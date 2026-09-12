@@ -9,6 +9,9 @@ status: "imported"
 
 # ETL
 
+
+> 📌 **导航**：本文是 **ETL** 词条，属于 data-science 术语集。相关枢纽：[[A B测试与实验设计]]、[[ETL]]、[[MLOps实践]]、[[RNN LSTM GRU]]、[[卷积神经网络(CNN)]]。
+
 ## 定义
 
 **一句话定义：** ETL(Extract-Transform-Load,抽取-转换-加载)是数据集成的核心流程:从各数据源抽取(Extract)原始数据,按业务规则清洗、转换(Transform)为统一格式与口径,再加载(Load)到目标存储(如数据仓库),为分析与报表提供高质量数据。

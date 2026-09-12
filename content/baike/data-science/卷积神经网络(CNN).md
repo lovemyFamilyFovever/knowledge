@@ -7,7 +7,10 @@ collected: "2026-09-05"
 status: "imported"
 ---
 
-# 卷积神经网络
+# 卷积神经网络(CNN)
+
+
+> 📌 **导航**：本文是 **卷积神经网络(CNN)** 词条，属于 data-science 术语集。相关枢纽：[[A B测试与实验设计]]、[[ETL]]、[[MLOps实践]]、[[RNN LSTM GRU]]、[[卷积神经网络(CNN)]]。
 
 ```python
 conv = nn.Conv2d(3, 64, kernel_size=3, padding=1)
@@ -32,3 +35,11 @@ class ResBlock(nn.Module):
 ```
 
 梯度可通过跳跃连接直接回传，解决深层网络梯度消失。
+
+## 相关术语
+
+[[A B测试与实验设计]]、[[ETL]]、[[MLOps实践]]、[[RNN LSTM GRU]]、[[可解释AI(XAI)]]、[[因果推断]]
+
+## 参考资料
+
+建议人工核验：本词条内容建议对照相关技术官方文档、权威教材与论文做准确性复核；未编造文献编号、标准号或 URL，如需引用请补充具体出处。
