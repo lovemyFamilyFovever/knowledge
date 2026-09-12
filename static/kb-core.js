@@ -32,14 +32,19 @@
       return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
     });
   };
-  /* 后端 PALETTE_COMMANDS 里有 #i-home，但 base.html 精灵表没有该 symbol → 本地别名兜底 */
-  var ICON_ALIAS = { "i-home": "i-folder-open" };
+  /* 后端 PALETTE_COMMANDS 会返回 #i-home 等图标名；base.html 精灵表里已补齐对应 symbol，
+     这里只做一次「精灵表里查得到」的存在性校验，查不到就降级成不画图标（不再用别名顶替）。 */
+  util.hasIcon = function (name) {
+    return !!(name && document.getElementById(name));
+  };
   util.icon = function (name, size) {
-    var id = ICON_ALIAS[name] || name;
     var px = size || 14;
+    var inner = util.hasIcon(name)
+      ? '<use href="#' + util.esc(name) + '"/>'
+      : "";
     return '<svg class="i" width="' + px + '" height="' + px + '" viewBox="0 0 24 24" fill="none" ' +
       'stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" ' +
-      'aria-hidden="true" style="flex:none"><use href="#' + util.esc(id) + '"/></svg>';
+      'aria-hidden="true" style="flex:none">' + inner + '</svg>';
   };
   util.debounce = function (fn, ms) {
     var t = null;

@@ -307,15 +307,52 @@ document.addEventListener("click", e => {
 window.addEventListener("popstate", () => { if (WORKBENCH) navigate(location.pathname + location.search, false); });
 
 /* ---------- 编辑 ---------- */
-function openEditor() {
+/* frontmatter 原文：openEditor 曾直接用 JSON.stringify 重建 fm，
+   会把 `tags: [AI资产, 越狱词]` 写成 `tags: ["AI资产","越狱词"]` —— 用户「打开即保存」
+   什么都没改也会把 content/ 弄脏。这里改为从 /raw/<rel> 取回原始 frontmatter 块原样填入。
+   缓存键是 DOC.rel，换文档自动失效。 */
+let FM_RAW = null;      // "---\n…\n---\n"；无 frontmatter 时为 ""；取不到时为 null
+let FM_RAW_REL = "";
+let ED_INITIAL_HEAD = "";  // 打开编辑器时填入的 frontmatter 区块，保存前用来判断用户动没动过
+
+async function fetchFmRaw() {
+  if (!DOC || !DOC.rel) return null;
+  if (FM_RAW_REL === DOC.rel && FM_RAW !== null) return FM_RAW;
+  try {
+    const r = await fetch("/raw/" + DOC.rel);
+    if (!r.ok) return null;
+    const txt = await r.text();
+    const m = txt.match(/^\uFEFF?---[ \t]*\r?\n[\s\S]*?\r?\n---[ \t]*(?:\r?\n|$)/);
+    FM_RAW = m ? m[0] : "";
+    FM_RAW_REL = DOC.rel;
+    return FM_RAW;
+  } catch (e) {
+    return null;
+  }
+}
+
+/* 兜底序列化：只有 /raw 取不到原文时才用，尽量贴近语料常见的无引号列表风格 */
+function fmSerialize(fm) {
+  const one = (v) => {
+    if (v === true || v === false) return String(v);
+    if (Array.isArray(v)) return "[" + v.join(", ") + "]";
+    const s = String(v);
+    return /^[A-Za-z0-9_.\-\u4e00-\u9fa5][A-Za-z0-9_ .\-\u4e00-\u9fa5]*$/.test(s) ? s : JSON.stringify(s);
+  };
+  return "---\n" + Object.entries(fm || {}).map(([k, v]) => `${k}: ${one(v)}`).join("\n") + "\n---\n";
+}
+
+async function openEditor() {
   if (!DOC || DOC.is_html) return;
   $("#article").style.display = "none";
   $("#editor").classList.add("show");
   const hint = $("#ed-hint");
   if (hint) hint.style.display = ""; // frontmatter 引导：这是编辑页顶部空白区的用途说明
   $("#ed-path").textContent = DOC.rel;
-  $("#ed-text").value = "---\n" + Object.entries(DOC.fm).map(([k, v]) =>
-    `${k}: ${v === true ? "true" : JSON.stringify(v)}`).join("\n") + "\n---\n\n" + DOC.md;
+  const raw = await fetchFmRaw();
+  const head = raw != null ? raw : fmSerialize(DOC.fm);
+  $("#ed-text").value = (raw ? raw + "\n" : head + "\n") + DOC.md;
+  ED_INITIAL_HEAD = head;   // 保存前用来判断用户有没有动过 frontmatter
   $("#ed-text").focus();
   toast("编辑态 · 保存即写回文件系统，git 记录本次变更");
 }
@@ -327,7 +364,14 @@ async function closeEditor() {
   $("#article").style.display = "";
 }
 async function saveDoc() {
-  const text = $("#ed-text").value;
+  let text = $("#ed-text").value;
+  /* 安全网：若用户没动过 frontmatter 区块，落盘前还原成语料原文区块，
+     杜绝任何序列化差异（引号、顺序、空行）污染 content/ */
+  if (FM_RAW && ED_INITIAL_HEAD) {
+    const m = text.match(/^\uFEFF?---[ \t]*\r?\n[\s\S]*?\r?\n---[ \t]*(?:\r?\n|$)/);
+    const head = m ? m[0] : "";
+    if (head === ED_INITIAL_HEAD && head !== FM_RAW) text = FM_RAW + text.slice(head.length);
+  }
   const r = await fetch("/api/save", { method: "POST", headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ path: DOC.rel, content: text }) });
   if (!r.ok) { toast("保存失败：" + (await r.text()).slice(0, 120)); return; }
