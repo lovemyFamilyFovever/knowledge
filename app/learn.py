@@ -158,8 +158,22 @@ class LearnStore:
         self.content = Path(content) if content else None
         self.con = sqlite3.connect(indexes / "reading.db", check_same_thread=False)
         self.con.row_factory = sqlite3.Row
-        self.con.executescript(DDL)
+        self._ensure_schema()
         self.con.commit()
+
+    def _ensure_schema(self) -> None:
+        """建表（幂等）。
+
+        看着可以无脑 `executescript(DDL)`，实测不行：DDL 有 18 条语句，逐条各自成事务，
+        在 Windows 上新建库时合计约 2s，会直接吃掉「删库自愈 < 5s」的大半预算。
+        因此：① 表齐全就跳过；② 真要建表时用一个显式事务把 18 次提交收敛成 1 次。
+        """
+        row = self.con.execute(
+            "SELECT 1 FROM sqlite_master WHERE type='table' AND name='review_events'"
+        ).fetchone()
+        if row is not None:
+            return
+        self.con.executescript("BEGIN;" + DDL + "COMMIT;")
 
     # ---------- 元信息 ----------
     def meta_get(self, key: str) -> str | None:
@@ -384,6 +398,11 @@ class LearnStore:
             f"SELECT count(*) {join}{new_where}", tuple(args)).fetchone()[0])
 
         n_new_cap = 0 if not include_new else min(new_n, int(limit * new_ratio))
+        if include_new and due_n == 0:
+            # 一份到期卡都没有时（典型：首次使用，全库都是新卡）不再按 new_ratio 打折 ——
+            # 否则 limit=20 只返回 6 张、limit=5 只返回 1 张，复习页根本刷不动。
+            # ratio 的语义是「别让新卡挤占到期卡」，没有到期卡可挤时它不该生效。
+            n_new_cap = min(new_n, limit)
         n_due_cap = limit - n_new_cap
         # 允许「新卡不足」时用到期卡补足，保证一次总是拿满一片可复习的牌
         due_rows = [dict(r) for r in self.con.execute(
@@ -439,9 +458,11 @@ class LearnStore:
             prev.setdefault("due_ts", 0)
             prev_mastered = int(prev["mastered"] or 0)
 
+            # 幂等窗口 1 秒。用「时间差」而不是 CAST(ts AS INTEGER) 判定：后者按整秒截断，
+            # 两次提交若恰好跨过整秒边界（1000.9 / 1001.1）会被算成两次，双击去重就失效了。
             dup = con.execute(
-                "SELECT id FROM review_events WHERE card_id=? AND CAST(ts AS INTEGER)=? LIMIT 1",
-                (card_id, int(now))).fetchone()
+                "SELECT id FROM review_events WHERE card_id=? AND ABS(ts - ?) < 1.0 LIMIT 1",
+                (card_id, now)).fetchone()
             if dup is not None:
                 # 幂等：同一秒的重复提交视为重试，原样返回当前状态，不二次推进间隔
                 con.execute("ROLLBACK")

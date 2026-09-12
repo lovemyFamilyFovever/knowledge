@@ -130,6 +130,84 @@ def test_parse_interview_i3() -> None:
     check("I-3：保留「回答模板N」小标题", any("回答模板" in c.back for c in cards))
 
 
+def test_parse_interview_i4() -> None:
+    """I-4 编号问答式：`### Q1: xxx` + `**答案要点：**` / `**参考答案：**`。"""
+    rel = "interview/ai-agent/AI Agent开发面试题库.md"
+    cards = parse_file(rel, read_sample(rel))
+    check("I-4：抽出编号题目", len(cards) >= 50, f"got {len(cards)}")
+    check("I-4：全是 interview_qa", all(c.kind == "interview_qa" for c in cards))
+    check("I-4：front 形如 Q1. 标题", bool(cards) and cards[0].front.startswith("Q1. "),
+          f"got {cards[0].front if cards else None!r}")
+    check("I-4：题面原样保留（已带问号的不重复加）",
+          bool(cards) and cards[0].front.endswith("？"), f"got {cards[0].front if cards else None!r}")
+    check("I-4：has_answer=1（答案要点有内容）", all(c.has_answer == 1 for c in cards))
+    check("I-4：difficulty 缺省 medium", all(c.difficulty == "medium" for c in cards))
+    check("I-4：back 不含答案标记行本身",
+          all("答案要点" not in c.back[:20] for c in cards))
+    check("I-4：back 剔除了代码块", all("```" not in c.back for c in cards))
+    check("I-4：back 截断到 600 字内", all(len(c.back) <= 600 for c in cards))
+    check("I-4：anchor 是原题标题", bool(cards) and cards[0].anchor.startswith("Q1:"),
+          f"got {cards[0].anchor if cards else None!r}")
+    check("I-4：term 取 frontmatter/H1 而非 Q 标题",
+          bool(cards) and not cards[0].term.startswith("Q"), f"got {cards[0].term!r}")
+
+    # 详解版：块内是成段正文 + 表格 + **详细解析：**
+    rel2 = "interview/ai-agent/AI Agent开发面试题库 - 详细答案解析.md"
+    cards2 = parse_file(rel2, read_sample(rel2))
+    check("I-4 详解版：也抽出题目", len(cards2) >= 50, f"got {len(cards2)}")
+    check("I-4 详解版：back 不是把「参考答案」标记当答案",
+          bool(cards2) and all(not c.back.startswith("参考答案") for c in cards2))
+    check("I-4 详解版：back 有实质正文",
+          all(len(c.back) >= 20 for c in cards2), f"最短 {min((len(c.back) for c in cards2), default=0)}")
+
+    # 护栏②：块内完全没有中文（纯代码）不建卡
+    md = ('# 编码题\n\n## 基础\n\n### Q1: 实现一个简单的ReAct Agent\n\n'
+          '```python\ndef run(): pass\n```\n\n'
+          '### Q2: 什么是 Agent？它和 ChatBot 有何不同？\n\n**答案要点：**\n'
+          '- Agent 能主动调用工具并完成目标，ChatBot 只能被动应答，这个区别很关键。\n')
+    cs = parse_file("interview/ai-agent/编码题.md", md)
+    check("I-4 护栏②：纯代码块不建卡", len(cs) == 1, f"got {len(cs)}")
+    check("I-4 护栏②：有中文的那题仍出卡", bool(cs) and cs[0].front.startswith("Q2. "))
+
+
+def test_baike_b_term_cleaning() -> None:
+    """B 格式术语名：只去前导编号，不动标题中间的英文括号。"""
+    md = ('# 名词表\n\n导语。\n\n'
+          '## 1. AI 对话系统\n**一句话定义（大白话）**\n能与人多轮对话并完成任务的 AI 系统。\n\n'
+          '## 8. 指令微调\n**一句话定义（大白话）**\n用指令-回答对继续训练，让模型听懂人话。\n\n'
+          '## MD5（Message Digest 5）\n**一句话定义（大白话）**\n'
+          '把任意长度数据压成 128 位摘要的哈希算法。\n')
+    cards = parse_file("baike/ai/名词表.md", md)
+    terms = [c.term for c in cards if c.kind == "baike_def"]
+    check("B 术语清洗：前导编号被去掉", terms[:2] == ["AI 对话系统", "指令微调"], f"got {terms}")
+    check("B 术语清洗：保留中间英文括号", "MD5（Message Digest 5）" in terms, f"got {terms}")
+    check("B 术语清洗：anchor 仍是原始标题（便于跳转）",
+          any(c.anchor == "1. AI 对话系统" for c in cards), f"got {[c.anchor for c in cards][:3]}")
+    check("B 术语清洗：front 用清洗后的术语",
+          bool(cards) and cards[0].front == "「AI 对话系统」是什么？用一句话说清楚。",
+          f"got {cards[0].front if cards else None!r}")
+
+
+def test_i3_difficulty_backfill() -> None:
+    """I-3：题面下一行的难度词回填 difficulty，且难度行不进答案正文。"""
+    rel = "interview/css-html/CSS与HTML面试题库 - 60道精选题目.md"
+    cards = parse_file(rel, read_sample(rel))
+    diffs = {c.difficulty for c in cards}
+    check("I-3：difficulty 被回填", "" not in diffs and diffs <= {"easy", "medium", "hard"},
+          f"got {sorted(diffs)}")
+    check("I-3：难度行不出现在 back 里",
+          all(c.back.strip() not in ("简单", "中等", "困难", "初级", "中级", "高级") for c in cards))
+    check("I-3：难度行不出现在 front 里",
+          all("简单" not in c.front for c in cards))
+    check("I-3：back 截断到 800 字内", all(len(c.back) <= 800 for c in cards))
+
+
+def test_parser_version_bumped() -> None:
+    """解析规则一改，版本号必须跟着变（否则已上线的库不会重扫）。"""
+    check("CARDS_PARSER_VERSION >= 2（I-4 属破坏性解析变更）", CARDS_PARSER_VERSION >= 2,
+          f"got {CARDS_PARSER_VERSION}")
+
+
 def test_no_cards_from_fenced_code() -> None:
     md = ('---\ntitle: "伪题陷阱"\ntags: []\n---\n\n# 伪题陷阱\n\n'
           '正文里只有一个真问题。\n\n```python\n1. 代码块里的问题会被算成卡片吗？\n'
@@ -283,6 +361,14 @@ def test_learn_store() -> None:
             check("二次 sync：updated=0", r2["updated"] == 0, f"got {r2['updated']}")
             check("二次 sync：total 不变", r2["total"] == r1["total"])
 
+            # 全是新卡时不能按 new_ratio 打折（否则 limit=5 只返回 1 张，复习页刷不动）
+            fresh = ls.due(limit=5)
+            check("全库都是新卡时 due(5) 拿满 limit", len(fresh["cards"]) == 5,
+                  f"got {len(fresh['cards'])} (due_n={fresh['due_n']}, new_n={fresh['new_n']})")
+            fresh20 = ls.due(limit=20)
+            check("全库都是新卡时 due(20) 也拿满", len(fresh20["cards"]) == 20,
+                  f"got {len(fresh20['cards'])}")
+
             due = ls.due(limit=5)
             card = due["cards"][0]
             dueTs_before[card["card_id"]] = card["due_ts"]
@@ -299,8 +385,23 @@ def test_learn_store() -> None:
             dup = ls.submit_review(card["card_id"], 4, 1500)
             check("同一秒重复提交幂等（interval 不二次推进）", dup["next"]["interval"] == 1,
                   f"got {dup['next']}")
-            ls.con.execute("UPDATE review_events SET ts=ts-1 WHERE card_id=?", (card["card_id"],))
+            # 把事件时间戳挪出 1 秒幂等窗口，好让后续提交能真正生效
+            ls.con.execute("UPDATE review_events SET ts=ts-2 WHERE card_id=?", (card["card_id"],))
             ls.con.commit()
+
+            # 有到期卡时，new_ratio 必须真的生效（新卡不挤占到期卡）
+            ls.con.execute("UPDATE review_state SET due_ts=? WHERE card_id=?",
+                           (time.time() - 10, card["card_id"]))
+            ls.con.commit()
+            mix = ls.due(limit=20, new_ratio=0.3)
+            # LearnStore.due() 返回的是扁平行（state 的字段摊平在 card 上，
+            # 嵌套的 state{} 是 routes_learn 组响应时套上去的）
+            n_new = sum(1 for c in mix["cards"] if c["is_new"])
+            check("有到期卡时新卡占比受 new_ratio 约束", n_new <= 6,
+                  f"got {n_new} 张新卡 / 共 {len(mix['cards'])}")
+            check("有到期卡时到期卡优先入选",
+                  any(not c["is_new"] for c in mix["cards"]),
+                  f"got {[c['is_new'] for c in mix['cards']][:6]}")
 
             m = ls.mastery(scope="sub", domain="baike")
             check("mastery 返回 items 与 totals", bool(m["items"]) and "pct" in m["totals"])
@@ -513,6 +614,10 @@ def main() -> int:
     test_parse_interview_i1()
     test_parse_interview_i2()
     test_parse_interview_i3()
+    test_parse_interview_i4()
+    test_baike_b_term_cleaning()
+    test_i3_difficulty_backfill()
+    test_parser_version_bumped()
     test_no_cards_from_fenced_code()
     test_card_id_stable()
     print("== ② SM-2 ==")
