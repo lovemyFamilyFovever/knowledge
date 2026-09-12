@@ -1,5 +1,5 @@
 /* 知库 reader 前端：主题、面板折叠、客户端路由、正文渲染、编辑/备注/收藏/删除、双链、快捷键 */
-window.APP_JS_VERSION = 24;
+window.APP_JS_VERSION = 25;
 
 const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
@@ -593,11 +593,16 @@ async function tryCloseEditor() {
 async function saveDoc() {
   let text = $("#ed-text").value;
   /* 安全网：若用户没动过 frontmatter 区块，落盘前还原成语料原文区块，
-     杜绝任何序列化差异（引号、顺序、空行）污染 content/ */
+     杜绝任何序列化差异（引号、顺序、空行）污染 content/。
+     比对前两侧都归一到 LF：FM_RAW 来自 /raw（CRLF 语料含 \r），
+     textarea 值永远是 LF——不归一则 head === ED_INITIAL_HEAD 永假，
+     安全网沦为死逻辑（残留 2，2026-09-13 修复）。还原时用 FM_RAW 原文
+     （含 \r），与语料字节保真一致。 */
   if (FM_RAW && ED_INITIAL_HEAD) {
     const m = text.match(/^\uFEFF?---[ \t]*\r?\n[\s\S]*?\r?\n---[ \t]*(?:\r?\n|$)/);
     const head = m ? m[0] : "";
-    if (head === ED_INITIAL_HEAD && head !== FM_RAW) text = FM_RAW + text.slice(head.length);
+    const lf = (s) => s.replace(/\r\n/g, "\n");
+    if (head && lf(head) === lf(ED_INITIAL_HEAD) && lf(head) !== lf(FM_RAW)) text = FM_RAW + text.slice(head.length);
   }
   const r = await fetch("/api/save", { method: "POST", headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ path: DOC.rel, content: text }) });
