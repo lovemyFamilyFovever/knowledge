@@ -9,7 +9,10 @@ status: "imported"
 
 # 自然语言处理NLP完全指南
 
-# NLP完全指南：从基础原理到大语言模型实战
+
+> 📌 **导航**：本文是 **自然语言处理NLP完全指南** 词条，属于 machine-learning 术语集。相关枢纽：[[LLM应用开发完全指南]]、[[强化学习从入门到实践]]、[[自然语言处理NLP完全指南]]、[[计算机视觉入门到实战]]。
+
+## NLP完全指南：从基础原理到大语言模型实战
 
 ## 1. 文本预处理
 
@@ -933,3 +936,12 @@ class BahdanauAttention(nn.Module):
         self.W1 = nn.Linear(hidden_dim, hidden_dim)
         self.W2 = nn.Linear(hidden_dim, hidden_dim)
         self.V = nn
+```
+
+## 相关术语
+
+[[2026年AI技术全景图]]、[[AI是否会取代人类辩论]]、[[Dropout]]、[[K均值聚类]]、[[K近邻算法]]、[[LLM应用开发完全指南]]
+
+## 参考资料
+
+建议人工核验：本词条内容建议对照相关技术官方文档、权威教材与论文做准确性复核；未编造文献编号、标准号或 URL，如需引用请补充具体出处。
