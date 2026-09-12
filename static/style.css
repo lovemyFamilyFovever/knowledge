@@ -278,6 +278,10 @@ html[data-theme="dark"] .iconbtn{background:color-mix(in oklab,var(--seed-surfac
 /* 已读完 / 已掌握 标记按钮（选中态 = 主题绿实底） */
 .iconbtn.mark-on{color:color-mix(in oklab,var(--seed-surface),white 5%);background:var(--acc);border-color:var(--acc)}
 .iconbtn.mark-on:hover{color:color-mix(in oklab,var(--seed-surface),white 5%);border-color:var(--acc)}
+/* 美化版直通（interview 域 / 纯 HTML 文档）：无标题区，iframe 撑满父宽 */
+#article.pretty-mode{max-width:none}
+#article.pretty-mode .html-frame{height:calc(100vh - 175px);min-height:560px}
+.pretty-foot{display:flex;gap:12px;justify-content:center;margin-top:8px}
 /* 文末「读完这篇了？」标记条（renderArticle 动态插入） */
 .kb-finish-bar{display:flex;align-items:center;gap:10px;margin-top:28px;padding:12px 16px;
   border:1px solid var(--edge);border-radius:var(--radius-lg);background:var(--acc-soft)}

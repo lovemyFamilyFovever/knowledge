@@ -1,12 +1,23 @@
 /* 知库 reader 前端：主题、面板折叠、客户端路由、正文渲染、编辑/备注/收藏/删除、双链、快捷键 */
-window.APP_JS_VERSION = 19;
+window.APP_JS_VERSION = 20;
 
 const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
 const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
-const toast = m => { const t = $("#toast"); t.innerHTML = m; t.classList.add("show"); clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove("show"), 2600); };
+/* 问题3 修复：toast 唯一实现收拢到 kb-core 的 KB.util.toast（kb-core defer 顺序在前，可依赖）。
+   原先 app.js 与 kb-core.js 各持一个隐藏 timer（_h / _kbh）共用 #toast，两条 toast 先后出现时
+   第二条会被第一条的旧 timer 提前隐藏。此处只转调，不再自管 timer。 */
+const toast = m => {
+  if (window.KB && KB.util && KB.util.toast) { KB.util.toast(m); return; }
+  const t = $("#toast"); if (!t) return;
+  t.innerHTML = m; t.classList.add("show");
+  clearTimeout(t._kbh); t._kbh = setTimeout(() => t.classList.remove("show"), 2600);
+};
 /* 统一构造 /doc URL：域根文档补 _root 段，逐段 encode，避免 404 */
 const docUrl = rel => { let s = String(rel).replace(/\.md$/, "").split("/").filter(Boolean); if (s.length === 2) s = [s[0], "_root", s[1]]; return "/doc/" + s.map(encodeURIComponent).join("/"); };
+/* 问题7 修复：统一构造 /raw URL，逐段 encode。fetchFmRaw 此前裸拼 DOC.rel，
+   文件名含空格/中文标点/特殊字符时 fetch 404，frontmatter 保真路径失效。 */
+const rawUrl = rel => "/raw/" + String(rel ?? "").split("/").filter(Boolean).map(encodeURIComponent).join("/");
 
 /* 统一图标：引用 base.html 精灵表 #i-<name>，替代所有彩色 emoji */
 const icon = (n, s = 14) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex:none;display:inline-block;vertical-align:-.15em"><use href="#i-${n}"/></svg>`;
@@ -104,17 +115,23 @@ function renderArticle(forceMd) {
   /* interview 域的题库类文档以美化版 HTML 为主（用户指定）：
      有旁挂 .html 且未强制 Markdown 视图时，直接内嵌美化版（forceMd=true 可切回） */
   const pretty = DOC.is_html || (DOC.has_html && DOC.domain === "interview" && !forceMd);
+  el.classList.toggle("pretty-mode", pretty); // 美化版：去标题区、iframe 撑满父宽
   if (pretty) {
     // 整页 HTML：iframe 沙箱内嵌直通 /raw/（保留自带样式/脚本），
     // 绝不走 marked+DOMPurify 管线——大 HTML 过 markdown 解析会把源码平铺成数万节点 DOM，卡且不可读
     const srcRel = DOC.is_html ? DOC.rel : DOC.html_rel;
-    const rawHref = "/raw/" + srcRel.split("/").map(encodeURIComponent).join("/");
-    el.innerHTML = `<div class="a-kicker">${DOC.is_html ? "HTML 文档" : "美化版 · " + esc(DOC.domain_label)}</div>
-      <h1 class="a-title">${esc(DOC.title)}</h1>
-      <div class="a-rule"></div>
+    const rawHref = rawUrl(srcRel);
+    /* 问题4 修复：学习闭环此前只渲染在 md 分支，interview 域默认走 pretty 分支时
+       「已读完/已掌握」整条链路断裂。finish-bar 按钮按 id 被 refreshDocMark/renderDocMark
+       查找，两分支共用同一套 id 与样式，天然兼容。 */
+    el.innerHTML = `<div class="kb-finish-bar" id="kb-finish-bar">
+        <span class="kb-finish-q">读完这篇了？</span>
+        <button type="button" class="kb-btn" id="mark-read-btn" onclick="toggleDocMark('read')" title="标记已读完（存本地复习库，不写语料）">已读完</button>
+        <button type="button" class="kb-btn" id="mark-mastered-btn" onclick="toggleDocMark('mastered')" title="标记已掌握 —— 术语门户会显示为已掌握">已掌握</button>
+      </div>
       <div class="html-frame-wrap"><iframe class="html-frame" src="${rawHref}"
         sandbox="allow-same-origin allow-popups" title="${esc(DOC.title)}"></iframe></div>
-      <p style="margin-top:10px;display:flex;gap:12px">
+      <p class="pretty-foot">
         ${DOC.is_html ? "" : '<a class="iconbtn" onclick="renderArticle(true)" title="切回 Markdown 渲染视图"><svg class="i i-12"><use href="#i-file-md"/></svg> Markdown 源</a>'}
         <a class="iconbtn" href="${rawHref}" target="_blank">↗ 新标签页打开原页面</a></p>`;
   } else {
@@ -255,6 +272,7 @@ function renderNotes() {
 
 /* ---------- 客户端路由（仅阅读页；其他页面走普通跳转） ---------- */
 const WORKBENCH = !!document.getElementById("article");
+let ED_LAST_HREF = location.pathname + location.search; // 最近一次成功导航的地址（dirty guard 中止 popstate 时恢复地址栏用）
 
 async function navigate(url, push) {
   if (!WORKBENCH) {
@@ -262,7 +280,13 @@ async function navigate(url, push) {
     if (location.pathname + location.search !== url) location.href = url;
     return;
   }
-  closeEditor();
+  // 问题1：导航前必须过 dirty guard；用户选「继续编辑」则中止本次导航。
+  // popstate（push=false）时地址栏已经变了，中止就把上一个成功地址推回去，保持地址与内容一致。
+  if (!(await tryCloseEditor())) {
+    if (!push) history.pushState({}, "", ED_LAST_HREF);
+    return;
+  }
+  ED_LAST_HREF = url;
   const path = url.split("?")[0];
   const segs = path.split("/").filter(Boolean).map(s => { try { return decodeURIComponent(s); } catch (e) { return s; } });
   // /doc/<domain>/<sub>/<name...>
@@ -327,12 +351,19 @@ window.addEventListener("popstate", () => { if (WORKBENCH) navigate(location.pat
 let FM_RAW = null;      // "---\n…\n---\n"；无 frontmatter 时为 ""；取不到时为 null
 let FM_RAW_REL = "";
 let ED_INITIAL_HEAD = "";  // 打开编辑器时填入的 frontmatter 区块，保存前用来判断用户动没动过
+/* 问题1 修复（dirty guard）：语料是唯一事实源，编辑中途按 Esc / 点树 / 路由跳转
+   曾经把未保存内容静默丢弃。ED_SNAPSHOT 记录打开瞬间的全文，tryCloseEditor() 是唯一
+   关闭入口：无差异直接关，有差异弹三键弹窗（保存并关闭 / 丢弃修改 / 继续编辑）。
+   Escape、navigate、popstate、编辑器「取消」按钮全部改走该入口。 */
+let ED_OPEN = false;
+let ED_SNAPSHOT = "";
+let UC_OPEN = false; // confirmUnsavedChanges 在展示中：防重入（连按 Esc / 弹窗期间又点树）
 
 async function fetchFmRaw() {
   if (!DOC || !DOC.rel) return null;
   if (FM_RAW_REL === DOC.rel && FM_RAW !== null) return FM_RAW;
   try {
-    const r = await fetch("/raw/" + DOC.rel);
+    const r = await fetch(rawUrl(DOC.rel));
     if (!r.ok) return null;
     const txt = await r.text();
     const m = txt.match(/^\uFEFF?---[ \t]*\r?\n[\s\S]*?\r?\n---[ \t]*(?:\r?\n|$)/);
@@ -366,15 +397,63 @@ async function openEditor() {
   const head = raw != null ? raw : fmSerialize(DOC.fm);
   $("#ed-text").value = (raw ? raw + "\n" : head + "\n") + DOC.md;
   ED_INITIAL_HEAD = head;   // 保存前用来判断用户有没有动过 frontmatter
+  ED_OPEN = true;
+  ED_SNAPSHOT = $("#ed-text").value; // dirty guard 基准快照
   $("#ed-text").focus();
   toast("编辑态 · 保存即写回文件系统，git 记录本次变更");
 }
-async function closeEditor() {
+function editorIsOpen() {
+  const ed = $("#editor");
+  return !!ed && ed.classList.contains("show");
+}
+function closeEditor() {
   const ed = $("#editor"); if (!ed) return;
   const hint = $("#ed-hint");
   if (hint) hint.style.display = "none";
   ed.classList.remove("show");
   $("#article").style.display = "";
+  ED_OPEN = false;
+}
+/* 未保存确认弹窗：kbModal 只有两键，这里按其视觉规范做一个三键弹层。
+   resolve "save" | "discard" | null（继续编辑 / Esc / 遮罩）。 */
+function confirmUnsavedChanges() {
+  return new Promise(resolve => {
+    UC_OPEN = true;
+    const ov = document.createElement("div");
+    ov.className = "kbm-ov";
+    ov.innerHTML = `<div class="kbm" role="dialog" aria-modal="true">
+      <div class="kbm-title">${icon("warn", 16)} 编辑器有未保存的修改</div>
+      <div class="kbm-body">关闭会丢失未写回的修改。先保存，还是直接丢弃？</div>
+      <div class="kbm-btns">
+        <button class="iconbtn uc-keep">继续编辑</button>
+        <button class="iconbtn uc-discard">丢弃修改</button>
+        <button class="iconbtn primary uc-save">保存并关闭</button>
+      </div></div>`;
+    document.body.appendChild(ov);
+    const done = v => { UC_OPEN = false; ov.remove(); document.removeEventListener("keydown", onKey, true); resolve(v); };
+    const onKey = e => { if (e.key === "Escape") { e.stopPropagation(); done(null); } };
+    ov.querySelector(".uc-keep").onclick = () => done(null);
+    ov.querySelector(".uc-discard").onclick = () => done("discard");
+    ov.querySelector(".uc-save").onclick = () => done("save");
+    ov.addEventListener("mousedown", e => { if (e.target === ov) done(null); });
+    document.addEventListener("keydown", onKey, true);
+    ov.querySelector(".uc-keep").focus();
+  });
+}
+/* 唯一的「关编辑器」入口：无改动直接关；有改动先问。返回 true = 编辑器已可关闭。 */
+async function tryCloseEditor() {
+  if (UC_OPEN) return false; // 确认弹窗已在展示：不叠加第二个，调用方中止
+  if (!editorIsOpen()) return true;
+  const ta = $("#ed-text");
+  if (!ta || ta.value === ED_SNAPSHOT) { closeEditor(); return true; }
+  const act = await confirmUnsavedChanges();
+  if (act === "discard") { closeEditor(); return true; }
+  if (act === "save") {
+    const ok = await saveDoc();
+    if (ok) closeEditor(); // saveDoc 内部不再自行关闭，dirty 状态由快照刷新清除
+    return !!ok;
+  }
+  return false; // 继续编辑：调用方（navigate 等）必须中止
 }
 async function saveDoc() {
   let text = $("#ed-text").value;
@@ -387,7 +466,7 @@ async function saveDoc() {
   }
   const r = await fetch("/api/save", { method: "POST", headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ path: DOC.rel, content: text }) });
-  if (!r.ok) { toast("保存失败：" + (await r.text()).slice(0, 120)); return; }
+  if (!r.ok) { toast("保存失败：" + (await r.text()).slice(0, 120)); return false; }
   /* 注意：JS 正则不支持 \A（那会被当成字面字母 A，导致永远匹配失败）——
      曾因这里写成 \A，保存后本地 DOC.md 被错误地存成「含 frontmatter 的全文」，
      下次打开编辑器就拼出双 frontmatter 落盘。JS 里文本开头用 ^（无 m 标志时）。 */
@@ -408,8 +487,10 @@ async function saveDoc() {
   const td = sd && sd.docs.find(x => x.name === DOC.name);
   if (td) { td.title = DOC.title; persistTree(); }
   linksLoadedFor = null;
-  closeEditor(); renderArticle();
+  ED_SNAPSHOT = text; // Ctrl+S 后清除 dirty 状态（编辑器可能仍被调用方保持打开）
+  renderArticle(); renderCrumb();
   toast(`已写回 <span class="mono">${esc(DOC.rel)}</span> · 索引已更新 · git 可 diff`);
+  return true;
 }
 const edText = $("#ed-text");
 if (edText) edText.onkeydown = e => {
@@ -480,6 +561,14 @@ async function toggleFav() {
 function persistTree() {
   try { localStorage.setItem(LS_TREE, JSON.stringify({ sig: "(本地已改)", domains: TREE })); } catch (e) {}
 }
+/* 缓存失效唯一入口（原「TREE=null + removeItem(LS_TREE) + DIRTREE=null」三连散落 3 处，
+   阶段 0 先收拢为一个函数；阶段 1 将升级为 invalidate(kind) 精细失效）。 */
+function invalidateCaches() {
+  TREE = null;
+  try { localStorage.removeItem(LS_TREE); } catch (e) {}
+  DIRTREE = null;
+}
+window.invalidateCaches = invalidateCaches;
 
 /* ---------- 删除（软删除：移入 _trash，两步确认，列表实时更新） ---------- */
 let deleteArmed = false, deleteArmTimer = null;
@@ -500,8 +589,27 @@ async function deleteDoc() {
   }
   clearTimeout(deleteArmTimer); deleteArmed = false;
   btn.innerHTML = `${icon("trash",13)} 删除`; btn.style.borderColor = ""; btn.style.color = "";
-  // 乐观更新：先改 UI，后台请求失败再提示（文档在回收站可找回）
+  // 问题2 修复：悲观更新——先等 /api/delete 真正落盘（软删除 = 移入 _trash，本地无感知延迟），
+  // 成功后才动 UI 与树缓存；失败保持原状。此前的假乐观更新会在失败时留下
+  // 「列表没了、文件还在」的错误状态，还被 persistTree 写进缓存，直到刷新才恢复。
   const rel = DOC.rel, deletedTitle = DOC.title;
+  const delBtns = [...document.querySelectorAll("#crumb .iconbtn, #ed-del")].filter(b => b.textContent.includes("删除") || b.id === "ed-del");
+  delBtns.forEach(b => { b.disabled = true; });
+  let r;
+  try {
+    r = await fetch("/api/delete", { method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ path: rel }) });
+  } catch (e) {
+    toast("删除请求失败（网络异常），文件未变动");
+    return;
+  } finally {
+    delBtns.forEach(b => { b.disabled = false; });
+  }
+  if (!r.ok) {
+    let err = ""; try { err = (await r.json()).error || ""; } catch (e) {}
+    toast("服务端删除失败" + (err ? "：" + err : "") + "（文件仍在 " + esc(rel) + "，可重试）");
+    return;
+  }
   const s = findSub(DOC.domain, DOC.sub);
   if (s) {
     s.docs = s.docs.filter(x => x.name !== DOC.name);
@@ -512,6 +620,7 @@ async function deleteDoc() {
     renderTree();
     renderDocList(s.docs, s.label, null);
   }
+  closeEditor(); // 删除已确认，编辑器（若开着）随文档一并作废
   DOC = null;
   $("#article").innerHTML = `<div class="a-kicker">已删除</div>
     <h1 class="a-title">文档已移入回收站</h1>
@@ -519,11 +628,7 @@ async function deleteDoc() {
     <div class="a-body"><p>《${esc(deletedTitle)}》及其美化版、备注已一起移入 <code>content/_trash/</code>，git 历史亦可找回。</p>
     <p>从左侧选择其他文档继续阅读。</p></div>`;
   $("#crumb").innerHTML = `<b>已删除</b><span class="sep">·</span>${esc(deletedTitle)}`;
-  toast("已移入回收站 · 列表已实时更新");
-  fetch("/api/delete", { method: "POST", headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ path: rel }) })
-    .then(r => { if (!r.ok) toast("服务端删除失败（文件仍在，可重试）"); })
-    .catch(() => toast("服务端删除失败（文件仍在，可重试）"));
+  toast("已移入回收站 · 列表已更新");
 }
 
 /* ---------- 双链面板（懒加载） ---------- */
@@ -568,7 +673,7 @@ function openPretty() {
     ov.addEventListener("click", e => { if (e.target === ov) closePretty(); });
   }
   ov.querySelector("#pretty-title").textContent = DOC.title + " · 美化版";
-  const prettyUrl = "/raw/" + String(DOC.html_rel).split("/").map(encodeURIComponent).join("/");
+  const prettyUrl = rawUrl(DOC.html_rel);
   ov.querySelector("#pretty-newtab").href = prettyUrl;
   ov.querySelector("iframe").src = prettyUrl;
   ov.classList.add("show");
@@ -938,7 +1043,7 @@ async function moveDocPrompt(rel) {
     if (!r.ok || !d.ok) { okBtn.disabled = false; okBtn.textContent = "移动"; toast("移动失败：" + (d.error || r.status)); return; }
     close();
     toast(`已移动至 <span class='mono'>${esc(d.dst)}</span> · 索引已级联更新`);
-    TREE = null; localStorage.removeItem(LS_TREE); DIRTREE = null; // 树缓存失效，下次渲染重新拉取
+    invalidateCaches(); // 树缓存失效，下次渲染重新拉取
     const url = "/doc/" + [state.dom, state.sub, nm].map(encodeURIComponent).join("/");
     location.href = url; // 移动涉及树/列表重排，整页跳转最可靠
   };
@@ -989,7 +1094,7 @@ function wireDragMove() {
         const dj = await r.json().catch(() => ({}));
         if (!r.ok || !dj.ok) { toast("移动失败：" + (dj.error || r.status)); return; }
         toast(`已移动至 <span class='mono'>${esc(dj.dst)}</span> · 索引已级联更新`);
-        TREE = null; localStorage.removeItem(LS_TREE); DIRTREE = null;
+        invalidateCaches();
         if (rel === (DOC && DOC.rel)) location.href = "/doc/" + [dom, target, nm].map(encodeURIComponent).join("/");
         else location.reload();
       })();
@@ -1113,7 +1218,7 @@ document.addEventListener("keydown", e => {
     return;
   }
   if (e.key === "/" && !["INPUT", "TEXTAREA"].includes(document.activeElement.tagName)) { e.preventDefault(); const q = $("#q"); q && q.focus(); }
-  if (e.key === "Escape") { closeEditor(); }
+  if (e.key === "Escape") { tryCloseEditor(); }
 });
 const q = $("#q");
 if (q) q.addEventListener("keydown", e => {
