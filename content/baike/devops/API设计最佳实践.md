@@ -9,7 +9,10 @@ status: "imported"
 
 # API设计最佳实践
 
-# API设计最佳实践指南
+
+> 📌 **导航**：本文是 **API设计最佳实践** 词条，属于 devops 术语集。相关枢纽：[[Docker容器化完全指南]]、[[Kubernetes云原生实战指南]]、[[Kubernetes深入]]、[[Web安全攻防实战指南]]、[[云服务详解]]。
+
+## API设计最佳实践指南
 
 ## 1. RESTful API设计原则
 
@@ -927,3 +930,12 @@ GET /api/users?page=3&size=20 HTTP/1.1
     },
     "links": {
         "first": "/api/users?page=1&size=20
+```
+
+## 相关术语
+
+[[Docker容器化完全指南]]、[[Kubernetes云原生实战指南]]、[[Kubernetes深入]]、[[Linux系统管理高级指南]]、[[Web安全攻防实战指南]]、[[云服务详解]]
+
+## 参考资料
+
+建议人工核验：本词条内容建议对照相关技术官方文档、权威教材与论文做准确性复核；未编造文献编号、标准号或 URL，如需引用请补充具体出处。
