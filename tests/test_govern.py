@@ -61,6 +61,36 @@ def test_merge_tag_dryrun_then_apply():
     print("ok  merge_tag：dry-run 预览 → apply 写盘 → 大小写不敏感 + 去重")
 
 
+def test_merge_tag_crlf_bytes():
+    """CRLF 语料回归锁：真实语料 100% 是 CRLF（tags 行后还有其他键），
+    行尾锚若不容 \r 则 merge 全库跳过且夹具测不出（夹具 tags 恰为 FM 末行）。
+    同时锁字节保真：改写后该行行尾仍为 \r\n，其余字节不动。"""
+    with tempfile.TemporaryDirectory() as td:
+        content = Path(td) / "content"
+        d = content / "baike" / "ai-and-llm"
+        d.mkdir(parents=True)
+        f = d / "crlf.md"
+        raw = ("---\r\n"
+               "title: \"CRLF 样本\"\r\n"
+               "tags: [AI, 随笔]\r\n"
+               "source: \"test\"\r\n"
+               "---\r\n"
+               "\r\n"
+               "正文段落。\r\n").encode("utf-8")
+        f.write_bytes(raw)
+        r = merge_tag(content, "AI", "AI资产", apply=False)
+        assert r["n_docs"] == 1, f"CRLF 语料应命中 1 篇：n_docs={r['n_docs']} skipped={r['skipped']}"
+        assert r["n_skipped"] == 0, f"不应有形态类跳过：{r['skipped']}"
+        merge_tag(content, "AI", "AI资产", apply=True)
+        after = f.read_bytes()
+        assert b"tags: [AI\xe8\xb5\x84\xe4\xba\xa7, \xe9\x9a\x8f\xe7\xac\x94]\r\n" in after, \
+            f"tags 行应改写且保留 CRLF：{after!r}"
+        assert after.count(b"\n") == after.count(b"\r\n"), "不得引入裸 LF（字节保真破坏）"
+        fm, _ = parse_frontmatter(after.decode("utf-8"))
+        assert fm["tags"] == ["AI资产", "随笔"], f"合并后 tags 应正确：{fm['tags']}"
+    print("ok  merge_tag CRLF 回归：命中 + 行尾字节保真")
+
+
 def test_reading_stats():
     with tempfile.TemporaryDirectory() as td:
         rs = ReadingStore(Path(td) / "indexes")
@@ -86,5 +116,6 @@ def test_reading_stats():
 if __name__ == "__main__":
     test_tag_census_and_similar()
     test_merge_tag_dryrun_then_apply()
+    test_merge_tag_crlf_bytes()
     test_reading_stats()
     print("\nGOVERN+STATS TESTS OK")

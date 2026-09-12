@@ -529,7 +529,7 @@ def find_similar_tags(census: dict[str, int]) -> list[tuple[str, str, float]]:
 
 
 # tags 行只认这一种形态：顶层、单行、内联列表。多行 block 列表 / 缩进结构一律跳过不改。
-_TAGS_INLINE_RE = re.compile(r"(?m)^tags[ \t]*:[ \t]*\[([^\]\r\n]*)\][ \t]*$")
+_TAGS_INLINE_RE = re.compile(r"(?m)^tags[ \t]*:[ \t]*\[([^\]\r\n]*)\][ \t]*(?=\r?$)")
 
 
 def _merge_tags_line(inner: str, src: str, dst: str):
@@ -542,7 +542,7 @@ def _merge_tags_line(inner: str, src: str, dst: str):
     """
     m = _TAGS_INLINE_RE.search(inner)
     if not m:
-        if re.search(r"(?m)^tags[ \t]*:[ \t]*$", inner):
+        if re.search(r"(?m)^tags[ \t]*:[ \t]*(?=\r?$)", inner):
             return inner, False, "tags 为多行 block 列表（行级改写不安全）"
         if re.search(r"(?m)^tags[ \t]*:", inner):
             return inner, False, "tags 形态非内联列表"
