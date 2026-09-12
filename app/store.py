@@ -273,10 +273,17 @@ def _scan_sub(sdir: Path, sid: str, label: str, files=None) -> dict:
 
 def find_doc(content: Path, domain: str, sub: str, name: str):
     """Locate a document; returns (abs_path, rel_posix) or None."""
-    if str(domain).startswith("_") or str(sub).startswith("_"):
-        return None  # 拒绝 _trash/_inbox/_meta/_assets 等下划线目录（不变量 2）
+    if str(domain).startswith("_"):
+        return None  # 拒绝 _inbox/_trash/_meta 等下划线域（不变量 2）
+    # `_root` 是「域根散文件」的哨兵子域 id（scan_corpus 给 `career/xx.md` 这类
+    # 两段 rel 用的），**不是**真实目录，必须在下面的守卫之前放行 —— 否则它会被
+    # 和 _trash/_assets 一起拒掉，凡直接躺在域目录下的文档一律 404。
+    # 分类树和前端 docUrl() 两头都是 `_root`（app.js / kb-core.js 同款），
+    # 所以这里是唯一该改的地方，改完「树给的 path」和「路由能解析的 path」就一致了。
+    if sub != "_root" and str(sub).startswith("_"):
+        return None  # 拒绝 _trash/_inbox/_meta/_assets 等下划线子域（不变量 2）
     base = content / domain
-    sdir = base / sub if sub != "_root" else base
+    sdir = base if sub == "_root" else base / sub
     if not base.is_dir() or not sdir.is_dir():
         return None
     for cand in (sdir / f"{name}.md", sdir / name, sdir / f"{name}.html"):

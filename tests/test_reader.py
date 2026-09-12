@@ -172,6 +172,35 @@ def main() -> int:
         r = c.get("/doc/ai/llm-and-agents/deep/Nested")
         check("嵌套目录文档可访问", r.status_code == 200 and "嵌套文档" in r.get_data(as_text=True))
 
+        # 域根文档（直接躺在域目录下的 md，树里 sub 为 _root 哨兵）：
+        # 前端 docUrl() 会把两段 rel 补成 /doc/<domain>/_root/<name>，
+        # 后端必须能解析，否则命令面板点进去就是 404。
+        r = c.get("/doc/career/_root/B")
+        check("域根文档 /doc/career/_root/B 可访问",
+              r.status_code == 200 and "职业笔记B" in r.get_data(as_text=True),
+              f"got {r.status_code}")
+        r = c.get("/api/doc?domain=career&sub=_root&name=B")
+        # 该接口不套 {ok:true} 信封，直接给 doc / info_rows / docs
+        check("/api/doc 对 _root 也能取到文档",
+              r.status_code == 200
+              and (r.get_json() or {}).get("doc", {}).get("title") == "职业笔记B",
+              f"got {r.status_code} {str(r.get_json())[:120]}")
+
+        # 契约测试：树接口给的每一个 path，都要能被 /doc/ 路由解析（否则还是 404）
+        from urllib.parse import quote
+        tree = c.get("/api/tree").get_json()
+        root_docs = [(d["id"], doc["name"]) for d in tree["domains"]
+                     for s in d["subs"] if s["id"] == "_root" for doc in s["docs"]]
+        check("树里能列出域根文档", root_docs == [("career", "B")], f"got {root_docs}")
+        bad = [(dm, nm) for dm, nm in root_docs
+               if c.get(f"/doc/{quote(dm)}/_root/{quote(nm)}").status_code != 200]
+        check("树给的 path 都能被 /doc/ 路由解析", not bad, f"404 的有 {bad}")
+
+        # 放行 _root 之后，真正的下划线目录仍必须被拒（不变量 2）
+        for bad_url in ("/doc/_inbox/_root/junk", "/doc/_trash/_root/A",
+                        "/doc/ai/_inbox/B", "/doc/ai/_trash/B"):
+            check(f"下划线目录仍 404：{bad_url}", c.get(bad_url).status_code == 404)
+
         r = c.get("/browse/projects/dsh-agent")
         check("三级目录子域重定向首篇", r.status_code == 302 and "/doc/projects/dsh-agent/architecture/X" in r.headers["Location"])
 
