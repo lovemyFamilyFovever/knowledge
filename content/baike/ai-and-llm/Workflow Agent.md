@@ -1,6 +1,6 @@
 ---
 title: "Workflow Agent"
-tags: []
+tags: [人工智能, Agent]
 source: "baike"
 source_path: "开发术语 / AI与大模型"
 collected: "2026-09-05"
@@ -8,6 +8,9 @@ status: "imported"
 ---
 
 # Workflow Agent
+
+
+> 📌 **导航**：本文是 **Workflow Agent** 词条，属于 ai-and-llm 术语集。相关枢纽：[[大模型基础术语详解]]、[[Transformer架构深度解析]]、[[RAG 与检索技术详解]]、[[多 Agent 协作系统]]、[[Prompt 工程与 Agent 详解]]。
 
 ## 概述
 **Workflow Agent** 将AI Agent能力嵌入业务流程，实现自动化编排和执行。
@@ -82,3 +85,11 @@ result = workflow.invoke({'input': '用户请求'})
 
 ## 小结
 Workflow Agent将AI能力编排为结构化的业务流程，实现端到端的自动化。LangGraph是最常用的编排框架。
+
+## 相关术语
+
+[[AI Agent 概述与核心架构]]、[[Agent 编排框架对比]]、[[Agent 架构模式详解]]、[[多 Agent 协作系统]]、[[Code Agent]]
+
+## 参考资料
+
+建议人工核验：本词条内容建议对照相关技术官方文档、权威教材与论文做准确性复核；未编造文献编号、标准号或 URL，如需引用请补充具体出处。

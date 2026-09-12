@@ -1,6 +1,6 @@
 ---
 title: "RAG 检索增强生成"
-tags: []
+tags: [人工智能, RAG]
 source: "baike"
 source_path: "开发术语 / AI与大模型"
 collected: "2026-09-05"
@@ -8,6 +8,9 @@ status: "imported"
 ---
 
 # RAG 检索增强生成
+
+
+> 📌 **导航**：本文是 **RAG 检索增强生成** 词条，属于 ai-and-llm 术语集。相关枢纽：[[大模型基础术语详解]]、[[Transformer架构深度解析]]、[[RAG 与检索技术详解]]、[[多 Agent 协作系统]]、[[Prompt 工程与 Agent 详解]]。
 
 ## 概述
 
@@ -138,3 +141,11 @@ RAG是最实用的LLM增强技术。基础RAG提供事实依据，Advanced RAG�
   <text x="395" y="148" text-anchor="middle" font-size="10" fill="#64748b">检索</text>
   <text x="400" y="330" text-anchor="middle" font-size="12" fill="#475569">文档离线索引 + 在线检索增强生成 = RAG</text>
 </svg>
+
+## 相关术语
+
+[[RAG 与检索技术详解]]、[[向量数据库技术]]、[[Embedding 技术详解]]、[[LangChain 框架全解析]]、[[LlamaIndex 框架指南]]
+
+## 参考资料
+
+建议人工核验：本词条内容建议对照相关技术官方文档、权威教材与论文做准确性复核；未编造文献编号、标准号或 URL，如需引用请补充具体出处。

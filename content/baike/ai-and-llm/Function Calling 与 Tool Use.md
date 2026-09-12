@@ -1,6 +1,6 @@
 ---
 title: "Function Calling 与 Tool Use"
-tags: []
+tags: [人工智能, 工具调用]
 source: "baike"
 source_path: "开发术语 / AI与大模型"
 collected: "2026-09-05"
@@ -8,6 +8,9 @@ status: "imported"
 ---
 
 # Function Calling 与 Tool Use
+
+
+> 📌 **导航**：本文是 **Function Calling 与 Tool Use** 词条，属于 ai-and-llm 术语集。相关枢纽：[[大模型基础术语详解]]、[[Transformer架构深度解析]]、[[RAG 与检索技术详解]]、[[多 Agent 协作系统]]、[[Prompt 工程与 Agent 详解]]。
 
 ## 概述
 
@@ -97,3 +100,11 @@ response = client.messages.create(
 ## 小结
 
 Function Calling和Tool Use是AI Agent的核心能力，将LLM从文本生成器转变为能与外部世界交互的智能系统。
+
+## 相关术语
+
+[[MCP（Model Context Protocol）]]、[[Prompt 工程与 Agent 详解]]、[[AI Agent 概述与核心架构]]、[[Agent 与数据库交互]]、[[LangChain 框架全解析]]、[[Agent 架构模式详解]]
+
+## 参考资料
+
+建议人工核验：本词条内容建议对照相关技术官方文档、权威教材与论文做准确性复核；未编造文献编号、标准号或 URL，如需引用请补充具体出处。

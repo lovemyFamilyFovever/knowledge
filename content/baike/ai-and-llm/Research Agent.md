@@ -1,6 +1,6 @@
 ---
 title: "Research Agent"
-tags: []
+tags: [人工智能, Agent]
 source: "baike"
 source_path: "开发术语 / AI与大模型"
 collected: "2026-09-05"
@@ -8,6 +8,9 @@ status: "imported"
 ---
 
 # Research Agent
+
+
+> 📌 **导航**：本文是 **Research Agent** 词条，属于 ai-and-llm 术语集。相关枢纽：[[大模型基础术语详解]]、[[Transformer架构深度解析]]、[[RAG 与检索技术详解]]、[[多 Agent 协作系统]]、[[Prompt 工程与 Agent 详解]]。
 
 ## 概述
 **Research Agent** 专注于学术研究辅助：论文阅读、文献综述、实验设计、科学发现。
@@ -88,3 +91,11 @@ class AcademicSearch:
 
 ## 小结
 Research Agent是科研工作者的得力助手，能显著提高文献调研和论文分析的效率。
+
+## 相关术语
+
+[[AI Agent 概述与核心架构]]、[[Agent 规划与推理]]、[[Agent 记忆系统]]、[[Code Agent]]、[[多 Agent 协作系统]]
+
+## 参考资料
+
+建议人工核验：本词条内容建议对照相关技术官方文档、权威教材与论文做准确性复核；未编造文献编号、标准号或 URL，如需引用请补充具体出处。

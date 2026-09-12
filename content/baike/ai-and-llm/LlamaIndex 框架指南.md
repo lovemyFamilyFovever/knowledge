@@ -1,6 +1,6 @@
 ---
 title: "LlamaIndex 框架指南"
-tags: []
+tags: [人工智能, 框架]
 source: "baike"
 source_path: "开发术语 / AI与大模型"
 collected: "2026-09-05"
@@ -8,6 +8,9 @@ status: "imported"
 ---
 
 # LlamaIndex 框架指南
+
+
+> 📌 **导航**：本文是 **LlamaIndex 框架指南** 词条，属于 ai-and-llm 术语集。相关枢纽：[[大模型基础术语详解]]、[[Transformer架构深度解析]]、[[RAG 与检索技术详解]]、[[多 Agent 协作系统]]、[[Prompt 工程与 Agent 详解]]。
 
 ## 概述
 
@@ -92,3 +95,11 @@ r2 = chat_engine.chat('核心技术栈是什么？')  # 保持上下文
 ## 小结
 
 LlamaIndex是构建RAG应用的首选框架，数据连接、索引构建和查询引擎覆盖了完整链路。
+
+## 相关术语
+
+[[LangChain 框架全解析]]、[[RAG 与检索技术详解]]、[[RAG 检索增强生成]]、[[CrewAI 多 Agent 框架]]、[[Agent 编排框架对比]]
+
+## 参考资料
+
+建议人工核验：本词条内容建议对照相关技术官方文档、权威教材与论文做准确性复核；未编造文献编号、标准号或 URL，如需引用请补充具体出处。

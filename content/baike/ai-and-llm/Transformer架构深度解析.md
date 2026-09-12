@@ -1,6 +1,6 @@
 ---
 title: "Transformer架构深度解析"
-tags: []
+tags: [人工智能, 架构]
 source: "baike"
 source_path: "开发术语 / AI与大模型"
 collected: "2026-09-05"
@@ -8,6 +8,9 @@ status: "imported"
 ---
 
 # Transformer架构深度解析
+
+
+> 📌 **导航**：本文是 **Transformer架构深度解析** 词条，属于 ai-and-llm 术语集。相关枢纽：[[大模型基础术语详解]]、[[Transformer架构深度解析]]、[[RAG 与检索技术详解]]、[[多 Agent 协作系统]]、[[Prompt 工程与 Agent 详解]]。
 
 ## 概述
 
@@ -123,3 +126,11 @@ class MultiHeadAttention(nn.Module):
   <line x1="300" y1="218" x2="400" y2="218" stroke="#ef4444" stroke-width="2" stroke-dasharray="5,5"/>
   <text x="350" y="212" text-anchor="middle" font-size="10" fill="#ef4444">K,V</text>
 </svg>
+
+## 相关术语
+
+[[大模型基础术语详解]]、[[大语言模型架构演进]]、[[注意力机制]]、[[词向量]]、[[长上下文技术]]、[[MoE 混合专家模型]]、[[Tokenizer 技术]]、[[Embedding 技术详解]]
+
+## 参考资料
+
+建议人工核验：本词条内容建议对照相关技术官方文档、权威教材与论文做准确性复核；未编造文献编号、标准号或 URL，如需引用请补充具体出处。

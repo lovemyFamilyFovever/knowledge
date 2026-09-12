@@ -1,6 +1,6 @@
 ---
 title: "Web Agent"
-tags: []
+tags: [人工智能, Agent]
 source: "baike"
 source_path: "开发术语 / AI与大模型"
 collected: "2026-09-05"
@@ -8,6 +8,9 @@ status: "imported"
 ---
 
 # Web Agent
+
+
+> 📌 **导航**：本文是 **Web Agent** 词条，属于 ai-and-llm 术语集。相关枢纽：[[大模型基础术语详解]]、[[Transformer架构深度解析]]、[[RAG 与检索技术详解]]、[[多 Agent 协作系统]]、[[Prompt 工程与 Agent 详解]]。
 
 ## 概述
 **Web Agent** 能够浏览网页、检索信息、填写表单，像人类一样与网站交互。
@@ -103,3 +106,11 @@ class SearchEngine:
 
 ## 小结
 Web Agent将AI能力延伸到互联网，实现自动化信息获取和网页操作。核心挑战在于处理动态内容和反爬虫机制。
+
+## 相关术语
+
+[[AI Agent 概述与核心架构]]、[[Computer Use Agent]]、[[Code Agent]]、[[Agent 架构模式详解]]、[[多 Agent 协作系统]]
+
+## 参考资料
+
+建议人工核验：本词条内容建议对照相关技术官方文档、权威教材与论文做准确性复核；未编造文献编号、标准号或 URL，如需引用请补充具体出处。

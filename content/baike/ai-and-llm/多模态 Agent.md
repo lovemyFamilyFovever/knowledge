@@ -1,6 +1,6 @@
 ---
 title: "多模态 Agent"
-tags: []
+tags: [人工智能, Agent]
 source: "baike"
 source_path: "开发术语 / AI与大模型"
 collected: "2026-09-05"
@@ -8,6 +8,9 @@ status: "imported"
 ---
 
 # 多模态 Agent
+
+
+> 📌 **导航**：本文是 **多模态 Agent** 词条，属于 ai-and-llm 术语集。相关枢纽：[[大模型基础术语详解]]、[[Transformer架构深度解析]]、[[RAG 与检索技术详解]]、[[多 Agent 协作系统]]、[[Prompt 工程与 Agent 详解]]。
 
 ## 概述
 **多模态Agent** 能够理解和处理多种模态的信息：文本、图像、音频、视频。
@@ -110,3 +113,11 @@ class MultimodalAgent:
 
 ## 小结
 多模态Agent通过整合多种感知能力，实现了更全面的环境理解和交互。GPT-4o和Gemini是多模态能力最强的模型。
+
+## 相关术语
+
+[[多模态大模型]]、[[AI Agent 概述与核心架构]]、[[多 Agent 协作系统]]、[[语音AI技术]]、[[Diffusion扩散模型]]
+
+## 参考资料
+
+建议人工核验：本词条内容建议对照相关技术官方文档、权威教材与论文做准确性复核；未编造文献编号、标准号或 URL，如需引用请补充具体出处。

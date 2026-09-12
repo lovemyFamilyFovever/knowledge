@@ -1,6 +1,6 @@
 ---
 title: "多 Agent 协作系统"
-tags: []
+tags: [人工智能, Agent]
 source: "baike"
 source_path: "开发术语 / AI与大模型"
 collected: "2026-09-05"
@@ -8,6 +8,9 @@ status: "imported"
 ---
 
 # 多 Agent 协作系统
+
+
+> 📌 **导航**：本文是 **多 Agent 协作系统** 词条，属于 ai-and-llm 术语集。相关枢纽：[[大模型基础术语详解]]、[[Transformer架构深度解析]]、[[RAG 与检索技术详解]]、[[多 Agent 协作系统]]、[[Prompt 工程与 Agent 详解]]。
 
 ## 概述
 多Agent系统让多个专业化Agent分工协作，处理单Agent无法胜任的复杂任务。
@@ -92,3 +95,11 @@ user.initiate_chat(assistant, message='帮我分析这份数据并生成报告')
 
 ## 小结
 多Agent系统通过分工协作扩展了AI Agent的能力边界。选择合适的协作模式取决于任务特性和可靠性要求。
+
+## 相关术语
+
+[[AI Agent 概述与核心架构]]、[[Agent 架构模式详解]]、[[CrewAI 多 Agent 框架]]、[[Agent 编排框架对比]]、[[多模态 Agent]]、[[深度强化学习]]
+
+## 参考资料
+
+建议人工核验：本词条内容建议对照相关技术官方文档、权威教材与论文做准确性复核；未编造文献编号、标准号或 URL，如需引用请补充具体出处。

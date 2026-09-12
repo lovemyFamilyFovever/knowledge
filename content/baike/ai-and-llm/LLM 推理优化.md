@@ -1,6 +1,6 @@
 ---
 title: "LLM 推理优化"
-tags: []
+tags: [人工智能, 推理优化]
 source: "baike"
 source_path: "开发术语 / AI与大模型"
 collected: "2026-09-05"
@@ -8,6 +8,9 @@ status: "imported"
 ---
 
 # LLM 推理优化
+
+
+> 📌 **导航**：本文是 **LLM 推理优化** 词条，属于 ai-and-llm 术语集。相关枢纽：[[大模型基础术语详解]]、[[Transformer架构深度解析]]、[[RAG 与检索技术详解]]、[[多 Agent 协作系统]]、[[Prompt 工程与 Agent 详解]]。
 
 ## 概述
 LLM推理优化旨在降低延迟和成本。本文介绍关键技术：KV Cache、FlashAttention、量化和投机采样。
@@ -78,3 +81,11 @@ outputs = llm.generate(['什么是AI Agent？'], params)
 
 ## 小结
 推理优化是LLM生产部署的关键。KV Cache和FlashAttention是标配，量化降低资源需求，投机采样和vLLM提升吞吐量。
+
+## 相关术语
+
+[[大模型基础术语详解]]、[[大语言模型架构演进]]、[[Transformer架构深度解析]]、[[长上下文技术]]、[[MoE 混合专家模型]]、[[小模型与端侧 Agent]]
+
+## 参考资料
+
+建议人工核验：本词条内容建议对照相关技术官方文档、权威教材与论文做准确性复核；未编造文献编号、标准号或 URL，如需引用请补充具体出处。

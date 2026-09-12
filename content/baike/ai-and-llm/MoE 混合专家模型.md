@@ -1,6 +1,6 @@
 ---
 title: "MoE 混合专家模型"
-tags: []
+tags: [人工智能, 模型]
 source: "baike"
 source_path: "开发术语 / AI与大模型"
 collected: "2026-09-05"
@@ -8,6 +8,9 @@ status: "imported"
 ---
 
 # MoE 混合专家模型
+
+
+> 📌 **导航**：本文是 **MoE 混合专家模型** 词条，属于 ai-and-llm 术语集。相关枢纽：[[大模型基础术语详解]]、[[Transformer架构深度解析]]、[[RAG 与检索技术详解]]、[[多 Agent 协作系统]]、[[Prompt 工程与 Agent 详解]]。
 
 ## 概述
 **MoE（Mixture of Experts）** 通过稀疏激活实现"大参数、小计算"——模型总参数量大，但每个token只激活一小部分参数。
@@ -104,3 +107,11 @@ def load_balancing_loss(router_probs, expert_mask, num_experts):
 
 ## 小结
 MoE通过稀疏激活实现了参数效率的突破。DeepSeek V3的细粒度MoE设计代表了最新进展。MoE正在成为大模型的主流架构。
+
+## 相关术语
+
+[[Transformer架构深度解析]]、[[大模型基础术语详解]]、[[大语言模型架构演进]]、[[长上下文技术]]、[[Scaling Law]]
+
+## 参考资料
+
+建议人工核验：本词条内容建议对照相关技术官方文档、权威教材与论文做准确性复核；未编造文献编号、标准号或 URL，如需引用请补充具体出处。

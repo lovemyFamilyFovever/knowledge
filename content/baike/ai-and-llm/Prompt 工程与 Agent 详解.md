@@ -1,6 +1,6 @@
 ---
 title: "Prompt 工程与 Agent 详解"
-tags: []
+tags: [人工智能, 提示工程]
 source: "baike"
 source_path: "开发术语 / AI与大模型"
 collected: "2026-09-05"
@@ -8,6 +8,9 @@ status: "imported"
 ---
 
 # Prompt 工程与 Agent 详解
+
+
+> 📌 **导航**：本文是 **Prompt 工程与 Agent 详解** 词条，属于 ai-and-llm 术语集。相关枢纽：[[大模型基础术语详解]]、[[Transformer架构深度解析]]、[[RAG 与检索技术详解]]、[[多 Agent 协作系统]]、[[Prompt 工程与 Agent 详解]]。
 
 ---
 
@@ -355,3 +358,11 @@ OpenAI JSON Mode 调用：
 6. 设置限制： "不超过100字" "只回答技术问题"
 7. 迭代优化： 根据输出不断调整 Prompt
 ```
+
+## 相关术语
+
+[[Prompt Engineering 高级技巧]]、[[Function Calling 与 Tool Use]]、[[MCP（Model Context Protocol）]]、[[AI Agent 概述与核心架构]]、[[Agent 架构模式详解]]、[[大模型基础术语详解]]
+
+## 参考资料
+
+建议人工核验：本词条内容建议对照相关技术官方文档、权威教材与论文做准确性复核；未编造文献编号、标准号或 URL，如需引用请补充具体出处。

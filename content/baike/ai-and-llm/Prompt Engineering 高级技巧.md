@@ -1,6 +1,6 @@
 ---
 title: "Prompt Engineering 高级技巧"
-tags: []
+tags: [人工智能, 提示工程]
 source: "baike"
 source_path: "开发术语 / AI与大模型"
 collected: "2026-09-05"
@@ -8,6 +8,9 @@ status: "imported"
 ---
 
 # Prompt Engineering 高级技巧
+
+
+> 📌 **导航**：本文是 **Prompt Engineering 高级技巧** 词条，属于 ai-and-llm 术语集。相关枢纽：[[大模型基础术语详解]]、[[Transformer架构深度解析]]、[[RAG 与检索技术详解]]、[[多 Agent 协作系统]]、[[Prompt 工程与 Agent 详解]]。
 
 ## 概述
 **Prompt Engineering** 是通过设计高质量的提示词来引导LLM产生期望输出的技术。本文介绍高级提示技巧。
@@ -104,3 +107,11 @@ def self_consistency(problem, llm, n_samples=5):
 
 ## 小结
 Prompt Engineering是使用LLM的核心技能。CoT适合推理，ToT适合搜索，Self-Consistency提高可靠性。实践中往往组合多种技巧。
+
+## 相关术语
+
+[[Prompt 工程与 Agent 详解]]、[[Function Calling 与 Tool Use]]、[[大模型基础术语详解]]、[[AI Agent 概述与核心架构]]、[[Agent 规划与推理]]
+
+## 参考资料
+
+建议人工核验：本词条内容建议对照相关技术官方文档、权威教材与论文做准确性复核；未编造文献编号、标准号或 URL，如需引用请补充具体出处。
