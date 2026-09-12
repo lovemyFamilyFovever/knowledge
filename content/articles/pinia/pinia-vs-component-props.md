@@ -7,9 +7,6 @@ source_path: "frontend/pinia/pinia-vs-component-props.md"
 ---
 
 
----
-tags: [Pinia]
----
 
 # Pinia 完全指南：从组件传值到状态管理
 
