@@ -332,7 +332,10 @@ class RagStore:
 
         indexes.mkdir(parents=True, exist_ok=True)
         self.db_path = indexes / "rag.db"
-        self.con = sqlite3.connect(self.db_path, check_same_thread=False)
+        # rag.db 也是 indexes/ 下的派生库，同样会和 _index_watcher 抢锁。
+        # 这里用字面量而不是 app.store.SQLITE_BUSY_TIMEOUT_S：本模块被 numpy 缺失的
+        # 环境整体跳过，且可能被脚本单独导入，不额外引入 app 包依赖。
+        self.con = sqlite3.connect(self.db_path, timeout=30, check_same_thread=False)
         self.con.enable_load_extension(True)
         sqlite_vec.load(self.con)
         self.con.enable_load_extension(False)

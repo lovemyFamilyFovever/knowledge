@@ -28,6 +28,8 @@ qwenwork/
 20??-??-??-*/
 # 巡检脚本产出的 _probe 前缀文档（不属于知识语料，是测试记录）
 content/**/_probe*.md
+# WorkBuddy 客户端本地工作目录（会话配置、缓存，机器本地）
+.workbuddy/
 # 常见 agent 草稿脚本（若散落在仓库根）
 .refactor*.js
 .body-*.html

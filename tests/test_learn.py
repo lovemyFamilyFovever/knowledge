@@ -334,6 +334,33 @@ def _seed_mini_corpus(root: Path) -> Path:
     return content
 
 
+def test_sqlite_busy_timeout() -> None:
+    """所有连向 indexes/*.db 的连接都必须带锁等待窗口。
+
+    `_index_watcher` 每 30s 重建/增量 FTS，写事务期间独占锁；此时用户保存文档或
+    刷页面就会撞 `database is locked`。没设 busy_timeout 的话直接 500。
+    PRAGMA busy_timeout 读回来是毫秒。
+    """
+    from app import fts
+    from app.learn import LearnStore
+
+    with tempfile.TemporaryDirectory() as td:
+        root = Path(td)
+        indexes = root / "indexes"
+        ls = LearnStore(indexes, root / "content")
+        try:
+            ms = int(ls.con.execute("PRAGMA busy_timeout").fetchone()[0])
+            check("LearnStore 连接带 30s 锁等待", ms == 30000, f"got {ms} ms")
+        finally:
+            ls.close()
+        con = fts.open_db(indexes)
+        try:
+            ms2 = int(con.execute("PRAGMA busy_timeout").fetchone()[0])
+            check("fts.open_db 连接带 30s 锁等待", ms2 == 30000, f"got {ms2} ms")
+        finally:
+            con.close()
+
+
 def test_learn_store() -> None:
     from app.learn import LearnStore
 
@@ -409,6 +436,12 @@ def test_learn_store() -> None:
 
             tc = ls.today_card()
             check("today_card 有结果", tc["card"] is not None)
+            # 「今日术语」位必须是定义卡：误区卡的 back 以「✗ 这是常见误区。正解：」
+            # 开头，放首页等于在教读者一个错误说法
+            check("today_card 返回的是 baike_def",
+                  tc["card"]["kind"] == "baike_def", f"got {tc['card']['kind']!r}")
+            check("today_card 连抽 5 次都是 baike_def",
+                  all(ls.today_card()["card"]["kind"] == "baike_def" for _ in range(5)))
             check("today_stats 字段齐全",
                   {"due_n", "done_today", "new_left", "streak_days", "mastered",
                    "mastered_total", "mastered_pct"} <= set(ls.today_stats()))
@@ -531,6 +564,8 @@ def test_routes() -> None:
               f"{r.status_code} {str(j)[:160]}")
         check("today 含 date/card/stats/tip",
               {"date", "card", "stats", "tip"} <= set(j))
+        check("today card.kind == baike_def", j.get("card", {}).get("kind") == "baike_def",
+              f"got {j.get('card', {}).get('kind')!r}")
 
         r = c.get("/api/learn/cards?limit=3")
         j = r.get_json()
@@ -623,6 +658,7 @@ def main() -> int:
     print("== ② SM-2 ==")
     test_sm2()
     print("== ③ LearnStore ==")
+    test_sqlite_busy_timeout()
     test_learn_store()
     print("== ④ HTTP 契约 ==")
     test_routes()

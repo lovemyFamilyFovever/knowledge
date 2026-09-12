@@ -9,7 +9,7 @@ import sqlite3
 import time
 from pathlib import Path
 
-from app.store import SKIP_DIRS, parse_frontmatter, md_files
+from app.store import SKIP_DIRS, SQLITE_BUSY_TIMEOUT_S, md_files, parse_frontmatter
 
 # unicode61 分词器把连续中文当作单个长 token, 导致"量子"搜不到"量子纠缠"。
 # 索引侧给每个中文字符后插空格(逐字 token), 查询侧把中文词构造成逐字短语,
@@ -25,7 +25,8 @@ WIKILINK_RE = re.compile(r"!?\[\[([^\[\]|#]+)(?:#[^\[\]|]*)?(?:\|[^\[\]]*)?\]\]"
 
 def open_db(indexes: Path) -> sqlite3.Connection:
     indexes.mkdir(parents=True, exist_ok=True)
-    con = sqlite3.connect(indexes / "index.db")
+    # timeout= 即 busy_timeout：撞上 _index_watcher 的重建事务时排队等，而不是立刻炸
+    con = sqlite3.connect(indexes / "index.db", timeout=SQLITE_BUSY_TIMEOUT_S)
     con.execute("CREATE VIRTUAL TABLE IF NOT EXISTS docs USING fts5(path UNINDEXED, title, tags, body)")
     con.execute("CREATE TABLE IF NOT EXISTS meta(k TEXT PRIMARY KEY, v TEXT)")
     con.execute("""CREATE TABLE IF NOT EXISTS links(

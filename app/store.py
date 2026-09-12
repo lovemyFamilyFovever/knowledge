@@ -16,6 +16,12 @@ import time
 from pathlib import Path
 
 # ---------------- 常量与缺省分类学（被 _meta/taxonomy.json 覆盖） ----------------
+# sqlite3 的 busy_timeout（秒）：所有连向 indexes/*.db 的连接统一用这个值。
+# 背景：`_index_watcher` 每 30s 会重建/增量 FTS，写事务期间会独占锁；此时用户
+# 保存文档或刷页面就会撞上 `database is locked`。给 30s 等待窗口后，这类碰撞
+# 变成「多等一会儿」而不是 500。真等满 30s 仍拿不到锁才会抛，且调用方会记日志。
+SQLITE_BUSY_TIMEOUT_S = 30
+
 FM_RE = re.compile(r"\A---\n(.*?)\n---\n\n?", re.S)
 SKIP_DIRS = {"_inbox", "_assets", "_unfiled"}
 WRITABLE_EXTS = {".md"}

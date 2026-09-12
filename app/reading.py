@@ -10,6 +10,10 @@ import sqlite3
 import time
 from pathlib import Path
 
+# 只加这一个常量引用（连库时的 busy_timeout），不动本模块的任何表结构与业务逻辑。
+# app.store 只依赖标准库，此处引入不会形成循环导入。
+from app.store import SQLITE_BUSY_TIMEOUT_S
+
 DDL = """
 CREATE TABLE IF NOT EXISTS reading_events (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -32,7 +36,8 @@ OPEN_DEDUP_SECONDS = 600  # 同文档 open 事件 10 分钟去重
 class ReadingStore:
     def __init__(self, indexes: Path):
         indexes.mkdir(parents=True, exist_ok=True)
-        self.con = sqlite3.connect(indexes / "reading.db", check_same_thread=False)
+        self.con = sqlite3.connect(indexes / "reading.db", timeout=SQLITE_BUSY_TIMEOUT_S,
+                                   check_same_thread=False)
         self.con.executescript(DDL)  # DDL 含多条语句，须用 executescript
         self.con.commit()
 

@@ -12,6 +12,7 @@
 """
 import hashlib
 import json
+import logging
 import re
 import sqlite3
 import threading
@@ -77,6 +78,19 @@ META_FILE_COUNT = "cards_files"
 
 # 模块级锁：同一进程内同时只允许一个 sync（第二次进入抛 SYNC_BUSY）
 _SYNC_LOCK = threading.Lock()
+
+_LOG = logging.getLogger(__name__)
+
+
+def _note_if_locked(action: str, exc: sqlite3.Error) -> None:
+    """写事务撞锁等满 busy_timeout 后仍失败时留痕，再原样上抛。
+
+    连接已经带了 30s 的 busy_timeout，能等到早就等到了；走到这里说明对面真的
+    卡死了（长事务不提交 / 别的进程死握写锁），日志里得留下 action 才查得动。
+    """
+    if "locked" in str(exc).lower() or "busy" in str(exc).lower():
+        _LOG.warning("sqlite 锁等待超时（%ds）后仍失败：action=%s err=%s",
+                     kbstore.SQLITE_BUSY_TIMEOUT_S, action, exc)
 
 
 # ---------------- 错误类型（路由层据此映射 HTTP 码） ----------------
@@ -156,7 +170,9 @@ class LearnStore:
         indexes.mkdir(parents=True, exist_ok=True)
         self.indexes = indexes
         self.content = Path(content) if content else None
-        self.con = sqlite3.connect(indexes / "reading.db", check_same_thread=False)
+        self.con = sqlite3.connect(indexes / "reading.db",
+                                   timeout=kbstore.SQLITE_BUSY_TIMEOUT_S,
+                                   check_same_thread=False)
         self.con.row_factory = sqlite3.Row
         self._ensure_schema()
         self.con.commit()
@@ -299,6 +315,10 @@ class LearnStore:
                 "elapsed_ms": round((time.perf_counter() - t0) * 1000),
                 "synced_at": now,
             }
+        except sqlite3.OperationalError as e:
+            _note_if_locked("sync", e)
+            _safe_rollback(self.con)
+            raise
         finally:
             _SYNC_LOCK.release()
 
@@ -497,6 +517,10 @@ class LearnStore:
         except LearnError:
             _safe_rollback(con)
             raise
+        except sqlite3.OperationalError as e:
+            _note_if_locked("submit_review", e)
+            _safe_rollback(con)
+            raise
         except Exception:
             _safe_rollback(con)
             raise
@@ -653,31 +677,47 @@ class LearnStore:
         }
 
     def today_card(self, domain: str | None = None) -> dict:
-        """「今日一张」：① 到期的最旧一张定义卡 → ② 随机新卡 → ③ 最近复习过的一张 + tip。"""
+        """「今日一张」：① 到期的最旧一张定义卡 → ② 随机新卡 → ③ 最近复习过的一张 + tip。
+
+        三个分支都限定 `kind='baike_def'`：这张卡是首页「今日术语」位，必须是一句
+        「xx 是什么」。若放误区卡（back 以「✗ 这是常见误区。正解：」开头）或面试题
+        进去，语义完全不对 —— 读者会以为首页在教他一个错误说法。
+        整库一张定义卡都没有时才回退到不限定，并在 tip 里说明。
+        """
         now = time.time()
         where, args = self._filter(None, domain, None)
         join = ("FROM cards c JOIN review_state rs ON rs.card_id=c.card_id WHERE ")
 
-        row = self.con.execute(
-            f"SELECT c.*, {self._STATE_COLS}, 0 AS is_new {join}{where} "
-            f"AND c.kind='baike_def' AND rs.due_ts>0 AND rs.due_ts<=? AND rs.reps>0 "
-            f"ORDER BY rs.due_ts ASC LIMIT 1", (*args, now)).fetchone()
-        tip = ""
-        if row is None:
+        def _pick(kind_sql: str) -> tuple[sqlite3.Row | None, str]:
+            """按 ①→②→③ 三级瀑布挑一张；返回 (行, tip)。"""
+            row = self.con.execute(
+                f"SELECT c.*, {self._STATE_COLS}, 0 AS is_new {join}{where}{kind_sql} "
+                f"AND rs.due_ts>0 AND rs.due_ts<=? AND rs.reps>0 "
+                f"ORDER BY rs.due_ts ASC LIMIT 1", (*args, now)).fetchone()
+            if row is not None:
+                return row, ""
             row = self.con.execute(
                 "SELECT c.*, " + self._STATE_COLS + ", 1 AS is_new "
                 "FROM cards c LEFT JOIN review_state rs ON rs.card_id=c.card_id WHERE "
-                + where + " AND (rs.card_id IS NULL OR (COALESCE(rs.reps,0)=0 "
-                                                        "AND COALESCE(rs.due_ts,0)=0)) "
+                + where + kind_sql + " AND (rs.card_id IS NULL OR (COALESCE(rs.reps,0)=0 "
+                                      "AND COALESCE(rs.due_ts,0)=0)) "
                 "ORDER BY RANDOM() LIMIT 1", tuple(args)).fetchone()
             if row is not None:
-                tip = "今天没有到期复习 —— 顺手认一张新卡。"
-        if row is None:
+                return row, "今天没有到期复习 —— 顺手认一张新卡。"
             row = self.con.execute(
-                f"SELECT c.*, {self._STATE_COLS}, 0 AS is_new {join}{where} "
+                f"SELECT c.*, {self._STATE_COLS}, 0 AS is_new {join}{where}{kind_sql} "
                 f"AND rs.last_ts IS NOT NULL ORDER BY rs.last_ts DESC LIMIT 1",
                 tuple(args)).fetchone()
-            tip = "全部卡片都还没到期 —— 这是你最近复习过的一张。"
+            if row is not None:
+                return row, "全部卡片都还没到期 —— 这是你最近复习过的一张。"
+            return None, ""
+
+        row, tip = _pick(" AND c.kind='baike_def'")
+        if row is None:
+            # 理论不可能（实测 662 张定义卡）：整库没有定义卡时也不让首页开天窗
+            row, _ = _pick("")
+            if row is not None:
+                tip = "库里暂未抽出术语定义卡 —— 先拿一张别的顶上。"
         if row is None:
             return {"card": None, "tip": "还没有卡片，先去「同步抽卡」。", "stats": {}}
         return {"card": dict(row), "tip": tip, "stats": {}}

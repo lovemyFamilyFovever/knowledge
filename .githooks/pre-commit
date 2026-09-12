@@ -2,36 +2,55 @@
 # 知库 pre-commit：提交前自动跑四套测试（存在对应运行时才跑对应套件）
 # 启用：git config core.hooksPath .githooks
 
+# 逐个候选尝试，取第一个能 `import flask` 的解释器。
+# 不能用 `command -v python` 直接采信：本机默认 python 可能指向另一个没装 Flask 的
+# 运行时，钩子会一跑就挂，最后只能靠人肉改 PATH 绕过 —— 那等于没有钩子。
 PY=""
-if [ -f ".python/python.exe" ]; then PY=".python/python.exe"
-elif command -v python >/dev/null 2>&1; then PY="python"
-fi
+for cand in \
+  "python" \
+  "py -3" \
+  "C:/Users/Administrator/AppData/Local/Programs/Python/Python313/python.exe" \
+  ".python/python.exe" \
+  "python3"
+do
+  # 候选可能带参数（如 `py -3`），故不加引号；不存在时命令自然失败，走下一个
+  if $cand -c "import flask" >/dev/null 2>&1; then
+    PY="$cand"
+    break
+  fi
+done
 
 if [ -z "$PY" ]; then
-  echo "[pre-commit] no python found, skipping tests"
-  exit 0
+  echo "[pre-commit] 错误：以上候选里没有一个 Python 能 import flask，无法验证改动。"
+  echo "[pre-commit] 请装上依赖（pip install flask）或把可用解释器加进本文件的候选清单。"
+  exit 1
 fi
+echo "[pre-commit] using interpreter: $PY"
+
+# 调用处一律用**不加引号**的 $PY：候选里 `py -3` 带参数，需要分词才能展开成
+# `py` + `-3`；加了引号会被当成一整个可执行文件名而找不到。
+# （候选清单里的路径都不含空格，分词是安全的。）
 
 echo "[pre-commit] running reader smoke..."
-"$PY" tests/test_reader.py || exit 1
+$PY tests/test_reader.py || exit 1
 
 if [ -f "tests/test_new_project.py" ]; then
   echo "[pre-commit] running scaffolder smoke..."
-  "$PY" tests/test_new_project.py || exit 1
+  $PY tests/test_new_project.py || exit 1
 fi
 
 if [ -f "tests/test_learn.py" ]; then
   echo "[pre-commit] running learn/review smoke..."
-  "$PY" tests/test_learn.py || exit 1
+  $PY tests/test_learn.py || exit 1
 fi
 
 if [ -f "tests/test_govern.py" ]; then
   echo "[pre-commit] running govern/stats smoke..."
-  "$PY" tests/test_govern.py || exit 1
+  $PY tests/test_govern.py || exit 1
 fi
 
 echo "[pre-commit] running RAG smoke (SKIP if deps missing)..."
-"$PY" tests/test_rag.py || exit 1
+$PY tests/test_rag.py || exit 1
 
 echo "[pre-commit] all green."
 exit 0
