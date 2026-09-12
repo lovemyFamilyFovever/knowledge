@@ -191,9 +191,11 @@ def api_wikilink_check():
     finally:
         ls.close()
     if path:
-        # 自指 piston（文档链自己）不算断链建议
-        r["dead"] = [d for d in r["dead"] if True]
-        r["self"] = path
+        # 自指（文档链自己）不算断链：改名后 [[旧标题]] 解析不到自己是预期内的噪音，
+        # 不该出现在「顺手修掉断链」的提示里。旧实现这行是 `if True` 占位死代码。
+        own = path.replace("\\", "/").rstrip("/").rsplit(".md", 1)[0].rsplit("/", 1)[-1].strip()
+        r["dead"] = [d for d in r["dead"] if str(d.get("raw") or "").strip() != own]
+        r["dead_n"] = len(r["dead"])
     return jsonify({"ok": True, "total": r["total"], "dead": r["dead"],
                     "dead_n": r["dead_n"]})
 

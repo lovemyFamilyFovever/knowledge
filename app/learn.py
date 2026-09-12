@@ -303,6 +303,14 @@ class LearnStore:
                 by_kind[_k] = n
             total = int(self.con.execute(
                 "SELECT count(*) FROM cards WHERE active=1").fetchone()[0])
+            # B17：card_id 刻意不含路径（改名不丢进度），但 baike_def 的 front 由
+            # term 模板生成 —— 同一术语出现在两个文件时 id 相同，后扫到者静默改写
+            # 前者的 back/source_rel。改 ID 方案会重置全部复习进度，这里先把碰撞
+            # 数量如实暴露到同步结果，处置策略留给用户定夺。
+            term_collisions = int(self.con.execute(
+                "SELECT COUNT(*) FROM (SELECT term FROM cards WHERE active=1 "
+                "AND kind='baike_def' GROUP BY term HAVING COUNT(DISTINCT source_rel) > 1)"
+            ).fetchone()[0])
 
             self.meta_set(META_SYNCED_AT, str(now))
             self.meta_set(META_PARSER, str(CARDS_PARSER_VERSION))
@@ -310,7 +318,7 @@ class LearnStore:
 
             return {
                 "added": added, "updated": updated, "retired": retired, "total": total,
-                "by_kind": by_kind,
+                "by_kind": by_kind, "term_collisions": term_collisions,
                 "coverage": {"files": files, "parsed": parsed, "skipped": files - parsed},
                 "elapsed_ms": round((time.perf_counter() - t0) * 1000),
                 "synced_at": now,
@@ -751,7 +759,10 @@ class LearnStore:
                 "WHERE c.active=1 AND c.term=? ORDER BY (c.kind='baike_def') DESC LIMIT 1",
                 (name,)).fetchone()
 
-        seen: set[str] = {start["card_id"]}
+        seen_cards: set[str] = {start["card_id"]}
+        seen_terms: set[str] = {start["term"]}  # B16：related 是术语名，旧实现拿
+        # card_id 集合去比名字（恒不命中），同一张卡可经多条 related 路径重复入队，
+        # path 里出现重复节点。名字与 card_id 现在分别去重。
         path: list[dict] = []
         dead_ends: list[str] = []
         queue: list[tuple[sqlite3.Row, int]] = [(start, 0)]
@@ -768,15 +779,21 @@ class LearnStore:
                 "back": node["back"], "kind": node["kind"], "source_rel": node["source_rel"],
                 "is_new": int(reps_row or 0) == 0, "depth": depth,
             })
-            neighbours = [x for x in _json_list(node["related"]) if x not in seen]
+            neighbours = [x for x in _json_list(node["related"]) if x not in seen_terms]
             ranked: list[sqlite3.Row] = []
             for name in neighbours:
+                if name in seen_terms:
+                    continue
+                seen_terms.add(name)
                 c = card_of(name)
                 if c is None:
                     if name not in dead_ends:
                         dead_ends.append(name)
                     continue
-                seen.add(c["card_id"])
+                if c["card_id"] in seen_cards:
+                    continue
+                seen_cards.add(c["card_id"])
+                seen_terms.add(c["term"])
                 ranked.append(c)
             ranked.sort(key=lambda r: 0 if int(r["reps"] or 0) == 0 else 1)
             if only_new:
@@ -971,15 +988,13 @@ class LearnStore:
             n_cards = 0
         return hashlib.md5(f"{treesig}|{n_cards}".encode("utf-8")).hexdigest()[:16]
 
-    def wikilink_suggest(self, q: str, exclude: str | None = None, limit: int = 8) -> list[dict]:
-        """双链补全候选：FTS 的 docs(path,title) + cards.term 去重合并。
+    def _suggest_pool(self) -> list[tuple[str, str, str]]:
+        """双链补全/断链检查共用的候选集 [(name, rel, kind)]。
 
-        排序：精确相等 100 > 前缀 90 > 包含 70 > 子序列 50；同分按标题长度升序。
-        """
-        limit = max(1, min(int(limit or 8), 30))
-        qn = str(q or "").strip()
-        excluded = {x.strip() for x in str(exclude or "").split(",") if x.strip()}
-        cands: list[tuple[str, str, str]] = []  # (name, rel, kind)
+        B10：旧 wikilink_check 对每个断链调一次 wikilink_suggest —— 每次重开 FTS
+        连接、全表扫 docs + 全量 GROUP BY cards 再取 Top1。一篇 12 处断链的草稿，
+        编辑器一轮 400ms 防抖 = 全库扫 12 遍。现在候选集一次构建、逐断链本地打分。"""
+        cands: list[tuple[str, str, str]] = []
         try:
             con = fts.open_db(self.indexes)
             try:
@@ -989,29 +1004,28 @@ class LearnStore:
                 con.close()
         except sqlite3.Error:
             pass
-        for term, freq in self.con.execute(
+        for term, _freq in self.con.execute(
                 "SELECT term, COUNT(*) n FROM cards WHERE active=1 AND kind='baike_def' "
                 "GROUP BY term"):
             cands.append((term, "", "term"))
+        return cands
 
+    def wikilink_suggest(self, q: str, exclude: str | None = None, limit: int = 8) -> list[dict]:
+        """双链补全候选：FTS 的 docs(path,title) + cards.term 去重合并。
+
+        排序：精确相等 100 > 前缀 90 > 包含 70 > 子序列 50；同分按标题长度升序。
+        """
+        limit = max(1, min(int(limit or 8), 30))
+        qn = str(q or "").strip()
+        excluded = {x.strip() for x in str(exclude or "").split(",") if x.strip()}
+        ql = qn.lower()
         seen_names: set[str] = set()
         scored: list[tuple[int, int, str, dict]] = []
-        ql = qn.lower()
-        for name, rel, kind in cands:
+        for name, rel, kind in self._suggest_pool():
             if not name or name in excluded:
                 continue
-            nl = name.lower()
-            if not ql:
-                score = 10
-            elif nl == ql:
-                score = 100
-            elif nl.startswith(ql):
-                score = 90
-            elif ql in nl:
-                score = 70
-            elif _is_subsequence(ql, nl):
-                score = 50
-            else:
+            score = _wl_score(name, ql)
+            if score < 0:
                 continue
             if name in seen_names:
                 continue
@@ -1039,17 +1053,20 @@ class LearnStore:
         by_path, by_stem, by_title = maps
         # resolve_maps_from_db 的 by_path 键是完整 path，这里补一个「去掉 .md」的别名表
         by_path_alias = {k.rsplit(".md", 1)[0]: k for k in by_path}
+        pool = self._suggest_pool()  # B10：整篇只构建一次候选集
+        # 同名断链可能出现多次：建议按 raw 缓存，避免重复打分
+        sug_cache: dict[str, tuple[str, int]] = {}
         dead: list[dict] = []
         for raw in links:
             target = fts.resolve_wikilink(raw, by_path_alias, by_stem, by_title)
             if target:
                 continue
-            suggestion = self.wikilink_suggest(raw, limit=1)
-            sug = suggestion[0] if suggestion else None
+            if raw not in sug_cache:
+                sug_cache[raw] = _top_suggestion(raw, pool)
+            sug_name, sug_score = sug_cache[raw]
             line, col = _locate(raw_text, raw)
             dead.append({"raw": raw, "line": line, "col": col,
-                         "suggest": sug["name"] if sug else "",
-                         "suggest_score": sug["score"] if sug else 0})
+                         "suggest": sug_name, "suggest_score": sug_score})
         return {"total": len(links), "dead": dead, "dead_n": len(dead)}
 
     # ---------- 标签/色相 ----------
@@ -1150,6 +1167,35 @@ def _day_to_ts(day: str) -> float:
 def _is_subsequence(needle: str, hay: str) -> bool:
     it = iter(hay)
     return all(ch in it for ch in needle)
+
+
+def _wl_score(name: str, ql: str) -> int:
+    """双链候选统一打分：精确 100 > 前缀 90 > 包含 70 > 子序列 50 > 不匹配 -1。
+
+    ql 为空（编辑器刚输入 [[ 就聚焦候选）返回 10 —— 与旧 wikilink_suggest 行为一致。"""
+    nl = str(name or "").lower()
+    if not ql:
+        return 10
+    if nl == ql:
+        return 100
+    if nl.startswith(ql):
+        return 90
+    if ql in nl:
+        return 70
+    if _is_subsequence(ql, nl):
+        return 50
+    return -1
+
+
+def _top_suggestion(raw: str, pool: list[tuple[str, str, str]]) -> tuple[str, int]:
+    """在共享候选集里为断链 raw 找 Top1 建议（纯本地，无 IO）。返回 (name, score)。"""
+    ql = str(raw or "").strip().lower()
+    best: tuple[str, int] = ("", 0)
+    for name, _rel, _kind in pool:
+        s = _wl_score(name, ql)
+        if s > best[1] or (s == best[1] and best[0] and s > 0 and len(name) < len(best[0])):
+            best = (name, s)
+    return best
 
 
 def _locate(text: str, target: str) -> tuple[int, int]:

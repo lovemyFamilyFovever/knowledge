@@ -540,7 +540,7 @@ def test_routes() -> None:
         check("POST /api/learn/sync 200 + ok", r.status_code == 200 and j.get("ok") is True,
               f"{r.status_code} {str(j)[:200]}")
         for field in ("added", "updated", "retired", "total", "by_kind", "coverage", "elapsed_ms",
-                      "synced_at"):
+                      "synced_at", "term_collisions"):
             check(f"/api/learn/sync 含字段 {field}", field in j)
 
         r = c.get("/api/learn/due?limit=5")
@@ -611,6 +611,19 @@ def test_routes() -> None:
                   for d in j.get("dead", [])))
         r = c.post("/api/wikilink/check", json={})
         check("check 缺 body → BAD_PARAM", r.get_json().get("error") == "BAD_PARAM")
+        # B15：自指双链（文档链自己的文件名）不算断链
+        r = c.post("/api/wikilink/check",
+                   json={"body": "见 [[自我引用]]。", "path": "career/自我引用.md"})
+        check("自指双链不计为断链（B15）",
+              r.get_json().get("ok") is True and r.get_json().get("dead_n") == 0,
+              str(r.get_json())[:160])
+        # B10：共享候选池下重复断链与建议字段仍正确（非断链的 [[KMP 算法]] 被排除）
+        r = c.post("/api/wikilink/check",
+                   json={"body": "见 [[KMP 算法]] 与 [[绝对不存在的术语xyz]] 和 [[绝对不存在的术语xyz]]。"})
+        j = r.get_json()
+        check("批量断链检查：真断链两次、活链零次（B10）",
+              j.get("dead_n") == 2 and all(d["raw"] == "绝对不存在的术语xyz" for d in j.get("dead", [])),
+              str(j)[:200])
 
         r = c.get("/api/palette/index")
         j = r.get_json()
