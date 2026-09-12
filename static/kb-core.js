@@ -188,11 +188,14 @@
     def: function () { return { scale: 1.0, measure: 760, font: "sans", line: 1.75 }; },
     get: function () {
       var v = util.getJSON(LS_PREF, null) || {};
+      /* 注意：字段缺失时必须显式回落到 PREF_DEF。
+         不能写成 `clamp(v.scale, 0.85, 1.6) || PREF_DEF.scale` —— clamp 对 undefined 返回 lo（0.85），
+         而 0.85 是 truthy，|| 永远不生效，会导致首次访问的用户拿到 0.85 倍字号 / 520px 行宽。 */
       return {
-        scale: util.clamp(v.scale, 0.85, 1.6) || PREF_DEF.scale,
-        measure: Math.round(util.clamp(v.measure, 520, 1100) || PREF_DEF.measure),
+        scale: (v.scale == null || v.scale === "") ? PREF_DEF.scale : util.clamp(v.scale, 0.85, 1.6),
+        measure: (v.measure == null || v.measure === "") ? PREF_DEF.measure : Math.round(util.clamp(v.measure, 520, 1100)),
         font: FONT_MAP[v.font] ? v.font : PREF_DEF.font,
-        line: util.clamp(v.line, 1.3, 2.4) || PREF_DEF.line
+        line: (v.line == null || v.line === "") ? PREF_DEF.line : util.clamp(v.line, 1.3, 2.4)
       };
     },
     set: function (patch) {
