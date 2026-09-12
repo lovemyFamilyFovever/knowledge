@@ -262,6 +262,30 @@ def main() -> int:
         r = c.get("/doc/ai/llm-and-agents/A")
         check("删除后 404", r.status_code == 404)
 
+        # ── B7/B8/B22 回归 ──
+        r = c.post("/api/delete", json={"path": "ai/llm-and-agents/A.md"})
+        check("再删已不存在的文档 → 404 而非 500", r.status_code == 404, f"got {r.status_code}")
+        from app.routes_files import _free_path  # 碰撞加后缀是纯路径逻辑，直测保证确定性（不赌秒界）
+        coll = root / "content/_trash/20260101-000000/ai/llm-and-agents"
+        coll.mkdir(parents=True, exist_ok=True)
+        (coll / "A.md").write_text("x", encoding="utf-8")
+        check("回收站同名碰撞 → ~2 后缀不覆盖", _free_path(coll / "A.md").name == "A~2.md")
+        # B8：已读标记随移动迁移
+        (root / "content/career/C.md").write_text("---\ntitle: C 文\n---\n\n正文\n", encoding="utf-8")
+        r = c.post("/api/docmark", json={"path": "career/C.md", "mark": "read", "on": True})
+        check("标记已读成功", (r.get_json() or {}).get("read") is True)
+        r = c.post("/api/move", json={"src": "career/C.md", "dst": "career/C2.md"})
+        check("移动成功", r.status_code == 200 and (r.get_json() or {}).get("ok") is True)
+        gm = c.get("/api/docmark?path=career/C2.md").get_json()
+        check("已读标记随移动随迁（B8）", gm.get("read") is True, str(gm))
+        # B22：path 主键拒绝越界字符串
+        check("docmark GET 拒绝越界 path", c.get("/api/docmark?path=../../etc/passwd").status_code == 400)
+        check("docmark POST 拒绝越界 path",
+              c.post("/api/docmark", json={"path": "../x.md", "mark": "read", "on": True}).status_code == 400)
+        # 不变量 2：/api/move 不得成为搬进 _ 目录的后门
+        r = c.post("/api/move", json={"src": "career/C2.md", "dst": "_trash/C3.md"})
+        check("移动进 _ 前缀目录被拒 400", r.status_code == 400, f"got {r.status_code}")
+
         r = c.get("/doc/ai/nope/nope")
         check("不存在的文档 404", r.status_code == 404)
 

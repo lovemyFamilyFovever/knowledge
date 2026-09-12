@@ -205,12 +205,23 @@ def api_stats():
     })
 
 
+def _rel_key(path: str):
+    """统计/标记的 path 主键归一（B22）：空、绝对路径、含 .. 一律拒绝。
+
+    刻意不校验「文件必须存在于语料树」——移动前的历史事件引用的就是旧 path，
+    仍需可查；这里只挡注入/越界字符串。"""
+    s = str(path or "").strip().replace("\\", "/")
+    if not s or s.startswith("/") or ".." in s.split("/"):
+        return None
+    return s
+
+
 @stats_bp.get("/api/docmark")
 def api_docmark_get():
     """单篇文档的已读/已掌握标记（存 indexes/reading.db 的 doc_marks，不进 frontmatter）。"""
-    path = request.args.get("path", "")
+    path = _rel_key(request.args.get("path", ""))
     if not path:
-        return jsonify({"ok": False, "error": "BAD_PARAM", "detail": "path 必填"}), 400
+        return jsonify({"ok": False, "error": "BAD_PARAM", "detail": "path 必填且不得越界"}), 400
     ReadingStore = _hooks().get("ReadingStore")
     if ReadingStore is None:
         return jsonify({"ok": True, "read": False, "mastered": False})
@@ -229,7 +240,7 @@ def api_docmark_set():
     if ReadingStore is None:
         return jsonify({"ok": False, "error": "UNAVAILABLE", "detail": "阅读统计组件不可用"}), 503
     data = request.get_json(force=True, silent=True) or {}
-    path = str(data.get("path", ""))
+    path = _rel_key(data.get("path", ""))
     kind = str(data.get("mark", ""))
     on = bool(data.get("on", True))
     if not path or kind not in ("read", "mastered"):
@@ -265,7 +276,7 @@ def api_track():
     if ReadingStore is None:
         return jsonify({"ok": True, "tracked": False})
     data = request.get_json(force=True, silent=True) or {}
-    path = str(data.get("path", ""))
+    path = _rel_key(data.get("path", ""))
     event = str(data.get("event", ""))
     if not path or event not in ("open", "read_minute", "finish"):
         return jsonify({"ok": True, "tracked": False})

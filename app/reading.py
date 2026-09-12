@@ -135,6 +135,28 @@ class ReadingStore:
             "SELECT COUNT(*), COALESCE(SUM(mastered),0) FROM doc_marks WHERE read=1").fetchone()
         return {"read_done": int(row[0] or 0), "mastered_docs": int(row[1] or 0)}
 
+    def migrate_path(self, old_rel: str, new_rel: str) -> int:
+        """文档移动/重命名后迁移 path 键（B8）：doc_marks 与 reading_events 随迁，
+        单一事务；目标 path 已有行时以既有为准，丢弃 old 孤行。返回迁移行数。"""
+        n = 0
+        self.con.execute("BEGIN IMMEDIATE")
+        try:
+            cur = self.con.execute(
+                "UPDATE OR IGNORE doc_marks SET path=? WHERE path=?", (new_rel, old_rel))
+            n += cur.rowcount
+            self.con.execute("DELETE FROM doc_marks WHERE path=?", (old_rel,))
+            cur = self.con.execute(
+                "UPDATE reading_events SET path=? WHERE path=?", (new_rel, old_rel))
+            n += cur.rowcount
+            self.con.commit()
+        except Exception:
+            try:
+                self.con.execute("ROLLBACK")
+            except Exception:
+                pass
+            raise
+        return n
+
     def close(self):
         try:
             self.con.close()
