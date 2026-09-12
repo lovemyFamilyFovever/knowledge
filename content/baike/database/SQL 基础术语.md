@@ -201,7 +201,7 @@ ROLLBACK TO sp1;  -- 只回滚到保存点
 -- 执行顺序演示
 SELECT
     department,
-    COUNT(*) AS emp_count,          -- 第5步：计算聚合
+    COUNT(*) AS emp_count,          -- 第6步：在 SELECT 阶段计算聚合
     AVG(salary) AS avg_salary
 FROM employees                       -- 第1步：确定数据来源
 WHERE hire_date >= '2024-01-01'      -- 第2步：过滤行
@@ -504,3 +504,11 @@ SELECT * FROM org_tree ORDER BY level;
 **为什么需要它：** 原生子查询嵌套多了可读性极差。CTE 让复杂 SQL 变成"分步定义、逐步引用"，像写文章一样清晰。递归 CTE 还能处理树形结构数据。
 
 **与相关术语的对比和区分：** CTE 是"命名子查询"，只在当前语句中有效。它和派生表（FROM 子查询）功能类似，但 CTE 可以被多次引用，可读性也更好。
+
+## 相关术语
+
+[[事务与并发控制术语]]、[[索引与查询优化术语]]、[[数据库设计术语]]、[[NoSQL 数据库术语]]
+
+## 参考资料
+
+建议人工核验：可参考 ANSI SQL 标准（SQL:2016）及各数据库官方文档（MySQL / PostgreSQL / SQL Server），以及《SQL 必知必会》(Ben Forta)、*Database System Concepts* (Silberschatz 等)。
