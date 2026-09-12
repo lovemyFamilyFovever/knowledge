@@ -272,7 +272,10 @@
     el.cta.innerHTML = "";
     el.grades.hidden = true;
     el.foot.innerHTML = "";
-    var first = !S.loaded && S.doneN === 0;
+    // B9：旧判据 !S.loaded && doneN===0 恒为 false —— 启动路径先置 S.loaded 再进
+    // showCard，全新用户零卡零复习会看到「今日已复习完」（文案撒谎）。没答过任何
+    // 一张且队列本就为空 = 没卡可学；答过才算「这批过完」。
+    var first = S.doneN === 0 && S.queue.length === 0;
     el.stage.innerHTML =
       '<div class="kb-done">' +
       '  <div class="kb-done-t">' + U.esc(first ? "暂时没有可学的卡" : C.doneTitle) + "</div>" +

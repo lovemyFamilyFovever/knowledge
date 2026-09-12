@@ -1,5 +1,5 @@
 /* 知库 reader 前端：主题、面板折叠、客户端路由、正文渲染、编辑/备注/收藏/删除、双链、快捷键 */
-window.APP_JS_VERSION = 23;
+window.APP_JS_VERSION = 24;
 
 const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
@@ -176,7 +176,74 @@ function renderArticle(forceMd) {
   });
   enhanceArticleDOM(el); // 问题8：渲染方直接产出 final-form，不再由 observer 事后打补丁
   buildToc();
+  decorateWikilinks(); // B4：[[双链]] 渲染为可点链接（正文里不再是方括号生肉）
+  scrollToHash();      // B5：heading id 就绪后再兑现 URL 锚点
   document.dispatchEvent(new CustomEvent("kb:article-rendered")); // 页面级增强（Motion 刷新等）的显式挂点
+}
+
+/* ---------- B4：正文 [[双链]] → 可点链接 ----------
+   解析结果复用 /api/links（FTS 派生），每文档缓存一次；保存/移动后随
+   linksLoadedFor 一起失效重取。代码块 / 已有链接内的 [[..]] 不动。 */
+let WL_MAP = null, WL_MAP_REL = "";
+function invalidateWikilinkMap() { WL_MAP = null; WL_MAP_REL = ""; }
+
+async function decorateWikilinks() {
+  if (!DOC || DOC.is_html) return;
+  const relAtStart = DOC.rel;
+  if (!WL_MAP || WL_MAP_REL !== relAtStart) {
+    try {
+      const r = await fetch("/api/links?path=" + encodeURIComponent(relAtStart));
+      if (!r.ok) return;
+      const d = await r.json();
+      const m = {};
+      (d.outgoing || []).forEach(x => {
+        if (!(x.raw in m)) m[x.raw] = x.resolved && x.path ? docUrl(x.path) : null;
+      });
+      WL_MAP = m; WL_MAP_REL = relAtStart;
+    } catch (e) { return; }
+  }
+  if (!DOC || DOC.rel !== relAtStart) return; // 异步回来前已切文档
+  const bodyEl = document.querySelector("#article .a-body");
+  if (!bodyEl) return;
+  const rx = /\[\[([^\[\]|#]+)(#[^\[\]|]*)?(?:\|([^\[\]]*))?\]\]/g;
+  const walker = document.createTreeWalker(bodyEl, NodeFilter.SHOW_TEXT, {
+    acceptNode(n) {
+      if (!n.nodeValue || n.nodeValue.indexOf("[[") < 0) return NodeFilter.FILTER_REJECT;
+      const p = n.parentElement;
+      if (!p || p.closest("a, code, pre")) return NodeFilter.FILTER_REJECT;
+      return NodeFilter.FILTER_ACCEPT;
+    },
+  });
+  const nodes = [];
+  while (walker.nextNode()) nodes.push(walker.currentNode);
+  nodes.forEach(node => {
+    const text = node.nodeValue;
+    rx.lastIndex = 0;
+    if (!rx.test(text)) return;
+    rx.lastIndex = 0;
+    const frag = document.createDocumentFragment();
+    let last = 0, m2;
+    while ((m2 = rx.exec(text))) {
+      if (m2.index > last) frag.appendChild(document.createTextNode(text.slice(last, m2.index)));
+      const raw = m2[1].trim(), anchor = m2[2] || "", alias = (m2[3] || "").trim() || raw;
+      const href = WL_MAP[raw];
+      const a = document.createElement("a");
+      if (href) {
+        a.className = "wikilink";
+        a.href = href + anchor; // B5：[[x#小节]] 带着锚点跳转
+        a.textContent = alias;
+        a.title = "双链 → " + raw;
+      } else {
+        a.className = "wikilink dead";
+        a.textContent = alias;
+        a.title = "未解析的双链：" + raw + "（语料里还没有这篇，右栏「双链」可见详情）";
+      }
+      frag.appendChild(a);
+      last = m2.index + m2[0].length;
+    }
+    if (last < text.length) frag.appendChild(document.createTextNode(text.slice(last)));
+    node.parentNode.replaceChild(frag, node);
+  });
 }
 
 /* ---------- 正文后处理（阶段1·问题8，自 workbench.js observer 层迁入） ----------
@@ -206,9 +273,25 @@ function enhanceArticleDOM(el) {
     cap.innerHTML = `${icon("md-code", 12)}<span>mermaid</span>`;
     div.appendChild(cap);
   });
+  el.querySelectorAll(".a-body h1, .a-body h2, .a-body h3, .a-body h4").forEach(h => {
+    if (h.id) return;
+    // B5：标题 id = 文本去空白后空格→连字符，与 learn.js anchorHash 同一规则 ——
+    // 闪卡「跳转原文」的 #锚点 第一次真正可定位（marked 不生成 heading id，
+    // buildToc 的 sec-N 与卡片 anchor 永远接不上）。重名标题保留首个。
+    const slug = (h.textContent || "").trim().replace(/\s+/g, "-");
+    if (slug && !document.getElementById(slug)) h.id = slug;
+  });
   el.querySelectorAll(".a-body h2").forEach(h => {
     if (!h.hasAttribute("data-scrub-underline")) h.setAttribute("data-scrub-underline", "");
   });
+}
+
+/* B5：URL fragment 定位（初始带 #锚点 进入 / 异步渲染完成后再滚一次） */
+function scrollToHash() {
+  const h = location.hash; if (!h || h.length < 2) return;
+  let id; try { id = decodeURIComponent(h.slice(1)); } catch (e) { id = h.slice(1); }
+  const t = id && document.getElementById(id);
+  if (t) t.scrollIntoView({ block: "start" });
 }
 
 function buildToc() {
@@ -525,7 +608,7 @@ async function saveDoc() {
   const fm = {}, m = text.match(/^---\n([\s\S]*?)\n---\n\n?/);
   let body = text;
   if (m) {
-    for (const line of m[1].splitlines ? m[1].split("\n") : m[1].split("\n")) {
+    for (const line of m[1].split("\n")) {
       const i = line.indexOf(":");
       if (i > 0) {
         const k = line.slice(0, i).trim(), v = line.slice(i + 1).trim();
@@ -539,6 +622,7 @@ async function saveDoc() {
   const td = sd && sd.docs.find(x => x.name === DOC.name);
   if (td) { td.title = DOC.title; persistTree(); }
   linksLoadedFor = null;
+  invalidateWikilinkMap(); // B4：正文双链解析结果随保存失效
   ED_SNAPSHOT = text; // Ctrl+S 后清除 dirty 状态（编辑器可能仍被调用方保持打开）
   renderArticle(); renderCrumb();
   toast(`已写回 <span class="mono">${esc(DOC.rel)}</span> · 索引已更新 · git 可 diff`);
@@ -627,9 +711,10 @@ function persistTree() {
      domains 数组），留着只会让人误以为有 sig 机制。 */
   try { localStorage.setItem(LS_TREE, JSON.stringify({ domains: TREE })); } catch (e) {}
 }
-/* 缓存失效唯一入口（问题10）：kind ∈ tree | dirtree | palette | all。
+/* 缓存失效唯一入口（问题10）：kind ∈ tree | dirtree | palette | links | all。
    TREE/LS_TREE/DIRTREE 的作废只允许走这里；palette 缓存在 kb-core 手里，
-   经 KB.palette.dropCache 接线。后端写响应携带全库 sig 的集中失效属阶段 2+。 */
+   经 KB.palette.dropCache 接线。B4：正文双链映射（/api/links 派生）同属派生缓存，
+   写操作后随 links/all 一起作废。 */
 function invalidate(kind) {
   kind = kind || "all";
   if (kind === "all" || kind === "tree") {
@@ -640,6 +725,7 @@ function invalidate(kind) {
   if (kind === "all" || kind === "palette") {
     if (window.KB && KB.palette && KB.palette.dropCache) KB.palette.dropCache();
   }
+  if (kind === "all" || kind === "links") invalidateWikilinkMap();
 }
 window.invalidate = invalidate; // 统一失效入口（pages/*.js 可用；invalidateCaches 别名在 misc 切换后已删除）
 /* 写操作（移动/重命名/新建/删除等）后的统一局部重渲染（问题9）：

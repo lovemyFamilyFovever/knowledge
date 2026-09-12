@@ -339,3 +339,10 @@ main.single:not(:has(> .page-panel)){overflow-y:auto}
   .kb-ring .kb-ring-fg,.kb-bar i{transition:none}
   .kb-grade{transition:none}
 }
+
+/* [B4] 正文 [[双链]] 渲染（app.js decorateWikilinks 产出的 .wikilink） ===== */
+a.wikilink{color:var(--acc);text-decoration:none;
+  border-bottom:1px dashed color-mix(in oklab,var(--acc),transparent 55%);padding-bottom:1px}
+a.wikilink:hover{border-bottom-style:solid}
+a.wikilink.dead{color:var(--warn);cursor:help;
+  border-bottom-color:color-mix(in oklab,var(--warn),transparent 55%)}
