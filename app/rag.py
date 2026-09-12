@@ -554,5 +554,8 @@ def query_rag(store: RagStore, embedder: OnnxEmbedder, q: str, k: int = 8,
     from urllib.parse import quote as _urlquote
     for h in hits:
         # 逐段编码：含空格/中文的路径裸拼会在复制链接、代理等场景断链
-        h["url"] = "/doc/" + "/".join(_urlquote(x) for x in h["file"][:-3].split("/"))
+        segs = h["file"][:-3].split("/")
+        if len(segs) == 2:  # 两段 rel = 域根文档，与 docUrl()/doc_url() 一致补 _root 段
+            segs.insert(1, "_root")
+        h["url"] = "/doc/" + "/".join(_urlquote(x) for x in segs)
     return hits
