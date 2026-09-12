@@ -152,7 +152,8 @@ html.motion-ready .home-hero [data-reveal].in,
 html.motion-ready .kpi-strip [data-reveal].in,
 html.motion-ready .dom-cards [data-reveal].in,
 html.motion-ready .home-pipe[data-reveal].in{opacity:1;transform:none}
-.hero-title .line{will-change:transform}
+/* will-change 归属动效分区（有意分置，勿上移合并）；豁免重复选择器检查 */
+.hero-title .line{will-change:transform} /* stylelint-disable-line no-duplicate-selectors */
 
 @media (max-width:1080px){.dom-cards{grid-template-columns:repeat(4,minmax(0,1fr))}}
 @media (max-width:780px){

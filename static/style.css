@@ -44,6 +44,11 @@
   --faint:color-mix(in oklab,var(--seed-fg),var(--seed-bg) 68%);
   --acc:var(--seed-primary); --acc2:var(--seed-accent);
   --acc-soft:color-mix(in oklab,var(--acc),transparent 90%);
+  /* 阅读偏好默认值（kb 排印；原 L777 独立 :root 并入，消除重复选择器） */
+  --kb-fs-scale:1;
+  --kb-measure:none;
+  --kb-font:var(--sans);
+  --kb-line:1.75;
   --acc-edge:color-mix(in oklab,var(--acc),transparent 70%);
   --info:var(--seed-accent);
   --warn:var(--hex-warn-light); --danger:var(--hex-danger-light); --rose:var(--hex-rose-light); --success:var(--seed-primary);
@@ -383,7 +388,7 @@ html[data-theme="dark"] .note-input input{background:color-mix(in oklab,var(--se
 .result .r-snippet{margin-top:6px;font-size:12.5px;color:var(--muted);line-height:1.7}
 .result .r-snippet mark{background:color-mix(in oklab,var(--warn),transparent 78%);color:var(--warn);border-radius:3px;padding:0 2px}
 .result .rp{margin-top:6px;font-family:var(--mono);font-size:10px;color:var(--faint)}
-.empty{padding:30px 10px;color:var(--muted);font-size:14px;line-height:1.9}
+.empty{padding:30px 10px;color:var(--muted);font-size:14px;line-height:1.9;display:flex;flex-direction:column;align-items:flex-start}
 /* 首页：文档流内占满 header 以下空间 */
 #view-home{position:relative;z-index:6;flex:1;min-height:0;overflow-x:hidden;overflow-y:auto;padding:38px 48px;
   background:color-mix(in oklab,var(--seed-bg),transparent 28%);backdrop-filter:blur(26px)}
@@ -716,7 +721,6 @@ html[data-theme="dark"] .mv-tree{background:color-mix(in oklab,var(--seed-surfac
 .ctx .row.danger:hover{background:color-mix(in oklab,var(--danger),transparent 90%);color:var(--danger)}
 .ctx .divider{height:1px;background:var(--edge);margin:4px 6px}
 /* 空态（v0.4：mascot + 标题 + 描述 + CTA） */
-.empty{display:flex;flex-direction:column;align-items:flex-start}
 .page-body .empty,.rpane .empty,.panel .empty{align-items:center;justify-content:center;text-align:center}
 .empty svg.mascot{width:150px;height:120px}
 .empty .e-title{font-size:14px;color:color-mix(in oklab,var(--seed-fg),transparent 20%);font-weight:500}
@@ -774,13 +778,6 @@ html.motion-ready .hero-mask[data-in="true"]{clip-path:inset(0 0 0 0)}
    - 需求10 响应式：新增 <720 / <480 两档；已有 1280/820/640/440 保持不动
    详细组件样式见 static/kb-core.css（与 kb-core.js 同批加载）
    ===================================================================== */
-:root{
-  --kb-fs-scale:1;
-  --kb-measure:none;
-  --kb-font:var(--sans);
-  --kb-line:1.75;
-}
-
 @media (max-width:720px){
   /* 学习页 / 术语门户 / 首页 widget 的主辅双栏 → 单栏 */
   .learn-page{padding:16px 14px 40px}
