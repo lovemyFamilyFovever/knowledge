@@ -9,7 +9,7 @@ import sqlite3
 import time
 from pathlib import Path
 
-from app.store import SKIP_DIRS, SQLITE_BUSY_TIMEOUT_S, md_files, parse_frontmatter
+from app.store import SKIP_DIRS, SQLITE_BUSY_TIMEOUT_S, _tree_sig, md_files, parse_frontmatter
 
 # unicode61 分词器把连续中文当作单个长 token, 导致"量子"搜不到"量子纠缠"。
 # 索引侧给每个中文字符后插空格(逐字 token), 查询侧把中文词构造成逐字短语,
@@ -37,6 +37,7 @@ def open_db(indexes: Path) -> sqlite3.Connection:
 
 def build_index(content: Path, indexes: Path) -> int:
     """Full rebuild; 500+ docs rebuild in well under a second."""
+    sig = _tree_sig(content)  # 扫描开始时的快照；扫描期间的改动会让存的签名落后 → 下轮判 stale 自动补建
     con = open_db(indexes)
     try:
         con.execute("DELETE FROM docs")
@@ -71,6 +72,7 @@ def build_index(content: Path, indexes: Path) -> int:
                             (src, dst or "", raw, 1 if dst else 0, src_title, dst_title))
         con.execute("INSERT OR REPLACE INTO meta(k,v) VALUES('built_at',?)", (str(time.time()),))
         con.execute("INSERT OR REPLACE INTO meta(k,v) VALUES('doc_n',?)", (str(n),))
+        con.execute("INSERT OR REPLACE INTO meta(k,v) VALUES('treesig',?)", (sig,))
         con.commit()
         return n
     finally:
@@ -78,8 +80,17 @@ def build_index(content: Path, indexes: Path) -> int:
 
 
 def index_is_stale(content: Path, indexes: Path) -> bool:
+    """B11：以「文件清单+逐文件 mtime_ns」的树签名为准 —— 旧的最大 mtime 比较
+    只看前进：外部删除不碰任何 mtime（幽灵行长期残留），从 _trash rename 恢复
+    保留旧 mtime（恢复的文档永远搜不到）。旧库无 treesig 时回退 mtime 判据。"""
     con = open_db(indexes)
     try:
+        row = con.execute("SELECT v FROM meta WHERE k='treesig'").fetchone()
+        if row is not None:
+            try:
+                return row[0] != _tree_sig(content)
+            except OSError:
+                return True
         row = con.execute("SELECT v FROM meta WHERE k='built_at'").fetchone()
         if not row:
             return True
@@ -172,8 +183,11 @@ def upsert_doc_in_index(indexes: Path, rel_posix: str, p: Path, body: str) -> No
                     (rel_posix, cjk_space(title), cjk_space(tag_str), cjk_space(body2)))
         con.execute("DELETE FROM links WHERE src=?", (rel_posix,))
         _, by_stem, by_title = resolve_maps_from_db(con)
-        by_path = {path_.rsplit("/", 1)[-1][:-3] if path_.endswith(".md") else path_.rsplit("/", 1)[-1]: path_
-                   for path_, in con.execute("SELECT path FROM docs")}
+        # B12：与 build_index 同构 —— 完整相对路径键（不带 .md）。
+        # 旧实现用「文件名去扩展名」当键，[[career/journal/xxx]] 这类路径式目标
+        # 在每次保存后的 30s 窗口里被标成未解析（双链面板/全局统计读数失真）。
+        by_path = {(p.rsplit(".md", 1)[0]): p
+                   for (p,) in con.execute("SELECT path FROM docs")}
         for raw in extract_wikilinks(body2):
             dst = resolve_wikilink(raw, by_path, by_stem, by_title)
             dst_title = ""
@@ -182,6 +196,16 @@ def upsert_doc_in_index(indexes: Path, rel_posix: str, p: Path, body: str) -> No
                 dst_title = cjk_clean(row[0]) if row else ""
             con.execute("INSERT INTO links(src,dst,raw,resolved,src_title,dst_title) VALUES(?,?,?,?,?,?)",
                         (rel_posix, dst or "", raw, 1 if dst else 0, title, dst_title))
+        # 本次保存可能新建/改名了某篇文档，让其它文档此前的未解析链接就地复活，
+        # 不必等 watcher 全量重建（外科手术更新的另一半：全局未解析行重解析）。
+        pending = con.execute("SELECT rowid, src, raw FROM links WHERE resolved=0").fetchall()
+        for rid, src_doc, raw in pending:
+            dst = resolve_wikilink(raw, by_path, by_stem, by_title)
+            if not dst:
+                continue
+            row = con.execute("SELECT title FROM docs WHERE path=?", (dst,)).fetchone()
+            con.execute("UPDATE links SET dst=?, resolved=1, dst_title=? WHERE rowid=?",
+                        (dst, cjk_clean(row[0]) if row else "", rid))
         con.commit()
     finally:
         con.close()

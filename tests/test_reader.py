@@ -289,6 +289,26 @@ def main() -> int:
         r = c.get("/doc/ai/nope/nope")
         check("不存在的文档 404", r.status_code == 404)
 
+        # ── C4 回归：treesig 失效判据（B11）+ 路径式双链即时解析（B12）──
+        from app.fts import build_index, index_is_stale
+        content_dir = root / "content"
+        idx_dir = root / "indexes"
+        build_index(content_dir, idx_dir)
+        check("刚重建的索引不判为过期", not index_is_stale(content_dir, idx_dir))
+        gone = content_dir / "career" / "gone.md"
+        gone.write_text("---\ntitle: 将被外部删除\n---\n\n正文\n", encoding="utf-8")
+        build_index(content_dir, idx_dir)
+        gone.unlink()  # 模拟 Obsidian/外部删除：不改任何残留文件的 mtime
+        check("外部删除新文件后立即可判过期（旧 mtime 判据的盲区）", index_is_stale(content_dir, idx_dir))
+        # 路径式 [[domain/sub/name]] 双链：外科手术式 upsert 当场解析，不等 30s 全量重建
+        r = c.post("/api/save", json={"path": "career/linker.md",
+                                      "content": "---\ntitle: 链入者\n---\n\n见 [[projects/dsh-agent/architecture/X]]。\n"})
+        check("保存引用路径式双链的文档", r.status_code == 200)
+        j = c.get("/api/links?path=career/linker.md").get_json()
+        check("路径式双链即时解析（B12）",
+              any(x["resolved"] and x["path"].endswith("architecture/X.md") for x in j["outgoing"]),
+              str(j["outgoing"]))
+
     # 回归：脚本直启（python app\app.py / start.bat）的导入路径 —— 2026-09-09 启动报错修复
     import subprocess
     r = subprocess.run(

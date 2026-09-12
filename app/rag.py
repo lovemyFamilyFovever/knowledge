@@ -16,6 +16,7 @@ WordPiece 管线实现最小解析（BertNormalizer → BertPreTokenizer → Wor
 按 token 数控制，确保送入 ONNX 模型不超 512 上限、不触发静默截断。
 """
 import json
+import os
 import re
 import sqlite3
 import threading
@@ -444,16 +445,18 @@ class RagStore:
 
 # ---------------- 语料同步 ----------------
 def md_corpus_files(content: Path) -> dict[str, float]:
-    """收编语料的 {相对路径: mtime}；跳过派生目录与备注文件。"""
+    """收编语料的 {相对路径: mtime}；跳过派生目录与备注文件。
+
+    B21a：用 os.walk 而非 Path.walk（后者 Python >=3.12 才有）——
+    AGENTS 不变量 8 承诺 start.bat 任意 Python 可启动，不能绑定新标准库 API。"""
     out: dict[str, float] = {}
-    for dirpath, dirnames, filenames in content.walk():
+    for dirpath, dirnames, filenames in os.walk(content):
         dirnames[:] = [d for d in dirnames if d not in SKIP_DIRS and not d.startswith("_")]
         for fn in filenames:
-            p = Path(dirpath) / fn
-            rel = p.relative_to(content).as_posix()
-            if not rel.endswith(".md") or rel.endswith(".notes.md"):
+            if not fn.endswith(".md") or fn.endswith(".notes.md"):
                 continue
-            out[rel] = p.stat().st_mtime
+            p = Path(dirpath) / fn
+            out[p.relative_to(content).as_posix()] = p.stat().st_mtime
     return out
 
 

@@ -103,21 +103,29 @@ def create_app(root: Path | None = None) -> Flask:
 
     # 向量检索组件：惰性初始化（首次调用时才加载 ONNX 会话）
     rag_state = {"embedder": None, "store": None, "tried": False}
+    _rag_init_lock = threading.Lock()
 
     def get_rag():
-        """返回 (embedder, store) 或 (None, None)。模型加载失败不拖垮阅读器。"""
+        """返回 (embedder, store) 或 (None, None)。模型加载失败不拖垮阅读器。
+
+        B13：双检锁 —— 旧实现 `if tried: return` 后直接置位，两个并发语义查询会
+        双双看到 tried=False 而各自构造 OnnxEmbedder（重复加载 ~24MB 模型、
+        一个线程读到另一线程半途写回的 embedder）。已初始化则走无锁快路径。"""
         if rag_state["tried"]:
             return rag_state["embedder"], rag_state["store"]
-        rag_state["tried"] = True
-        if OnnxEmbedder is None or RagStore is None:
-            return None, None
-        try:
-            rag_state["embedder"] = OnnxEmbedder(root / "app" / "rag_models")
-            rag_state["store"] = RagStore(indexes)
-        except Exception:
-            logger.warning("RAG 初始化失败，语义检索降级纯 FTS", exc_info=True)
-            rag_state["embedder"] = rag_state["store"] = None
-        return rag_state["embedder"], rag_state["store"]
+        with _rag_init_lock:
+            if rag_state["tried"]:
+                return rag_state["embedder"], rag_state["store"]
+            rag_state["tried"] = True
+            if OnnxEmbedder is None or RagStore is None:
+                return None, None
+            try:
+                rag_state["embedder"] = OnnxEmbedder(root / "app" / "rag_models")
+                rag_state["store"] = RagStore(indexes)
+            except Exception:
+                logger.warning("RAG 初始化失败，语义检索降级纯 FTS", exc_info=True)
+                rag_state["embedder"] = rag_state["store"] = None
+            return rag_state["embedder"], rag_state["store"]
 
     # 单一 watcher：每 30 秒统一驱动 FTS 与向量索引的增量同步
     # （拆分前是两套独立轮询，失效判据不同步会导致短窗内搜索/语义结果矛盾）
