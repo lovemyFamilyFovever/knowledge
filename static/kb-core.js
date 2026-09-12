@@ -660,17 +660,28 @@
     return true;
   }
 
-  var HELP_HTML = [
-    ["Ctrl / ⌘ + K", "呼出命令面板（术语 / 文档 / 子域 / 命令）"],
-    ["/", "聚焦顶栏搜索框"],
-    ["Esc", "关闭面板 / 关闭编辑器"],
-    ["↑ ↓", "命令面板与补全层里上下选择"],
-    ["Enter", "执行选中项；文档列表里打开当前文档"],
-    ["j / k", "文档列表上下移动（复习页里 = 上一张 / 下一张）"],
-    ["Space", "复习页翻面"],
-    ["1 2 3 4", "复习页评分：重来 / 困难 / 良好 / 简单"],
-    ["?", "显示本帮助"]
+  /* 问题18：快捷键唯一数据源。原 HELP_HTML 只 9 条硬编码，Ctrl+S、右键/菜单键、
+     rtab 方向键、Esc 分层语义均缺失——帮助面板与实际行为是两套真相。
+     scope: global 全站 / browse 阅读页 / editor 编辑器 / review 复习页。
+     新增键位必须登记于此（? 帮助与 palette 快捷键区都从 registry 派生）。 */
+  var KEY_REGISTRY = [
+    { combo: "Ctrl / ⌘ + K", desc: "命令面板（术语 / 文档 / 子域 / 命令）", scope: "global" },
+    { combo: "/", desc: "聚焦顶栏搜索框（? 前缀走语义检索）", scope: "global" },
+    { combo: "Esc", desc: "分层关闭：补全 → 弹窗 / 菜单 → 帮助 → 编辑器（未保存先确认）", scope: "global" },
+    { combo: "?", desc: "显示本帮助", scope: "global" },
+    { combo: "Ctrl / ⌘ + S", desc: "保存并写回文件系统（编辑器内）", scope: "editor" },
+    { combo: "[[ 输入", desc: "双链补全：↑↓ 选择，Tab / Enter 插入", scope: "editor" },
+    { combo: "j / k", desc: "文档列表上下移动", scope: "browse" },
+    { combo: "Enter", desc: "打开聚焦的文档", scope: "browse" },
+    { combo: "Menu / Shift+F10", desc: "对聚焦的文档或目录打开右键菜单", scope: "browse" },
+    { combo: "↑ ↓ ← →", desc: "右键菜单与移动弹窗目录树导航", scope: "browse" },
+    { combo: "← →", desc: "右栏标签（目录 / 信息 / 备注 / 双链）切换", scope: "browse" },
+    { combo: "j / k", desc: "上一张 / 下一张卡片", scope: "review" },
+    { combo: "Space", desc: "翻面看答案", scope: "review" },
+    { combo: "1 2 3 4", desc: "评分：重来 / 困难 / 良好 / 简单", scope: "review" }
   ];
+  var HELP_HTML = KEY_REGISTRY.map(function (k) { return [k.combo, k.desc]; });
+  keys.registry = KEY_REGISTRY;
 
   function toggleHelp(force) {
     var el = document.getElementById("kb-help");

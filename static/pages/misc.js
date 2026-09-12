@@ -293,13 +293,19 @@ function initInbox() {
     if (go) go.disabled = !n;
     const all = document.getElementById("ib-all");
     if (all) { const total = items().length; all.checked = n === total && n > 0; all.indeterminate = n > 0 && n < total; }
-    /* 勾选 = 进「归档中」列（选中即暂存，按钮执行才真正写盘） */
-    sel.forEach(x => { x.dataset.col = "staged"; x.classList.add("sel"); colStaged.appendChild(x); });
-    items().filter(x => !x.querySelector(".ib-check").checked).forEach(x => {
-      x.dataset.col = "todo"; x.classList.remove("sel"); colTodo.appendChild(x);
-    });
+    /* 问题16：勾选 = 只加徽标，不再把卡片 appendChild 移进「归档中」列。
+       原实现的两个毛病：每勾一张卡片列表跳动一次（重排心智负担）；勾选与拖拽
+       是两套并存的暂存心智。现在卡片留在原位，「归档中」列只显示计数与提示，
+       执行批量归档时卡片才真正离开看板（见 ibArchive 的 rw.remove()）。 */
+    items().forEach(x => x.classList.toggle("sel", x.querySelector(".ib-check").checked));
     colTodo.querySelector(".kh .n").textContent = colTodo.querySelectorAll(".kan-item").length;
-    colStaged.querySelector(".kh .n").textContent = colStaged.querySelectorAll(".kan-item").length;
+    if (colStaged) {
+      colStaged.querySelectorAll(".kan-item,.kan-empty").forEach(x => x.remove());
+      colStaged.insertAdjacentHTML("beforeend", n
+        ? `<div class="kan-empty">已勾选 ${n} 篇 · 点「批量归档…」执行</div>`
+        : `<div class="kan-empty">勾选卡片或把它拖到这里</div>`);
+      colStaged.querySelector(".kh .n").textContent = n;
+    }
   }
 
   kanban.addEventListener("change", e => { if (e.target.classList.contains("ib-check")) ibUpdate(); });
