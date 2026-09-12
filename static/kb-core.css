@@ -11,7 +11,7 @@
 /* [1] 阅读偏好变量（默认落在 :root；KB.prefs 只改 documentElement 内联值） ===== */
 :root{
   --kb-fs-scale:1;
-  --kb-measure:760px;
+  --kb-measure:none;
   --kb-font:var(--sans);
   --kb-line:1.75;
 }

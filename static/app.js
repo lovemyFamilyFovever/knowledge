@@ -284,9 +284,12 @@ function renderDocList(docs, subLabel, activeName) {
 
 function renderCrumb() {
   const crumb = $("#crumb"); if (!crumb || !DOC) return;
-  const dirs = DOC.rel.split("/").slice(0, -1).join("/");
-  crumb.innerHTML = `content<b>/</b>${esc(dirs)}<span class="sep">·</span><b>${esc(DOC.title)}</b><span class="spacer"></span>
-    ${DOC.has_html ? `<button class="iconbtn" onclick="openPretty()" title="弹窗打开整页美化版">${icon("external-link", 13)} 美化版</button>` : ""}
+  /* 面包屑不再显示 content/<路径>（用户要求）；interview 域美化版文档的
+     「Markdown 源 / 新标签页」按钮与 workbench.html 服务端渲染保持同一套结构 */
+  const isInterviewPretty = DOC.has_html && DOC.domain === "interview" && !DOC.is_html;
+  crumb.innerHTML = `<b>${esc(DOC.title)}</b><span class="spacer"></span>
+    ${isInterviewPretty ? `<button class="iconbtn" id="kb-md-src-btn" onclick="renderArticle(true)" title="切回 Markdown 渲染视图">${icon("file-md", 13)} Markdown 源</button>` : ""}
+    ${DOC.has_html ? `<a class="iconbtn" href="${rawUrl(DOC.is_html ? DOC.rel : DOC.html_rel)}" target="_blank" title="新标签页打开美化版">${icon("external-link", 13)} 新标签页</a>` : ""}
     ${!DOC.is_html ? `<button class="iconbtn" onclick="openEditor()">${icon("edit",13)} 编辑</button>
     <button class="iconbtn" onclick="deleteDoc()" title="移入 content/_trash/">${icon("trash",13)} 删除</button>` : ""}
     <button class="iconbtn primary ${DOC.favorite ? "faved" : ""}" id="fav-btn" onclick="toggleFav()">${icon("star",13)} ${DOC.favorite ? "已收藏" : "收藏"}</button>`;
