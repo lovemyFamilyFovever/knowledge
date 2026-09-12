@@ -275,6 +275,14 @@ html[data-theme="dark"] .iconbtn{background:color-mix(in oklab,var(--seed-surfac
 .iconbtn.primary:hover{color:var(--acc);border-color:var(--acc-edge)}
 .iconbtn.primary.faved{color:var(--warn);background:var(--warn-soft);border-color:var(--warn-edge)}
 .iconbtn.primary.faved svg{fill:currentColor}
+/* 已读完 / 已掌握 标记按钮（选中态 = 主题绿实底） */
+.iconbtn.mark-on{color:color-mix(in oklab,var(--seed-surface),white 5%);background:var(--acc);border-color:var(--acc)}
+.iconbtn.mark-on:hover{color:color-mix(in oklab,var(--seed-surface),white 5%);border-color:var(--acc)}
+/* 文末「读完这篇了？」标记条（renderArticle 动态插入） */
+.kb-finish-bar{display:flex;align-items:center;gap:10px;margin-top:28px;padding:12px 16px;
+  border:1px solid var(--edge);border-radius:var(--radius-lg);background:var(--acc-soft)}
+.kb-finish-q{font-size:13px;color:var(--muted)}
+.kb-finish-bar .kb-btn{min-height:32px;padding:0 14px;font-size:12.5px}
 .iconbtn.danger{color:var(--warn);border-color:var(--warn-edge)}
 .iconbtn.danger:hover{background:var(--warn-soft);color:var(--warn)}
 .iconbtn:disabled{opacity:.45;cursor:not-allowed}

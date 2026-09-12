@@ -100,6 +100,7 @@ let CUR = null; // {domain, sub, name}
 function renderArticle() {
   const el = $("#article");
   if (!el || !DOC) return;
+  refreshDocMark(); // 已读/已掌握按钮状态（异步，不阻塞渲染）
   if (DOC.is_html) {
     // 整页 HTML 文档：iframe 沙箱内嵌直通 /raw/（保留自带样式/脚本），
     // 绝不走 marked+DOMPurify 管线——0.3MB HTML 过 markdown 解析会把源码平铺成数万节点 DOM，卡且不可读
@@ -122,7 +123,12 @@ function renderArticle() {
       <h1 class="a-title">${esc(DOC.title)}</h1>
       <div class="a-chips">${chips}</div>
       <div class="a-rule"></div>
-      <div class="a-body">${DOMPurify.sanitize(marked.parse(DOC.md), { FORBID_TAGS: ['style', 'iframe', 'form', 'script'], ADD_ATTR: ['target'] })}</div>`;
+      <div class="a-body">${DOMPurify.sanitize(marked.parse(DOC.md), { FORBID_TAGS: ['style', 'iframe', 'form', 'script'], ADD_ATTR: ['target'] })}</div>
+      <div class="kb-finish-bar" id="kb-finish-bar">
+        <span class="kb-finish-q">读完这篇了？</span>
+        <button type="button" class="kb-btn" id="mark-read-btn" onclick="toggleDocMark('read')" title="标记已读完（存本地复习库，不写语料）">已读完</button>
+        <button type="button" class="kb-btn" id="mark-mastered-btn" onclick="toggleDocMark('mastered')" title="标记已掌握 —— 术语门户会显示为已掌握">已掌握</button>
+      </div>`;
   }
   // mermaid：按需懒加载（3.5MB），仅文档真含 mermaid 图时加载
   const mm = el.querySelectorAll("pre code.language-mermaid");
@@ -413,6 +419,37 @@ async function addNote() {
   DOC.notes = data.notes;
   renderNotes();
   toast("备注已写入旁挂 <span class='mono'>.notes.md</span>");
+}
+
+/* ---------- 已读完 / 已掌握（文档级标记，存 indexes/reading.db 的 doc_marks，不写语料） ---------- */
+function renderDocMark(m) {
+  const rb = document.getElementById("mark-read-btn");
+  const mb = document.getElementById("mark-mastered-btn");
+  if (!rb || !mb) return;
+  rb.classList.toggle("mark-on", !!m.read);
+  rb.textContent = m.read ? "✓ 已读完" : "已读完";
+  mb.classList.toggle("mark-on", !!m.mastered);
+  mb.textContent = m.mastered ? "✓ 已掌握" : "已掌握";
+}
+function refreshDocMark() {
+  if (!DOC || !DOC.rel) return;
+  fetch("/api/docmark?path=" + encodeURIComponent(DOC.rel))
+    .then(r => r.json())
+    .then(j => { if (j.ok) renderDocMark(j); })
+    .catch(() => {});
+}
+async function toggleDocMark(kind) {
+  if (!DOC || !DOC.rel) return;
+  const btn = document.getElementById(kind === "read" ? "mark-read-btn" : "mark-mastered-btn");
+  const cur = btn.classList.contains("mark-on");
+  const r = await fetch("/api/docmark", { method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ path: DOC.rel, mark: kind, on: !cur }) });
+  if (!r.ok) { toast("标记失败：" + (await r.text()).slice(0, 100)); return; }
+  const j = await r.json();
+  renderDocMark(j);
+  toast(kind === "mastered"
+    ? (j.mastered ? "已标记掌握 —— 术语门户会显示为已掌握" : "已取消掌握标记")
+    : (j.read ? "已标记读完" : "已取消读完（掌握标记一并取消）"));
 }
 
 /* ---------- 收藏 ---------- */

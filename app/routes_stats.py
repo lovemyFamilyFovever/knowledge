@@ -116,6 +116,17 @@ def api_globalstats():
     except Exception:
         pass  # FTS 索引缺失/损坏时双链健康度缺省为 0，不阻塞统计弹窗
     top_tags = [{"tag": t, "n": n} for t, n in sorted(tag_count.items(), key=lambda kv: -kv[1])[:10]]
+    marks = {"read_done": 0, "mastered_docs": 0}
+    ReadingStore = _hooks().get("ReadingStore")
+    if ReadingStore is not None:
+        try:
+            rs = ReadingStore(_indexes())
+            try:
+                marks = rs.marks_counts()
+            finally:
+                rs.close()
+        except Exception:
+            pass  # 统计弹窗不因标记表缺失而失败
     return jsonify({
         "n_docs": n_docs, "n_html": n_html, "n_fav": fav, "inbox": inbox_count(content),
         "total_cjk": total_cjk, "untagged": untagged,
@@ -123,6 +134,7 @@ def api_globalstats():
         "top_tags": top_tags, "n_tag_types": len(tag_count),
         "domains": per_domain,
         "links": {"total": n_links, "dead": n_dead, "dead_docs": dead_docs},
+        "marks": marks,
     })
 
 
@@ -191,6 +203,43 @@ def api_stats():
         "size": st.st_size,
         "mtime": int(st.st_mtime),
     })
+
+
+@stats_bp.get("/api/docmark")
+def api_docmark_get():
+    """单篇文档的已读/已掌握标记（存 indexes/reading.db 的 doc_marks，不进 frontmatter）。"""
+    path = request.args.get("path", "")
+    if not path:
+        return jsonify({"ok": False, "error": "BAD_PARAM", "detail": "path 必填"}), 400
+    ReadingStore = _hooks().get("ReadingStore")
+    if ReadingStore is None:
+        return jsonify({"ok": True, "read": False, "mastered": False})
+    rs = ReadingStore(_indexes())
+    try:
+        m = rs.get_mark(path)
+    finally:
+        rs.close()
+    return jsonify({"ok": True, **m})
+
+
+@stats_bp.post("/api/docmark")
+def api_docmark_set():
+    """切换已读(read)/已掌握(mastered)。掌握蕴含已读；取消已读连掌握一起取消。"""
+    ReadingStore = _hooks().get("ReadingStore")
+    if ReadingStore is None:
+        return jsonify({"ok": False, "error": "UNAVAILABLE", "detail": "阅读统计组件不可用"}), 503
+    data = request.get_json(force=True, silent=True) or {}
+    path = str(data.get("path", ""))
+    kind = str(data.get("mark", ""))
+    on = bool(data.get("on", True))
+    if not path or kind not in ("read", "mastered"):
+        return jsonify({"ok": False, "error": "BAD_PARAM", "detail": "path 与 mark(read|mastered) 必填"}), 400
+    rs = ReadingStore(_indexes())
+    try:
+        m = rs.set_mark(path, kind, on)
+    finally:
+        rs.close()
+    return jsonify({"ok": True, **m})
 
 
 @stats_bp.post("/api/tag/merge")

@@ -27,6 +27,14 @@ CREATE TABLE IF NOT EXISTS reading_events (
 );
 CREATE INDEX IF NOT EXISTS idx_events_ym ON reading_events(ym);
 CREATE INDEX IF NOT EXISTS idx_events_path ON reading_events(path);
+CREATE TABLE IF NOT EXISTS doc_marks (
+    path TEXT PRIMARY KEY,
+    read INTEGER NOT NULL DEFAULT 0,
+    mastered INTEGER NOT NULL DEFAULT 0,
+    ts REAL NOT NULL,
+    day TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_doc_marks_mastered ON doc_marks(mastered);
 """
 
 VALID_EVENTS = {"open", "read_minute", "finish"}
@@ -87,6 +95,45 @@ class ReadingStore:
             "daily": [{"day": d[0], "minutes": round(float(d[1] or 0), 1),
                        "docs": int(d[2])} for d in daily],
         }
+
+    def get_mark(self, path: str) -> dict:
+        """单篇文档的已读/已掌握标记。"""
+        row = self.con.execute(
+            "SELECT read, mastered, ts FROM doc_marks WHERE path=?", (path,)).fetchone()
+        return {"path": path, "read": bool(row[0]) if row else False,
+                "mastered": bool(row[1]) if row else False,
+                "ts": float(row[2]) if row else None}
+
+    def set_mark(self, path: str, kind: str, on: bool) -> dict:
+        """切换已读(read)/已掌握(mastered)标记。掌握蕴含已读；取消已读则连掌握一起取消。"""
+        if kind not in ("read", "mastered"):
+            raise ValueError(f"invalid mark kind: {kind}")
+        now = time.time()
+        day = time.strftime("%Y-%m-%d", time.localtime(now))
+        cur = self.con.execute("SELECT read, mastered FROM doc_marks WHERE path=?", (path,)).fetchone()
+        read = bool(cur[0]) if cur else False
+        mastered = bool(cur[1]) if cur else False
+        if kind == "read":
+            read = bool(on)
+            if not read:
+                mastered = False
+        else:
+            mastered = bool(on)
+            if mastered:
+                read = True
+        self.con.execute(
+            """INSERT INTO doc_marks(path,read,mastered,ts,day) VALUES(?,?,?,?,?)
+               ON CONFLICT(path) DO UPDATE SET read=excluded.read,
+               mastered=excluded.mastered, ts=excluded.ts, day=excluded.day""",
+            (path, int(read), int(mastered), now, day))
+        self.con.commit()
+        return {"path": path, "read": read, "mastered": mastered}
+
+    def marks_counts(self) -> dict:
+        """全库已读/已掌握文档数（统计弹窗用）。"""
+        row = self.con.execute(
+            "SELECT COUNT(*), COALESCE(SUM(mastered),0) FROM doc_marks WHERE read=1").fetchone()
+        return {"read_done": int(row[0] or 0), "mastered_docs": int(row[1] or 0)}
 
     def close(self):
         try:
