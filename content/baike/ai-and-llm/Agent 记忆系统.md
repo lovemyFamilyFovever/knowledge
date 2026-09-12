@@ -1,6 +1,6 @@
 ---
 title: "Agent 记忆系统"
-tags: []
+tags: [人工智能, Agent]
 source: "baike"
 source_path: "开发术语 / AI与大模型"
 collected: "2026-09-05"
@@ -8,6 +8,8 @@ status: "imported"
 ---
 
 # Agent 记忆系统
+
+> 📌 **导航**：本文是 **Agent 记忆系统** 词条，属于 ai-and-llm 术语集（Agent 方向）。相关枢纽：[[AI Agent 概述与核心架构]]、[[Agent 架构模式详解]]、[[多 Agent 协作系统]]、[[大模型基础术语详解]]、[[RAG 与检索技术详解]]。
 
 ## 概述
 
@@ -118,3 +120,10 @@ class AgentMemorySystem:
 ## 小结
 
 三层记忆的协调配合，让Agent能够像人类一样'记住'过去经验并应用于当前任务。
+## 相关术语
+
+[[AI Agent 概述与核心架构]]、[[Agent 架构模式详解]]、[[Agent 规划与推理]]、[[Agent 记忆系统]]、[[Agent 评估与基准]]、[[多 Agent 协作系统]]、[[大模型基础术语详解]]、[[RAG 与检索技术详解]]、[[Prompt 工程与 Agent 详解]]
+
+## 参考资料
+
+建议人工核验：可参考各框架官方文档（LangChain / AutoGPT / CrewAI 等）、*AI Agents in Action* (Michael Landsman)、Anthropic 工程博客 *Building Effective Agents*，以及 OpenAI / Anthropic 官方 Agent 开发文档。

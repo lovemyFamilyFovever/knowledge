@@ -1,6 +1,6 @@
 ---
 title: "AI Agent 概述与核心架构"
-tags: []
+tags: [人工智能, Agent]
 source: "baike"
 source_path: "开发术语 / AI与大模型"
 collected: "2026-09-05"
@@ -8,6 +8,8 @@ status: "imported"
 ---
 
 # AI Agent 概述与核心架构
+
+> 📌 **导航**：本文是 **AI Agent 概述与核心架构** 词条，属于 ai-and-llm 术语集（Agent 方向）。相关枢纽：[[AI Agent 概述与核心架构]]、[[Agent 架构模式详解]]、[[多 Agent 协作系统]]、[[大模型基础术语详解]]、[[RAG 与检索技术详解]]。
 
 ## 什么是 AI Agent
 
@@ -145,3 +147,11 @@ AI Agent 是 LLM 能力的自然延伸。它将语言模型的「思考」能力
   <line x1="400" y1="280" x2="400" y2="330" stroke="#ec4899" stroke-width="2" marker-end="url(#ah)"/>
   <text x="400" y="430" text-anchor="middle" font-size="13" fill="#475569">感知 → 推理 → 行动 → 反馈 → 感知（循环执行直到完成任务）</text>
 </svg>
+
+## 相关术语
+
+[[AI Agent 概述与核心架构]]、[[Agent 架构模式详解]]、[[Agent 规划与推理]]、[[Agent 记忆系统]]、[[Agent 评估与基准]]、[[多 Agent 协作系统]]、[[大模型基础术语详解]]、[[RAG 与检索技术详解]]、[[Prompt 工程与 Agent 详解]]
+
+## 参考资料
+
+建议人工核验：可参考各框架官方文档（LangChain / AutoGPT / CrewAI 等）、*AI Agents in Action* (Michael Landsman)、Anthropic 工程博客 *Building Effective Agents*，以及 OpenAI / Anthropic 官方 Agent 开发文档。
