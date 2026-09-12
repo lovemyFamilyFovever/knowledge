@@ -425,7 +425,11 @@
     root.classList.toggle("mode-pref", palette.mode === "readpref");
     if (pref) pref.hidden = palette.mode !== "readpref";
     if (palette.mode === "readpref") {
-      pref.innerHTML = '<div class="kb-pref-head">' + util.icon("i-palette", 14) + "阅读偏好</div>" + prefs.panelHTML();
+      pref.innerHTML = '<div class="kb-pref-head">' + util.icon("i-palette", 14) + "阅读偏好</div>" + prefs.panelHTML()
+        + '<div class="kb-pref-head">' + util.icon("i-kbd-cmd", 14) + '快捷键<span class="kb-pref-kbd-hint">随时按 ? 唤出完整帮助</span></div>'
+        + '<div class="kb-keys-list">' + HELP_HTML.map(function (r) {
+            return '<div class="kb-help-row"><kbd>' + util.esc(r[0]) + "</kbd><span>" + util.esc(r[1]) + "</span></div>";
+          }).join("") + "</div>";
       prefs.bindPanel(pref);
       body.innerHTML = "";
       var cnt = root.querySelector("#kb-pal-count");
@@ -564,6 +568,18 @@
   };
   palette.isOpen = function () { return !!palette.open; };
   palette.refresh = function (force) { return palLoad(!!force); };
+
+  /* settings —— 顶栏齿轮按钮的全局设置入口：阅读偏好 + 快捷键速查。
+     复用命令面板的 readpref 模式，不另起一套弹层。 */
+  KB.settings = {
+    open: function () {
+      palette.show();
+      palette.mode = "readpref";
+      palRender();
+      var input = document.querySelector("#kb-pal-input");
+      if (input) input.blur();
+    }
+  };
 
   /* ==================================================================
      [5] keys —— 需求7 键盘导航（单一 keydown 捕获阶段分发器）
@@ -843,6 +859,11 @@
     palette.build();
     wl.attach();                   // #ed-text 已解析，可挂监听
     wl.guardSave();                // 依赖 window.saveDoc；第 ① 次会 no-op，第 ② 次补上
+    var gear = document.getElementById("kb-settings-btn");
+    if (gear && !gear.dataset.kbBound) {
+      gear.dataset.kbBound = "1";  // boot 幂等跑两次，防重复绑定
+      gear.addEventListener("click", function () { KB.settings.open(); });
+    }
     if (booted) return;
     booted = true;
     /* 空闲时预热命令面板索引，保证 Ctrl+K 首帧就有东西 */

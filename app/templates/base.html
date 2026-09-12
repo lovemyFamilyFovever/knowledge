@@ -212,6 +212,7 @@
     <a class="pill" href="/inbox" title="收件箱：新收录的待整理内容先进这里，阅读后归档进各领域"><svg class="i i-12"><use href="#i-inbox-tray"/></svg><span>收件箱</span><span class="n">{{ inbox_n|default(0) }}</span></a>
     <button class="pill ok" onclick="const q=document.getElementById('q'); q.focus(); q.select();" title="全文索引已就绪；点击聚焦搜索框（快捷键 / 支持语义检索，前缀 ?）"><span class="dot"></span><span>全文检索</span><span class="n">{{ n_md|default(fts_n)|default(0) }}</span></button>
     <button class="pill" id="theme-btn" title="切换白天 / 夜间"><svg class="i i-16"><use href="#i-sun"/></svg></button>
+    <button class="pill" id="kb-settings-btn" title="设置：阅读偏好（字号 / 行宽 / 字体）与全部快捷键"><svg class="i i-16"><use href="#i-palette"/></svg></button>
   </div>
 </header>
 

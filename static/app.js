@@ -201,7 +201,7 @@ async function loadDirTree(force) {
 
 function renderDocList(docs, subLabel, activeName) {
   const title = $("#list-title");
-  if (title) title.innerHTML = `${esc(subLabel)}<button class="fold dir-stats-btn" onclick="showSubStats(CUR.domain, CUR.sub)" title="目录统计：当前目录篇数/字数/标签分布，含兄弟目录对比">${icon("chart", 13)}<span>统计</span></button><span class="cnt">${docs.length}</span><button class="fold" onclick="togglePanel('list')" title="收起列表"><svg><use href="#i-fold-l"/></svg></button>`;
+  if (title) title.innerHTML = `${esc(subLabel)}<span class="cnt">${docs.length}</span><button class="fold" onclick="togglePanel('list')" title="收起列表"><svg><use href="#i-fold-l"/></svg></button>`;
   const list = $("#doclist"); if (!list) return;
   list.innerHTML = docs.map(d => `
     <a class="doc ${d.name === activeName ? "active" : ""}" data-name="${esc(d.name)}" draggable="true" href="/doc/${CUR.domain}/${CUR.sub}/${d.name.split("/").map(encodeURIComponent).join("/")}">
@@ -1093,10 +1093,4 @@ if (docData) {
 if (WORKBENCH) wireDragMove();
 loadTree().then(() => {
   renderTree();
-  /* 整页加载（例：从主页文章卡片直接进 /doc/...）时，第二列面板头 #list-title 由模板服务端渲染，
-     不含「统计」按钮（dir-stats-btn）；而客户端路由 openDoc() 会调 renderDocList() 补上它。
-     这里在树就绪后补一次同样的重绘，保证「整页进入」与「点树切换」两条路径产出一致；
-     findSub 未命中（比如文档已不在树里）时不动作，保持幂等、不报错。 */
-  const s = WORKBENCH && CUR ? findSub(CUR.domain, CUR.sub) : null;
-  if (s && !document.querySelector("#list-title .dir-stats-btn")) renderDocList(s.docs, s.label, CUR.name);
 });

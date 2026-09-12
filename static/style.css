@@ -214,13 +214,6 @@ main.single{display:flex;flex-direction:column}
   color:var(--faint);border:1px solid transparent;background:none;transition:.15s}
 .fold:hover{color:var(--acc);border-color:var(--edge);background:var(--acc-soft)}
 .fold svg{width:13px;height:13px}
-.dir-stats-btn{display:inline-flex;align-items:center;gap:4px;margin-left:8px;height:20px;padding:0 8px;
-  font-size:10px;letter-spacing:.08em;color:var(--acc);border:1px solid var(--acc-edge);border-radius:5px;
-  background:var(--acc-soft);cursor:pointer;transition:.2s;font-family:var(--mono)}
-.dir-stats-btn:hover{background:var(--acc);color:color-mix(in oklab,var(--seed-surface),white 5%)}
-.dir-stats-btn svg{flex:none;width:13px;height:13px;display:block}
-.dir-stats-btn span{line-height:1}
-.panel-h .dir-stats-btn + .cnt{margin-left:auto}
 /* 左树 */
 .tree{flex:1;overflow-y:auto;padding:8px}
 .dom{margin-bottom:2px;position:relative}
