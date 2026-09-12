@@ -9,6 +9,9 @@ status: "imported"
 
 # Saga 与 TCC
 
+
+> 📌 **导航**：本文是 **Saga 与 TCC** 词条，属于 distributed 术语集。相关枢纽：[[BASE 理论]]、[[CAP 定理]]、[[MapReduce]]、[[Saga 与 TCC]]、[[一致性哈希]]。
+
 ## 定义
 
 **一句话定义：** Saga 与 TCC 是两种解决分布式事务(跨服务/跨库一致性)的模式——Saga 把长事务拆成一串本地事务,每步都有对应的补偿操作,失败时逆序补偿回滚;TCC(Try-Confirm-Cancel)把每个操作分为"预留资源(Try)、确认(Confirm)、取消(Cancel)"三阶段,以实现最终一致。

@@ -9,6 +9,9 @@ status: "imported"
 
 # BASE 理论
 
+
+> 📌 **导航**：本文是 **BASE 理论** 词条，属于 distributed 术语集。相关枢纽：[[BASE 理论]]、[[CAP 定理]]、[[MapReduce]]、[[Saga 与 TCC]]、[[一致性哈希]]。
+
 ## 定义
 
 **一句话定义：** BASE 理论是分布式系统中对 CAP 里"一致性 vs 可用性"权衡的一种实践指导思想,主张牺牲强一致以换取高可用,其三大含义为:基本可用(Basically Available)、软状态(Soft state)、最终一致(Eventual consistency)。
