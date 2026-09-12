@@ -1,6 +1,6 @@
 /* 知库 motion.js · Awwwards 动效基建（T0 产出）
    spec：docs/superpowers/specs/2026-09-11-zhiku-awwwards-refactor-design.md §4.2
-   六个配方：revealGroup / countUp / magnetize / lineMaskReveal / scrubUnderline / initCursor
+   五个配方：revealGroup / countUp / magnetize / lineMaskReveal / scrubUnderline（initCursor 已移除：原生光标还原）
    约定：
    - 全部幂等（dataset.motionBound 防重复绑定），可重复调用 refresh()
    - 声明式挂载：data-reveal / data-counter / data-magnetic / data-line-mask / data-scrub-underline
@@ -125,29 +125,6 @@
     });
   }
 
-  /* ---------- 6. initCursor：自定义跟随光标 + 上下文标签 ----------
-     完整实现由 cursor.js 提供（window.KbCursor）；本函数做委托，
-     cursor.js 未加载时退化为最小实现（dot + ring 展开，无标签）。 */
-  function initCursor(opts) {
-    if (reduced) return;
-    if (window.KbCursor && typeof window.KbCursor.init === "function") { window.KbCursor.init(opts); return; }
-    if (document.documentElement.classList.contains("cursor-on")) return;
-    if (!window.matchMedia || !window.matchMedia("(pointer: fine)").matches) return;
-    var dot = document.createElement("div"); dot.className = "cursor-dot";
-    var ring = document.createElement("div"); ring.className = "cursor-ring";
-    document.body.appendChild(dot); document.body.appendChild(ring);
-    document.documentElement.classList.add("cursor-on");
-    var x = innerWidth / 2, y = innerHeight / 2, rx = x, ry = y;
-    document.addEventListener("mousemove", function (e) {
-      x = e.clientX; y = e.clientY;
-      dot.style.transform = "translate(" + x + "px," + y + "px)";
-      var t = e.target.closest && e.target.closest("a,button,[role=button],input,textarea,select,[data-magnetic]");
-      ring.classList.toggle("is-hover", !!t);
-    }, { passive: true });
-    (function loop() { rx += (x - rx) * 0.2; ry += (y - ry) * 0.2;
-      ring.style.transform = "translate(" + rx + "px," + ry + "px)"; requestAnimationFrame(loop); })();
-  }
-
   /* ---------- 声明式扫描 + 动态 DOM 观察 ---------- */
   function bindAll(root) {
     if (reduced) return;
@@ -194,13 +171,12 @@
     magnetize: magnetize,
     lineMaskReveal: lineMaskReveal,
     scrubUnderline: scrubUnderline,
-    initCursor: initCursor,
     /* 页面/app.js 动态渲染后手动刷新（幂等） */
     refresh: function () { if (hasST) { try { window.ScrollTrigger.refresh(); } catch (e) {} } scheduleScan(); },
     init: function () {
       if (reduced) return; /* 静态呈现，不加 .motion-ready（内容始终可见） */
       document.documentElement.classList.add("motion-ready");
-      initCursor();
+      
       bindAll(document);
       if (window.MutationObserver) {
         new MutationObserver(function (muts) {

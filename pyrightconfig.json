@@ -1,0 +1,35 @@
+{
+  "pythonPath": "E:/chen/code/knowledge/.python/python.exe",
+  "extraPaths": [
+    "E:/chen/code/knowledge/.python/python313.zip",
+    "E:/chen/code/knowledge/.python",
+    "E:/chen/code/knowledge/.python/Lib/site-packages",
+    "E:/chen/code/knowledge/.python/Lib",
+    "."
+  ],
+  "include": [
+    "app",
+    "scripts",
+    "tests"
+  ],
+  "exclude": [
+    "indexes",
+    "node_modules",
+    "content",
+    ".python",
+    "app/rag_models",
+    "**/site-packages/**"
+  ],
+  "typeCheckingMode": "basic",
+  "reportMissingImports": "error",
+  "reportMissingModuleSource": "none",
+  "reportMissingTypeStubs": "none",
+  "reportUnknownMemberType": "none",
+  "reportUnknownVariableType": "none",
+  "reportUnknownArgumentType": "none",
+  "diagnostics": {
+    "typing_extensions.py": {
+      "disable": true
+    }
+  }
+}

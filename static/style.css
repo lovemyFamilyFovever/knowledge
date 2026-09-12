@@ -292,7 +292,7 @@ html[data-theme="dark"] .iconbtn{background:color-mix(in oklab,var(--seed-surfac
 #article.pretty-mode .html-frame{height:calc(100vh - 175px);min-height:560px}
 .pretty-foot{display:flex;gap:12px;justify-content:center;margin-top:8px}
 /* 文末「读完这篇了？」标记条（renderArticle 动态插入） */
-.kb-finish-bar{display:flex;align-items:center;gap:10px;margin-top:28px;padding:12px 16px;
+.kb-finish-bar{display:flex;align-items:center;gap:10px;margin:28px;padding:12px 16px;
   border:1px solid var(--edge);border-radius:var(--radius-lg);background:var(--acc-soft)}
 .kb-finish-q{font-size:13px;color:var(--muted)}
 .kb-finish-bar .kb-btn{min-height:32px;padding:0 14px;font-size:12.5px}
@@ -333,7 +333,7 @@ html[data-theme="dark"] .chip{background:color-mix(in oklab,var(--seed-surface),
 .a-body img{max-width:100%;border-radius:10px}
 .a-body ul,.a-body ol{padding-left:26px;margin:10px 0}
 .a-body li{margin:4px 0}
-.html-frame-wrap{border:1px solid var(--edge);border-radius:12px;overflow:hidden;box-shadow:var(--shadow)}
+.html-frame-wrap{overflow:hidden;box-shadow:var(--shadow)}
 .html-frame{display:block;width:100%;height:calc(100vh - 230px);min-height:480px;border:0;background:var(--seed-surface)}
 html[data-theme="dark"] .html-frame{background:color-mix(in oklab,var(--seed-surface),var(--seed-bg) 30%)}
 /* 编辑器 overlay */
@@ -756,14 +756,6 @@ html.motion-ready .hero-mask[data-in="true"]{clip-path:inset(0 0 0 0)}
 [data-magnetic]{transition:box-shadow .3s var(--ease-out),transform .35s var(--ease-back)}
 [data-magnetic]:hover{box-shadow:var(--glow-accent)}
 .article-inner p.lead::first-letter{font-family:var(--font-display-latin);font-weight:700;font-size:3.6em;line-height:.82;float:left;margin:6px 10px 0 0;color:var(--acc)}
-/* 自定义光标（cursor.js 注入；触屏 / reduced-motion 不启用） */
-.cursor-dot,.cursor-ring{position:fixed;top:0;left:0;pointer-events:none;z-index:9999;will-change:transform}
-.cursor-dot{width:8px;height:8px;border-radius:50%;background:var(--acc);mix-blend-mode:difference;margin:-4px 0 0 -4px}
-.cursor-ring{width:26px;height:26px;border:1.5px solid var(--acc);border-radius:50%;margin:-13px 0 0 -13px;transition:width .22s var(--ease-out),height .22s var(--ease-out),border-color .22s}
-.cursor-ring.is-hover{width:46px;height:46px;margin:-23px 0 0 -23px;border-color:color-mix(in oklab,var(--acc),transparent 20%)}
-.cursor-label{position:fixed;z-index:9999;pointer-events:none;font:600 10.5px/1 var(--mono);letter-spacing:.08em;color:var(--acc);opacity:0;transform:translate(14px,14px);transition:opacity .18s}
-.cursor-label.show{opacity:1}
-html.cursor-on,html.cursor-on *{cursor:none !important}
 
 /* [16] prefers-reduced-motion：全部降级为静态（spec §4.3） ===== */
 @media (prefers-reduced-motion: reduce){
@@ -772,8 +764,6 @@ html.cursor-on,html.cursor-on *{cursor:none !important}
   html.motion-ready .hero-mask{clip-path:none;transition:none}
   .marquee-track{animation:none;transform:none}
   .breathe,.ripple,.skel::after,.i-spin{animation:none}
-  .cursor-dot,.cursor-ring,.cursor-label{display:none}
-  html.cursor-on,html.cursor-on *{cursor:auto !important}
   .kinetic-underline{background-size:0 0;padding-bottom:6px}
   .progress-bar{width:0}
 }

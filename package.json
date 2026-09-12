@@ -1,0 +1,18 @@
+{
+  "name": "knowledge-reader",
+  "version": "1.0.0",
+  "private": true,
+  "description": "知库 Knowledge — 本地知识库阅读器（工具链载体：ESLint / stylelint 等 devDependencies）",
+  "scripts": {
+    "lint:js": "eslint static/app.js static/kb-core.js static/cursor.js static/motion.js static/pages",
+    "lint:css": "stylelint \"static/**/*.css\"",
+    "lint:py": "python -m ruff check .",
+    "lint": "npm run lint:js && npm run lint:css"
+  },
+  "devDependencies": {
+    "eslint": "^9.39.2",
+    "@eslint/js": "^9.39.2",
+    "globals": "^16.5.0",
+    "stylelint": "^16.25.0"
+  }
+}

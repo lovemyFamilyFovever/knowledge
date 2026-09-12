@@ -269,4 +269,6 @@ if __name__ == "__main__":
         # 后即退出；不绑端口、不进服务循环（watcher 为 daemon 线程，随进程退出）
         print("IMPORT-CHECK OK")
         raise SystemExit(0)
-    app.run(host="127.0.0.1", port=5001, debug=False)
+    # --dev：开发模式热重载（改 py/模板自动重启，免手动重启）；默认生产行为不变
+    dev_mode = "--dev" in sys.argv
+    app.run(host="127.0.0.1", port=5001, debug=dev_mode, use_reloader=dev_mode)
