@@ -1,5 +1,5 @@
 /* 知库 reader 前端：主题、面板折叠、客户端路由、正文渲染、编辑/备注/收藏/删除、双链、快捷键 */
-window.APP_JS_VERSION = 22;
+window.APP_JS_VERSION = 23;
 
 const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
@@ -100,7 +100,10 @@ async function loadTree() {
 function tab(id, el) {
   $$(".rtab").forEach(t => { t.classList.remove("active"); t.setAttribute("aria-selected", "false"); });
   el.classList.add("active"); el.setAttribute("aria-selected", "true");
-  $$(".rpane").forEach(p => p.classList.remove("active")); $("#pane-" + id).classList.add("active");
+  if (!el.id) el.id = "rtab-" + id;
+  $$(".rpane").forEach(p => p.classList.remove("active"));
+  const pane = $("#pane-" + id); pane.classList.add("active");
+  pane.setAttribute("aria-labelledby", el.id);
   if (id === "links") loadLinks();
 }
 
