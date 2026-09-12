@@ -9,6 +9,9 @@ status: "imported"
 
 # OAuth 与 JWT
 
+
+> 📌 **导航**：本文是 **OAuth 与 JWT** 词条，属于 security 术语集。相关枢纽：[[公钥基础设施]]、[[密码学基础篇]]、[[零信任安全架构]]。
+
 ## 定义
 
 **一句话定义：** OAuth 是一个**授权**框架,允许用户授权第三方应用在有限范围内访问其在另一服务上的资源,而无需交出密码;JWT(JSON Web Token)是一种紧凑、自包含的令牌格式,用签名承载声明(claims),常在 OAuth / OpenID Connect 中传递身份与权限。
