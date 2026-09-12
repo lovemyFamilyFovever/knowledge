@@ -741,7 +741,9 @@ html[data-theme="dark"] .mv-tree{background:color-mix(in oklab,var(--seed-surfac
 .t-label{font:500 var(--fs-label)/1 var(--mono);letter-spacing:.14em;text-transform:uppercase}
 
 /* [14] Awwwards 动效基建（motion.js / cursor.js 挂载点；无 JS 时全部静态可见） ===== */
-html.motion-ready [data-reveal]{opacity:0;transform:translateY(var(--reveal-y,22px));transition:opacity calc(.7s * var(--motion-scale)) var(--ease-out),transform calc(.7s * var(--motion-scale)) var(--ease-out)}
+/* 默认纯淡入：位移对营销页有意义，对本地阅读器是突兀感来源（2026-09-13 用户反馈：
+   首页统计数字入场时「从下面往上挪一小段」）。需要位移的元素可自设 --reveal-y。 */
+html.motion-ready [data-reveal]{opacity:0;transform:translateY(var(--reveal-y,0px));transition:opacity calc(.45s * var(--motion-scale)) var(--ease-out),transform calc(.45s * var(--motion-scale)) var(--ease-out)}
 html.motion-ready [data-reveal].in{opacity:1;transform:none}
 html.motion-ready .hero-mask{clip-path:inset(0 0 100% 0);transition:clip-path calc(1.2s * var(--motion-scale)) var(--ease-out)}
 html.motion-ready .hero-mask[data-in="true"]{clip-path:inset(0 0 0 0)}

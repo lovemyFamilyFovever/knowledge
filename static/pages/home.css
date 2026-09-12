@@ -148,8 +148,8 @@ html[data-theme="dark"] .dom-card .n{color:hsl(var(--dh,158) 70% 66%)}
 html.motion-ready .home-hero [data-reveal],
 html.motion-ready .kpi-strip [data-reveal],
 html.motion-ready .dom-cards [data-reveal],
-html.motion-ready .home-pipe[data-reveal]{opacity:0;transform:translateY(var(--reveal-y,22px));
-  transition:opacity calc(.7s * var(--motion-scale,1)) var(--ease-out),transform calc(.7s * var(--motion-scale,1)) var(--ease-out)}
+html.motion-ready .home-pipe[data-reveal]{opacity:0;transform:translateY(var(--reveal-y,0px));
+  transition:opacity calc(.45s * var(--motion-scale,1)) var(--ease-out),transform calc(.45s * var(--motion-scale,1)) var(--ease-out)}
 html.motion-ready .home-hero [data-reveal].in,
 html.motion-ready .kpi-strip [data-reveal].in,
 html.motion-ready .dom-cards [data-reveal].in,
