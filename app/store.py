@@ -22,7 +22,11 @@ from pathlib import Path
 # 变成「多等一会儿」而不是 500。真等满 30s 仍拿不到锁才会抛，且调用方会记日志。
 SQLITE_BUSY_TIMEOUT_S = 30
 
-FM_RE = re.compile(r"\A---\n(.*?)\n---\n\n?", re.S)
+# frontmatter 块匹配：容忍 BOM 与 CRLF。Windows autocrlf 检出的语料在盘上是 CRLF
+# （687/690 篇），Obsidian/记事本还可能写入 BOM；旧写法 \A---\n 对这两类文件静默
+# 失配 → frontmatter 被当正文读（tags/title 丢）、写回时再叠一块新 frontmatter（双块损坏）。
+# JS 侧 fetchFmRaw 一直是 \uFEFF? + \r?\n 的宽口径，这里对齐。
+FM_RE = re.compile(r"\A\ufeff?---[ \t]*\r?\n(.*?)\r?\n---[ \t]*(?:\r?\n)(?:\r?\n)?", re.S)
 SKIP_DIRS = {"_inbox", "_assets", "_unfiled"}
 WRITABLE_EXTS = {".md"}
 SERVABLE_EXTS = {".md", ".html"}
@@ -167,12 +171,100 @@ def dump_frontmatter(fm: dict, body: str) -> str:
     for key, val in fm.items():
         if val is True:
             lines.append(f"{key}: true")
+        elif val is False:
+            # 旧写法把 False 写进字符串分支 → `favorite: "False"`（带引号的布尔污染语料，
+            # 工作区已出现实例）。只允许在「新建文件补 stamp」这类全量重建场景使用本函数。
+            lines.append(f"{key}: false")
         elif isinstance(val, list):
-            lines.append(f"{key}: [{', '.join(val)}]")
+            lines.append(f"{key}: [{', '.join(str(x) for x in val)}]")
         else:
             lines.append(f'{key}: "{val}"')
     lines.append("---")
     return "\n".join(lines) + "\n\n" + body
+
+
+# ---------------- frontmatter 单键行级手术（B1 修复核心） ----------------
+# favorite 切换、标签合并历史上用 parse→dump 整块重建：嵌套 YAML（hero:/features:
+# 多行块，语料实测 41 篇）会被压平毁结构、注释丢失、布尔被引号化。
+# 以下助手只改动目标键所在的一行（或插一行），其余字节原样保留；
+# 结构超出「顶层单行 key: value」的能力范围时宁可抛错，绝不猜。
+
+def _decode_md(raw: bytes) -> str:
+    """解码语料字节（BOM 保留在文本内由 FM_RE 容忍；\r\n 不转换——写回按字节保真）。"""
+    return raw.decode("utf-8-sig", errors="replace") if raw[:3] == b"\xef\xbb\xbf" \
+        else raw.decode("utf-8", errors="replace")
+
+
+def _encode_md(text: str, had_bom: bool) -> bytes:
+    return (("﻿" + text) if had_bom else text).encode("utf-8")
+
+
+def _fm_region(text: str):
+    """返回 (inner_start, inner_end)：frontmatter 内部文本的区间；无块返回 (None, None)。"""
+    m = FM_RE.match(text)
+    if not m:
+        return None, None
+    return m.span(1)
+
+
+def set_fm_scalar(text: str, key: str, value: str) -> str:
+    """行级设置 frontmatter 顶层标量键。无块时给文件补一个最小块（LF，新文件风格）。
+
+    Raises:
+        ValueError: key 以缩进形式出现在嵌套结构中（无法安全判定它是否就是目标键）。
+    """
+    start, end = _fm_region(text)
+    # 插入行必须随文档换行风格（autocrlf 语料是 CRLF，混入裸 \n 会让 git diff 脏整块）
+    eol = "\r\n" if "\r\n" in text[:400] else "\n"
+    if start is None:
+        return f"---{eol}{key}: {value}{eol}---{eol}{eol}" + text
+    inner = text[start:end]
+    if re.search(r"^[ \t]+" + re.escape(key) + r"[ \t]*:", inner, re.M):
+        raise ValueError(f"frontmatter 中「{key}」出现在缩进结构中，拒绝行级改写")
+    line_re = re.compile(r"(?m)^" + re.escape(key) + r"[ \t]*:.*$")
+    m = line_re.search(inner)
+    if m:
+        inner2 = inner[:m.start()] + f"{key}: {value}" + inner[m.end():]
+    elif inner.strip():
+        inner2 = f"{inner}{eol}{key}: {value}"
+    else:
+        inner2 = f"{key}: {value}"
+    return text[:start] + inner2 + text[end:]
+
+
+def toggle_fm_bool(path: Path, key: str) -> bool:
+    """按字节保真地切换 frontmatter 布尔键；返回新值。解析用扁平器只读当前值。"""
+    raw = path.read_bytes()
+    had_bom = raw[:3] == b"\xef\xbb\xbf"
+    text = _decode_md(raw)
+    fm, _ = parse_frontmatter(text)
+    new_val = not (fm.get(key) is True)
+    out = set_fm_scalar(text, key, "true" if new_val else "false")
+    path.write_bytes(_encode_md(out, had_bom))
+    return new_val
+
+
+def prepend_original_fm(path: Path, body: str) -> str | None:
+    """B6 修复支撑：body 丢了 frontmatter 而磁盘原文件有时，把原块补回头部。
+
+    返回拼接后的全文；文件不存在 / 原文件无可解析 frontmatter 时返回 None
+    （交给调用方走「新文件补 stamp」路径）。
+    原块统一转成 LF：调用方随后 write_text（newline=None 会把 \n 转 \r\n），
+    混入 \r\n 片段会被二次转换成 \r\r\n。
+    """
+    if not path.is_file():
+        return None
+    try:
+        raw = path.read_bytes()
+    except OSError:
+        return None
+    m = FM_RE.match(_decode_md(raw))
+    if not m:
+        return None
+    head = m.group(0).replace("\r\n", "\n")
+    if not head.endswith("\n"):
+        head += "\n"
+    return head + body.lstrip("\r\n")
 
 
 # ---------------- 语料扫描 ----------------
@@ -400,39 +492,87 @@ def find_similar_tags(census: dict[str, int]) -> list[tuple[str, str, float]]:
     return sorted(pairs, key=lambda x: -x[2])
 
 
+# tags 行只认这一种形态：顶层、单行、内联列表。多行 block 列表 / 缩进结构一律跳过不改。
+_TAGS_INLINE_RE = re.compile(r"(?m)^tags[ \t]*:[ \t]*\[([^\]\r\n]*)\][ \t]*$")
+
+
+def _merge_tags_line(inner: str, src: str, dst: str):
+    """在 frontmatter 内部文本上做一次标签替换。
+
+    返回 (new_inner, hit, skip_reason)：
+      hit=True → tags 行已改写（其余字节原样）；
+      skip_reason 非空 → 该文件的 tags 形态不安全，不改；
+      两者皆 False/None → 该文件的 tags 里没有 src。
+    """
+    m = _TAGS_INLINE_RE.search(inner)
+    if not m:
+        if re.search(r"(?m)^tags[ \t]*:[ \t]*$", inner):
+            return inner, False, "tags 为多行 block 列表（行级改写不安全）"
+        if re.search(r"(?m)^tags[ \t]*:", inner):
+            return inner, False, "tags 形态非内联列表"
+        return inner, False, None
+    items = [x.strip().strip("\"'") for x in m.group(1).split(",") if x.strip()]
+    if not any(t.lower() == src.lower() for t in items):
+        return inner, False, None
+    if any(re.search(r"^[ \t]+\S", ln) for ln in inner.splitlines()):
+        # 块内存在缩进行 = 有嵌套结构，tags 行虽在顶层但整块形态存疑，保守跳过
+        return inner, False, "frontmatter 含缩进结构，保守跳过"
+    new_items: list[str] = []
+    for t in items:
+        if t.lower() == src.lower():
+            if not any(x.lower() == dst.lower() for x in new_items):
+                new_items.append(dst)  # 大小写不敏感去重（原实现区分大小写，可留 AI/ai 双胞胎）
+        elif not any(x.lower() == t.lower() for x in new_items):
+            new_items.append(t)
+    replaced = "tags: [" + ", ".join(new_items) + "]"
+    return inner[:m.start()] + replaced + inner[m.end():], True, None
+
+
 def merge_tag(content: Path, src: str, dst: str, apply: bool = False) -> dict:
     """把标签 src 并入 dst（大小写不敏感匹配 src）。默认 dry-run。
-    dst 不存在时等价于重命名。返回受影响文档清单与预览 diff。"""
+
+    行级手术只改 tags 行：嵌套 YAML / 注释 / 其余字节不动（旧实现 parse→dump
+    整块重建，实测 41 篇带多行结构的语料会被压平毁结构 —— B1 修复）。
+    无法安全改写的文件进 skipped 清单并给原因，绝不硬写。
+    返回受影响文档清单（old_tags/new_tags）与 skipped。
+    """
     affected: list[dict] = []
-    for p, fm, body in iter_doc_frontmatter(content):
-        tags = fm.get("tags")
-        if not isinstance(tags, list):
+    skipped: list[dict] = []
+    for p, rel in md_files(content):
+        try:
+            raw = p.read_bytes()
+        except OSError:
             continue
-        new_tags: list[str] = []
-        hit = False
-        for t in tags:
-            if str(t).strip().lower() == src.lower():
-                hit = True
-                if dst not in new_tags:
-                    new_tags.append(dst)
-            else:
-                if str(t) not in new_tags:
-                    new_tags.append(str(t))
+        text = _decode_md(raw)
+        start, end = _fm_region(text)
+        if start is None:
+            continue
+        inner = text[start:end]
+        old_fm, _ = parse_frontmatter(text)
+        old_tags = old_fm.get("tags")
+        if not isinstance(old_tags, list) or not old_tags:
+            continue
+        new_inner, hit, why = _merge_tags_line(inner, src, dst)
+        if why:
+            skipped.append({"path": rel, "reason": why,
+                            "tags": [str(t) for t in old_tags]})
+            continue
         if not hit:
             continue
-        old_fm = list(tags)
-        fm2 = dict(fm)
-        fm2["tags"] = new_tags
-        new_raw = dump_frontmatter(fm2, body)
-        affected.append({"path": p, "old_tags": old_fm, "new_tags": new_tags,
-                         "new_raw": new_raw})
+        new_raw = text[:start] + new_inner + text[end:]
+        new_tags, _ = parse_frontmatter(new_raw)
+        affected.append({"path": p, "rel": rel, "raw": raw,
+                         "new_text": new_raw, "had_bom": raw[:3] == b"\xef\xbb\xbf",
+                         "old_tags": [str(t) for t in old_tags],
+                         "new_tags": [str(t) for t in (new_tags.get("tags") or [])]})
     if apply:
         for a in affected:
-            a["path"].write_text(a["new_raw"], encoding="utf-8")
+            a["path"].write_bytes(_encode_md(a["new_text"], a["had_bom"]))
     return {"src": src, "dst": dst, "apply": apply,
             "n_docs": len(affected),
-            "docs": [{"path": a["path"].relative_to(content).as_posix(),
-                      "old_tags": a["old_tags"], "new_tags": a["new_tags"]} for a in affected]}
+            "docs": [{"path": a["rel"], "old_tags": a["old_tags"],
+                      "new_tags": a["new_tags"]} for a in affected],
+            "n_skipped": len(skipped), "skipped": skipped}
 
 
 def rename_sub(content: Path, domain: str, old_sub: str, new_sub: str,

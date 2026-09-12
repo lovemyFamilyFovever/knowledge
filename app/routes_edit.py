@@ -45,14 +45,22 @@ def api_save():
     if not body.endswith("\n"):
         body += "\n"
     # 新文档（如 Obsidian 里直接创建）没有 frontmatter：首次保存时补齐身世信息；
-    # 已有 frontmatter 的原文照写，不做任何改写
+    # 已有 frontmatter 的原文照写，不做任何改写。
+    # B6 修复：编辑器里全选删除正文再保存，body 不含 fm —— 旧逻辑直接落 stamp，
+    # 把原文档的 title/tags/source/collected 全部抹掉。现在先尝试从磁盘原文件
+    # 找回 frontmatter 块补回头部；找不回（新文件/原文件本就无 fm）才补 stamp。
     fm, _ = parse_frontmatter(body)
     if not fm:
-        stamp = {
-            "title": p.stem, "tags": [], "source": "reader-edit",
-            "collected": time.strftime("%Y-%m-%d"), "status": "stable",
-        }
-        body = store.dump_frontmatter(stamp, body)
+        merged = store.prepend_original_fm(p, body)
+        if merged is not None:
+            body = merged
+            fm, _ = parse_frontmatter(body)
+        else:
+            stamp = {
+                "title": p.stem, "tags": [], "source": "reader-edit",
+                "collected": time.strftime("%Y-%m-%d"), "status": "stable",
+            }
+            body = store.dump_frontmatter(stamp, body)
     p.write_text(body, encoding="utf-8")
     # 外科手术式索引更新：仅替换本文档的正文与双链行（毫秒级，避免全量重建的等待）
     rel_posix = p.relative_to(content.resolve()).as_posix()
@@ -75,12 +83,17 @@ def api_note():
 
 @edit_bp.post("/api/favorite")
 def api_favorite():
+    """收藏切换。B1 修复：旧实现 parse→dump 整块重建 frontmatter，对含嵌套
+    YAML 结构的语料（实测 41 篇，如 handbook/index.md 的 hero:/features: 块）
+    会压平毁结构、把布尔写成带引号字符串。现改为行级手术：只动 favorite 一行，
+    其余字节原样；结构无法安全判定时拒绝改写并给出人话错误。"""
     data = request.get_json(force=True)
     p = _safe_rel(data.get("path", ""), WRITABLE_EXTS)
-    fm, body = parse_frontmatter(p.read_text(encoding="utf-8", errors="replace"))
-    fm["favorite"] = not (fm.get("favorite") is True)
-    p.write_text(store.dump_frontmatter(fm, body), encoding="utf-8")
-    return jsonify({"ok": True, "favorite": fm["favorite"]})
+    try:
+        new_val = store.toggle_fm_bool(p, "favorite")
+    except ValueError as e:
+        abort(422, f"该文档的 frontmatter 结构无法安全切换收藏：{e}")
+    return jsonify({"ok": True, "favorite": new_val})
 
 
 @edit_bp.get("/api/links")

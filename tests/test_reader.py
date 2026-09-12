@@ -149,6 +149,38 @@ def main() -> int:
         r = c.post("/api/favorite", json={"path": "ai/llm-and-agents/A.md"})
         check("/api/favorite 再点取消", r.get_json()["favorite"] is False)
 
+        # ── B1/B21 回归：嵌套 YAML + CRLF 语料的收藏切换必须字节保真 ──
+        # 放 _ 前缀目录（不进树、不进索引），避免扰动依赖树序的既有断言
+        hb = root / "content/_fmprobe"
+        hb.mkdir(parents=True, exist_ok=True)
+        NESTED_DOC = ("---\nlayout: home\nhero:\n  name: \"播客录\"\n  tagline: 思想足迹\n"
+                      "tags: [播客]\n---\n\n# 手册\n").replace("\n", "\r\n")
+        (hb / "index.md").write_bytes(NESTED_DOC.encode("utf-8"))
+        from app.store import set_fm_scalar, _decode_md, parse_frontmatter  # 行级助手直测（绕过路由的 safe_rel）
+        text = _decode_md((hb / "index.md").read_bytes())
+        out = set_fm_scalar(text, "favorite", "true")
+        check("嵌套 YAML 行级手术保留结构与 CRLF（无 \\r\\r、无块丢失）",
+              'hero:\r\n  name: "播客录"' in out and "tagline: 思想足迹" in out
+              and "favorite: true" in out and "\r\r" not in out
+              and out.count("---") == 2, out[:120])
+        check("行级手术后 favorite 可被正常读回",
+              parse_frontmatter(out)[0].get("favorite") is True)
+        # /api/favorite 全链路（普通扁平 fm 文档）：取消收藏写 false 而非带引号 "False"
+        r = c.post("/api/favorite", json={"path": "career/B.md"})   # B.md 种子即 favorite: true
+        after_b = (root / "content/career/B.md").read_text(encoding="utf-8")
+        check("取消收藏写 false 而非带引号 \"False\"",
+              r.get_json()["favorite"] is False and "favorite: false" in after_b
+              and 'favorite: "False"' not in after_b)
+
+        # ── B6 回归：清空正文后保存，原 frontmatter 必须找回而非被 stamp 覆盖 ──
+        r = c.post("/api/save", json={"path": "ai/llm-and-agents/A.md", "content": "# 新开头\n"})
+        saved_a = (root / "content/ai/llm-and-agents/A.md").read_text(encoding="utf-8")
+        check("空正文保存保留原 frontmatter 身世",
+              r.status_code == 200 and 'title: "测试文档A"' in saved_a
+              and saved_a.startswith("---") and "# 新开头" in saved_a)
+        # 恢复 A 原文（本检查清空了正文/双链，后面的 /api/links 断言依赖它们）
+        c.post("/api/save", json={"path": "ai/llm-and-agents/A.md", "content": DOC_A})
+
         # 无 frontmatter 的新文档（Obsidian 直接创建）：保存时自动补齐身世信息
         nf = root / "content/cookbook/fragment"
         nf.mkdir(parents=True, exist_ok=True)
