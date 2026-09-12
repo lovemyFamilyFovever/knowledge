@@ -8,9 +8,9 @@ import urllib.request
 
 BASE = "http://127.0.0.1:5001"
 STAMP = time.strftime("%H%M%S")
-DOC = f"projects/dsh-agent/architecture/_probe巡检{STAMP}.md"
-DST = f"projects/dsh-agent/architecture/_probe巡检{STAMP}b.md"
-DST2 = f"projects/reviews/_probe巡检{STAMP}.md"
+DOC = f"projects/dsh-agent/architecture/probe巡检{STAMP}.md"
+DST = f"projects/dsh-agent/architecture/probe巡检{STAMP}b.md"
+DST2 = f"projects/reviews/probe巡检{STAMP}.md"
 results = []
 
 
@@ -88,17 +88,19 @@ st, r = call("GET", "/api/stats?path=" + urllib.request.quote(DST2))
 check("stats 文档统计", st == 200 and r.get("chars", 0) > 0, str(r)[:80])
 
 # 12. tag/merge 预检（apply=false）
-st, r = call("POST", "/api/tag/merge", {"src": "_probe不存在的标签", "dst": "巡检临时", "apply": False})
+st, r = call("POST", "/api/tag/merge", {"src": "probe不存在的标签", "dst": "巡检临时", "apply": False})
 check("tag/merge 预检(apply=false)", st == 200 and r.get("ok") and r.get("n_docs") == 0, str(r)[:80])
 
-# 13. tag/merge 真合并：给探针文档打标签后合并
+# 13. tag/merge 真合并：给探针文档打标签后合并（save 自动补的 stamp 已有 tags: []，
+#     必须替换该行而非另插一行——重复 YAML 键是脏数据，parse_frontmatter 取首个会读成空列表）
 import io
+import re as _re
 p = io.open("content/" + DST2, encoding="utf-8").read()
-p2 = p.replace('source: "reader-edit"', 'source: "reader-edit"\ntags: ["_probe标签A"]', 1)
-if p2 == p:
-    p2 = p.replace("collected:", "tags: [\"_probe标签A\"]\ncollected:", 1)
+p2, n_sub = _re.subn(r"(?m)^tags:\s*\[\]\s*$", 'tags: ["probe标签A"]', p, count=1)
+if n_sub == 0:
+    raise SystemExit("patrol 自检失败：探针文档无 tags: [] 行可注入，检查 save stamp 格式")
 io.open("content/" + DST2, "w", encoding="utf-8").write(p2)
-st, r = call("POST", "/api/tag/merge", {"src": "_probe标签A", "dst": "_probe标签B", "apply": True})
+st, r = call("POST", "/api/tag/merge", {"src": "probe标签A", "dst": "probe标签B", "apply": True})
 check("tag/merge 真合并+FTS重建", st == 200 and r.get("ok") and r.get("n_docs", 0) == 1, str(r)[:100])
 
 # 14. delete 软删（清理探针，连同 notes/html 旁挂）
