@@ -1,5 +1,5 @@
 /* 知库 reader 前端：主题、面板折叠、客户端路由、正文渲染、编辑/备注/收藏/删除、双链、快捷键 */
-window.APP_JS_VERSION = 20;
+window.APP_JS_VERSION = 21;
 
 const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
@@ -13,11 +13,10 @@ const toast = m => {
   t.innerHTML = m; t.classList.add("show");
   clearTimeout(t._kbh); t._kbh = setTimeout(() => t.classList.remove("show"), 2600);
 };
-/* 统一构造 /doc URL：域根文档补 _root 段，逐段 encode，避免 404 */
-const docUrl = rel => { let s = String(rel).replace(/\.md$/, "").split("/").filter(Boolean); if (s.length === 2) s = [s[0], "_root", s[1]]; return "/doc/" + s.map(encodeURIComponent).join("/"); };
-/* 问题7 修复：统一构造 /raw URL，逐段 encode。fetchFmRaw 此前裸拼 DOC.rel，
-   文件名含空格/中文标点/特殊字符时 fetch 404，frontmatter 保真路径失效。 */
-const rawUrl = rel => "/raw/" + String(rel ?? "").split("/").filter(Boolean).map(encodeURIComponent).join("/");
+/* 问题8（阶段1）：/doc 与 /raw 的 URL 构造唯一实现在 kb-core.util（_root 补段 + 逐段 encode），
+   app.js 只转调。此前 docUrl 在 app.js 与 kb-core 双实现、navigate 里还有第三处局部影子。 */
+const docUrl = rel => KB.util.docUrl(rel);
+const rawUrl = rel => KB.util.rawUrl(rel);
 
 /* 统一图标：引用 base.html 精灵表 #i-<name>，替代所有彩色 emoji */
 const icon = (n, s = 14) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex:none;display:inline-block;vertical-align:-.15em"><use href="#i-${n}"/></svg>`;
@@ -166,13 +165,49 @@ function renderArticle(forceMd) {
         div.textContent = b.textContent;
         b.closest("pre").replaceWith(div);
       });
-      window.mermaid.run({ nodes: el.querySelectorAll("div.mermaid") }).catch(() => {});
+      window.mermaid.run({ nodes: el.querySelectorAll("div.mermaid") }).then(() => {
+        enhanceArticleDOM(el); // mermaid div 是异步产物，角标在此补挂（codeblock 部分幂等跳过）
+      }).catch(() => {});
     }).catch(() => toast("mermaid 库加载失败，图示暂以代码块显示"));
   }
   if (window.hljs) el.querySelectorAll("pre code:not(.language-mermaid)").forEach(b => {
     try { hljs.highlightElement(b); } catch (e) {}
   });
+  enhanceArticleDOM(el); // 问题8：渲染方直接产出 final-form，不再由 observer 事后打补丁
   buildToc();
+  document.dispatchEvent(new CustomEvent("kb:article-rendered")); // 页面级增强（Motion 刷新等）的显式挂点
+}
+
+/* ---------- 正文后处理（阶段1·问题8，自 workbench.js observer 层迁入） ----------
+   codeblock 顶栏（语言标签 + 复制）、mermaid 角标、H2 scrub 下划线属性。
+   与 renderArticle 同帧执行：渲染方输出即最终形态，杜绝「半成品 + 赌时序清洗」的隐性契约。 */
+function enhanceArticleDOM(el) {
+  el.querySelectorAll(".a-body pre").forEach(pre => {
+    if (pre.closest(".codeblock")) return; // 幂等：已包壳跳过
+    if (pre.querySelector("code.language-mermaid")) return; // mermaid 源稍后整体替换为 div，不包壳
+    const code = pre.querySelector("code");
+    if (!code) return;
+    const m = (code.className || "").match(/language-([\w+-]+)/);
+    const lang = m ? m[1] : "text";
+    const wrap = document.createElement("div"); wrap.className = "codeblock";
+    const head = document.createElement("div"); head.className = "cb-head";
+    head.innerHTML = `<span class="cb-lang">${esc(lang)}</span>` +
+      `<button type="button" class="cb-copy" title="复制代码">${icon("copy-path", 12)}<span>复制</span></button>`;
+    pre.parentNode.insertBefore(wrap, pre);
+    wrap.appendChild(head); wrap.appendChild(pre); // pre 原地移入，hljs 染色保留
+    head.querySelector(".cb-copy").addEventListener("click", () =>
+      copyText(code.textContent || "", "代码已复制到剪贴板"));
+  });
+  el.querySelectorAll(".mermaid").forEach(div => {
+    if (div.querySelector(".m-cap")) return;
+    const cap = document.createElement("span");
+    cap.className = "m-cap";
+    cap.innerHTML = `${icon("md-code", 12)}<span>mermaid</span>`;
+    div.appendChild(cap);
+  });
+  el.querySelectorAll(".a-body h2").forEach(h => {
+    if (!h.hasAttribute("data-scrub-underline")) h.setAttribute("data-scrub-underline", "");
+  });
 }
 
 function buildToc() {
@@ -233,9 +268,11 @@ function renderDocList(docs, subLabel, activeName) {
   const title = $("#list-title");
   if (title) title.innerHTML = `${esc(subLabel)}<span class="cnt">${docs.length}</span><button class="fold" onclick="togglePanel('list')" title="收起列表"><svg><use href="#i-fold-l"/></svg></button>`;
   const list = $("#doclist"); if (!list) return;
+  /* 问题8：星标 ◈ 直接输出 SVG（原 workbench.js cleanChars 事后清洗的产物），
+     href 统一走 docUrl(rel)（原手工拼接是第三份 encode 逻辑）。 */
   list.innerHTML = docs.map(d => `
-    <a class="doc ${d.name === activeName ? "active" : ""}" data-name="${esc(d.name)}" draggable="true" href="/doc/${CUR.domain}/${CUR.sub}/${d.name.split("/").map(encodeURIComponent).join("/")}">
-      <div class="doc-t">${d.has_html ? '<span class="star">◈</span>' : ""}${esc(d.title)}</div>
+    <a class="doc ${d.name === activeName ? "active" : ""}" data-name="${esc(d.name)}" draggable="true" href="${docUrl(`${CUR.domain}/${CUR.sub}/${d.name}.md`)}">
+      <div class="doc-t">${d.has_html ? `<span class="star" title="有美化版">${icon("external-link", 12)}</span>` : ""}${esc(d.title)}</div>
       <div class="doc-meta">
         ${(d.tags && d.tags.length) ? d.tags.map(t => `<span class="mini tag">${esc(t)}</span>`).join("") : `<span class="mini untag">未打标</span>`}
         ${d.has_html ? `<span class="mini html">美化版</span>` : ""}
@@ -248,7 +285,7 @@ function renderCrumb() {
   const crumb = $("#crumb"); if (!crumb || !DOC) return;
   const dirs = DOC.rel.split("/").slice(0, -1).join("/");
   crumb.innerHTML = `content<b>/</b>${esc(dirs)}<span class="sep">·</span><b>${esc(DOC.title)}</b><span class="spacer"></span>
-    ${DOC.has_html ? `<button class="iconbtn" onclick="openPretty()" title="弹窗打开整页美化版">◈ 美化版</button>` : ""}
+    ${DOC.has_html ? `<button class="iconbtn" onclick="openPretty()" title="弹窗打开整页美化版">${icon("external-link", 13)} 美化版</button>` : ""}
     ${!DOC.is_html ? `<button class="iconbtn" onclick="openEditor()">${icon("edit",13)} 编辑</button>
     <button class="iconbtn" onclick="deleteDoc()" title="移入 content/_trash/">${icon("trash",13)} 删除</button>` : ""}
     <button class="iconbtn primary ${DOC.favorite ? "faved" : ""}" id="fav-btn" onclick="toggleFav()">${icon("star",13)} ${DOC.favorite ? "已收藏" : "收藏"}</button>`;
@@ -303,9 +340,11 @@ async function navigate(url, push) {
     const s = findSub(decodeURIComponent(segs[1]), decodeURIComponent(segs[2]));
     if (!s || !s.docs.length) { location.href = url; return; }
     const first = s.docs[0];
-    const docUrl = `/doc/${segs[1]}/${segs[2]}/${first.name.split("/").map(encodeURIComponent).join("/")}`;
+    // 问题8：原这里是局部 `const docUrl = …` 手工拼接（第三份 _root/encode 逻辑），
+    // 改名并统一走 KB.util.docUrl(rel) 单一实现。
+    const firstDocUrl = docUrl(`${segs[1]}/${segs[2]}/${first.name}.md`);
     if (push) history.pushState({}, "", url);
-    await navigate(docUrl, false);
+    await navigate(firstDocUrl, false);
     return;
   }
   location.href = url; // 其余页面（总览/搜索/收藏）走整页加载
@@ -559,16 +598,40 @@ async function toggleFav() {
 
 /* ---------- 树缓存持久化（增删改后即时同步） ---------- */
 function persistTree() {
-  try { localStorage.setItem(LS_TREE, JSON.stringify({ sig: "(本地已改)", domains: TREE })); } catch (e) {}
+  /* 问题10：废除 sig:"(本地已改)" 假标记——它从不参与任何校验（loadTree 只看
+     domains 数组），留着只会让人误以为有 sig 机制。 */
+  try { localStorage.setItem(LS_TREE, JSON.stringify({ domains: TREE })); } catch (e) {}
 }
-/* 缓存失效唯一入口（原「TREE=null + removeItem(LS_TREE) + DIRTREE=null」三连散落 3 处，
-   阶段 0 先收拢为一个函数；阶段 1 将升级为 invalidate(kind) 精细失效）。 */
-function invalidateCaches() {
-  TREE = null;
-  try { localStorage.removeItem(LS_TREE); } catch (e) {}
-  DIRTREE = null;
+/* 缓存失效唯一入口（问题10）：kind ∈ tree | dirtree | palette | all。
+   TREE/LS_TREE/DIRTREE 的作废只允许走这里；palette 缓存在 kb-core 手里，
+   经 KB.palette.dropCache 接线。后端写响应携带全库 sig 的集中失效属阶段 2+。 */
+function invalidate(kind) {
+  kind = kind || "all";
+  if (kind === "all" || kind === "tree") {
+    TREE = null;
+    try { localStorage.removeItem(LS_TREE); } catch (e) {}
+  }
+  if (kind === "all" || kind === "dirtree") { DIRTREE = null; DIRTREE_T = 0; }
+  if (kind === "all" || kind === "palette") {
+    if (window.KB && KB.palette && KB.palette.dropCache) KB.palette.dropCache();
+  }
 }
-window.invalidateCaches = invalidateCaches;
+window.invalidate = invalidate; // 统一失效入口（pages/*.js 可用；invalidateCaches 别名在 misc 切换后已删除）
+/* 写操作（移动/重命名/新建/删除等）后的统一局部重渲染（问题9）：
+   缓存失效 → 重拉 /api/tree → 重画分类树 + 当前子域列表；当前文档自身被移动时
+   由调用方再走 navigate(docUrl(dst)) 客户端跳转。禁止 setTimeout + location.reload——
+   此前 6 处 reload 把 toast 随页面一起销毁，900–1600ms 假死还丢反馈。
+   非工作台页（inbox/tags）各自有数据源，只需 invalidate("all") 后做局部 DOM 更新。 */
+async function afterMutation() {
+  invalidate("all");
+  await loadTree();
+  renderTree();
+  if (WORKBENCH && CUR) {
+    const s = findSub(CUR.domain, CUR.sub);
+    if (s) renderDocList(s.docs, s.label, DOC && DOC.name);
+  }
+}
+window.afterMutation = afterMutation;
 
 /* ---------- 删除（软删除：移入 _trash，两步确认，列表实时更新） ---------- */
 let deleteArmed = false, deleteArmTimer = null;
@@ -652,6 +715,7 @@ function loadLinks() {
         (back || `<div style="font-size:12.5px;color:var(--faint);padding:4px 2px">还没有。写别的文档时打个 [[${esc(DOC.title)}]] 就连上了。</div>`) +
         `<div class="home-sec" style="margin-top:16px">它引用 · ${d.outgoing.length}</div>` +
         (fwd || `<div style="font-size:12.5px;color:var(--faint);padding:4px 2px">本文没有 [[双链]]。</div>`);
+      document.dispatchEvent(new CustomEvent("kb:links-rendered")); // roam 增强挂点（问题8：替代 observer）
     })
     .catch(() => { pane.innerHTML = `<div class="empty" style="padding:10px 2px">加载失败，稍后再试。</div>`; linksLoadedFor = null; });
 }
@@ -1043,9 +1107,11 @@ async function moveDocPrompt(rel) {
     if (!r.ok || !d.ok) { okBtn.disabled = false; okBtn.textContent = "移动"; toast("移动失败：" + (d.error || r.status)); return; }
     close();
     toast(`已移动至 <span class='mono'>${esc(d.dst)}</span> · 索引已级联更新`);
-    invalidateCaches(); // 树缓存失效，下次渲染重新拉取
-    const url = "/doc/" + [state.dom, state.sub, nm].map(encodeURIComponent).join("/");
-    location.href = url; // 移动涉及树/列表重排，整页跳转最可靠
+    // 问题9：不再 location.href 整页跳转。局部重渲染树/列表；
+    // 当前正看的文档被移动时走客户端路由打开新位置。
+    const movedCur = !!(DOC && DOC.rel === rel);
+    await afterMutation();
+    if (movedCur) await navigate(docUrl(d.dst), true);
   };
 }
 
@@ -1094,9 +1160,9 @@ function wireDragMove() {
         const dj = await r.json().catch(() => ({}));
         if (!r.ok || !dj.ok) { toast("移动失败：" + (dj.error || r.status)); return; }
         toast(`已移动至 <span class='mono'>${esc(dj.dst)}</span> · 索引已级联更新`);
-        invalidateCaches();
-        if (rel === (DOC && DOC.rel)) location.href = "/doc/" + [dom, target, nm].map(encodeURIComponent).join("/");
-        else location.reload();
+        const movedCur = rel === (DOC && DOC.rel);
+        await afterMutation();
+        if (movedCur) await navigate(docUrl(dj.dst), true);
       })();
     }
   }));
@@ -1138,7 +1204,10 @@ document.addEventListener("contextmenu", e => {
             const rel = `${base}/${nm}.md`;
             const r = await fetch("/api/save", { method: "POST", headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ path: rel, content: `# ${nm}\n\n` }) });
-            if (r.ok) { invalidateCaches(); location.href = "/doc/" + rel.slice(0, -3).split("/").map(encodeURIComponent).join("/"); }
+            if (r.ok) {
+              await afterMutation();
+              await navigate(docUrl(rel), true); // 问题9：客户端打开新文档，不整页跳转
+            }
             else toast("创建失败：" + r.status);
           } },
         { icon: icon("copy"), label: "复制目录路径", fn: () => copyText(base, "已复制路径") },

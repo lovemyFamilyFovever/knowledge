@@ -1,13 +1,15 @@
 /* =====================================================================
-   知库 · Workbench 页面级交互（T1 产出 · frontend-redesign-tasks/T1-workbench-阅读.md）
-   职责：不修改 app.js 公共段，只在页面级增强——
+   知库 · Workbench 页面级交互
+   阶段1·问题8 收口：body 级 MutationObserver + scheduleEnhance(60ms) +
+   cleanChars/enhanceCodeblock/enhanceMermaid 整层已删除——渲染方（app.js
+   renderArticle/renderDocList/renderCrumb）直接产出 final-form DOM，
+   codeblock 包壳与 mermaid 角标在 app.js::enhanceArticleDOM 同帧完成。
+   「渲染半成品 + 事后赌时序打补丁」的隐性契约不复存在。
+   本文件只保留三类真·页面级职责：
      [1] 文档列表密度切换（compact / comfortable，localStorage 持久化）
-     [2] 阅读页增强：codeblock 顶栏（语言标签 + copy SVG）、mermaid 角标、
-         字符图标（◈）→ 内联 SVG 清洗、H2 kinetic-underline（滚动时 --hairline 被 --acc 点亮）
-     [3] 编辑器 overlay：删除按钮与 crumb 删除按钮的两步确认状态同步
-     [4] 右 rail tabs 键盘可达（Enter/Space 触发，方向键切换）
-     [5] 面板进视口 stagger reveal + Motion.refresh
-   全部幂等；Motion 缺失时静态可用。
+     [2] 右 rail tabs 键盘可达（Enter/Space 触发，方向键切换）
+     [3] 双链面板 roam 增强（监听 app.js 的 kb:links-rendered 显式事件）
+   另：编辑器删除按钮状态同步（§4，随阶段2问题11 确认交互统一后一并移除）。
    ===================================================================== */
 (function () {
   "use strict";
@@ -48,100 +50,7 @@
     });
   }
 
-  /* ---------- [2] 阅读页增强 ---------- */
-  function enhanceCodeblock(pre) {
-    if (pre.dataset.cbBound) return;
-    var code = pre.querySelector("code");
-    if (!code) return;
-    var lang = "text";
-    var m = (code.className || "").match(/language-([\w+-]+)/);
-    if (m) lang = m[1];
-    else if ((code.className || "").indexOf("hljs") >= 0) {
-      m = (code.className || "").match(/hljs-keyword/) ? null : null;
-    }
-    var wrap = document.createElement("div");
-    wrap.className = "codeblock";
-    var head = document.createElement("div");
-    head.className = "cb-head";
-    var langEl = document.createElement("span");
-    langEl.className = "cb-lang";
-    langEl.textContent = lang;
-    var copy = document.createElement("button");
-    copy.type = "button";
-    copy.className = "cb-copy";
-    copy.title = "复制代码";
-    copy.innerHTML = SVG.replace(":id:", "i-copy-path") + "<span>复制</span>";
-    copy.addEventListener("click", function () {
-      var text = code.textContent || "";
-      if (typeof window.copyText === "function") window.copyText(text, "代码已复制到剪贴板");
-      else if (navigator.clipboard) navigator.clipboard.writeText(text).then(function () {}, function () {});
-    });
-    head.appendChild(langEl);
-    head.appendChild(copy);
-    pre.parentNode.insertBefore(wrap, pre);
-    wrap.appendChild(head);
-    wrap.appendChild(pre); /* pre 原地移入，hljs 染色保留 */
-    pre.dataset.cbBound = "1";
-    wrap.dataset.cbBound = "1";
-  }
-
-  function enhanceMermaid(div) {
-    if (div.dataset.capBound) return;
-    div.dataset.capBound = "1";
-    var cap = document.createElement("span");
-    cap.className = "m-cap";
-    cap.innerHTML = SVG.replace(":id:", "i-md-code") + "<span>mermaid</span>";
-    div.appendChild(cap);
-  }
-
-  function cleanChars() {
-    /* app.js 动态渲染的文档星标（◈）与 crumb 美化版（◈）→ 内联 SVG */
-    $$(".doc-t .star").forEach(function (s) {
-      if (s.dataset.svgBound) return;
-      s.dataset.svgBound = "1";
-      s.innerHTML = SVG.replace(":id:", "i-external-link");
-      s.title = "有美化版";
-    });
-    $$("#crumb .iconbtn, #crumb a.iconbtn").forEach(function (b) {
-      if (b.dataset.svgBound) return;
-      if (/^\s*◈/.test(b.textContent)) {
-        b.dataset.svgBound = "1";
-        b.innerHTML = SVG.replace(":id:", "i-external-link") + " 美化版";
-      }
-    });
-  }
-
-  function enhanceArticle() {
-    var art = $("#article");
-    if (!art) return;
-    $$("#article .a-body pre").forEach(enhanceCodeblock);
-    $$("#article .mermaid").forEach(enhanceMermaid);
-    /* H2 底部 hairline 随滚动被 --acc 点亮（T0 motion.js scrubUnderline） */
-    $$("#article .a-body h2").forEach(function (h) {
-      if (!h.hasAttribute("data-scrub-underline")) h.setAttribute("data-scrub-underline", "");
-    });
-    cleanChars();
-    refreshMotion();
-  }
-
-  /* ---------- [3] 编辑器删除按钮状态同步（复用 app.js 两步确认） ---------- */
-  var _origDelete = window.deleteDoc;
-  if (typeof _origDelete === "function") {
-    window.deleteDoc = function () {
-      var r = _origDelete.apply(this, arguments);
-      syncEditorDelete();
-      if (r && typeof r.then === "function") r.then(syncEditorDelete, syncEditorDelete);
-      return r;
-    };
-  }
-  function syncEditorDelete() {
-    var ed = $("#ed-del");
-    if (!ed) return;
-    var crumbDel = $$("#crumb .iconbtn").filter(function (b) { return b.textContent.indexOf("删除") >= 0; })[0];
-    if (crumbDel) ed.innerHTML = crumbDel.innerHTML;
-  }
-
-  /* ---------- [4] rail tabs 键盘可达 ---------- */
+  /* ---------- [2] rail tabs 键盘可达 ---------- */
   function bindTabs() {
     $$(".rtab").forEach(function (t) {
       if (t.dataset.kbBound) return;
@@ -158,7 +67,9 @@
     });
   }
 
-  /* ---------- [6] 双链面板：已解析的链接加「→ 加入串学」（需求4） ---------- */
+  /* ---------- [3] 双链面板：已解析的链接加「→ 加入串学」（需求4） ---------- */
+  /* app.js loadLinks 渲染完成后派发 kb:links-rendered——显式事件挂点，
+     替代原先 observer 对 body 变更的盲目追赶。 */
   function enhanceRoamLinks() {
     var pane = document.getElementById("pane-links");
     if (!pane) return;
@@ -176,52 +87,36 @@
       a.parentNode.insertBefore(b, a.nextSibling);
     });
   }
+  document.addEventListener("kb:links-rendered", enhanceRoamLinks);
 
-  /* ---------- [5] 动效刷新（幂等） ---------- */
-  var motionTimer = null;
-  function refreshMotion() {
+  /* ---------- 编辑器删除按钮状态同步（复用 app.js 两步确认；阶段2问题11 统一删除） ---------- */
+  var _origDelete = window.deleteDoc;
+  if (typeof _origDelete === "function") {
+    window.deleteDoc = function () {
+      var r = _origDelete.apply(this, arguments);
+      syncEditorDelete();
+      if (r && typeof r.then === "function") r.then(syncEditorDelete, syncEditorDelete);
+      return r;
+    };
+  }
+  function syncEditorDelete() {
+    var ed = $("#ed-del");
+    if (!ed) return;
+    var crumbDel = $$("#crumb .iconbtn").filter(function (b) { return b.textContent.indexOf("删除") >= 0; })[0];
+    if (crumbDel) ed.innerHTML = crumbDel.innerHTML;
+  }
+
+  /* ---------- 动效：正文渲染完成后刷新 reveal（显式事件，非 observer） ---------- */
+  document.addEventListener("kb:article-rendered", function () {
     if (!window.Motion || window.Motion.reduced) return;
-    clearTimeout(motionTimer);
-    motionTimer = setTimeout(function () { try { window.Motion.refresh(); } catch (e) {} }, 150);
-  }
-
-  /* ---------- 变更观察：app.js 客户端路由会整体重写 doclist/article/crumb ---------- */
-  var pending = false;
-  function scheduleEnhance() {
-    if (pending) return;
-    pending = true;
-    setTimeout(function () {
-      pending = false;
-      buildDensityToggle();
-      enhanceArticle();
-      cleanChars();
-      bindTabs();
-      enhanceRoamLinks();
-    }, 60);
-  }
+    setTimeout(function () { try { window.Motion.refresh(); } catch (e) {} }, 150);
+  });
 
   function init() {
     buildDensityToggle();
-    enhanceArticle();
     bindTabs();
     syncEditorDelete();
-    var target = document.body;
-    if (window.MutationObserver) {
-      new MutationObserver(function (muts) {
-        for (var i = 0; i < muts.length; i++) {
-          var m = muts[i];
-          if (m.type !== "childList" || !m.addedNodes.length) continue;
-          for (var j = 0; j < m.addedNodes.length; j++) {
-            var n = m.addedNodes[j];
-            if (n.nodeType !== 1) continue;
-            /* 编辑器开合也会增删 hint 子树——排除 .editor 内部，避免误刷 */
-            if (n.closest && n.closest("#editor") && !n.closest("#article")) continue;
-            scheduleEnhance();
-            return;
-          }
-        }
-      }).observe(target, { childList: true, subtree: true });
-    }
+    enhanceRoamLinks(); // 服务端已渲染双链面板时（首屏直开 links tab 极少），兜底跑一次
   }
 
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init);

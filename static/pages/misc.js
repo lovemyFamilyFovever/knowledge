@@ -62,49 +62,75 @@ function suggestMerges(list) {
 }
 
 function initTags() {
-  const cloud = document.getElementById("tag-cloud");
-  if (!cloud) return;
+  if (!document.getElementById("tag-cloud")) return;
   let TAGDATA = [];
-  try { TAGDATA = JSON.parse(document.getElementById("tags-data").textContent); } catch (e) {}
   const byTag = {};
-  TAGDATA.forEach(x => { byTag[x.t] = x; });
+  function loadData() {
+    try { TAGDATA = JSON.parse(document.getElementById("tags-data").textContent); } catch (e) { TAGDATA = []; }
+    Object.keys(byTag).forEach(k => delete byTag[k]);
+    TAGDATA.forEach(x => { byTag[x.t] = x; });
+  }
+  loadData();
   const drawer = document.getElementById("tag-drawer");
   const drawerH = document.getElementById("drawer-h");
   const drawerDocs = document.getElementById("drawer-docs");
 
-  /* 1) 相似合并建议卡（客户端启发式；实际合并仍走两段确认 + 后端 dry-run 预览） */
-  const suggSec = document.getElementById("sugg-sec");
-  const grid = document.getElementById("merge-suggest");
-  if (suggSec && grid) {
-    const sugg = suggestMerges(TAGDATA);
-    if (sugg.length) {
-      suggSec.hidden = false;
-      grid.innerHTML = sugg.map(s =>
-        `<button type="button" class="merge-card" data-src="${esc(s.src)}" data-dst="${esc(s.dst)}" data-n="${s.n}">
-          <span class="m-src">「${esc(s.src)}」</span>
-          <svg class="arrow-ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-move-arrow"/></svg>
-          <span class="t-new">${esc(s.dst)}</span>
-          <span class="meta">${s.n} 篇 · 合并建议</span>
-        </button>`).join("");
-      grid.addEventListener("click", e => {
-        const b = e.target.closest(".merge-card");
-        if (b) mergeTagPrompt(b.dataset.src, b.dataset.dst);
-      });
-    }
+  /* 问题9：合并成功后不再 setTimeout+reload。改 fetch("/tags") 取渲染后的 HTML 片段，
+     替换 #tag-cloud / #tags-data / 建议区——服务端模板仍是标签云的唯一渲染源（不在 JS 里
+     复制第二套胶囊 HTML）；本文件所有事件都挂在 document 上委托，元素整体替换不丢监听。 */
+  async function refreshTagsPage() {
+    const r = await fetch("/tags", { credentials: "same-origin" });
+    if (!r.ok) return false;
+    const txt = await r.text();
+    const fd = new DOMParser().parseFromString(txt, "text/html");
+    const nCloud = fd.getElementById("tag-cloud"), oCloud = document.getElementById("tag-cloud");
+    const nData = fd.getElementById("tags-data"), oData = document.getElementById("tags-data");
+    if (!nCloud || !oCloud) return false;
+    oCloud.replaceWith(document.importNode(nCloud, true));
+    if (nData && oData) oData.replaceWith(document.importNode(nData, true));
+    const nSugg = fd.getElementById("sugg-sec"), oSugg = document.getElementById("sugg-sec");
+    if (nSugg && oSugg) oSugg.replaceWith(document.importNode(nSugg, true));
+    loadData();
+    renderSugg();
+    if (drawer) { drawer.hidden = true; drawer.dataset.tag = ""; }
+    document.querySelectorAll(".t5-sec .t.open").forEach(x => x.classList.remove("open"));
+    tagSelUpdate();
+    return true;
   }
 
-  /* 2) 胶囊交互：勾选批量合并；点胶囊展开文档抽屉；并入按钮走单标签合并 */
-  cloud.addEventListener("click", e => {
-    const t = e.target.closest(".t");
+  /* 1) 相似合并建议卡（客户端启发式；实际合并仍走两段确认 + 后端 dry-run 预览） */
+  function renderSugg() {
+    const suggSec = document.getElementById("sugg-sec");
+    const grid = document.getElementById("merge-suggest");
+    if (!suggSec || !grid) return;
+    const sugg = suggestMerges(TAGDATA);
+    if (!sugg.length) { suggSec.hidden = true; grid.innerHTML = ""; return; }
+    suggSec.hidden = false;
+    grid.innerHTML = sugg.map(s =>
+      `<button type="button" class="merge-card" data-src="${esc(s.src)}" data-dst="${esc(s.dst)}" data-n="${s.n}">
+        <span class="m-src">「${esc(s.src)}」</span>
+        <svg class="arrow-ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-move-arrow"/></svg>
+        <span class="t-new">${esc(s.dst)}</span>
+        <span class="meta">${s.n} 篇 · 合并建议</span>
+      </button>`).join("");
+  }
+  renderSugg();
+
+  /* 2) 胶囊交互：勾选批量合并；点胶囊展开文档抽屉；并入按钮走单标签合并。
+     全部 document 委托（元素会被 refreshTagsPage 整体替换，绑在 cloud/grid 上会丢） */
+  document.addEventListener("click", e => {
+    const card = e.target.closest("#merge-suggest .merge-card");
+    if (card) { mergeTagPrompt(card.dataset.src, card.dataset.dst); return; }
+    const mb = e.target.closest("#tag-cloud .t-merge");
+    if (mb) { mergeTagPrompt(mb.dataset.merge); return; }
+    const t = e.target.closest("#tag-cloud .t");
     if (!t) return;
     if (e.target.classList.contains("t-check")) return;
-    const mb = e.target.closest(".t-merge");
-    if (mb) { mergeTagPrompt(mb.dataset.merge); return; }
     const tag = t.dataset.tag;
     const d = byTag[tag];
     if (!d) return;
     const open = drawer && !drawer.hidden && drawer.dataset.tag === tag;
-    cloud.querySelectorAll(".t.open").forEach(x => x.classList.remove("open"));
+    document.querySelectorAll("#tag-cloud .t.open").forEach(x => x.classList.remove("open"));
     if (open) { drawer.hidden = true; return; }
     t.classList.add("open");
     drawer.dataset.tag = tag;
@@ -113,12 +139,13 @@ function initTags() {
       `<a class="result" href="${esc(x.u)}"><div class="doc-t">${esc(x.t)}</div><div class="rp">${esc(x.p)}</div></a>`).join("");
     drawer.hidden = false;
   });
-  cloud.addEventListener("change", e => {
+  document.addEventListener("change", e => {
     if (!e.target.classList.contains("t-check")) return;
     e.target.closest(".t").classList.toggle("sel", e.target.checked);
     tagSelUpdate();
   });
   function tagSel() {
+    const cloud = document.getElementById("tag-cloud");
     return [...cloud.querySelectorAll(".t-check:checked")].map(c => c.closest(".t").dataset.tag);
   }
   function tagSelUpdate() {
@@ -131,7 +158,7 @@ function initTags() {
   }
   const clearBtn = document.getElementById("tag-clear");
   if (clearBtn) clearBtn.addEventListener("click", () => {
-    cloud.querySelectorAll(".t-check:checked").forEach(c => { c.checked = false; c.closest(".t").classList.remove("sel"); });
+    document.querySelectorAll("#tag-cloud .t-check:checked").forEach(c => { c.checked = false; c.closest(".t").classList.remove("sel"); });
     tagSelUpdate();
   });
   const mergeSelBtn = document.getElementById("tag-merge-sel");
@@ -176,8 +203,9 @@ function initTags() {
       const d2 = await r2.json();
       if (d2.ok) okN += d2.n_docs;
     }
+    await refreshTagsPage(); // 问题9：片段刷新代替 setTimeout+reload
+    if (window.invalidate) invalidate("all"); // 派生缓存（树/palette）一并作废
     toast(`已合并 ${okN} 篇 · ${affected.length} 个标签 → 「${dst}」 · FTS 已重建`);
-    setTimeout(() => location.reload(), 1400);
   }
 
   async function mergeTagPrompt(src, preset) {
@@ -206,7 +234,11 @@ function initTags() {
     const r2 = await fetch("/api/tag/merge", { method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ src, dst, apply: true }) });
     const d2 = await r2.json();
-    if (d2.ok) { toast("已合并 " + d2.n_docs + " 篇 · FTS 已重建"); setTimeout(() => location.reload(), 1200); }
+    if (d2.ok) {
+      await refreshTagsPage(); // 问题9：片段刷新代替 setTimeout+reload
+      if (window.invalidate) invalidate("all");
+      toast("已合并 " + d2.n_docs + " 篇 · FTS 已重建");
+    }
     else toast("合并失败");
   }
 }
@@ -338,16 +370,21 @@ function initInbox() {
       body: JSON.stringify({ items: payload }) });
     const d = await r.json().catch(() => ({}));
     if (!r.ok || !d.ok) { toast("批量归档失败：" + (d.error || r.status)); return; }
+    /* 问题9：不再 setTimeout+reload（toast 曾随页面销毁）。
+       按后端逐条 results 精确移除成功行、看板局部更新；缓存统一走 invalidate("all")。 */
+    const relOk = new Set((d.results || []).filter(x => x.ok).map(x => x.src));
+    rows.forEach(rw => {
+      if (relOk.has(rw.dataset.rel)) { rw.remove(); pushRecent(rw.dataset.rel, dir); }
+    });
+    ibUpdate();
+    if (window.invalidate) invalidate("all");
     if (d.n_fail) {
       const fails = d.results.filter(x => !x.ok).map(x => `<div class="kbm-li">${esc(x.src)} → ${esc(x.error)}</div>`).join("");
       await kbModal({ title: `完成（${d.n_ok} 成功 / ${d.n_fail} 失败）`,
         body: `<div class="kbm-list">${fails}</div>`, confirmText: "知道了" });
     } else {
       toast(`已批量归档 ${d.n_ok} 篇 → <span class='mono'>${esc(dir)}</span>`);
-      rows.forEach(rw => pushRecent(rw.dataset.rel, dir));
     }
-    if (window.invalidateCaches) invalidateCaches(); // 统一失效入口（app.js）
-    setTimeout(() => location.reload(), d.n_fail ? 1600 : 900);
   }
 
   async function inboxMove(row) {
@@ -363,8 +400,11 @@ function initInbox() {
       body: JSON.stringify({ src: rel, dst: res.dst }) });
     const d = await r.json().catch(() => ({}));
     if (!r.ok || !d.ok) { toast("归档失败：" + (d.error || r.status)); return; }
+    // 问题9：局部移除 + 缓存失效，toast 存活；不再 reload
+    row.remove(); ibUpdate();
+    if (window.invalidate) invalidate("all");
     pushRecent(rel, d.dst.split("/").slice(0, -1).join("/"));
-    toast(`已归档至 <span class='mono'>${esc(d.dst)}</span>`); setTimeout(() => location.reload(), 900);
+    toast(`已归档至 <span class='mono'>${esc(d.dst)}</span>`);
   }
 
   async function inboxDelete(row) {

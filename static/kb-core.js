@@ -59,6 +59,10 @@
     if (s.length === 2) s = [s[0], "_root", s[1]];
     return "/doc/" + s.map(encodeURIComponent).join("/");
   };
+  /* /raw 唯一实现：逐段 encode。app.js 与 pages/* 一律转调，不得再各写一份（问题7/8） */
+  util.rawUrl = function (rel) {
+    return "/raw/" + String(rel || "").split("/").filter(Boolean).map(encodeURIComponent).join("/");
+  };
   util.toast = function (msg) {
     var t = document.getElementById("toast");
     if (!t) return;
@@ -496,9 +500,6 @@
     var cached = util.getJSON(LS_PAL, null);
     if (cached && Array.isArray(cached.terms)) { palette.data = cached; palRender(); }
     var sig = cached && cached.sig ? cached.sig : "";
-    if (!force && sig) {
-      // 先校验 sig，一致则后端直接回 fresh:true，不重传全量
-    }
     palette.loading = true;
     palRender();
     return api.palette({ sig: sig || undefined }).then(function (j) {
@@ -568,6 +569,13 @@
   };
   palette.isOpen = function () { return !!palette.open; };
   palette.refresh = function (force) { return palLoad(!!force); };
+  /* 问题10：palette 缓存纳入统一失效体系——app.js 的 invalidate('palette') 转调这里。
+     原 palLoad 里「先校验 sig」的空 if 死代码一并删除：sig 校验的真实执行体在
+     api.palette({sig}) 的 fresh 应答里，本地段本来就不需要分支。 */
+  palette.dropCache = function () {
+    palette.data = null;
+    try { localStorage.removeItem(LS_PAL); } catch (e) {}
+  };
 
   /* settings —— 顶栏齿轮按钮的全局设置入口：阅读偏好 + 快捷键速查。
      复用命令面板的 readpref 模式，不另起一套弹层。 */
