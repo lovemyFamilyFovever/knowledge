@@ -186,9 +186,11 @@
     if (!S.raw.trim()) return; // 没有查询词：保留服务端渲染的空态引导
 
     var params = { q: S.raw, limit: 50 };
-    if (S.domain.length === 1) params.domain = S.domain[0];
-    if (S.sub.length === 1) params.sub = S.sub[0];
-    if (S.tag.length === 1) params.tag = S.tag[0];
+    /* B19：分面多选全量传参（后端 domain/sub/tag 支持逗号多值），
+       过滤真相在服务端；renderResults 里的本地过滤保留为降级防御（正常恒为恒等）。 */
+    if (S.domain.length) params.domain = S.domain.join(",");
+    if (S.sub.length) params.sub = S.sub.join(",");
+    if (S.tag.length) params.tag = S.tag.join(",");
 
     API.search(params).then(function (j) {
       S.semantic = j.mode === "semantic";

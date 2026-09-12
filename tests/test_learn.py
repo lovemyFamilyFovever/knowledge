@@ -658,6 +658,17 @@ def test_routes() -> None:
             check("search exact[0].match == exact", j["exact"][0]["match"] == "exact")
         else:
             check("search：KMP 应进 exact[]", False, str(j)[:200])
+        # B19：分面逗号多值 + 过滤后 total 口径一致
+        r = c.get("/api/search?q=KMP&domain=baike,career")
+        jm = r.get_json()
+        check("search 支持 domain 逗号多值（B19）",
+              r.status_code == 200 and jm.get("ok") is True
+              and all(x.get("domain") in ("baike", "career")
+                      for x in (jm.get("exact", []) + jm.get("hits", []))), str(jm)[:160])
+        r = c.get("/api/search?q=KMP&tag=__绝不可能存在的标签__")
+        jf = r.get_json()
+        check("search 多条件过滤 total 为过滤后计数",
+              jf.get("ok") is True and jf.get("total") == 0, str(jf)[:120])
         r = c.get("/api/search")
         check("search 缺 q → BAD_Q", r.get_json().get("error") == "BAD_Q", str(r.get_json()))
 

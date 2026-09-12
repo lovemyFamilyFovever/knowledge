@@ -12,8 +12,8 @@ from flask import Blueprint, abort, current_app, jsonify, request
 
 from app import store
 from app.fts import build_index, extract_wikilinks, open_db
-from app.store import (SKIP_DIRS, WRITABLE_EXTS, domain_label, find_doc,
-                       inbox_count, load_taxonomy, parse_frontmatter)
+from app.store import (SKIP_DIRS, WRITABLE_EXTS, _tree_sig, domain_label,
+                       find_doc, inbox_count, load_taxonomy, parse_frontmatter)
 
 stats_bp = Blueprint("stats", __name__)
 
@@ -38,25 +38,69 @@ def _safe_rel(rel: str, exts):
     return _hooks()["safe_rel"](rel, exts)
 
 
+# ---------------- 语料聚合（B18）：按树签名缓存，三个统计端点共用 ----------------
+_AGG: dict = {"sig": None, "data": None}
+
+
+def _corpus_agg() -> dict:
+    """{(domain, sub): {"cjk": int, "untagged": int, "tags": {tag:n},
+    "newest": (title, mtime), "mtime": float}}
+
+    旧实现里 /api/globalstats、/api/dir/tree、/api/substats 各自全库逐篇
+    read_text + parse（2000+ 文件 IO，弹窗打开卡数秒；目录统计里每切一个
+    兄弟目录再来一轮）。字数只需在语料变化后重算：树签名一致时直接复用缓存，
+    标签/收藏/未打标/mtime 全部取自内存中的分类树，不再读盘。"""
+    content = _content()
+    try:
+        sig = _tree_sig(content)
+    except OSError:
+        sig = None
+    if sig is not None and _AGG["sig"] == sig and _AGG["data"] is not None:
+        return _AGG["data"]
+    data: dict[tuple[str, str], dict] = {}
+    for dom in _domains_cached():
+        for sobj in dom["subs"]:
+            cjk = 0
+            untagged = 0
+            tag_map: dict[str, int] = {}
+            newest: tuple[str, float] = ("", 0.0)
+            for d in sobj["docs"]:
+                tags = d.get("tags") or []
+                if tags:
+                    for t in tags:
+                        tag_map[str(t)] = tag_map.get(str(t), 0) + 1
+                else:
+                    untagged += 1
+                mt = float(d.get("mtime") or 0.0)
+                if mt > newest[1]:
+                    newest = (str(d.get("title") or ""), mt)
+                p = find_doc(content, dom["id"], sobj["id"], d["name"])
+                if p:
+                    try:
+                        _, body = parse_frontmatter(p.read_text(encoding="utf-8", errors="replace"))
+                    except OSError:
+                        continue
+                    cjk += len(re.findall(r"[\u4e00-\u9fff]", body))
+            data[(dom["id"], sobj["id"])] = {"cjk": cjk, "untagged": untagged,
+                                             "tags": tag_map, "newest": newest}
+    if sig is not None:
+        _AGG["sig"], _AGG["data"] = sig, data
+    return data
+
+
 @stats_bp.get("/api/dir/tree")
 def api_dir_tree():
     """移动弹窗/统计弹窗共用的目录聚合树：一次返回各域与子目录的
     篇数/总字数(CJK)/未打标数/最近更新时间，供前端渲染可展开树与排行。"""
-    content = _content()
-    tax = load_taxonomy(content)
+    tax = load_taxonomy(_content())
+    agg = _corpus_agg()
     domains = []
     for dom in _domains_cached():
         subs, dom_cjk, dom_untagged, dom_mtime = [], 0, 0, 0.0
         for sobj in dom["subs"]:
-            cjk, untagged = 0, 0
-            for d in sobj["docs"]:
-                p = find_doc(content, dom["id"], sobj["id"], d["name"])
-                if not p:
-                    continue
-                _, body = parse_frontmatter(p.read_text(encoding="utf-8", errors="replace"))
-                cjk += len(re.findall(r"[\u4e00-\u9fff]", body))
-                if not d.get("tags"):
-                    untagged += 1
+            a = agg.get((dom["id"], sobj["id"]), {"cjk": 0, "untagged": 0})
+            cjk = a["cjk"]
+            untagged = a["untagged"]
             mt = max((d["mtime"] for d in sobj["docs"]), default=0.0)
             subs.append({"id": sobj["id"], "label": sobj["label"], "n": sobj["n"],
                          "cjk": cjk, "untagged": untagged, "mtime": int(mt)})
@@ -76,30 +120,27 @@ def api_globalstats():
     content = _content()
     domains = _domains_cached()
     tax = load_taxonomy(content)
+    agg = _corpus_agg()
     n_docs = n_tagged = total_cjk = untagged = fav = 0
-    tag_count = {}
+    tag_count: dict[str, int] = {}
     per_domain = []
     for dom in domains:
         dom_cjk = dom_untag = 0
         for sobj in dom["subs"]:
+            a = agg.get((dom["id"], sobj["id"]),
+                        {"cjk": 0, "untagged": 0, "tags": {}})
+            total_cjk += a["cjk"]
+            dom_cjk += a["cjk"]
+            untagged += a["untagged"]
+            dom_untag += a["untagged"]
+            for t, n in (a.get("tags") or {}).items():
+                tag_count[t] = tag_count.get(t, 0) + n
             for d in sobj["docs"]:
                 n_docs += 1
                 if d.get("favorite"):
                     fav += 1
-                tags = d.get("tags") or []
-                if tags:
+                if d.get("tags"):
                     n_tagged += 1
-                    for t in tags:
-                        tag_count[t] = tag_count.get(t, 0) + 1
-                else:
-                    dom_untag += 1
-                    untagged += 1
-                p = find_doc(content, dom["id"], sobj["id"], d["name"])
-                if p:
-                    _, body = parse_frontmatter(p.read_text(encoding="utf-8", errors="replace"))
-                    cjk = len(re.findall(r"[\u4e00-\u9fff]", body))
-                    total_cjk += cjk
-                    dom_cjk += cjk
         per_domain.append({"id": dom["id"], "label": domain_label(tax, dom["id"]),
                            "n": dom["n"], "cjk": dom_cjk, "untagged": dom_untag})
     n_html = sum(1 for p in content.rglob("*.html")
@@ -148,29 +189,18 @@ def api_substats():
     sobj = next((s for s in dom["subs"] if s["id"] == request.args.get("sub", "")), None) if dom else None
     if not sobj:
         return jsonify({"error": "not found"}), 404
-    total_cjk = 0
-    tag_map: dict[str, int] = {}
-    newest = ("", 0.0)
-    for doc in sobj["docs"]:
-        p = find_doc(content, dom["id"], sobj["id"], doc["name"])
-        if not p:
-            continue
-        raw = p.read_text(encoding="utf-8", errors="replace")
-        fm, body = parse_frontmatter(raw)
-        total_cjk += len(re.findall(r"[\u4e00-\u9fff]", body))
-        for t in (fm.get("tags") if isinstance(fm.get("tags"), list) else []):
-            tag_map[t] = tag_map.get(t, 0) + 1
-        mt = p.stat().st_mtime
-        if mt > newest[1]:
-            newest = (str(fm.get("title") or p.stem), mt)
-    tags_sorted = sorted(tag_map.items(), key=lambda x: -x[1])[:12]
+    a = _corpus_agg().get((dom["id"], sobj["id"]),
+                          {"cjk": 0, "untagged": 0, "tags": {}, "newest": ("", 0.0)})
+    total_cjk = a["cjk"]
+    newest = a["newest"]
+    tags_sorted = sorted(a["tags"].items(), key=lambda x: -x[1])[:12]
     return jsonify({
         "domain": dom["id"], "domain_label": domain_label(tax, dom["id"]),
         "sub": sobj["id"], "label": sobj["label"],
         "n_docs": sobj["n"], "total_cjk": total_cjk,
         "avg_cjk": round(total_cjk / max(1, sobj["n"])),
         "tags": [{"tag": t, "n": n} for t, n in tags_sorted],
-        "n_untagged": sum(1 for d in sobj["docs"] if not d.get("tags")),
+        "n_untagged": a["untagged"],
         "newest": {"title": newest[0],
                    "when": time.strftime("%Y-%m-%d %H:%M", time.localtime(newest[1])) if newest[1] else "—"},
     })

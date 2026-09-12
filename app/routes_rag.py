@@ -26,8 +26,8 @@ def api_rag():
         return jsonify({"error": "rag unavailable",
                         "detail": _hooks().get("rag_import_error") or "init failed"}), 503
     try:
-        k = min(int(request.args.get("k", 8)), 30)
-    except ValueError:
+        k = max(1, min(int(request.args.get("k", 8)), 30))
+    except (TypeError, ValueError):
         k = 8
     domain = request.args.get("domain") or None
     sub = request.args.get("sub") or None

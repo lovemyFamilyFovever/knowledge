@@ -309,6 +309,19 @@ def main() -> int:
               any(x["resolved"] and x["path"].endswith("architecture/X.md") for x in j["outgoing"]),
               str(j["outgoing"]))
 
+        # ── B18 回归：聚合缓存端点 + 写后签名失效一致性 ──
+        g1 = c.get("/api/globalstats").get_json()
+        check("globalstats 端点可用且计数非零",
+              g1.get("n_docs", 0) > 0 and isinstance(g1.get("domains"), list)
+              and "tagged_pct" in g1, str(g1)[:120])
+        before = int(g1["n_docs"])
+        (content_dir / "career" / "extra.md").write_text("---\ntitle: 新增篇\ntags: [x]\n---\n\n正文\n", encoding="utf-8")
+        g2 = c.get("/api/globalstats").get_json()
+        check("语料新增后聚合缓存即时跟进（B18 签名失效）",
+              int(g2["n_docs"]) == before + 1, f"{before} -> {g2['n_docs']}")
+        dt = c.get("/api/dir/tree").get_json()
+        check("dir/tree 聚合结构完整", bool(dt.get("domains")) and "cjk" in dt["domains"][0])
+
     # 回归：脚本直启（python app\app.py / start.bat）的导入路径 —— 2026-09-09 启动报错修复
     import subprocess
     r = subprocess.run(

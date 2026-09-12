@@ -59,9 +59,22 @@ def _corpus_stats() -> dict:
     return {"domains": domains, "n_md": n_md, "n_html": n_html, "n_fav": fav, "inbox": inbox}
 
 
+def _fts_count() -> int:
+    """FTS 索引内实际篇数；库缺失/损坏按 0 呈现（pill 不再拿文件数谎报「已就绪」）。"""
+    try:
+        con = open_db(_indexes())
+        try:
+            return int(con.execute("SELECT count(*) FROM docs").fetchone()[0])
+        finally:
+            con.close()
+    except Exception:
+        return 0
+
+
 def _chrome_counts() -> dict:
     content = _content()
-    return {"n_md": sum(1 for _ in md_files(content)), "inbox_n": inbox_count(content)}
+    return {"n_md": sum(1 for _ in md_files(content)), "inbox_n": inbox_count(content),
+            "fts_n": _fts_count()}
 
 
 # ---------------- 首页 / 总览 ----------------
@@ -94,7 +107,7 @@ def home():
     greet = "夜深了" if hour < 6 else "早上好" if hour < 11 else "中午好" if hour < 13 else "下午好" if hour < 18 else "晚上好"
     return render_template("home.html", stats=stats, recents=recents, days=int(days),
                            leaves=leaves, pct=pct, greet=greet,
-                           inbox_n=stats["inbox"], n_md=stats["n_md"],
+                           inbox_n=stats["inbox"], n_md=stats["n_md"], fts_n=_fts_count(),
                            date=time.strftime("%m 月 %d 日 %A", now).replace("Monday", "周一").replace(
                                "Tuesday", "周二").replace("Wednesday", "周三").replace("Thursday", "周四").replace(
                                "Friday", "周五").replace("Saturday", "周六").replace("Sunday", "周日"))

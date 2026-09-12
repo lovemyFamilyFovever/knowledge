@@ -273,6 +273,21 @@ def api_search():
     domain = request.args.get("domain") or None
     sub = request.args.get("sub") or None
     tag = request.args.get("tag") or None
+    # B19：分面筛选支持逗号多值（domain=a,b / sub=dom/x,dom/y / tag=t1,t2），
+    # 前端多选全部传给服务端，过滤计数只有一个真相。旧实现只认单值，
+    # 多选时前端本地过滤、meta 却显示服务端总数，两头口径对不上。
+    f_doms = {x.strip() for x in (domain or "").split(",") if x.strip()}
+    f_subs = {x.strip() for x in (sub or "").split(",") if x.strip()}
+    f_tags = {x.strip() for x in (tag or "").split(",") if x.strip()}
+
+    def _pass(d: str, s: str, tags: list) -> bool:
+        if f_doms and d not in f_doms:
+            return False
+        if f_subs and s not in f_subs and f"{d}/{s}" not in f_subs:
+            return False
+        if f_tags and not (f_tags & {str(t) for t in tags}):
+            return False
+        return True
 
     semantic = q.startswith("?")
     query = q[1:].strip() if semantic else q
@@ -312,11 +327,10 @@ def api_search():
                     continue
                 seen.add(f)
                 info = meta.get(f, {})
-                if domain and info.get("domain") != domain:
-                    continue
-                if sub and info.get("sub") != sub:
-                    continue
-                if tag and tag not in (info.get("tags") or []):
+                d = info.get("domain") or f.split("/")[0]
+                s = info.get("sub") or (f.split("/")[1] if f.count("/") > 1 else "_root")
+                tags = list(info.get("tags") or [])
+                if not _pass(d, s, tags):
                     continue
                 items.append({
                     "path": f,
@@ -325,10 +339,10 @@ def api_search():
                     "snippet": _snippet(h.get("contents") or "", 160),
                     "score_label": f"{float(h.get('score') or 0):.2f}",
                     "score": round(float(h.get("score") or 0), 4),
-                    "domain": info.get("domain") or f.split("/")[0],
-                    "sub": info.get("sub") or (f.split("/")[1] if f.count("/") > 1 else "_root"),
+                    "domain": d,
+                    "sub": s,
                     "sub_label": _sub_label(info.get("domain") or "", info.get("sub") or ""),
-                    "tags": list(info.get("tags") or []),
+                    "tags": tags,
                     "match": "semantic",
                 })
     if mode == "fts":
@@ -340,11 +354,7 @@ def api_search():
             d = info.get("domain") or (p.split("/")[0] if p else "")
             s = info.get("sub") or (p.split("/")[1] if p.count("/") > 1 else "_root")
             tags = list(info.get("tags") or [])
-            if domain and d != domain:
-                continue
-            if sub and s != sub:
-                continue
-            if tag and tag not in tags:
+            if not _pass(d, s, tags):
                 continue
             # 优先用树扫描里的原始标题（FTS 的 title 列做过 CJK 逐字插空格，比对前需还原）
             title = (info.get("title") or r.get("title") or "").strip()
