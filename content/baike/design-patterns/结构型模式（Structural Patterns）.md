@@ -9,6 +9,9 @@ status: "imported"
 
 # 结构型模式（Structural Patterns）
 
+
+> 📌 **导航**：本文是 **结构型模式（Structural Patterns）** 词条，属于 design-patterns 术语集。相关枢纽：[[创建型模式（Creational Patterns）]]、[[结构型模式（Structural Patterns）]]、[[行为型模式（Behavioral Patterns）]]。
+
 > 结构型模式关注**如何将类与对象组合成更大的结构**：用继承（类结构型）与组合（对象结构型）搭建灵活、可复用的架构。其核心目标是在不改动已有类的前提下，通过「拼装」获得新的协作能力或更清晰的接口。
 
 ---

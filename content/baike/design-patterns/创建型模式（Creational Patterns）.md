@@ -9,6 +9,9 @@ status: "imported"
 
 # 创建型模式（Creational Patterns）
 
+
+> 📌 **导航**：本文是 **创建型模式（Creational Patterns）** 词条，属于 design-patterns 术语集。相关枢纽：[[创建型模式（Creational Patterns）]]、[[结构型模式（Structural Patterns）]]、[[行为型模式（Behavioral Patterns）]]。
+
 > 创建型模式（Creational Patterns）关注**对象的创建机制**：把「创建什么对象、由谁创建、何时创建」从业务代码中解耦出来，用比直接 `new` 更灵活的方式组织实例化过程。其核心目标是让系统依赖抽象而非具体类，从而更容易扩展、替换与测试。
 
 ---

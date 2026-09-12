@@ -9,6 +9,9 @@ status: "imported"
 
 # 行为型模式（Behavioral Patterns）
 
+
+> 📌 **导航**：本文是 **行为型模式（Behavioral Patterns）** 词条，属于 design-patterns 术语集。相关枢纽：[[创建型模式（Creational Patterns）]]、[[结构型模式（Structural Patterns）]]、[[行为型模式（Behavioral Patterns）]]。
+
 > 行为型模式关注**对象之间的职责分配与通信方式**：描述一组对象如何协作完成单个对象无法独立完成的任务，以及如何管理算法、对象间关系与职责的流转。
 
 ---
