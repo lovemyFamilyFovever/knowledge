@@ -13,7 +13,9 @@
   letter-spacing:.14em;text-transform:uppercase;color:var(--acc);margin-bottom:12px}
 .hero-eyebrow svg{width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
 .hero-title{font-family:var(--font-display-latin);font-weight:700;font-size:var(--fs-hero);line-height:.92;
-  letter-spacing:-.045em;color:var(--ink);margin:0;display:flex;gap:.06em}
+  letter-spacing:-.045em;color:var(--ink);margin:0;display:flex;gap:0}
+/* gap 必须为 0：--fs-hero 巨型字号下哪怕 .06em 也是 ~9px 的「知 库」裂缝（2026-09-13 实测截图），
+   spec 的 -.045em 收紧意图对中文 flex item 不生效——两字间距只由 gap 决定 */
 /* 中文走 Georgia 600（spec §3.1 Hero display 行） */
 .hero-title .line{font-family:var(--disp);color:var(--acc);font-weight:600;display:inline-block}
 .hero-tagline{margin-top:16px;font-family:var(--font-display-latin);font-weight:500;

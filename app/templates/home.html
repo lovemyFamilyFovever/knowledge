@@ -26,10 +26,9 @@
     <div class="home-hero-text">
       <div class="hero-eyebrow"><svg aria-hidden="true"><use href="#ill-compass-mini"/></svg>{{ date }} · {{ greet }}</div>
       <h1 class="hero-title" data-line-mask><span class="line">知</span><span class="line">库</span></h1>
-      <p class="hero-tagline">
-        <span data-reveal>把</span> <span data-reveal>散落</span> <span data-reveal>的</span> <span data-reveal>知识，</span>
-        <span data-reveal>接回</span> <span data-reveal>一个</span> <span data-reveal>入口</span>
-      </p>
+      {# 逐词 reveal：span 间不留任何空白——inline-block 会把模板换行/缩进渲染成可见空隙，
+         中文标点叠加后就是「把 散落 的 知识」式断裂（2026-09-13 用户反馈） #}
+      <p class="hero-tagline"><span data-reveal>把</span><span data-reveal>散落</span><span data-reveal>的</span><span data-reveal>知识，</span><span data-reveal>接回</span><span data-reveal>一个</span><span data-reveal>入口</span></p>
       <p class="hero-sub">Markdown 是唯一事实源，索引只是派生缓存。当前已归档 <strong>{{ pct }}%</strong>（{{ n_md }} 篇正文 / {{ inbox_n }} 篇待归档）。</p>
       <div class="hero-cta">
         <a class="iconbtn primary" href="/inbox" data-cursor-label="进入"><svg><use href="#i-inbox-tray"/></svg>去收件箱 · {{ inbox_n }}</a>
