@@ -147,6 +147,8 @@ def api_sync():
         raise
     except CorpusEmpty:
         raise
+    finally:
+        ls.close()  # sync 是唯一会长期持锁的写路径，必须显式释放（Windows 文件锁）
     return jsonify({"ok": True, **{k: v for k, v in r.items()},
                     "took_ms": round((time.perf_counter() - t0) * 1000)})
 
