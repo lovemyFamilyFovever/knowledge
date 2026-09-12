@@ -918,14 +918,16 @@ class LearnStore:
         if sig and str(sig) == current:
             return {"fresh": True, "sig": current}
 
+        # 不加 LIMIT：命令面板的卖点是「单一入口」，静默截断会让文档压根搜不到，
+        # 且与 _palette_sig（按全量语料算）不一致 —— sig 变了列表却没变，前端重绘后仍缺项。
         terms = [{"name": _tidy(r[0]), "kind": "term", "n": int(r[1])} for r in self.con.execute(
             "SELECT term, COUNT(*) n FROM cards WHERE active=1 AND kind='baike_def' "
-            "GROUP BY term ORDER BY term LIMIT 400")]
+            "GROUP BY term ORDER BY term")]
         docs: list[dict] = []
         try:
             con = fts.open_db(self.indexes)
             try:
-                for path_, _title in con.execute("SELECT path, title FROM docs LIMIT 500"):
+                for path_, _title in con.execute("SELECT path, title FROM docs ORDER BY path"):
                     docs.append({"name": _tidy(_title or ""), "rel": path_, "kind": "doc"})
             finally:
                 con.close()

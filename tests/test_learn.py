@@ -463,6 +463,23 @@ def test_learn_store() -> None:
             p = ls.palette_index(None, content)
             check("palette 返回 6 条命令", p["counts"]["commands"] == 6,
                   f"got {p['counts']}")
+            # 契约：palette 必须是全量索引，不许静默截断（真实语料 662 术语 / 695 文档，
+            # 曾被 LIMIT 400 / LIMIT 500 砍掉一半，导致命令面板搜不到文档）
+            from app import fts as _fts
+            _exp_terms = ls.con.execute(
+                "SELECT COUNT(DISTINCT term) FROM cards WHERE active=1 "
+                "AND kind='baike_def'").fetchone()[0]
+            _fc = _fts.open_db(ls.indexes)
+            try:
+                _exp_docs = _fc.execute("SELECT COUNT(*) FROM docs").fetchone()[0]
+            finally:
+                _fc.close()
+            check("palette terms 未截断（=全量定义卡术语数）",
+                  p["counts"]["terms"] == _exp_terms,
+                  f"got {p['counts']['terms']} / expected {_exp_terms}")
+            check("palette docs 未截断（=FTS 全量文档数）",
+                  p["counts"]["docs"] == _exp_docs,
+                  f"got {p['counts']['docs']} / expected {_exp_docs}")
             check("palette sig 一致时 fresh",
                   ls.palette_index(p["sig"], content).get("fresh") is True)
 
