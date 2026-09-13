@@ -7,8 +7,9 @@
     <div class="panel-h">分类目录<span class="cnt" id="tree-total">{{ n_md }}</span><button class="fold" onclick="togglePanel('left')" title="收起左栏" aria-label="收起左栏"><svg class="i i-12"><use href="#i-fold-l"/></svg></button></div>
     <nav class="tree" id="tree" aria-label="分类目录">
       {% for d in domains %}
-      <div class="dom {% if cur.domain == d.id %}open{% endif %}" style="--dh:{{ HUES[d.id] }}">
+      <div class="dom {% if cur.domain == d.id %}open{% endif %}" style="--dh:{{ HUES[d.id] }}" data-dom="{{ d.id }}">
         <a class="dom-head {% if cur.domain == d.id %}active{% endif %}" href="/browse/{{ d.id }}/{{ d.subs[0].id }}">
+          <span class="dom-caret" role="button" tabindex="0" aria-label="折叠或展开 {{ d.label }}" aria-expanded="{% if cur.domain == d.id %}true{% else %}false{% endif %}"></span>
           <span class="dom-glyph"><svg><use href="#i-{{ d.id }}"/></svg></span>
           <span class="dom-name">{{ d.label }}</span><span class="dom-n">{{ d.n }}</span>
         </a>

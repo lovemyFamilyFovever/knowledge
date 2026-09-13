@@ -90,6 +90,57 @@
   }
   document.addEventListener("kb:links-rendered", enhanceRoamLinks);
 
+  /* ---------- [4] 左侧分类目录：任意域可独立收起（不强制保持一个打开） ---------- */
+  /* 每个域头部加折叠箭头；点击切换 .open 并持久化，刷新/跳转后保持用户选择。
+     当前域默认展开，但可被用户收起——系统不再强制「永远有一个打开」。 */
+  var LS_TREE = "kb-tree-open";
+  function treeOpenSet() {
+    try {
+      var raw = localStorage.getItem(LS_TREE);
+      if (raw) return new Set(JSON.parse(raw));
+    } catch (e) {}
+    var s = new Set();
+    $$("#tree .dom.open").forEach(function (el) { if (el.dataset.dom) s.add(el.dataset.dom); });
+    return s;
+  }
+  function treePersist(set) {
+    try { localStorage.setItem(LS_TREE, JSON.stringify(Array.from(set))); } catch (e) {}
+  }
+  function treeApply(set) {
+    $$("#tree .dom").forEach(function (dom) {
+      var open = set.has(dom.dataset.dom);
+      dom.classList.toggle("open", open);
+      var c = dom.querySelector(".dom-caret");
+      if (c) c.setAttribute("aria-expanded", open ? "true" : "false");
+    });
+  }
+  function initTreeCollapse() {
+    var tree = $("#tree");
+    if (!tree) return;
+    var set = treeOpenSet();
+    treePersist(set);   // 固化首次默认（当前域展开），保证后续行为确定
+    treeApply(set);
+    tree.addEventListener("click", function (e) {
+      var caret = e.target.closest && e.target.closest(".dom-caret");
+      if (!caret) return;
+      e.preventDefault(); e.stopPropagation();   // 阻止 <a> 跳转，仅切换折叠
+      var dom = caret.closest(".dom");
+      if (!dom) return;
+      var open = dom.classList.toggle("open");
+      caret.setAttribute("aria-expanded", open ? "true" : "false");
+      if (open) set.add(dom.dataset.dom); else set.delete(dom.dataset.dom);
+      treePersist(set);
+    });
+    tree.addEventListener("keydown", function (e) {
+      var caret = e.target.closest && e.target.closest(".dom-caret");
+      if (!caret) return;
+      if (e.key === "Enter" || e.key === " " || e.key === "Spacebar") {
+        e.preventDefault(); e.stopPropagation();
+        caret.click();
+      }
+    });
+  }
+
   /* ---------- 动效：正文渲染完成后刷新 reveal（显式事件，非 observer） ---------- */
   document.addEventListener("kb:article-rendered", function () {
     if (!window.Motion || window.Motion.reduced) return;
@@ -100,6 +151,7 @@
     buildDensityToggle();
     bindTabs();
     enhanceRoamLinks(); // 服务端已渲染双链面板时（首屏直开 links tab 极少），兜底跑一次
+    initTreeCollapse(); // [4] 左侧分类目录独立收起
   }
 
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init);
