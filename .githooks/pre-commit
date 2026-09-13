@@ -3,14 +3,18 @@
 # 启用：git config core.hooksPath .githooks
 
 # 逐个候选尝试，取第一个能 `import flask` 的解释器。
+# 候选顺序：项目自带 .python 便携运行时**优先**——它装齐了含 RAG 在内的全部依赖，
+# 与 start.bat 的行为一致（AGENTS 不变量 8）。PATH 里的 python 放后面兜底：
+# 它可能只装了 flask 而缺 onnxruntime，钩子会在 RAG smoke 上炸
+# （2026-09-13 GitHub Desktop 实测：其 sh 环境 PATH 命中的 python 无 RAG 依赖）。
 # 不能用 `command -v python` 直接采信：本机默认 python 可能指向另一个没装 Flask 的
 # 运行时，钩子会一跑就挂，最后只能靠人肉改 PATH 绕过 —— 那等于没有钩子。
 PY=""
 for cand in \
+  ".python/python.exe" \
   "python" \
   "py -3" \
   "C:/Users/Administrator/AppData/Local/Programs/Python/Python313/python.exe" \
-  ".python/python.exe" \
   "python3"
 do
   # 候选可能带参数（如 `py -3`），故不加引号；不存在时命令自然失败，走下一个

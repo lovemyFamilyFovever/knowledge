@@ -14,6 +14,10 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 try:
+    # rag.py 把 onnxruntime 藏在 OnnxEmbedder.__init__ 里懒加载，模块级 import 探测不到；
+    # 这里显式 import，缺它时走统一 SKIP——否则测试跑到 end-to-end 才 ModuleNotFoundError
+    # （2026-09-13 GitHub Desktop 提交实测：PATH python 有 flask/tokenizers 无 onnxruntime）
+    import onnxruntime  # noqa: F401
     from app.rag import (OnnxEmbedder, RagStore, markdown_split, sync_rag,
                          query_rag, HFTokenizer)
 except Exception as e:  # 依赖缺失：跳过（基础阅读器不依赖 RAG）
