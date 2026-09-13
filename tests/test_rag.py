@@ -40,7 +40,7 @@ def test_markdown_split():
 def test_tokenizer_matches_wordpiece_reference():
     model_dir = ROOT / "app" / "rag_models"
     if not (model_dir / "tokenizer.json").is_file():
-        print("SKIP: 模型未下载（首次运行 start-rag.bat 后可用）")
+        print("SKIP: 模型未下载（首次跑通语义检索后自动下载，或 pip install -r requirements-rag.txt）")
         return
     tok = HFTokenizer(model_dir / "tokenizer.json")
     # 已知对齐样本（与 tokenizers 库逐 token 比对过）：

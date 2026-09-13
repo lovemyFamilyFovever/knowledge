@@ -20,13 +20,17 @@
 ## 常用命令
 
 ```sh
-start.bat                                      # 启动阅读器（存在 .python 时优先用）
-start-rag.bat                                  # 显式用便携运行时启动（含语义检索）
-.python\python.exe tests\test_reader.py        # 阅读器 smoke（38 断言）
-.python\python.exe tests\test_new_project.py   # 脚手架 smoke（9 断言）
-.python\python.exe tests\test_rag.py           # RAG smoke（缺依赖自动 SKIP）
-.python\python.exe scripts\rag_search.py "查询" --json   # 语义检索 CLI / Agent 入口
+start.bat                                      # 唯一启动入口（--dev 开发模式；自动探测 .python / 系统 Python）
+start.bat --dev                                # 开发模式（py/模板改动自动热重载）
+python tests\test_reader.py                    # 阅读器 smoke（47 断言）
+python tests\test_new_project.py               # 脚手架 smoke（9 断言）
+python tests\test_learn.py                     # 学习系统 smoke（203 断言）
+python tests\test_rag.py                       # RAG smoke（缺依赖自动 SKIP）
+python scripts\rag_search.py "查询" --json     # 语义检索 CLI / Agent 入口
 ```
+
+> 历史脚本 `start-rag.bat` / `start-dev.bat` 已于 2026-09-13 并入 `start.bat`
+> （RAG 依赖装进哪个解释器，哪个解释器启动就带语义检索；开发模式走 `--dev` 参数）。
 
 ## 架构地图
 

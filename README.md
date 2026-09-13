@@ -24,10 +24,12 @@ tests/              smoke 测试
 ## 启动
 
 ```sh
-start.bat          # 纯阅读器（系统 Python，只需 flask）
-start-rag.bat      # 全功能（优先用 .python\ 便携运行时，含语义检索）
+start.bat           # 唯一启动入口（语义检索依赖可用时自动启用；首次使用自动装依赖）
+start.bat --dev     # 开发模式（py / 模板改动自动热重载）
 # http://127.0.0.1:5001
 ```
+
+端口 5001 被占用时（多半是已经有一个实例在跑）脚本会提示直接打开浏览器，不会闪退。
 
 写作层：用 Obsidian 打开 `content/` 作为 vault，与本应用共享同一份语料。
 
@@ -136,8 +138,8 @@ python tests\test_rag.py          # RAG 断言（缺依赖时自动 SKIP）
 
 ## 常见坑
 
-- **本机可能没有 `.python\` 便携运行时**。`start.bat` 与 `start-rag.bat` 都会探测，但直接用
-  绝对路径的解释器更稳（例如 `C:\Users\<你>\AppData\Local\Programs\Python\Python3xx\python.exe`）。
+- **本机可能没有 `.python\` 便携运行时**。`start.bat` 会自动探测并回退到系统 Python；
+  语义检索依赖（numpy / onnxruntime / sqlite-vec）装在哪个解释器里，语义检索就在哪个解释器可用。
 - **端口 5001 残留**：异常退出可能留下仍占着 5001 的旧进程，请求会被旧代码接走，症状是
   「改了没生效」。起服务前 `netstat -ano | findstr :5001` 确认只有一个监听者。
 - **`indexes/` 可随时删**。`index.db` / `rag.db` 删了自动重建；`reading.db` 里的阅读统计与
