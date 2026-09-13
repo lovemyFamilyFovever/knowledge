@@ -64,7 +64,7 @@ scripts/            迁移与维护脚本（rag_search.py 是 Agent 检索入口
 
 ## 提交纪律
 
-- 写完即 commit；一次改动一个 commit，消息说人话（feat/fix/docs/test + 中文或英文摘要）。
+- 适时提交：每完成一个逻辑独立的开发单元（一个功能、一次修复、一次重构等），自行判断并执行 git commit，不要等全部结束才提交。消息说人话（feat/fix/docs/test + 中文或英文摘要）。
 - 提交前跑上面三套测试——pre-commit 钩子会自动跑（`git config core.hooksPath .githooks` 已设置）。
 - push 是备份链的一环（另有 Windows 计划任务每日自动 commit+push，见 `scripts/daily_backup.ps1`）。
 - **只提交自己改过的文件**：commit 一律用显式 pathspec（如 `git commit -F msg -- app/templates/workbench.html static/style.css`），绝不要用 `git add -A` / `git add .` 一把梭。未跟踪文件要先 `git add -- <file>` 再 pathspec 提交（pathspec 不会自动 add 未跟踪文件，否则整次提交会 abort）。
