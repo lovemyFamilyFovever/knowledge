@@ -32,6 +32,22 @@ python scripts\rag_search.py "查询" --json     # 语义检索 CLI / Agent 入�
 > 历史脚本 `start-rag.bat` / `start-dev.bat` 已于 2026-09-13 并入 `start.bat`
 > （RAG 依赖装进哪个解释器，哪个解释器启动就带语义检索；开发模式走 `--dev` 参数）。
 
+## 工具与临时产物（`.workbuddy/`，不进 git，跨会话复用）
+
+`.workbuddy/` 是 Agent 会话的工作区：**工具脚本与截图存档保留复用，一次性诊断脚本和输出用完即删**（2026-09-14 已清理约 50 个遗留物；约定：验证类脚本不要落盘 txt 输出，直接看 stdout）。
+
+| 保留文件 | 用途 |
+|------|------|
+| `.workbuddy/shot.mjs` | 零依赖 CDP 截图：`node .workbuddy/shot.mjs <url> <out.png> [w] [h] [clickSel]`，`clickSel` 传 CSS 选择器可先点击再截图（验证按钮交互态） |
+| `.workbuddy/evalcdp.mjs` | CDP 执行任意 JS 并回显返回值 + console 报错：`node .workbuddy/evalcdp.mjs <url> "<js表达式>"`，查"改了没生效"类问题利器 |
+| `.workbuddy/verifyall.mjs` | 双阶段全状态断言模板（同页两阶段 evaluate，如 pretty/md 视图切换），按需改表达式复用 |
+| `.workbuddy/scan_fm.py` | frontmatter 污染扫描：正文前 400 字符内又出现完整 fm 块 = 污染（baike 提质时沉淀） |
+| `.workbuddy/scan_dup.py` | 抓取残留副本扫描：`xxx-<数字>.md` 与 `xxx.md` 同名共存即残留（已清理 4 组，dsh-agent 21 组待用户处置） |
+| `.workbuddy/qa-shots/` | QA 截图存档（编号递增，对照 UI 改动历史） |
+| `.workbuddy/memory/` | 跨会话工作日志：日期命名的坑与结论，接手前先读最新一篇 |
+
+注意：**bat 脚本一律全英文**（cmd 对 UTF-8 中文 rem/echo 会切碎执行）；**测 bat 必须用干净 PowerShell**，Agent 的 bash shim 会污染 PATH 导致误判。
+
 ## 架构地图
 
 ```
