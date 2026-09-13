@@ -322,18 +322,30 @@ function buildToc() {
 }
 
 /* ---------- 分类树 / 文档列表（客户端渲染） ---------- */
+/* 与 workbench.html 服务端模板保持一致：每个域带 .dom-caret 折叠箭头，且**默认全部收起**
+   （不再强制当前域 open）。展开状态读/写 workbench.js 共用的 localStorage 钥匙 kb-tree-open，
+   故客户端跳转（navigate）或 afterMutation 重渲染后，用户的折叠选择不会丢。 */
+function treeOpenSet() {
+  try { const raw = localStorage.getItem("kb-tree-open"); if (raw) return new Set(JSON.parse(raw)); } catch (e) {}
+  return new Set();
+}
 function renderTree() {
   const nav = $("#tree"); if (!nav || !TREE) return;
-  nav.innerHTML = TREE.map(d => `
-   <div class="dom ${CUR && CUR.domain === d.id ? "open" : ""}" data-dom="${esc(d.id)}">
+  const open = treeOpenSet();   // 默认空集合 → 全部收起
+  nav.innerHTML = TREE.map(d => {
+    const isOpen = open.has(d.id);
+    return `
+   <div class="dom ${isOpen ? "open" : ""}" style="--dh:${HUES[d.id] || 158}" data-dom="${esc(d.id)}">
     <a class="dom-head ${CUR && CUR.domain === d.id ? "active" : ""}" href="/browse/${d.id}/${d.subs[0].id}">
+     <span class="dom-caret" role="button" tabindex="0" aria-label="折叠或展开 ${esc(d.label)}" aria-expanded="${isOpen ? "true" : "false"}" title="折叠/展开"></span>
      <span class="dom-glyph" style="--dh:${HUES[d.id] || 158}"><svg><use href="#i-${d.id}"/></svg></span>
      <span class="dom-name">${esc(d.label)}</span><span class="dom-n">${d.n}</span>
     </a>
     <div class="subs">${d.subs.map(s => `
       <a class="sub ${CUR && CUR.domain === d.id && CUR.sub === s.id ? "active" : ""}" data-dom="${esc(d.id)}" data-sub="${esc(s.id)}" href="/browse/${d.id}/${s.id}">${esc(s.label)}<span class="n">${s.n}</span></a>`).join("")}
     </div>
-   </div>`).join("");
+   </div>`;
+  }).join("");
 }
 
 /* ---------- 目录聚合树（移动弹窗 + 目录统计共用；1 分钟缓存） ---------- */
