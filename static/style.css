@@ -244,10 +244,10 @@ html[data-theme="dark"] .dom-glyph{color:hsl(var(--dh,158) 72% 64%);background:h
 .subs{display:none;padding:2px 0 6px 18px;margin:2px 0 2px 8px;border-left:1px dashed var(--edge)}
 .dom.open .subs{display:block}
 /* 左侧分类目录：每个域独立收起/展开（不强制保持一个打开） */
-.dom-caret{flex:none;width:16px;height:16px;position:relative;cursor:pointer;border-radius:4px;transition:background .15s}
+.dom-caret{flex:none;width:18px;height:18px;position:relative;cursor:pointer;border-radius:5px;transition:background .15s}
 .dom-caret:hover{background:var(--acc-soft)}
 .dom-caret:focus-visible{outline:2px solid var(--acc);outline-offset:1px}
-.dom-caret::after{content:"";position:absolute;left:5px;top:3px;width:0;height:0;border-top:5px solid transparent;border-bottom:5px solid transparent;border-left:6px solid var(--muted);transition:transform .18s ease,border-left-color .18s}
+.dom-caret::after{content:"";position:absolute;left:5.5px;top:3.5px;width:0;height:0;border-top:5.5px solid transparent;border-bottom:5.5px solid transparent;border-left:7px solid var(--muted);transition:transform .18s ease,border-left-color .18s}
 .dom.open .dom-caret::after{transform:rotate(90deg);border-left-color:var(--acc)}
 html[data-theme="dark"] .dom-caret::after{border-left-color:hsl(var(--dh,158) 60% 70%)}
 html[data-theme="dark"] .dom.open .dom-caret::after{border-left-color:hsl(var(--dh,158) 72% 66%)}
