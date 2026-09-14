@@ -4,14 +4,15 @@
 移动需同步级联三处：① 磁盘主文件 + 旁挂；② FTS docs/links；③ 向量索引 rag.db。
 RagStore 是可选依赖，由 create_app 经 KB_HOOKS 注入（可能为 None）。
 """
+import json
 import logging
 import time
 from pathlib import Path
 
 from flask import Blueprint, current_app, jsonify, request
 
-from app.fts import remove_doc_from_index, upsert_doc_in_index
-from app.store import WRITABLE_EXTS
+from app.fts import build_index, remove_doc_from_index, upsert_doc_in_index
+from app.store import SKIP_DIRS, WRITABLE_EXTS, rename_sub
 
 logger = logging.getLogger("kb.reader")
 
@@ -197,6 +198,10 @@ def api_move():
     ③ 阅读状态 reading.db；④ 向量索引 rag.db。src/dst 均为 content/ 相对 posix 路径。"""
     data = request.get_json(force=True)
     src = _safe_rel(data.get("src", ""), WRITABLE_EXTS)
+    if not src.is_file():
+        # 第三轮 #1/#10：源文件不存在（已删除/已移动/前端路径陈旧）时给出可读的
+        # 404，而不是 _do_move 内部 rename 抛 FileNotFoundError 变 500。
+        return jsonify({"ok": False, "error": "not found: 源文件不存在（可能已被删除或移动）"}), 404
     dst_rel = (data.get("dst", "") or "").strip().replace("\\", "/")
     if not _dst_rel_ok(dst_rel):
         return jsonify({"ok": False, "error": "invalid dst"}), 400
@@ -210,6 +215,97 @@ def api_move():
     except ValueError as e:
         return jsonify({"ok": False, "error": str(e)}), 400
     return jsonify({"ok": True, "src": src_rel, "dst": dst_rel, "moved_sibs": moved_sibs})
+
+
+@files_bp.post("/api/rmdir")
+def api_rmdir():
+    """第三轮 #8：删除目录（仅限空目录）。目录里还有任何文件 → 400 提示先清空；
+    成功后清理 taxonomy.json 中该目录的 scoped 显示名键，并清 _TAX_CACHE。"""
+    content = _content()
+    data = request.get_json(force=True)
+    dom = str(data.get("domain") or "").strip().strip("/")
+    sub = str(data.get("sub") or "").strip().strip("/")
+    if not dom or "/" in dom or dom.startswith("_") or dom in SKIP_DIRS:
+        return jsonify({"ok": False, "error": "invalid domain"}), 400
+    # sub 允许嵌套（与 /api/mkdir 的 parent 对称）：每段不得下划线开头、不得 SKIP_DIRS
+    if not sub or any((not seg) or seg.startswith("_") or seg in SKIP_DIRS
+                      for seg in sub.split("/")):
+        return jsonify({"ok": False, "error": "invalid sub（仅允许普通目录路径）"}), 400
+    target = content / dom / sub
+    try:
+        target.resolve().relative_to(content.resolve())
+    except ValueError:
+        return jsonify({"ok": False, "error": "路径越界"}), 400
+    if not target.is_dir():
+        return jsonify({"ok": False, "error": "not found: 目录不存在（可能已被删除）"}), 404
+    leftovers = [p.name for p in target.iterdir()]
+    if leftovers:
+        return jsonify({"ok": False,
+                        "error": f"目录非空（{len(leftovers)} 项），请先删除或移走其中文件"}), 400
+    try:
+        target.rmdir()
+    except OSError as e:
+        return jsonify({"ok": False, "error": f"删除失败：{e}"}), 500
+    # taxonomy.json：清掉 域/子域 scoped 显示名键（无键则静默跳过）
+    tax_path = content / "_meta" / "taxonomy.json"
+    try:
+        if tax_path.is_file():
+            tax = json.loads(tax_path.read_text(encoding="utf-8"))
+            subs = tax.get("subs", {})
+            scoped = f"{dom}/{sub}"
+            if scoped in subs:
+                subs.pop(scoped)
+                tax["subs"] = subs
+                tax_path.write_text(json.dumps(tax, ensure_ascii=False, indent=2) + "\n",
+                                    encoding="utf-8")
+    except (OSError, ValueError):
+        pass  # taxonomy 写失败不回滚磁盘删除：目录已消失，显示名键残留无害
+    from app.store import _TAX_CACHE
+    _TAX_CACHE.clear()
+    return jsonify({"ok": True, "removed": f"{dom}/{sub}"})
+
+
+@files_bp.post("/api/rename-sub")
+def api_rename_sub():
+    """第三轮 #1：目录重命名（含 _root 收拢）。store.rename_sub 逐文档搬移
+    （含旁挂）并迁移 taxonomy 键；本接口补 ① 目标冲突预检 ② FTS 全量重建
+    （<1s，否则要等 30s watcher）③ scan/taxonomy 缓存清理。向量索引由
+    sync_rag 心跳自动对齐（新路径当新增、旧路径当删除）。"""
+    content = _content()
+    data = request.get_json(force=True)
+    dom = str(data.get("domain") or "").strip().strip("/")
+    sub = str(data.get("sub") or "").strip().strip("/")
+    new = str(data.get("new") or "").strip().strip("/")
+    if not dom or "/" in dom or dom.startswith("_") or dom in SKIP_DIRS:
+        return jsonify({"ok": False, "error": "invalid domain"}), 400
+    # _root 合法：表示「把域根散文件收拢进新子域」（store.rename_sub 语义）
+    if not sub or "/" in sub or (sub.startswith("_") and sub != "_root"):
+        return jsonify({"ok": False, "error": "invalid sub"}), 400
+    if not new:
+        return jsonify({"ok": False, "error": "新目录名不能为空"}), 400
+    if new == sub:
+        return jsonify({"ok": False, "error": "新旧目录名相同"}), 400
+    src_dir = content / dom / (sub if sub != "_root" else "")
+    dst_dir = content / dom / new
+    if not src_dir.is_dir():
+        return jsonify({"ok": False, "error": "not found: 目录不存在（可能已被删除或重命名）"}), 404
+    if dst_dir.exists():
+        return jsonify({"ok": False, "error": f"目标目录已存在：{dom}/{new}"}), 400
+    try:
+        plan = rename_sub(content, dom, sub, new, apply=True)
+    except ValueError as e:
+        return jsonify({"ok": False, "error": str(e)}), 400
+    except FileNotFoundError:
+        return jsonify({"ok": False, "error": "not found: 目录不存在"}), 404
+    # FTS 立即重建（全量 <1s），不等 30s watcher；失败不回滚磁盘，交给 watcher 兼底
+    try:
+        build_index(content, _indexes())
+    except Exception:
+        logger.warning("rename-sub 后 FTS 重建失败（等 watcher 重试）", exc_info=True)
+    from app.store import _TAX_CACHE
+    _TAX_CACHE.clear()
+    return jsonify({"ok": True, "renamed": f"{dom}/{sub}", "to": f"{dom}/{new}",
+                    "n_docs": plan.get("n_docs", 0)})
 
 
 @files_bp.post("/api/move/batch")

@@ -307,10 +307,15 @@ def _visible_sub_files(sdir: Path) -> list[Path]:
 
 def _tree_sig(content: Path) -> str:
     """仅 stat 不读内容的树签名：毫秒级，作为扫描/索引缓存的失效依据。
-    含文件清单（含删除），比单纯 max(mtime) 更可靠：删除也能立即感知。"""
+    含文件清单（含删除），比单纯 max(mtime) 更可靠：删除也能立即感知。
+    第三轮 #6：目录也纳入签名 —— 此前只计文件，新建空目录签名不变，
+    scan 缓存不失效，导致新建子目录后左侧树不显示、删除空目录后树仍残留。"""
     parts = []
     for dirpath, dirnames, filenames in os.walk(content):
         dirnames[:] = [d for d in dirnames if d not in SKIP_DIRS and not d.startswith("_")]
+        for d in dirnames:
+            dp = Path(dirpath) / d
+            parts.append(f"{dp.relative_to(content).as_posix()}/:{dp.stat().st_mtime_ns}")
         for fn in filenames:
             if fn.endswith(".notes.md"):
                 continue  # 旁挂备注不可见（B2），计入签名会让每次记备注都白白失效一轮缓存
@@ -721,19 +726,28 @@ def rename_sub(content: Path, domain: str, old_sub: str, new_sub: str,
     if not src_dir.is_dir():
         raise FileNotFoundError(f"sub dir not found: {src_dir}")
     docs = sorted(p for p in src_dir.rglob("*")
-                  if p.is_file() and p.suffix in SERVABLE_EXTS)
+                  if p.is_file() and p.suffix in SERVABLE_EXTS
+                  # 三轮冒烟发现：_root 收拢语义应为「只收域根散文件」——rglob 会把
+                  # 已有二级目录里的文档也吸进新子域，破坏用户既有分类
+                  and (old_sub != "_root" or p.parent == src_dir))
     plan = []
     tax_path = content / "_meta" / "taxonomy.json"
     for p in docs:
         rel_old = p.relative_to(content)
-        rel_new = Path(new_sub) / rel_old.relative_to(old_sub) \
-            if old_sub != "_root" else Path(rel_old.parent.name) / rel_old.name
-        # _root 重命名 = 把域根散文件收进新子域
+        # 三轮修复：旧实现在非 _root 分支用 rel_old.relative_to(old_sub)，
+        # 但 rel_old 以 domain/ 开头，必然 ValueError；且两分支 dst 都丢了 domain
+        # 前缀（会落到 content/new_sub/…）。统一拼为 domain/new_sub/相对路径。
         if old_sub == "_root":
-            rel_new = Path(new_sub) / p.name
+            # _root 重命名 = 把域根散文件收进新子域
+            rel_new = Path(domain) / new_sub / p.name
+        else:
+            rel_new = Path(domain) / new_sub / rel_old.relative_to(Path(domain) / old_sub)
         plan.append({"src": rel_old.as_posix(), "dst": rel_new.as_posix(),
                      "abs": p})
     if apply:
+        # 三轮冒烟发现：空目录重命名时逐文件循环不触发 mkdir，目标目录不创建、
+        # 旧目录又被 rmdir → 目录凭空消失（域随之从树掉落）。先无条件建目标目录。
+        (content / domain / new_sub).mkdir(parents=True, exist_ok=True)
         for item in plan:
             p = item["abs"]
             new_path = content / item["dst"]

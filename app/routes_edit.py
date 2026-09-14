@@ -101,8 +101,8 @@ def api_favorite():
 def api_mkdir():
     """新建子域目录（需求 #4）：domain 下一级，或 domain/sub 下嵌套一级。
     磁盘建目录 + 可选写入 taxonomy.json 显示名（不变量 5：分类学权威在 JSON）。
-    目录为空时分类树不显示（scan_corpus 跳过无 docs 的子域），属预期：随后往里建/移文档即可。
-    返回 created 路径供前端直接跳转。"""
+    空目录也会入树（n=0，第二轮 #2）；建完必清 _TAX_CACHE（三轮 #6，
+    移出 if label:），_tree_sig 已含目录 → 树立即刷新。返回 created 路径供前端直接跳转。"""
     data = request.get_json(force=True)
     domain = str(data.get("domain") or "").strip().strip("/")
     parent = str(data.get("parent") or "").strip().strip("/")  # "" = 域根下；否则 "domain/sub"
@@ -143,9 +143,12 @@ def api_mkdir():
             subs[rel_created] = label
             tax_path.write_text(json.dumps(tax, ensure_ascii=False, indent=2) + "\n",
                                 encoding="utf-8")
-            store._TAX_CACHE.clear()  # mtime 粒度足够，但同秒内连建两个目录时会撞缓存，直接清
         except (OSError, ValueError):
             pass  # taxonomy 写失败不回滚磁盘目录：目录仍可用，仅显示名为目录 id
+    # 第三轮 #6：无条件清缓存 —— 此前清 _TAX_CACHE 写在 if label: 里，不填显示名时
+    # 新目录虽落盘但 taxonomy/scan 缓存未失效，树不刷新；_tree_sig 已纳入目录，
+    # 这里补齐 taxonomy 缓存这一半。
+    store._TAX_CACHE.clear()
 
     return jsonify({"ok": True, "created": rel_created})
 
