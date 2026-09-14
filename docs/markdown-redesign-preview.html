@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Markdown 排版翻新 · 预览稿 v1 · 知库</title>
+<style>
+:root{
+  --bg:#f2efe7; --fg:#22312c; --surface:#ffffff;
+  --acc:#0c9a6a; --acc2:#0f86b8; --warn:#a5680b; --rose:#b53d75;
+  --muted:color-mix(in oklab,var(--fg),var(--bg) 42%);
+  --faint:color-mix(in oklab,var(--fg),var(--bg) 68%);
+  --edge:color-mix(in oklab,var(--fg),transparent 87%);
+  --hairline:color-mix(in oklab,var(--fg),transparent 92%);
+  --acc-soft:color-mix(in oklab,var(--acc),transparent 90%);
+  --acc-edge:color-mix(in oklab,var(--acc),transparent 70%);
+  --plate:linear-gradient(165deg,#122028,#0c151d);
+  --plate-text:#cfe0da;
+  --sans:"Segoe UI","Microsoft YaHei UI","PingFang SC",sans-serif;
+  --disp:Georgia,"Times New Roman",serif;
+  --mono:Consolas,"Cascadia Mono","Courier New",monospace;
+  --shadow:0 10px 30px color-mix(in oklab,var(--fg),transparent 90%);
+}
+html[data-theme="dark"]{
+  --bg:#060a0e; --fg:#e2ece8; --surface:#0f1a20;
+  --acc:#37e6a6; --acc2:#38cdf0; --warn:#f0b438; --rose:#f0599b;
+  --plate:linear-gradient(165deg,#0f1c25,#0a131b);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--fg);font-family:var(--sans);padding:34px 20px 80px}
+.top{max-width:880px;margin:0 auto 26px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.top h1{font-family:var(--disp);font-size:22px;letter-spacing:-.01em}
+.top .sp{flex:1}
+.theme-btn{font:12.5px var(--sans);padding:7px 14px;border-radius:9px;border:1px solid var(--edge);background:var(--surface);color:var(--fg);cursor:pointer}
+.note{max-width:880px;margin:0 auto 22px;font-size:12.5px;color:var(--muted);line-height:1.8;
+  border:1px dashed var(--acc-edge);border-radius:10px;padding:12px 16px;background:var(--acc-soft)}
+.preview{max-width:880px;margin:0 auto;background:var(--surface);border:1px solid var(--edge);border-radius:16px;
+  padding:44px 52px 56px;box-shadow:var(--shadow)}
+@media(max-width:720px){.preview{padding:26px 20px 40px}}
+
+/* ===== 以下为拟落地到 style.css 的 .a-body 新排版（预览即真实效果） ===== */
+.md{font-size:15.5px;line-height:1.95;color:var(--fg)}
+/* 标题：H1 文章主标（衬线+左侧粗记号），H2 带自动编号感的下边线，H3/H4 收紧 */
+.md h1{font-family:var(--disp);font-size:30px;line-height:1.35;letter-spacing:-.015em;margin:8px 0 18px;
+  padding-left:14px;border-left:4px solid var(--acc)}
+.md h2{font-family:var(--disp);font-size:21px;margin:38px 0 14px;padding-bottom:8px;letter-spacing:-.01em;
+  border-bottom:1px solid var(--hairline);position:relative}
+.md h2::before{content:"";position:absolute;left:0;bottom:-1px;width:64px;height:2px;background:var(--acc)}
+.md h3{font-size:17px;margin:26px 0 10px;color:var(--fg)}
+.md h3::before{content:"§ ";color:var(--acc);font-weight:700}
+.md h4{font-size:15px;margin:20px 0 8px;color:var(--muted);letter-spacing:.02em}
+/* 段落与链接 */
+.md p{margin:12px 0}
+.md a{color:var(--acc);text-decoration:none;border-bottom:1px solid var(--acc-edge);transition:.15s}
+.md a:hover{border-bottom-color:var(--acc);background:var(--acc-soft)}
+/* 强调：加粗主题绿、斜体暖色 */
+.md strong{color:var(--acc);font-weight:700}
+.md em{color:var(--warn);font-style:italic}
+.md del{color:var(--faint)}
+/* 列表：自定义记号 + 任务清单勾选样式 */
+.md ul{padding-left:8px;margin:12px 0;list-style:none}
+.md ul li{padding-left:20px;position:relative;margin:6px 0}
+.md ul li::before{content:"";position:absolute;left:2px;top:.72em;width:6px;height:6px;border-radius:2px;background:var(--acc);opacity:.75}
+.md ul ul li::before{background:var(--acc2)}
+.md ol{padding-left:30px;margin:12px 0}
+.md ol li{margin:6px 0}
+.md ol::marker{color:var(--acc)}
+.md li::marker{color:var(--acc);font-weight:600}
+.md ul.task{list-style:none}
+.md ul.task li{padding-left:26px}
+.md ul.task li::before{display:none}
+.md input[type=checkbox]{accent-color:var(--acc);margin-right:8px;transform:translateY(1px)}
+/* 引用：默认绿引用 + 可扩展的提示/警告变体（由引用首行 emoji 约定触发） */
+.md blockquote{margin:18px 0;padding:14px 18px;border-left:3px solid var(--acc);border-radius:0 10px 10px 0;
+  background:var(--acc-soft);color:var(--muted)}
+.md blockquote p{margin:6px 0}
+.md blockquote.tip{border-left-color:var(--acc2);background:color-mix(in oklab,var(--acc2),transparent 92%)}
+.md blockquote.warn{border-left-color:var(--warn);background:color-mix(in oklab,var(--warn),transparent 92%)}
+/* 行内代码与代码块 */
+.md code{font-family:var(--mono);font-size:.85em;color:var(--acc);background:var(--acc-soft);
+  border:1px solid var(--acc-edge);border-radius:5px;padding:1px 6px;word-break:break-word}
+.md .codeblock{margin:18px 0;border-radius:12px;overflow:hidden;border:1px solid color-mix(in oklab,var(--fg),transparent 80%)}
+.md .cb-head{display:flex;align-items:center;justify-content:space-between;padding:7px 14px;
+  background:color-mix(in oklab,#122028,#000 25%)}
+.md .cb-lang{font:10.5px var(--mono);letter-spacing:.14em;text-transform:uppercase;color:#5c716c}
+.md .cb-copy{font:11.5px var(--sans);color:#cfe0da;background:none;border:1px solid #2a3a44;border-radius:6px;padding:3px 10px;cursor:pointer;opacity:.75}
+.md .cb-copy:hover{opacity:1;border-color:#3d525e}
+.md .cb-copy.ok{color:#37e6a6;border-color:#1f5c46}
+.md pre{background:var(--plate);color:var(--plate-text);padding:16px 18px;overflow-x:auto}
+.md pre code{font:13px/1.78 var(--mono);color:inherit;background:none;border:none;padding:0}
+.md pre .kw{color:#8be0c1}.md pre .str{color:#f0b438}.md pre .com{color:#5c716c;font-style:italic}.md pre .fn{color:#7cd2ff}
+/* 表格：圆角外框 + 斑马纹 + 横向滚动 */
+.md .tbl-wrap{margin:18px 0;overflow-x:auto;border:1px solid var(--edge);border-radius:11px}
+.md table{width:100%;border-collapse:collapse;font-size:13.5px;min-width:480px}
+.md thead th{font:600 12px var(--sans);letter-spacing:.08em;color:var(--acc);text-align:left;
+  padding:10px 14px;background:var(--acc-soft);border-bottom:1px solid var(--acc-edge);white-space:nowrap}
+.md tbody td{padding:9px 14px;border-bottom:1px solid var(--hairline);color:var(--fg)}
+.md tbody tr:last-child td{border-bottom:none}
+.md tbody tr:nth-child(even){background:color-mix(in oklab,var(--fg),transparent 97%)}
+.md tbody tr:hover{background:var(--acc-soft)}
+/* 图片：圆角 + 缩放光标 + 点击放大（本轮新能力） */
+.md .imgwrap{margin:18px 0;text-align:center}
+.md img{max-width:100%;border-radius:11px;cursor:zoom-in;box-shadow:0 6px 22px color-mix(in oklab,var(--fg),transparent 88%);transition:transform .18s}
+.md img:hover{transform:scale(1.008)}
+.md figcaption{font:11.5px var(--mono);color:var(--faint);margin-top:8px}
+/* 分隔线 / 脚注 */
+.md hr{border:none;height:1px;margin:30px 0;background:linear-gradient(90deg,transparent,var(--acc-edge),transparent)}
+.md .footnotes{font-size:12.5px;color:var(--muted);border-top:1px solid var(--hairline);margin-top:30px;padding-top:12px}
+/* 目录块（文内 [[#]] 导航，知库渲染层会为标题生成 slug id） */
+.md .tocbox{margin:20px 0;padding:16px 20px;border:1px solid var(--edge);border-radius:12px;background:color-mix(in oklab,var(--fg),transparent 97%)}
+.md .tocbox b{font:600 12px var(--mono);letter-spacing:.16em;color:var(--acc);text-transform:uppercase}
+.md .tocbox ol{columns:2;margin:10px 0 0;padding-left:26px;font-size:13.5px}
+@media(max-width:640px){.md .tocbox ol{columns:1}}
+/* lightbox（同拟上线实现） */
+.lb{position:fixed;inset:0;z-index:999;background:rgba(6,10,14,.82);display:none;align-items:center;justify-content:center;cursor:zoom-out}
+.lb.show{display:flex}
+.lb img{max-width:94vw;max-height:84vh;border-radius:10px;box-shadow:0 30px 90px rgba(0,0,0,.5)}
+.lb .hint{position:fixed;left:50%;bottom:26px;transform:translateX(-50%);font:12px var(--mono);color:#8b949e;
+  background:rgba(15,26,32,.85);padding:4px 14px;border-radius:99px}
+/* 新旧对比小节 */
+.compare{max-width:880px;margin:26px auto 0;display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media(max-width:720px){.compare{grid-template-columns:1fr}}
+.compare .c{border-radius:12px;padding:16px 18px;font-size:12.5px;line-height:1.8}
+.compare .old{border:1px dashed var(--edge);color:var(--muted)}
+.compare .new{border:1px solid var(--acc-edge);background:var(--acc-soft)}
+.compare b{display:block;font:600 12px var(--mono);letter-spacing:.14em;margin-bottom:8px;text-transform:uppercase}
+.compare .old b{color:var(--faint)}
+.compare .new b{color:var(--acc)}
+</style>
+</head>
+<body>
+<div class="top">
+  <h1>Markdown 排版翻新 · 预览稿 v1</h1>
+  <span class="sp"></span>
+  <button class="theme-btn" onclick="const h=document.documentElement;h.dataset.theme=h.dataset.theme==='dark'?'light':'dark'">切换深色预览</button>
+</div>
+<div class="note">这是拟替换到知库阅读页的 <b>.a-body</b> 新排版：所有元素都是真实渲染效果（本页可交互：目录可点、图片可点放大、代码可复制）。确认风格后我把它落进 <b>static/style.css</b>，深浅两套主题同步适配。</div>
+
+<div class="preview">
+<article class="md">
+  <h1>JavaScript 开发者应懂的 33 个概念</h1>
+  <p>这是 <strong>加粗强调</strong>、<em>斜体强调</em>、<del>删除线</del> 与 <a href="#表格">文内跳转</a> 的效果。行内代码长这样：<code>Array.prototype.reduce()</code>，键盘按键 <code>Ctrl + K</code>。普通段落行高 1.95，中文阅读舒适度优先。</p>
+
+  <div class="tocbox">
+    <b>目录</b>
+    <ol>
+      <li><a href="#引用与提示块">引用与提示块</a></li>
+      <li><a href="#表格">表格</a></li>
+      <li><a href="#代码块">代码块</a></li>
+      <li><a href="#图片点击放大">图片点击放大</a></li>
+    </ol>
+  </div>
+
+  <h2 id="引用与提示块">引用与提示块</h2>
+  <blockquote>
+    <p>普通引用：左侧主题绿竖线 + 浅绿底。适合摘录与补充说明。</p>
+  </blockquote>
+  <blockquote class="tip">
+    <p><b>💡 提示</b>：蓝色变体，渲染层可按引用首行的 💡/⚠️ 约定自动切换，语料不用改。</p>
+  </blockquote>
+  <blockquote class="warn">
+    <p><b>⚠️ 注意</b>：琥珀色警告变体。三种引用覆盖 90% 的笔记场景。</p>
+  </blockquote>
+
+  <h2 id="表格">表格</h2>
+  <div class="tbl-wrap">
+  <table>
+    <thead><tr><th>修复项</th><th>状态</th><th>说明</th></tr></thead>
+    <tbody>
+      <tr><td>圆角外框 + 横向滚动</td><td>新增</td><td>宽表不再撑破版心</td></tr>
+      <tr><td>斑马纹 + 悬停高亮</td><td>新增</td><td>行多时不易看串行</td></tr>
+      <tr><td>表头绿字浅绿底</td><td>强化</td><td>延续知库主题色</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <h2 id="代码块">代码块</h2>
+  <div class="codeblock">
+    <div class="cb-head"><span class="cb-lang">javascript</span><button class="cb-copy" onclick="cp(this)">复制</button></div>
+    <pre><code><span class="com">// 语法高亮配色沿用知库深色代码板</span>
+<span class="kw">const</span> fib = (n) =&gt; n &lt;= <span class="fn">1</span> ? n : <span class="fn">fib</span>(n - <span class="fn">1</span>) + <span class="fn">fib</span>(n - <span class="fn">2</span>);
+<span class="kw">const</span> s = <span class="str">"记忆化版本见 reduce 一节"</span>;</code></pre>
+  </div>
+
+  <ul class="task">
+    <li><input type="checkbox" checked> 任务清单：已完成项</li>
+    <li><input type="checkbox"> 未完成项（勾选框用主题绿）</li>
+  </ul>
+
+  <h2 id="图片点击放大">图片点击放大</h2>
+  <p>图片带圆角与悬浮投影，<b>点击弹出大图</b>（滚轮缩放、点空白关闭）——这就是图 6 那张 DOM 结构图的预期交互：</p>
+  <div class="imgwrap">
+    <img src="E:/GitHub/knowledge/content/articles/javascript/imgs/js.png" alt="JavaScript 知识结构" onclick="lb(this)">
+    <figcaption>点击图片放大 · 滚轮缩放 · Esc/点空白关闭</figcaption>
+  </div>
+
+  <h2 id="表格">表格</h2>
+  <p>重复标题用于演示重名 slug 自动去重（<code>-1</code> 后缀），文内跳转仍然精确落点。</p>
+
+  <hr>
+  <div class="footnotes">脚注区：小字灰色，顶部分隔线。1. 示例脚注 ↩︎</div>
+</article>
+</div>
+
+<div class="compare">
+  <div class="c old"><b>现状（旧排版）</b>标题无层级记号 · 表格裸边框无斑马纹 · 引用只有一种 · 图片点了没反应 · 目录链接点击整页刷新 · 代码块复制按钮时序不稳</div>
+  <div class="c new"><b>翻新后（本稿）</b>H1 竖记号 / H2 双线 + § 记号 · 表格圆角斑马纹 · 引用三变体 · 图片 lightbox 缩放 · 锚点平滑滚动（已随本轮修复上线） · 文内目录块双栏</div>
+</div>
+
+<div class="lb" id="lb" onclick="if(event.target===this)this.classList.remove('show')">
+  <img id="lb-img" alt="">
+  <div class="hint">滚轮缩放 · 点击空白关闭</div>
+</div>
+
+<script>
+function cp(btn){
+  const code = btn.closest('.codeblock').querySelector('pre code').innerText;
+  navigator.clipboard.writeText(code).then(()=>{btn.textContent='已复制';btn.classList.add('ok');
+    setTimeout(()=>{btn.textContent='复制';btn.classList.remove('ok')},1400);});
+}
+let scale=1;
+function lb(img){
+  const box=document.getElementById('lb'),big=document.getElementById('lb-img');
+  big.src=img.src;big.alt=img.alt;scale=1;big.style.transform='scale(1)';
+  box.classList.add('show');
+}
+document.getElementById('lb').addEventListener('wheel',e=>{
+  e.preventDefault();
+  scale=Math.min(8,Math.max(.3,scale*(e.deltaY<0?1.15:.87)));
+  document.getElementById('lb-img').style.transform=`scale(${scale})`;
+},{passive:false});
+document.addEventListener('keydown',e=>{if(e.key==='Escape')document.getElementById('lb').classList.remove('show')});
+document.querySelectorAll('.md .tocbox a, .md a[href^="#"]').forEach(a=>{
+  a.addEventListener('click',e=>{
+    e.preventDefault();
+    const id=decodeURIComponent(a.getAttribute('href').slice(1));
+    const t=document.getElementById(id);
+    if(t)t.scrollIntoView({behavior:'smooth',block:'start'});
+  });
+});
+</script>
+</body>
+</html>
