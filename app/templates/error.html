@@ -5,23 +5,22 @@
 <main class="single">
   <section class="panel page-panel">
     <div class="err-wrap">
-      <svg class="mascot" viewBox="0 0 160 120" aria-hidden="true">
-        <ellipse class="halo" cx="80" cy="70" rx="70" ry="40" style="fill:color-mix(in oklab,var(--warn),transparent 86%)"/>
-        <ellipse class="shadow" cx="80" cy="108" rx="40" ry="4"/>
-        <ellipse class="head" cx="80" cy="46" rx="20" ry="22"/>
-        <ellipse class="ear" cx="58" cy="46" rx="3" ry="4.5"/><ellipse class="ear" cx="102" cy="46" rx="3" ry="4.5"/>
-        <path class="hair" d="M60 40 Q62 22 80 22 Q98 22 100 40 Q96 32 80 32 Q64 32 60 40 Z"/>
-        <circle class="eye" cx="73" cy="46" r="1.6"/><circle class="eye" cx="87" cy="46" r="1.6"/>
-        <path class="brow" d="M68 39 Q73 37 78 40"/><path class="brow" d="M82 40 Q87 37 92 39"/>
-        <path class="mouth" d="M74 58 Q80 53 86 58"/>
-        <ellipse class="blush" cx="63" cy="52" rx="4" ry="2"/><ellipse class="blush" cx="97" cy="52" rx="4" ry="2"/>
-        <path class="body" d="M58 78 Q80 68 102 78 L98 104 H62 Z"/>
-        <path class="body-line" d="M58 78 Q80 68 102 78 L98 104 H62 Z"/>
-        <path class="shirt" d="M70 70 Q80 76 90 70 L88 82 H72 Z"/>
-        <path class="arm" d="M58 80 Q48 76 50 66"/><path class="arm" d="M102 80 Q112 76 110 66"/>
-        <path class="bubble" d="M110 12 h38 a5 5 0 0 1 5 5 v20 a5 5 0 0 1 -5 5 h-22 l-8 7 v-7 h-8 a5 5 0 0 1 -5 -5 V17 a5 5 0 0 1 5 -5 Z"/>
-        <path class="bubble-ic" d="M129 19 v11" style="stroke:var(--warn)"/>
-        <circle cx="129" cy="36" r="1.6" fill="var(--warn)" stroke="none"/>
+      <svg class="mascot" viewBox="0 0 200 150" aria-hidden="true">
+        <ellipse cx="100" cy="90" rx="88" ry="48" style="fill:color-mix(in oklab,var(--acc),transparent 88%)"/>
+        <ellipse cx="100" cy="134" rx="52" ry="5"/>
+        <line x1="100" y1="26" x2="100" y2="38" stroke-width="2"/>
+        <circle cx="100" cy="23" r="4" class="bot-ant"/>
+        <rect x="66" y="38" width="68" height="52" rx="16" stroke-width="2"/>
+        <g class="bot-face">
+          <circle cx="88" cy="60" r="3"/><circle cx="112" cy="60" r="3"/>
+          <path d="M93 52 l-8 -3 M107 52 l8 -3"/>
+          <path d="M96 70 Q100 67 104 70"/>
+        </g>
+        <rect x="80" y="100" width="40" height="16" rx="5" stroke-width="2" transform="rotate(-8 100 108)"/>
+        <rect x="84" y="103.5" width="18" height="9" rx="2.5" class="bot-batt" transform="rotate(-8 100 108)"/>
+        <path d="M74 92 Q64 104 58 112 M126 92 Q134 104 140 110" fill="none" stroke-width="2"/>
+        <path class="bubble" d="M148 44 h26 a5 5 0 0 1 5 5 v16 a5 5 0 0 1 -5 5 h-14 l-7 6 v-6 h-5 a5 5 0 0 1 -5 -5 V49 a5 5 0 0 1 5 -5 Z"/>
+        <text x="161" y="61" text-anchor="middle" font-size="12" font-weight="700" class="bot-batt">404</text>
       </svg>
       <div class="e-title">出错了</div>
       <div class="e-desc">{{ message }}</div>

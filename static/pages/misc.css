@@ -91,6 +91,16 @@
 
 /* [F] mascot 空态（第 03 屏分层语言：halo/shadow/head/hair/body/uniform 渐变） */
 .mascot .halo{fill:url(#bgHalo)}
+/* 候选三·低电量机器人（error 页专用造型，2026-09-14 用户选定） */
+.mascot > ellipse:nth-of-type(2){fill:var(--ill-shadow)}
+.mascot line{stroke:color-mix(in oklab,var(--seed-fg),transparent 55%)}
+.mascot circle.bot-ant{fill:var(--rose)}
+.mascot rect{fill:var(--ill-bubble);stroke:color-mix(in oklab,var(--seed-fg),transparent 35%)}
+.mascot .bot-face circle{fill:color-mix(in oklab,var(--seed-fg),transparent 15%);stroke:none}
+.mascot .bot-face path{stroke:color-mix(in oklab,var(--seed-fg),transparent 30%);stroke-width:1.8;fill:none;stroke-linecap:round}
+.mascot .bot-batt{fill:var(--rose)}
+.mascot path.bubble{fill:var(--ill-bubble);stroke:color-mix(in oklab,var(--seed-fg),transparent 35%);stroke-width:2}
+.mascot text.bot-batt{fill:var(--rose)}
 .mascot .shadow{fill:var(--ill-shadow)}
 .mascot .head{fill:var(--ill-skin)}
 .mascot .ear{fill:var(--ill-skin-shadow)}

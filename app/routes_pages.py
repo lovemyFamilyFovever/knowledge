@@ -15,7 +15,7 @@ from flask import (Blueprint, abort, current_app, redirect, render_template,
                    request, send_file)
 
 from app.fts import open_db, search
-from app.store import (MEDIA_EXTS, SERVABLE_EXTS, SKIP_DIRS, inbox_count, load_taxonomy,
+from app.store import (MEDIA_EXTS, SERVABLE_EXTS, SKIP_DIRS, domain_label, inbox_count, load_taxonomy,
                        md_files, parse_frontmatter)
 
 pages_bp = Blueprint("pages", __name__)
@@ -119,10 +119,39 @@ def browse(domain, sub):
     domains = _domains_cached()
     dom = next((d for d in domains if d["id"] == domain), None)
     sobj = next((s for s in dom["subs"] if s["id"] == sub), None) if dom else None
-    if not sobj or not sobj["docs"]:
+    if not sobj:
         abort(404)
+    if not sobj["docs"]:
+        # 空目录（如新建后未放文档）：渲染工作台空态而不是 404，否则用户以为创建无效
+        return _workbench_empty(domain, sub, sobj)
     first = sobj["docs"][0]
     return redirect(f"/doc/{domain}/{sub}/{first['name']}")
+
+
+def _workbench_empty(domain, sub, sobj):
+    """空子域工作台：左树/列表照常渲染，正文区给空态占位 + 新建文档入口。"""
+    content = _content()
+    domains = _domains_cached()
+    n_fav = sum(1 for d in domains for s in d["subs"] for dd in s["docs"] if dd["favorite"])
+    con = open_db(_indexes())
+    try:
+        fts_n = con.execute("SELECT count(*) FROM docs").fetchone()[0]
+    except Exception:
+        fts_n = 0
+    finally:
+        con.close()
+    empty_doc = {
+        "rel": f"{domain}/{sub}/", "title": sobj["label"], "fm": {}, "md": None,
+        "is_html": False, "has_html": False, "html_rel": None, "favorite": False,
+        "domain": domain, "sub": sub, "domain_label": domain_label(load_taxonomy(content), domain),
+        "sub_label": sobj["label"], "source_label": "空目录", "notes": [], "info_rows": [],
+        "mtime": 0, "size": "0 KB", "empty": True,
+    }
+    return render_template("workbench.html", domains=domains,
+                           cur={"domain": domain, "sub": sub, "name": ""},
+                           docs=[], sub_label=sobj["label"], doc=empty_doc, n_fav=n_fav,
+                           info_rows=[], doc_json=json.dumps(empty_doc, ensure_ascii=False).replace("<", "\\u003c"),
+                           fts_n=fts_n, inbox_n=inbox_count(content))
 
 
 def _workbench(domain, sub, name):

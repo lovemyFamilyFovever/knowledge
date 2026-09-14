@@ -177,10 +177,46 @@ function enhanceRenderedBody(el) {
   });
 }
 
+/* 新建文档弹窗（空目录占位页复用；与 ctxSubItems 内联版同行为） */
+async function promptNewDocInDir(dom, sub) {
+  const base = sub ? `${dom}/${sub}` : dom;
+  const res = await kbModal({
+    title: "新建文档",
+    body: `将在 <span class='mono'>${esc(base)}/</span> 下创建 Markdown 文件，首行自动写入标题。`,
+    inputs: [{ key: "nm", label: "文件名（不含 .md）", placeholder: "示例：RAG 切块策略" }],
+    confirmText: "创建",
+  });
+  if (!res || !res.nm) return;
+  const rel = `${base}/${res.nm}.md`;
+  const r = await fetch("/api/save", { method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ path: rel, content: `# ${res.nm}\n\n` }) });
+  if (!r.ok) { toast("创建失败：" + r.status); return; }
+  await afterMutation();
+  await navigate(docUrl(rel), true);
+}
+window.promptNewDocInDir = promptNewDocInDir;
+
 function renderArticle(forceMd) {
   const el = $("#article");
   if (!el || !DOC) return;
   refreshDocMark(); // 已读/已掌握按钮状态（异步，不阻塞渲染）
+  /* 空目录占位（新建目录未放文档时不再 404，正文区给引导） */
+  if (DOC.empty) {
+    el.classList.remove("pretty-mode");
+    el.innerHTML = `<div class="a-kicker">${esc(DOC.domain_label)} / ${esc(DOC.sub_label)}</div>
+      <h1 class="a-title">${esc(DOC.title)}</h1>
+      <div class="a-rule"></div>
+      <div class="kb-empty-dir">
+        <p>这个目录还是空的。</p>
+        <p class="sub">点下方按钮新建第一篇文档；或把收件箱里的内容归档到这里。</p>
+        <button class="iconbtn primary" id="kb-empty-newdoc">${icon("folder-open", 13)} 新建第一篇文档</button>
+      </div>`;
+    const btn = el.querySelector("#kb-empty-newdoc");
+    if (btn) btn.onclick = () => promptNewDocInDir(DOC.domain, DOC.sub === "_root" ? "" : DOC.sub);
+    buildToc();
+    document.dispatchEvent(new CustomEvent("kb:article-rendered"));
+    return;
+  }
   /* interview 域的题库类文档以美化版 HTML 为主（用户指定）：
      有旁挂 .html 且未强制 Markdown 视图时，直接内嵌美化版（forceMd=true 可切回） */
   const pretty = DOC.is_html || (DOC.has_html && DOC.domain === "interview" && !forceMd);
@@ -242,6 +278,8 @@ function renderArticle(forceMd) {
   });
   enhanceArticleDOM(el); // 问题8：渲染方直接产出 final-form，不再由 observer 事后打补丁
   enhanceRenderedBody(el); // 需求 #9 外链新标签 + #6 相对图片走 /raw 直服
+  assignHeadingIds(el); // 文内锚点与 TOC 共用的标题 id
+  enhanceInpageNav(el); // #7 片段链接平滑滚动 + #8 图片点击放大
   buildToc();
   decorateWikilinks(); // B4：[[双链]] 渲染为可点链接（正文里不再是方括号生肉）
   scrollToHash();      // B5：heading id 就绪后再兑现 URL 锚点
@@ -361,14 +399,70 @@ function scrollToHash() {
   if (t) t.scrollIntoView({ block: "start" });
 }
 
+/* 标题 slug id：marked 默认不给标题 id，文内 [x](#小节) 与右栏 TOC 都落不了点。
+   规则与 GitHub 致：去标点、空白转 -、中文保留；重名追加 -1/-2。 */
+function slugifyHeading(text, used) {
+  let s = String(text).trim().toLowerCase()
+    .replace(/[\u201c\u201d\u2018\u2019\u300c\u300d\u300e\u300f]/g, "")
+    .replace(/[^\p{L}\p{N}\s-]/gu, "")
+    .replace(/\s+/g, "-");
+  if (!s) s = "section";
+  let id = s, i = 1;
+  while (used.has(id)) { id = `${s}-${i++}`; }
+  used.add(id);
+  return id;
+}
+function assignHeadingIds(el) {
+  const used = new Set([...el.querySelectorAll("[id]")].map(x => x.id));
+  el.querySelectorAll(".a-body h1, .a-body h2, .a-body h3, .a-body h4").forEach(h => {
+    if (!h.id) h.id = slugifyHeading(h.textContent, used);
+  });
+}
+/* #7：文内片段链接（#开头）点击平滑滚动，不整页刷新；#8：图片点击放大 lightbox。 */
+function enhanceInpageNav(el) {
+  el.querySelectorAll(".a-body a[href^='#']").forEach(a => {
+    if (a.dataset.kbNavBound) return;
+    a.dataset.kbNavBound = "1";
+    a.addEventListener("click", e => {
+      e.preventDefault();
+      let id; try { id = decodeURIComponent(a.getAttribute("href").slice(1)); } catch (_) { id = a.getAttribute("href").slice(1); }
+      const t = id && document.getElementById(id);
+      if (t) t.scrollIntoView({ behavior: "smooth", block: "start" });
+      history.replaceState(null, "", "#" + encodeURIComponent(id));
+    });
+  });
+  el.querySelectorAll(".a-body img").forEach(img => {
+    if (img.dataset.kbZoomBound) return;
+    img.dataset.kbZoomBound = "1";
+    img.addEventListener("click", () => openImageZoom(img));
+  });
+}
+function openImageZoom(img) {
+  const ov = KB.overlay.open({
+    className: "kb-imgzoom-ov",
+    html: `<div class="kb-imgzoom"><img src="${esc(img.currentSrc || img.src)}" alt="${esc(img.alt || "")}"><div class="kb-imgzoom-hint">${esc(img.alt || "")} · 滚轮缩放 · 点击空白关闭</div></div>`,
+    returnFocus: true,
+  });
+  const box = ov.root.querySelector(".kb-imgzoom");
+  const big = ov.root.querySelector("img");
+  let scale = 1;
+  ov.root.addEventListener("click", e => { if (e.target === ov.root || e.target === box) ov.close("click"); });
+  ov.root.addEventListener("wheel", e => {
+    e.preventDefault();
+    scale = Math.min(8, Math.max(0.3, scale * (e.deltaY < 0 ? 1.15 : 0.87)));
+    big.style.transform = `scale(${scale})`;
+  }, { passive: false });
+}
+
 function buildToc() {
   const pane = $("#pane-toc"); if (!pane) return;
   const heads = $$("#article .a-body h1, #article .a-body h2, #article .a-body h3");
   if (!heads.length) { pane.innerHTML = `<div style="font-size:12.5px;color:var(--faint);padding:6px 2px">本文无小节标题。</div>`; return; }
   pane.innerHTML = "";
+  const used = new Set([...el.querySelectorAll("[id]")].map(x => x.id));
   const pairs = [];
   heads.forEach((h, i) => {
-    h.id = h.id || ("sec-" + i);
+    h.id = h.id || slugifyHeading(h.textContent, used);
     const a = document.createElement("a");
     a.textContent = h.textContent;
     a.className = h.tagName === "H3" ? "lv3" : "";
@@ -556,7 +650,13 @@ document.addEventListener("click", e => {
   e.preventDefault();
   navigate(href, true);
 });
-window.addEventListener("popstate", () => { if (WORKBENCH) navigate(location.pathname + location.search, false); });
+window.addEventListener("popstate", () => {
+  if (!WORKBENCH) return;
+  // #锚点点击也会触发 popstate：path+search 未变时不重渲染，只兑现滚动位置
+  const now = location.pathname + location.search;
+  if (now === ED_LAST_HREF || now === location.pathname + location.search && ED_LAST_HREF && ED_LAST_HREF.split("#")[0] === now) { scrollToHash(); return; }
+  navigate(location.pathname + location.search, false);
+});
 
 /* ---------- 编辑 ---------- */
 /* frontmatter 原文：openEditor 曾直接用 JSON.stringify 重建 fm，
@@ -707,12 +807,13 @@ async function saveDoc() {
   if (td) { td.title = DOC.title; persistTree(); }
   linksLoadedFor = null;
   invalidateWikilinkMap(); // B4：正文双链解析结果随保存失效
-  ED_SNAPSHOT = text; // Ctrl+S 后清除 dirty 状态（编辑器可能仍被调用方保持打开）
+  ED_SNAPSHOT = text; // dirty 基准同步（tryCloseEditor 不再弹「未保存」确认）
   renderArticle(); renderCrumb();
+  // 需求 #9：保存写回后自动退出编辑态，回到阅读视图（Ctrl+S 同样生效）
+  closeEditor();
   toast(`已写回 <span class="mono">${esc(DOC.rel)}</span> · 索引已更新 · git 可 diff`);
   return true;
-}
-const edText = $("#ed-text");
+}const edText = $("#ed-text");
 if (edText) edText.onkeydown = e => {
   if ((e.ctrlKey || e.metaKey) && e.key === "s") { e.preventDefault(); saveDoc(); }
 };
@@ -987,27 +1088,29 @@ async function copyText(t, okMsg) {
   }
 }
 
-async function showStats(rel) {
-  const r = await fetch("/api/stats?path=" + encodeURIComponent(rel));
-  if (!r.ok) { toast("统计失败"); return; }
-  const s = await r.json();
-  const kb = (s.size / 1024).toFixed(1);
-  const rows = [
-    ["标题", s.title], ["路径", s.path],
-    ["字数", `${s.chars} 字符（中文 ${s.cjk} · 英数词 ${s.words}）`],
-    ["结构", `${s.lines} 行 · ${s.headings} 个标题 · ${s.code_blocks} 个代码块`],
-    ["双链", s.wikilinks + " 条"],
-    ["标签", s.tags.length ? s.tags.join("、") : "未打标"],
-    ["来源", s.source || "—"], ["收录", s.collected || "—"],
-    ["文件", kb + " KB · 修改 " + new Date(s.mtime * 1000).toLocaleString()],
-  ];
-  const ov = KB.overlay.open({
-    className: "pretty-ov",
-    html: `<div class="pretty-box stats-box"><div class="pretty-bar"><span class="pt">统计信息</span><button class="iconbtn gs-close">${icon("cancel-x", 12)} 关闭</button></div>
-    <div class="stats-body">${rows.map(([k, v]) => `<div class="meta-row"><span class="k">${esc(k)}</span><span class="v">${esc(v)}</span></div>`).join("")}</div></div>`,
-  });
-  ov.root.querySelector(".gs-close").onclick = () => ov.close("btn");
-  ov.root.addEventListener("mousedown", e => { if (e.target === ov.root) ov.close("mask"); });
+function showStats(rel) {
+  fetch("/api/stats?path=" + encodeURIComponent(rel))
+    .then(r => { if (!r.ok) throw new Error(r.status); return r.json(); })
+    .then(s => {
+      const kb = (s.size / 1024).toFixed(1);
+      const rows = [
+        ["标题", s.title], ["路径", s.path],
+        ["字数", `${s.chars} 字符（中文 ${s.cjk} · 英数词 ${s.words}）`],
+        ["结构", `${s.lines} 行 · ${s.headings} 个标题 · ${s.code_blocks} 个代码块`],
+        ["双链", s.wikilinks + " 条"],
+        ["标签", s.tags.length ? s.tags.join("、") : "未打标"],
+        ["来源", s.source || "—"], ["收录", s.collected || "—"],
+        ["文件", kb + " KB · 修改 " + new Date(s.mtime * 1000).toLocaleString()],
+      ];
+      const ov = KB.overlay.open({
+        className: "pretty-ov",
+        html: `<div class="pretty-box stats-box"><div class="pretty-bar"><span class="pt">统计信息</span><button class="iconbtn gs-close">${icon("cancel-x", 12)} 关闭</button></div>
+      <div class="stats-body">${rows.map(([k, v]) => `<div class="meta-row"><span class="k">${esc(k)}</span><span class="v">${esc(v)}</span></div>`).join("")}</div></div>`,
+      });
+      ov.root.querySelector(".gs-close").onclick = () => ov.close("btn");
+      ov.root.addEventListener("mousedown", e => { if (e.target === ov.root) ov.close("mask"); });
+    })
+    .catch(err => toast("统计失败：" + (err.message || err)));
 }
 
 /* ---------- 通用弹窗（替代系统 prompt/alert/confirm） ----------
@@ -1363,11 +1466,31 @@ function ctxDocItems(docA) {
   const rel = docRelOf(CUR.domain, CUR.sub, name);
   return [
     { icon: icon("trend"), label: "统计信息", fn: () => showStats(rel) },
-    { icon: icon("preview-eye"), label: "新标签页打开原文", fn: () => window.open(rawUrl(rel), "_blank") },
+    { icon: icon("copy"), label: "复制 Markdown 原文", fn: async () => {
+        const r = await fetch(rawUrl(rel));
+        if (!r.ok) { toast("读取原文失败：" + r.status); return; }
+        copyText(await r.text(), "已复制 Markdown 原文");
+      } },
     { icon: icon("copy-link"), label: "复制站内链接", fn: () => copyText(location.origin + docUrl(rel.replace(/\.md$/, "")), "已复制站内链接") },
     { icon: icon("copy-path"), label: "复制相对路径", fn: () => copyText(rel, "已复制路径") },
     "-",
     { icon: icon("swap"), label: "移动 / 重命名…", fn: () => moveDocPrompt(rel) },
+    { icon: icon("trash"), label: "删除（移入回收站）", danger: true, fn: async () => {
+        const s = findSub(CUR.domain, CUR.sub);
+        const d = s && s.docs.find(x => x.name === name);
+        if (!d) { toast("文档不在当前列表"); return; }
+        const c = await kbModal({
+          title: icon("trash", 16) + " 删除这篇文档？",
+          body: `《<b>${esc(d.title)}</b>》及其旁挂美化版 / 备注将整体移入 <span class="mono">content/_trash/</span>（软删除，可找回）。`,
+          danger: true, confirmText: "移入回收站", cancelText: "取消",
+        });
+        if (!c) return;
+        const r = await fetch("/api/delete", { method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ path: rel }) });
+        if (!r.ok) { toast("删除失败：" + r.status); return; }
+        toast("已移入回收站");
+        await afterMutation();
+      } },
   ];
 }
 /* 新建子目录（需求 #4）：域下二级目录，或子域下嵌套目录。
@@ -1479,7 +1602,11 @@ document.addEventListener("contextmenu", e => {
     const rel = decodeURIComponent(dm[1]) + ".md";
     openCtxMenu(e.clientX, e.clientY, [
       { icon: icon("trend"), label: "统计信息", fn: () => showStats(rel) },
-      { icon: icon("preview-eye"), label: "新标签页打开原文", fn: () => window.open(rawUrl(rel), "_blank") },
+      { icon: icon("copy"), label: "复制 Markdown 原文", fn: async () => {
+          const r = await fetch(rawUrl(rel));
+          if (!r.ok) { toast("读取原文失败：" + r.status); return; }
+          copyText(await r.text(), "已复制 Markdown 原文");
+        } },
       { icon: icon("swap"), label: "移动 / 重命名…", fn: () => moveDocPrompt(rel) },
     ]);
   }

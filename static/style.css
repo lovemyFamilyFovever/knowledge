@@ -518,6 +518,19 @@ html[data-theme="dark"] .kbm-input{background:color-mix(in oklab,var(--seed-surf
 /* 需求#6：语料缺失图片的占位（相对图片未随迁时 /raw 404） */
 .kb-img-missing{display:inline-block;min-width:180px;min-height:44px;padding:10px 14px;border:1px dashed var(--edge-hi);border-radius:8px;
   background:color-mix(in oklab,var(--warn),transparent 94%);color:var(--muted);font:12px var(--mono);vertical-align:middle}
+/* 需求#8：图片点击放大 lightbox */
+/* KB.overlay 基础遮罩：className 自定的弹层（pretty-ov/kb-imgzoom-ov）共用；
+   缺了这条弹层就是页面尾部一个透明 div——「统计信息点击无反应」的真根因（2026-09-14） */
+.pretty-ov,.kb-imgzoom-ov{position:fixed;inset:0;z-index:120;display:flex;align-items:center;justify-content:center;
+  background:color-mix(in oklab,var(--seed-bg),transparent 22%);backdrop-filter:blur(6px) saturate(1.1);
+  animation:rise .18s var(--ease-out);overflow:auto;padding:24px}
+.kb-imgzoom-ov{cursor:zoom-out}
+.kb-imgzoom{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;max-width:94vw;max-height:92vh}
+.kb-imgzoom img{max-width:94vw;max-height:82vh;border-radius:10px;box-shadow:0 24px 80px rgba(0,0,0,.45);transition:transform .12s ease;transform-origin:center}
+.kb-imgzoom-hint{font:12px var(--mono);color:color-mix(in oklab,var(--seed-fg),transparent 45%);background:color-mix(in oklab,var(--seed-surface),transparent 25%);padding:4px 12px;border-radius:99px}
+/* 空目录占位（#2/#3） */
+.kb-empty-dir{padding:36px 0;text-align:center;color:var(--muted)}
+.kb-empty-dir .sub{font-size:12.5px;margin:6px 0 18px;color:var(--faint)}
 /* 统计弹窗（目录/全库共用 .ss-* 视觉） */
 .stats-box{width:min(520px,92vw);max-height:78vh;display:flex;flex-direction:column}
 .stats-body{padding:16px 22px;overflow:auto}
