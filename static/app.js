@@ -1,5 +1,5 @@
 /* 知库 reader 前端：主题、面板折叠、客户端路由、正文渲染、编辑/备注/收藏/删除、双链、快捷键 */
-window.APP_JS_VERSION = 25;
+window.APP_JS_VERSION = 26;
 
 const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
@@ -625,6 +625,9 @@ async function openDoc(domain, sub, name) {
     if (artEl) artEl.innerHTML = `<div class="a-kicker">无法打开</div><h1 class="a-title">${esc(name)}</h1>
       <div class="a-rule"></div><div class="a-body"><p>${r.status === 404 ? "文档不存在（可能已被删除或移动）。" : "加载失败 " + r.status + "。"}</p></div>`;
     toast(r.status === 404 ? "文档不存在（可能已被删除）" : "加载失败 " + r.status);
+    // 第三轮 #10：404 = 树缓存陈旧（文档已删/已移）→ 失效重拉树自愈，右侧列表同步消失
+    if (r.status === 404) { invalidate("tree"); await loadTree(); renderTree();
+      if (CUR) { const s2 = findSub(CUR.domain, CUR.sub); if (s2) renderDocList(s2.docs, s2.label, null); } }
     return;
   }
   const data = await r.json();
@@ -1460,12 +1463,14 @@ function wireDragMove() {
   }));
 }
 
-/* 右键菜单 items（鼠标 contextmenu 与键盘 ContextMenu/Shift+F10 共用，问题13） */
+/* 右键菜单 items（鼠标 contextmenu 与键盘 ContextMenu/Shift+F10 共用，问题13）
+   第三轮 #7 重排：信息/复制在前，分隔线，移动/删除在后，危险项置底。 */
 function ctxDocItems(docA) {
   const name = docA.dataset.name;
   const rel = docRelOf(CUR.domain, CUR.sub, name);
   return [
     { icon: icon("trend"), label: "统计信息", fn: () => showStats(rel) },
+    "-",
     { icon: icon("copy"), label: "复制 Markdown 原文", fn: async () => {
         const r = await fetch(rawUrl(rel));
         if (!r.ok) { toast("读取原文失败：" + r.status); return; }
@@ -1475,7 +1480,7 @@ function ctxDocItems(docA) {
     { icon: icon("copy-path"), label: "复制相对路径", fn: () => copyText(rel, "已复制路径") },
     "-",
     { icon: icon("swap"), label: "移动 / 重命名…", fn: () => moveDocPrompt(rel) },
-    { icon: icon("trash"), label: "删除（移入回收站）", danger: true, fn: async () => {
+    { icon: icon("trash"), label: "删除…", danger: true, fn: async () => {
         const s = findSub(CUR.domain, CUR.sub);
         const d = s && s.docs.find(x => x.name === name);
         if (!d) { toast("文档不在当前列表"); return; }
@@ -1487,11 +1492,43 @@ function ctxDocItems(docA) {
         if (!c) return;
         const r = await fetch("/api/delete", { method: "POST", headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ path: rel }) });
-        if (!r.ok) { toast("删除失败：" + r.status); return; }
-        toast("已移入回收站");
-        await afterMutation();
+        if (!r.ok) {
+          let err = ""; try { err = (await r.json()).error || ""; } catch (e) {}
+          // 第三轮 #10：404 = 文件已不在（早已删除/路径陈旧）→ 按「已删除」收尾，不再报错卡死
+          if (r.status === 404) { toast("文件已不存在，列表已同步"); await ctxDiscardDoc(rel, d.title, false); return; }
+          toast("删除失败：" + (err || r.status)); return;
+        }
+        // 第三轮 #9：删除的是当前打开的文档时，同步清理正文区（与 crumb 版 deleteDoc 同一套收尾）
+        if (DOC && DOC.rel === rel) await ctxDiscardDoc(rel, d.title, true);
+        else { toast("已移入回收站"); await afterMutation(); }
       } },
   ];
+}
+/* 第三轮 #9/#10：右键删除后的正文区收尾（从 deleteDoc 提取的共用逻辑）：
+   局部更新树/列表 → 关编辑器 → 清 DOC → 正文区展示「已移入回收站」占位。
+   deletedJustNow=false 表示 404 自愈（文件早已不在），文案改为「此前已删除」。 */
+async function ctxDiscardDoc(rel, title, deletedJustNow) {
+  const deletedTitle = title || rel;
+  const s = findSub(CUR ? CUR.domain : "", CUR ? CUR.sub : "");
+  const nm = rel.split("/").pop();
+  if (s) {
+    s.docs = s.docs.filter(x => x.name !== nm);
+    s.n = s.docs.length;
+    const d = TREE.find(x => x.id === (CUR && CUR.domain));
+    if (d) d.n = d.subs.reduce((a, x) => a + x.n, 0);
+    persistTree();
+    renderTree();
+    renderDocList(s.docs, s.label, null);
+  }
+  closeEditor();
+  DOC = null;
+  $("#article").innerHTML = `<div class="a-kicker">已删除</div>
+    <h1 class="a-title">文档已移入回收站</h1>
+    <div class="a-rule"></div>
+    <div class="a-body"><p>《${esc(deletedTitle)}》及其美化版、备注已${deletedJustNow ? "" : "此前"}移入 <code>content/_trash/</code>，git 历史亦可找回。</p>
+    <p>从左侧选择其他文档继续阅读。</p></div>`;
+  $("#crumb").innerHTML = `<b>已删除</b><span class="sep">·</span>${esc(deletedTitle)}`;
+  await afterMutation();
 }
 /* 新建子目录（需求 #4）：域下二级目录，或子域下嵌套目录。
    写 taxonomy.json 显示名（可留空走目录 id），空目录暂不入树，建完引导去新建文档。 */
@@ -1514,14 +1551,14 @@ async function promptNewSubdir(baseDomain, parentSub) {
   const d = await r.json().catch(() => ({}));
   if (!r.ok || !d.ok) { toast("创建失败：" + (d.error || r.status)); return; }
   await afterMutation();
-  toast(`已创建 <span class='mono'>${esc(d.created)}</span> · 空目录暂不入树，右键它新建一篇文档即可显示`);
+  toast(`已创建 <span class='mono'>${esc(d.created)}</span> · 左侧树已同步，右键它可新建文档`);
 }
 function ctxSubItems(subA) {
   const dom = subA.dataset.dom, sub = subA.dataset.sub;
   const base = sub === "_root" ? dom : `${dom}/${sub}`;
-  return [
-    { icon: icon("plus-circle"), label: "新增子目录…", fn: () => promptNewSubdir(dom, sub === "_root" ? "" : sub) },
-    { icon: icon("folder-open"), label: "在此新建文档…", fn: async () => {
+  // 第三轮 #7：动词优先、危险置底；_root（域根散文件区）不给重命名/删除
+  const items = [
+    { icon: icon("new-file"), label: "在此新建文档…", fn: async () => {
         const res = await kbModal({
           title: "新建文档",
           body: `将在 <span class='mono'>${esc(base)}/</span> 下创建 Markdown 文件，首行自动写入标题。`,
@@ -1539,20 +1576,68 @@ function ctxSubItems(subA) {
         }
         else toast("创建失败：" + r.status);
       } },
-    { icon: icon("copy-path"), label: "复制目录路径", fn: () => copyText(base, "已复制路径") },
+    { icon: icon("plus-circle"), label: "新建子目录…", fn: () => promptNewSubdir(dom, sub === "_root" ? "" : sub) },
   ];
+  if (sub !== "_root") {
+    items.push(
+      "-",
+      { icon: icon("swap"), label: "重命名目录…", fn: () => renameSubPrompt(dom, sub) },
+      { icon: icon("trash"), label: "删除目录…", danger: true, fn: () => rmdirPrompt(dom, sub) }
+    );
+  }
+  items.push("-", { icon: icon("copy-path"), label: "复制路径", fn: () => copyText(base, "已复制路径") });
+  return items;
 }
-/* 域级右键（需求 #4 主入口）：左侧分类树一级目录 → 新增二级目录 */
+/* 域级右键（第三轮 #7 契约）：新增二级目录 + 复制域名；
+   #3：data-dom 挂在 .dom 父元素上，domA（.dom-head）需 closest 向上取。 */
 function ctxDomItems(domA) {
-  const dom = domA.dataset.dom;
+  const host = domA.closest(".dom") || domA;
+  const dom = host.dataset.dom || domA.dataset.dom;
   return [
     { icon: icon("plus-circle"), label: "新增二级目录…", fn: () => promptNewSubdir(dom, "") },
-    { icon: icon("folder-open"), label: "打开第一个子域", fn: () => {
-        const s = (TREE || []).find(d => d.id === dom);
-        if (s && s.subs && s.subs.length) navigate(`/browse/${dom}/${s.subs[0].id}`, true);
-      } },
-    { icon: icon("chart"), label: "全库统计", fn: () => { if (typeof showGlobalStats === "function") showGlobalStats(); } },
+    "-",
+    { icon: icon("copy"), label: "复制域名", fn: () => copyText(dom, "已复制域名") },
   ];
+}
+/* 第三轮 #8：删除目录（仅限空目录）。先确认；非空由后端 400 提示先清空。 */
+async function rmdirPrompt(dom, sub) {
+  const c = await kbModal({
+    title: icon("trash", 16) + " 删除目录？",
+    body: `将删除 <span class='mono'>${esc(dom)}/${esc(sub)}/</span>。仅限<b>空目录</b>：若里面还有文档，请先删除或移走，否则会被拒绝。`,
+    danger: true, confirmText: "删除目录", cancelText: "取消",
+  });
+  if (!c) return;
+  const r = await fetch("/api/rmdir", { method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ domain: dom, sub }) });
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok || !d.ok) { toast("删除目录失败：" + (d.error || r.status)); return; }
+  toast(`已删除目录 <span class='mono'>${esc(dom)}/${esc(sub)}</span>`);
+  // 删除的若正是当前浏览的目录 → 回首页，避免右侧残留（第三轮 #9 同源问题）
+  if (CUR && CUR.domain === dom && (CUR.sub === sub || `${CUR.domain}/${CUR.sub}` === `${dom}/${sub}`)) {
+    invalidate("all"); location.href = "/"; return;
+  }
+  await afterMutation();
+}
+/* 第三轮 #1 目录重命名：/api/rename-sub（store.rename_sub 修复后经 Web 暴露）。 */
+async function renameSubPrompt(dom, sub) {
+  const res = await kbModal({
+    title: "重命名目录",
+    body: `重命名 <span class='mono'>${esc(dom)}/${esc(sub)}/</span>（文档与索引自动级联）。`,
+    inputs: [{ key: "nm", label: "新目录名（英文 id）", value: sub, placeholder: "new-id" }],
+    confirmText: "重命名",
+  });
+  if (!res || !res.nm) return;
+  const nn = res.nm.trim();
+  if (nn === sub) return;
+  const r = await fetch("/api/rename-sub", { method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ domain: dom, sub, new: nn }) });
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok || !d.ok) { toast("重命名失败：" + (d.error || r.status)); return; }
+  toast(`已重命名为 <span class='mono'>${esc(dom)}/${esc(nn)}</span> · 索引已级联更新`);
+  if (CUR && CUR.domain === dom && CUR.sub === sub) {
+    invalidate("all"); location.href = `/browse/${encodeURIComponent(dom)}/${encodeURIComponent(nn)}`; return;
+  }
+  await afterMutation();
 }
 /* 问题13：键盘唤起——文档列表项或树子域获得焦点后按 Menu 键 / Shift+F10，
    菜单锚定在该元素下方（触摸设备右键不可达的键盘补偿路径） */
