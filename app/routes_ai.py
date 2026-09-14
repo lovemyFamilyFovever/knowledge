@@ -23,9 +23,9 @@ ai_bp = Blueprint("ai", __name__)
 
 def _cfg() -> dict:
     return {
-        "base": os.environ.get("KB_AI_BASE_URL", "https://api.agnes-ai.cn/v1").rstrip("/"),
+        "base": os.environ.get("KB_AI_BASE_URL", "https://mimo.mi.com/api/v1").rstrip("/"),
         "key": os.environ.get("KB_AI_API_KEY", ""),
-        "model": os.environ.get("KB_AI_MODEL", "gpt-4o-mini"),
+        "model": os.environ.get("KB_AI_MODEL", "xiaomi/mimo-v2-flash"),
     }
 
 
