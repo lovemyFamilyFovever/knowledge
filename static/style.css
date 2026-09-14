@@ -515,6 +515,9 @@ html[data-theme="dark"] .kbm-input{background:color-mix(in oklab,var(--seed-surf
 .ctx-item.danger{color:var(--warn)}
 .ctx-item.danger:hover{background:var(--warn-soft);color:var(--warn)}
 .ctx-sep{height:1px;background:var(--edge);margin:5px 10px}
+/* 需求#6：语料缺失图片的占位（相对图片未随迁时 /raw 404） */
+.kb-img-missing{display:inline-block;min-width:180px;min-height:44px;padding:10px 14px;border:1px dashed var(--edge-hi);border-radius:8px;
+  background:color-mix(in oklab,var(--warn),transparent 94%);color:var(--muted);font:12px var(--mono);vertical-align:middle}
 /* 统计弹窗（目录/全库共用 .ss-* 视觉） */
 .stats-box{width:min(520px,92vw);max-height:78vh;display:flex;flex-direction:column}
 .stats-body{padding:16px 22px;overflow:auto}
