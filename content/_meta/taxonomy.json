@@ -99,7 +99,9 @@
     "interview/architecture": "架构面",
     "interview/algorithms": "算法面试",
     "ai-assets/_root": "总览",
-    "_root": "总览"
+    "_root": "总览",
+    "articles/backend/C#": "C#C#",
+    "articles/backend/11": "11"
   },
   "sources": {
     "baike": "百科大全",
