@@ -45,7 +45,7 @@ if _PROJECT_ROOT not in sys.path:
     sys.path.insert(0, _PROJECT_ROOT)
 
 from app.store import (  # noqa: F401  兼容旧引用（tests/scripts 直接 import app.app 的符号）
-    DOMAIN_LABELS, GRAPH_HUES, SKIP_DIRS, SOURCE_LABELS, STATUS_LABELS,
+    DOMAIN_LABELS, GRAPH_HUES, LIBRARY_EXTS, SKIP_DIRS, SOURCE_LABELS, STATUS_LABELS,
     WRITABLE_EXTS, SERVABLE_EXTS, FM_RE,
     domain_label, dump_frontmatter, find_doc, inbox_count, load_taxonomy, md_files,
     notes_path, obsidian_vault_connected, parse_frontmatter, read_notes,
@@ -82,6 +82,7 @@ from app.routes_stats import register as register_stats
 from app.routes_rag import register as register_rag
 from app.routes_learn import register as register_learn
 from app.routes_search import register as register_search
+from app.routes_ai import register as register_ai
 
 
 # ---------------- app factory ----------------
@@ -174,8 +175,10 @@ def create_app(root: Path | None = None) -> Flask:
         if not p:
             return None
         rel = p.relative_to(content).as_posix()
-        raw = p.read_text(encoding="utf-8", errors="replace")
-        fm, body = parse_frontmatter(raw)
+        # 需求 #12：书库格式不读文本（二进制/超大文件），只给元数据；前端分流渲染
+        is_library = p.suffix in LIBRARY_EXTS
+        raw = "" if is_library else p.read_text(encoding="utf-8", errors="replace")
+        fm, body = ({}, "") if is_library else parse_frontmatter(raw)
         if p.suffix == ".html":
             body = raw
         html_twin = p.with_name(p.stem + ".html")
@@ -256,6 +259,7 @@ def create_app(root: Path | None = None) -> Flask:
     for _register in (register_pages, register_doc, register_edit, register_files,
                       register_stats, register_rag, register_learn, register_search):
         _register(app, _hooks)
+    register_ai(app)  # AI 问答蓝图：无 hooks 依赖，单独挂载
 
     return app
 
