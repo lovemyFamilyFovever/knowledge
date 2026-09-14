@@ -1,30 +1,11 @@
 /* ============================================================
-   右栏「信息」页 —— 标签编辑区（需求 #2）
-   结构：.tag-edit > .tag-edit-h（标题+添加钮）/ .tag-chips / .tag-inputrow
-   位于 .rpane（pane-info）内，风格与 .meta-row 一致
+   需求 #12：书库格式阅读样式（txt/pdf/xlsx/epub 分流渲染）
    ============================================================ */
-.tag-edit{border-bottom:1px solid var(--edge);padding:10px 2px 12px;margin-bottom:6px}
-.tag-edit-h{display:flex;align-items:center;gap:7px;font-family:var(--disp);font-size:13px;font-weight:600;color:var(--seed-fg);margin-bottom:9px}
-.tag-edit-h svg{color:var(--acc)}
-.tag-edit-addbtn{margin-left:auto;border:1px solid var(--acc-edge);background:var(--acc-soft);color:var(--acc);
-  font:500 11px/1 var(--sans);padding:4px 9px;border-radius:999px;cursor:pointer;transition:background .15s,border-color .15s}
-.tag-edit-addbtn:hover{background:var(--acc-edge)}
-.tag-chips{display:flex;flex-wrap:wrap;gap:6px}
-.tag-chips .tag-empty{font-size:11.5px;color:var(--faint);font-style:italic}
-.tagchip{display:inline-flex;align-items:center;gap:4px;max-width:100%;
-  border:1px solid var(--acc-edge);background:var(--acc-soft);color:var(--acc);
-  font:500 11px/1 var(--mono);padding:4px 5px 4px 9px;border-radius:999px}
-.tagchip-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:180px}
-.tagchip-x{display:inline-flex;align-items:center;justify-content:center;flex:none;
-  width:16px;height:16px;border:none;background:transparent;color:var(--acc);
-  opacity:.55;border-radius:50%;cursor:pointer;padding:0}
-.tagchip-x:hover{opacity:1;background:var(--acc-edge)}
-.tagchip-x svg{display:block}
-.tag-inputrow{margin-top:9px}
-.tag-inputrow input{width:100%;box-sizing:border-box;border:1px solid var(--edge);border-radius:var(--radius,8px);
-  background:var(--glass-strong);color:var(--seed-fg);font:400 12.5px/1.4 var(--sans);padding:8px 10px;outline:none}
-.tag-inputrow input:focus{border-color:var(--acc-edge);box-shadow:0 0 0 3px var(--acc-soft)}
-.tag-inputrow input::placeholder{color:var(--faint)}
-/* HTML 美化版文档：语料不可写 → 隐藏编辑控件，仅展示 */
-.tag-edit.readonly .tag-edit-addbtn{display:none}
-.tag-edit.readonly .tagchip-x{display:none}
+.lib-frame-wrap{height:calc(100vh - 220px);min-height:520px;border:1px solid var(--edge);border-radius:var(--radius);overflow:hidden;background:#fff}
+.lib-frame{width:100%;height:100%;border:none}
+.lib-txt-pre{white-space:pre-wrap;word-break:break-word;font:13.5px/1.9 var(--mono);
+  background:var(--glass-strong);border:1px solid var(--edge);border-radius:var(--radius);
+  padding:18px 20px;max-height:calc(100vh - 240px);overflow:auto}
+.lib-sheet{margin-bottom:22px}
+.lib-sheet-h{font:500 12px/1.4 var(--mono);color:var(--muted);margin-bottom:8px}
+.lib-sheet .tbl-wrap{max-height:60vh;overflow:auto}

@@ -203,12 +203,14 @@ html[data-theme="dark"] .brand .zh{background:linear-gradient(92deg,var(--brand-
 #theme-btn{width:30px;justify-content:center;padding:0}
 
 /* [7] 布局与面板（三栏 + gutter 8px，spec §3.2；旧模板契约保留） ===== */
-main{position:relative;z-index:4;flex:1;display:grid;grid-template-columns:240px 300px minmax(0,1fr) 264px;
+main{position:relative;z-index:4;flex:1;display:grid;grid-template-columns:280px minmax(0,1fr) 264px;
   gap:8px;padding:8px;min-height:0;
   transition:grid-template-columns .35s var(--ease-inout)}
-main.left-off{grid-template-columns:46px 300px minmax(0,1fr) 264px}
-main.list-off{grid-template-columns:240px 46px minmax(0,1fr) 264px}
-main.left-off.list-off{grid-template-columns:46px 46px minmax(0,1fr) 264px}
+main.left-off{grid-template-columns:46px minmax(0,1fr) 264px}
+/* 快赢：沉浸阅读模式（W 键）—— 两侧全收，正文最大化 */
+main.immersive{grid-template-columns:0 minmax(0,1fr) 0}
+main.immersive #p-left,main.immersive #p-rail{opacity:0;pointer-events:none}
+main.immersive{gap:0}
 main.single{display:flex;flex-direction:column}
 .page-panel{flex:1;min-height:0}
 #graph{flex:1;min-height:0}
@@ -243,6 +245,20 @@ html[data-theme="dark"] .dom-glyph{color:hsl(var(--dh,158) 72% 64%);background:h
 .dom-head.active .dom-n{color:var(--acc)}
 .subs{display:none;padding:2px 0 6px 18px;margin:2px 0 2px 8px;border-left:1px dashed var(--edge)}
 .dom.open .subs{display:block}
+/* 需求 #11：单列树 —— 文档内联在子域下（原第二列列表移除）
+   需求 #7：多层目录 —— .in-subdir 按目录深度缩进，.tree-subdir 分组头 */
+.tree .doc{padding:5px 8px;margin:1px 0 1px 0;border-radius:var(--radius-sm)}
+.tree .doc .doc-t{font-size:12.5px;font-weight:500;line-height:1.45;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:block}
+.tree .doc .doc-meta{margin-top:2px;gap:4px}
+.tree .doc .mini{padding:.5px 5px;font-size:9px}
+.tree .doc.in-subdir{margin-left:calc(10px * var(--deep, 1))}
+.tree-subdir{margin:2px 0 2px 10px}
+.tree-subdir .tree-subdir{margin-left:14px}
+.tree-subdir-h{display:flex;align-items:center;gap:5px;padding:3px 6px;font:500 11px/1.4 var(--sans);
+  color:var(--faint);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tree-subdir-h svg{flex:none;color:var(--acc)}
+.tree-subdir > .doc, .tree-subdir > .tree-subdir .doc{margin-left:0}
 /* 左侧分类目录：每个域独立收起/展开（不强制保持一个打开） */
 .dom-caret{flex:none;width:18px;height:18px;position:relative;cursor:pointer;border-radius:5px;transition:background .15s}
 .dom-caret:hover{background:var(--acc-soft)}
@@ -413,6 +429,9 @@ html[data-theme="dark"] .html-frame{background:color-mix(in oklab,var(--seed-sur
 .toc a:hover{color:var(--seed-fg);background:var(--acc-soft)}
 .toc a.on{color:var(--acc);border-left-color:var(--acc);background:var(--acc-soft);font-weight:600}
 .toc a.lv3{padding-left:22px;font-size:12.5px}
+.chip-btn{cursor:pointer;background:var(--acc-soft);color:var(--acc);border:1px solid var(--acc-edge);
+  display:inline-flex;align-items:center;gap:4px;font:inherit}
+.chip-btn:hover{background:var(--acc-edge)}
 .meta-row{display:flex;justify-content:space-between;gap:10px;padding:7px 2px;border-bottom:1px dashed var(--edge);font-size:12.5px}
 .meta-row .k{color:var(--faint);font-family:var(--mono);font-size:10.5px;flex:none}
 .meta-row .v{color:var(--seed-fg);text-align:right;font-family:var(--mono);font-size:11.5px;word-break:break-all}
@@ -523,6 +542,20 @@ html[data-theme="dark"] .pretty-ov{background:color-mix(in oklab,var(--hex-plate
 .kbm{width:min(500px,92vw);max-height:82vh;display:flex;flex-direction:column;
   background:var(--glass-strong);backdrop-filter:blur(24px) saturate(1.15);
   border:1px solid var(--edge-hi);border-radius:var(--radius-lg);box-shadow:var(--shadow-hi);padding:20px 22px}
+/* AI 问吧（中期功能 #1）：加宽 + 对话气泡 */
+.kbm-ask{width:min(680px,94vw)}
+.ask-body{display:flex;flex-direction:column;gap:10px;padding:6px 2px}
+.ask-msg{max-width:86%;padding:10px 14px;border-radius:14px;font-size:13px;line-height:1.8}
+.ask-ai{align-self:flex-start;background:var(--acc-soft);color:var(--seed-fg);border:1px solid var(--acc-edge)}
+.ask-me{align-self:flex-end;background:var(--edge);color:var(--seed-fg)}
+.ask-err{align-self:flex-start;background:var(--warn-soft, #faf1e2);color:var(--warn);border:1px solid var(--warn-edge, #ecd9b0)}
+.ask-srcs{margin-top:8px;display:flex;flex-wrap:wrap;gap:6px}
+.ask-src{font:500 11px/1 var(--mono);color:var(--acc);border:1px solid var(--acc-edge);border-radius:999px;padding:3px 9px;text-decoration:none}
+.ask-src:hover{background:var(--acc-soft)}
+.ask-inputrow{display:flex;gap:8px;margin-top:10px}
+.ask-inputrow input{flex:1;min-width:0;border:1px solid var(--edge);border-radius:var(--radius-sm);
+  background:var(--seed-surface);color:var(--seed-fg);font:400 13px/1.5 var(--sans);padding:9px 12px;outline:none}
+.ask-inputrow input:focus{border-color:var(--acc-edge);box-shadow:0 0 0 3px var(--acc-soft)}
 .kbm.kbm-stats{width:min(920px,94vw)}
 .kbm-title{font-family:var(--disp);font-size:17px;font-weight:700;color:var(--seed-fg);margin-bottom:10px}
 .kbm-body{flex:1 1 auto;min-height:0;font-size:13px;line-height:1.85;color:var(--muted);margin-bottom:12px;overflow-y:auto}

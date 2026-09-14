@@ -63,13 +63,13 @@
   util.rawUrl = function (rel) {
     return "/raw/" + String(rel || "").split("/").filter(Boolean).map(encodeURIComponent).join("/");
   };
-  util.toast = function (msg) {
+  util.toast = function (msg, ms) {
     var t = document.getElementById("toast");
     if (!t) return;
     t.innerHTML = msg;
     t.classList.add("show");
     clearTimeout(t._kbh);
-    t._kbh = setTimeout(function () { t.classList.remove("show"); }, 2600);
+    t._kbh = setTimeout(function () { t.classList.remove("show"); }, ms || 2600);
   };
   util.getJSON = function (key, fallback) {
     try {
@@ -649,9 +649,14 @@
   });
 
   function docListMove(delta) {
+    // 需求 #11：第二列列表移除后，文档在树内 —— 优先 #doclist，回退 #tree .doc
     var list = document.getElementById("doclist");
-    if (!list) return false;
-    var items = util.$$(".doc", list);
+    var items = [];
+    if (list) items = util.$$(".doc", list);
+    if (!items.length) {
+      var nav = document.getElementById("tree");
+      if (nav) items = util.$$("#tree .doc", nav);
+    }
     if (!items.length) return false;
     var cur = items.indexOf(document.activeElement);
     var next = cur < 0 ? (delta > 0 ? 0 : items.length - 1) : util.clamp(cur + delta, 0, items.length - 1);

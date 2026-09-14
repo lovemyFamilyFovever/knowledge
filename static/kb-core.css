@@ -173,8 +173,8 @@ html [hidden]{display:none}
 #kb-palette.mode-pref .kb-pal-head{opacity:.55;pointer-events:none}
 
 /* [5] 阅读偏好面板（命令面板内） ===== */
-.kb-pal-panel{padding:4px 16px 12px;max-height:46vh;overflow-y:auto}
-.kb-pref-head{display:flex;align-items:center;gap:8px;font-family:var(--disp);font-size:14.5px;font-weight:600;padding:6px 0 10px}
+.kb-pal-panel{padding:4px 22px 16px;max-height:78vh;overflow-y:auto}
+.kb-pref-head{display:flex;align-items:center;gap:8px;font-family:var(--disp);font-size:14.5px;font-weight:600;padding:8px 0 12px}
 .kb-pref-head svg{color:var(--acc)}
 .kb-pref-row{display:grid;grid-template-columns:64px minmax(0,1fr) 56px;align-items:center;gap:12px;padding:7px 0}
 .kb-pref-row label{font-size:12.5px;color:var(--muted)}
@@ -187,7 +187,8 @@ html [hidden]{display:none}
 .kb-pref-foot{display:flex;align-items:center;gap:10px;padding:12px 0 2px;border-top:1px solid var(--hairline);margin-top:8px}
 /* 设置面板里的快捷键速查区（顶栏齿轮按钮 = 阅读偏好 + 快捷键） */
 .kb-pref-kbd-hint{margin-left:auto;font:400 11px/1.4 var(--sans);color:var(--faint)}
-.kb-keys-list{display:grid;grid-template-columns:1fr 1fr;column-gap:18px;max-height:34vh;overflow-y:auto;
+/* 需求 #6：去内层滚动条 —— 快捷键区不再自身限高滚动，全部展开由面板统一滚动 */
+.kb-keys-list{display:grid;grid-template-columns:1fr 1fr;column-gap:18px;
   align-items:start}
 /* 两列内每行再开子网格：键帽列固定宽 → 中英文键位名宽度不一也能对齐；描述列自适应 */
 .kb-keys-list .kb-help-row{display:grid;grid-template-columns:96px minmax(0,1fr);align-items:center;column-gap:10px;
@@ -197,7 +198,9 @@ html [hidden]{display:none}
   white-space:normal;word-break:break-word}
 .kb-keys-list .kb-help-row span{line-height:1.45}
 @media (max-width:720px){.kb-keys-list{grid-template-columns:1fr;max-height:none}}
-#kb-palette.mode-pref .kb-pal-panel{max-height:66vh}
+#kb-palette.mode-pref .kb-pal-panel{max-height:80vh}
+/* 需求 #6：设置面板加宽 —— 14 条快捷键两列全展开无需滚动，视觉更完整 */
+#kb-palette.mode-pref .kb-pal-box{width:min(760px,calc(100vw - 32px))}
 .kb-pref-note{font-size:11px;color:var(--faint);line-height:1.6}
 /* 设置面板对齐微调（截图问题③④）：脚注行基线、快捷键标题行居中、
    键帽行 hover 可感知性 */
