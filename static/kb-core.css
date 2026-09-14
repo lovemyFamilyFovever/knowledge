@@ -176,22 +176,36 @@ html [hidden]{display:none}
 .kb-pal-panel{padding:4px 16px 12px;max-height:46vh;overflow-y:auto}
 .kb-pref-head{display:flex;align-items:center;gap:8px;font-family:var(--disp);font-size:14.5px;font-weight:600;padding:6px 0 10px}
 .kb-pref-head svg{color:var(--acc)}
-.kb-pref-row{display:flex;align-items:center;gap:12px;padding:7px 0}
-.kb-pref-row label{flex:none;width:64px;font-size:12.5px;color:var(--muted)}
-.kb-pref-row input[type=range]{flex:1;min-width:0;accent-color:var(--acc)}
+.kb-pref-row{display:grid;grid-template-columns:64px minmax(0,1fr) 56px;align-items:center;gap:12px;padding:7px 0}
+.kb-pref-row label{font-size:12.5px;color:var(--muted)}
+.kb-pref-row input[type=range]{width:100%;accent-color:var(--acc)}
 .kb-pref-row select{
-  flex:1;min-width:0;padding:5px 8px;border-radius:var(--radius-sm);border:1px solid var(--edge);
+  width:100%;box-sizing:border-box;padding:5px 8px;border-radius:var(--radius-sm);border:1px solid var(--edge);
   background:var(--seed-surface);color:var(--seed-fg);font-family:var(--sans);font-size:12.5px;
 }
-.kb-pref-row output{flex:none;width:56px;text-align:right;font:500 11.5px/1 var(--mono);color:var(--acc)}
+.kb-pref-row output{text-align:right;font:500 11.5px/1 var(--mono);color:var(--acc)}
 .kb-pref-foot{display:flex;align-items:center;gap:10px;padding:12px 0 2px;border-top:1px solid var(--hairline);margin-top:8px}
 /* 设置面板里的快捷键速查区（顶栏齿轮按钮 = 阅读偏好 + 快捷键） */
 .kb-pref-kbd-hint{margin-left:auto;font:400 11px/1.4 var(--sans);color:var(--faint)}
-.kb-keys-list{display:grid;grid-template-columns:1fr 1fr;column-gap:18px;max-height:34vh;overflow-y:auto}
-.kb-keys-list .kb-help-row kbd{min-width:72px}
+.kb-keys-list{display:grid;grid-template-columns:1fr 1fr;column-gap:18px;max-height:34vh;overflow-y:auto;
+  align-items:start}
+/* 两列内每行再开子网格：键帽列固定宽 → 中英文键位名宽度不一也能对齐；描述列自适应 */
+.kb-keys-list .kb-help-row{display:grid;grid-template-columns:96px minmax(0,1fr);align-items:center;column-gap:10px;
+  padding:7px 0;border-top:1px solid var(--hairline);font-size:12.5px;color:var(--muted);min-height:40px}
+.kb-keys-list .kb-help-row kbd{min-width:0;width:100%;box-sizing:border-box;font:500 10.5px/1.3 var(--mono);color:var(--acc);
+  background:var(--acc-soft);border:1px solid var(--acc-edge);border-radius:4px;padding:5px 6px;text-align:center;
+  white-space:normal;word-break:break-word}
+.kb-keys-list .kb-help-row span{line-height:1.45}
 @media (max-width:720px){.kb-keys-list{grid-template-columns:1fr;max-height:none}}
 #kb-palette.mode-pref .kb-pal-panel{max-height:66vh}
 .kb-pref-note{font-size:11px;color:var(--faint);line-height:1.6}
+/* 设置面板对齐微调（截图问题③④）：脚注行基线、快捷键标题行居中、
+   键帽行 hover 可感知性 */
+.kb-pref-foot .mbtn{flex:none}
+.kb-pref-note{flex:1;min-width:0}
+.kb-pref-head .kb-pref-kbd-hint{align-self:center}
+.kb-keys-list .kb-help-row{border-radius:6px;padding-left:6px;padding-right:6px}
+.kb-keys-list .kb-help-row:hover{background:var(--glass)}
 
 /* [6] 双链补全 + 断链条（需求6） ===== */
 .kb-wl-bar{
