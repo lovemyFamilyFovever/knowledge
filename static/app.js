@@ -111,6 +111,72 @@ function tab(id, el) {
 let DOC = null;
 let CUR = null; // {domain, sub, name}
 
+/* ---------- 渲染预处理（需求 #8/#9/#6） ----------
+   #8：marked 对「列表内缩进开栏、顶格闭栏」的围栏会在文末产幽灵空代码块
+   （删不掉的小尾巴）；把闭栏缩进对齐到开栏即可正常闭合。栈匹配：
+   闭栏 = 同字符、长度≥开栏、缩进≤开栏。 */
+function sanitizeFences(md) {
+  const lines = String(md || "").split("\n");
+  const open = [];
+  for (let i = 0; i < lines.length; i++) {
+    const m = lines[i].match(/^([ \t]*)(`{3,}|~{3,})/);
+    if (!m) continue;
+    const top = open[open.length - 1];
+    if (!top) {
+      open.push({ indentLen: m[1].length, ch: m[2][0], len: m[2].length });
+    } else if (m[2][0] === top.ch && m[2].length >= top.len && m[1].length <= top.indentLen) {
+      lines[i] = " ".repeat(top.indentLen) + m[2];
+      open.pop();
+    }
+  }
+  return lines.join("\n");
+}
+/* 渲染入口：源码围栏修复 + 解析后剥末尾幽灵空代码块（pre>code 仅空白） */
+function renderMarkdownSafe(md) {
+  const html = marked.parse(sanitizeFences(md));
+  return html.replace(/(?:<pre><code[^>]*>[\s\u00a0]*<\/code><\/pre>\s*)+$/, "");
+}
+
+/* #9：正文外链一律新标签打开；#6：站内相对图片走 /raw 直服（语料 md 旁的
+   imgs/、images/ 等任意扩展名资产，404 时占位提示）。渲染后同帧处理。 */
+function enhanceRenderedBody(el) {
+  el.querySelectorAll(".a-body a[href]").forEach(a => {
+    const h = a.getAttribute("href") || "";
+    if (/^(https?:)?\/\//i.test(h) || /^mailto:/i.test(h)) {
+      a.target = "_blank";
+      if (!a.rel) a.rel = "noopener";
+    }
+  });
+  el.querySelectorAll(".a-body img").forEach(img => {
+    const src = img.getAttribute("src") || "";
+    if (!src || /^(https?:)?\/\/|^(data|blob):/i.test(src) || src.startsWith("/raw/")) {
+      if (!img.dataset.kbErrBound) {
+        img.dataset.kbErrBound = "1";
+        img.addEventListener("error", () => {
+          img.alt = (img.alt || "图片") + "（缺失：仅 Markdown 源入库，图片未随迁）";
+          img.classList.add("kb-img-missing");
+        }, { once: true });
+      }
+      return;
+    }
+    const docDir = DOC && DOC.rel ? DOC.rel.split("/").slice(0, -1).join("/") : "";
+    const abs = src.startsWith("/") ? src.slice(1)
+      : (docDir ? docDir + "/" : "") + src.replace(/^\.\//, "");
+    const parts = [];
+    abs.split("/").forEach(seg => {
+      if (seg === "..") parts.pop(); else if (seg && seg !== ".") parts.push(seg);
+    });
+    img.src = "/raw/" + parts.map(encodeURIComponent).join("/");
+    if (!img.dataset.kbErrBound) {
+      img.dataset.kbErrBound = "1";
+      img.addEventListener("error", () => {
+        img.alt = (img.alt || "图片") + "（缺失：仅 Markdown 源入库，图片未随迁）";
+        img.classList.add("kb-img-missing");
+      }, { once: true });
+    }
+  });
+}
+
 function renderArticle(forceMd) {
   const el = $("#article");
   if (!el || !DOC) return;
@@ -147,7 +213,7 @@ function renderArticle(forceMd) {
       <h1 class="a-title">${esc(DOC.title)}</h1>
       <div class="a-chips">${chips}</div>
       <div class="a-rule"></div>
-      <div class="a-body">${DOMPurify.sanitize(marked.parse(DOC.md), { FORBID_TAGS: ['style', 'iframe', 'form', 'script'], ADD_ATTR: ['target'] })}</div>
+      <div class="a-body">${DOMPurify.sanitize(renderMarkdownSafe(DOC.md), { FORBID_TAGS: ['style', 'iframe', 'form', 'script'], ADD_ATTR: ['target'] })}</div>
       <div class="kb-finish-bar" id="kb-finish-bar">
         <span class="kb-finish-q">读完这篇了？</span>
         <button type="button" class="kb-btn" id="mark-read-btn" onclick="toggleDocMark('read')" title="标记已读完（存本地复习库，不写语料）">已读完</button>
@@ -175,6 +241,7 @@ function renderArticle(forceMd) {
     try { hljs.highlightElement(b); } catch (e) {}
   });
   enhanceArticleDOM(el); // 问题8：渲染方直接产出 final-form，不再由 observer 事后打补丁
+  enhanceRenderedBody(el); // 需求 #9 外链新标签 + #6 相对图片走 /raw 直服
   buildToc();
   decorateWikilinks(); // B4：[[双链]] 渲染为可点链接（正文里不再是方括号生肉）
   scrollToHash();      // B5：heading id 就绪后再兑现 URL 锚点
@@ -1294,19 +1361,43 @@ function wireDragMove() {
 function ctxDocItems(docA) {
   const name = docA.dataset.name;
   const rel = docRelOf(CUR.domain, CUR.sub, name);
-  const title = (docA.querySelector(".doc-t") || {}).textContent || name;
   return [
     { icon: icon("trend"), label: "统计信息", fn: () => showStats(rel) },
-    { icon: icon("copy"), label: "复制 [[双链]]", fn: () => copyText(`[[${title.trim()}]]`, "已复制双链") },
-    { icon: icon("copy"), label: "复制 Obsidian URI", fn: () => copyText(`obsidian://open?vault=${encodeURIComponent("knowledge")}&file=${encodeURIComponent(rel.replace(/\.md$/, ""))}`, "已复制 URI") },
+    { icon: icon("preview-eye"), label: "新标签页打开原文", fn: () => window.open(rawUrl(rel), "_blank") },
+    { icon: icon("copy-link"), label: "复制站内链接", fn: () => copyText(location.origin + docUrl(rel.replace(/\.md$/, "")), "已复制站内链接") },
+    { icon: icon("copy-path"), label: "复制相对路径", fn: () => copyText(rel, "已复制路径") },
     "-",
     { icon: icon("swap"), label: "移动 / 重命名…", fn: () => moveDocPrompt(rel) },
   ];
+}
+/* 新建子目录（需求 #4）：域下二级目录，或子域下嵌套目录。
+   写 taxonomy.json 显示名（可留空走目录 id），空目录暂不入树，建完引导去新建文档。 */
+async function promptNewSubdir(baseDomain, parentSub) {
+  const parent = parentSub ? `${baseDomain}/${parentSub}` : "";
+  const res = await kbModal({
+    title: "新增目录",
+    body: parent
+      ? `将在 <span class='mono'>${esc(parent)}/</span> 下新建子目录。`
+      : `将在 <span class='mono'>${esc(baseDomain)}/</span> 下新建二级目录（左侧分类树的一级条目）。`,
+    inputs: [
+      { key: "nm", label: "目录名（英文 id，如 rag-notes）", placeholder: "my-subdir" },
+      { key: "lb", label: "显示名（可留空，默认同目录名）", placeholder: "我的笔记" },
+    ],
+    confirmText: "创建",
+  });
+  if (!res || !res.nm) return;
+  const r = await fetch("/api/mkdir", { method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ domain: baseDomain, parent, name: res.nm.trim(), label: (res.lb || "").trim() }) });
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok || !d.ok) { toast("创建失败：" + (d.error || r.status)); return; }
+  await afterMutation();
+  toast(`已创建 <span class='mono'>${esc(d.created)}</span> · 空目录暂不入树，右键它新建一篇文档即可显示`);
 }
 function ctxSubItems(subA) {
   const dom = subA.dataset.dom, sub = subA.dataset.sub;
   const base = sub === "_root" ? dom : `${dom}/${sub}`;
   return [
+    { icon: icon("plus-circle"), label: "新增子目录…", fn: () => promptNewSubdir(dom, sub === "_root" ? "" : sub) },
     { icon: icon("folder-open"), label: "在此新建文档…", fn: async () => {
         const res = await kbModal({
           title: "新建文档",
@@ -1325,27 +1416,43 @@ function ctxSubItems(subA) {
         }
         else toast("创建失败：" + r.status);
       } },
-    { icon: icon("copy"), label: "复制目录路径", fn: () => copyText(base, "已复制路径") },
+    { icon: icon("copy-path"), label: "复制目录路径", fn: () => copyText(base, "已复制路径") },
+  ];
+}
+/* 域级右键（需求 #4 主入口）：左侧分类树一级目录 → 新增二级目录 */
+function ctxDomItems(domA) {
+  const dom = domA.dataset.dom;
+  return [
+    { icon: icon("plus-circle"), label: "新增二级目录…", fn: () => promptNewSubdir(dom, "") },
+    { icon: icon("folder-open"), label: "打开第一个子域", fn: () => {
+        const s = (TREE || []).find(d => d.id === dom);
+        if (s && s.subs && s.subs.length) navigate(`/browse/${dom}/${s.subs[0].id}`, true);
+      } },
+    { icon: icon("chart"), label: "全库统计", fn: () => { if (typeof showGlobalStats === "function") showGlobalStats(); } },
   ];
 }
 /* 问题13：键盘唤起——文档列表项或树子域获得焦点后按 Menu 键 / Shift+F10，
    菜单锚定在该元素下方（触摸设备右键不可达的键盘补偿路径） */
 document.addEventListener("keydown", e => {
   if (!WORKBENCH || (e.key !== "ContextMenu" && !(e.shiftKey && e.key === "F10"))) return;
-  const a = e.target.closest && (e.target.closest("#doclist .doc") || e.target.closest("#tree .sub"));
+  const a = e.target.closest && (e.target.closest("#doclist .doc") || e.target.closest("#tree .sub") || e.target.closest("#tree .dom-head"));
   if (!a) return;
   e.preventDefault();
   const r = a.getBoundingClientRect();
-  openCtxMenu(r.left + 8, r.bottom + 2, a.classList.contains("doc") ? ctxDocItems(a) : ctxSubItems(a));
+  const items = a.classList.contains("doc") ? ctxDocItems(a)
+    : a.classList.contains("dom-head") ? ctxDomItems(a) : ctxSubItems(a);
+  openCtxMenu(r.left + 8, r.bottom + 2, items);
 });
 
 document.addEventListener("contextmenu", e => {
-  // 工作台（阅读页）：文档列表 / 分类树的右键
+  // 工作台（阅读页）：文档列表 / 分类树 / 域头的右键
   if (WORKBENCH) {
     const docA = e.target.closest("#doclist .doc");
     if (docA) { e.preventDefault(); openCtxMenu(e.clientX, e.clientY, ctxDocItems(docA)); return; }
     const subA = e.target.closest("#tree .sub");
     if (subA) { e.preventDefault(); openCtxMenu(e.clientX, e.clientY, ctxSubItems(subA)); return; }
+    const domA = e.target.closest("#tree .dom-head");
+    if (domA) { e.preventDefault(); openCtxMenu(e.clientX, e.clientY, ctxDomItems(domA)); return; }
     return;
   }
   // 总览页：领域卡片 / 最近更新行的右键（此前被 WORKBENCH 门禁整体挡掉）
@@ -1358,7 +1465,7 @@ document.addEventListener("contextmenu", e => {
     openCtxMenu(e.clientX, e.clientY, [
       { icon: icon("chart"), label: "统计信息", fn: () => showSubStats(dom, firstSub) },
       { icon: icon("folder"), label: "进入该目录", fn: () => { location.href = dcard.getAttribute("href"); } },
-      { icon: icon("copy"), label: "复制目录路径", fn: () => copyText(dom, "已复制路径") },
+      { icon: icon("copy-path"), label: "复制目录路径", fn: () => copyText(dom, "已复制路径") },
     ]);
     return;
   }
@@ -1367,13 +1474,12 @@ document.addEventListener("contextmenu", e => {
     e.preventDefault();
     const href = rrow.getAttribute("href") || "";
     const rp = (rrow.querySelector(".rp") || {}).textContent || "";
-    const title = (rrow.querySelector(".rt") || {}).textContent || "";
     const dm = href.match(/^\/doc\/(.+)$/);
-    if (!dm) { copyText(rp || title, "已复制路径"); return; } // _inbox 外链行：只给路径
+    if (!dm) { copyText(rp, "已复制路径"); return; } // _inbox 外链行：只给路径
     const rel = decodeURIComponent(dm[1]) + ".md";
     openCtxMenu(e.clientX, e.clientY, [
       { icon: icon("trend"), label: "统计信息", fn: () => showStats(rel) },
-      { icon: icon("copy"), label: "复制 [[双链]]", fn: () => copyText(`[[${title.trim()}]]`, "已复制双链") },
+      { icon: icon("preview-eye"), label: "新标签页打开原文", fn: () => window.open(rawUrl(rel), "_blank") },
       { icon: icon("swap"), label: "移动 / 重命名…", fn: () => moveDocPrompt(rel) },
     ]);
   }

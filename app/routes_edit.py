@@ -4,6 +4,7 @@
 写入一律走 safe_rel 校验（防目录穿越 / 非可写扩展名 / _ 前缀目录），
 依赖通过 flask.current_app.config 注入，严禁 from app.app import（循环导入）。
 """
+import json
 import time
 from pathlib import Path
 
@@ -94,6 +95,59 @@ def api_favorite():
     except ValueError as e:
         abort(422, f"该文档的 frontmatter 结构无法安全切换收藏：{e}")
     return jsonify({"ok": True, "favorite": new_val})
+
+
+@edit_bp.post("/api/mkdir")
+def api_mkdir():
+    """新建子域目录（需求 #4）：domain 下一级，或 domain/sub 下嵌套一级。
+    磁盘建目录 + 可选写入 taxonomy.json 显示名（不变量 5：分类学权威在 JSON）。
+    目录为空时分类树不显示（scan_corpus 跳过无 docs 的子域），属预期：随后往里建/移文档即可。
+    返回 created 路径供前端直接跳转。"""
+    data = request.get_json(force=True)
+    domain = str(data.get("domain") or "").strip().strip("/")
+    parent = str(data.get("parent") or "").strip().strip("/")  # "" = 域根下；否则 "domain/sub"
+    name = str(data.get("name") or "").strip()
+    label = str(data.get("label") or "").strip()
+
+    from app.store import SKIP_DIRS
+    if not name or any(ch in name for ch in "\\/") or name.startswith("_") or name in SKIP_DIRS:
+        return jsonify({"ok": False, "error": "目录名不合法（不能含斜杠、不能下划线开头）"}), 400
+    if "/" in domain or not domain or domain.startswith("_"):
+        return jsonify({"ok": False, "error": "invalid domain"}), 400
+    if parent:
+        pp = parent.split("/")
+        if len(pp) != 2 or pp[0] != domain or any(x.startswith("_") for x in pp):
+            return jsonify({"ok": False, "error": "parent 必须是 domain/sub 形式"}), 400
+
+    content = _content()
+    base = content / domain / parent.split("/")[1] if parent else content / domain
+    target = base / name
+    try:
+        target.resolve().relative_to(content.resolve())
+    except ValueError:
+        return jsonify({"ok": False, "error": "路径越界"}), 400
+    if target.exists():
+        return jsonify({"ok": False, "error": "目录已存在"}), 400
+
+    try:
+        target.mkdir(parents=True, exist_ok=False)
+    except OSError as e:
+        return jsonify({"ok": False, "error": f"创建失败：{e}"}), 500
+
+    rel_created = target.relative_to(content).as_posix()
+    if label:
+        tax_path = content / "_meta" / "taxonomy.json"
+        try:
+            tax = json.loads(tax_path.read_text(encoding="utf-8")) if tax_path.exists() else {}
+            subs = tax.setdefault("subs", {})
+            subs[rel_created] = label
+            tax_path.write_text(json.dumps(tax, ensure_ascii=False, indent=2) + "\n",
+                                encoding="utf-8")
+            store._TAX_CACHE.clear()  # mtime 粒度足够，但同秒内连建两个目录时会撞缓存，直接清
+        except (OSError, ValueError):
+            pass  # taxonomy 写失败不回滚磁盘目录：目录仍可用，仅显示名为目录 id
+
+    return jsonify({"ok": True, "created": rel_created})
 
 
 @edit_bp.get("/api/links")
