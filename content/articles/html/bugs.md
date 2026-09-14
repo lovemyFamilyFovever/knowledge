@@ -40,5 +40,3 @@ source_path: "frontend/html/bugs.md"
     }
     </style>
 ```
-2. 
-
