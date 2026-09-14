@@ -45,3 +45,12 @@ content/**/_probe*.md
 /scripts/_batch*.log
 # Node å·¥å…·é“¾ï¼ˆESLint/stylelint devDependenciesï¼›Agent 2026-09-13 å¼•å…¥ï¼‰
 node_modules/
+
+# ---------- ´óÌå»ı¸öÈËÊé¿â£¨±¾µØÎÄ¼ş£¬¿ÌÒâ²»Èë¿â/²»ÈëË÷Òı£© ----------
+content/Ğ¡Ëµ/*.txt
+content/Ğ¡Ëµ/*.epub
+content/Ğ¡Ëµ/Áõ±¸/
+content/Ğ¡Ëµ/¡¾¶à¿´°æ¡¿*/
+content/Âş»­/*.cbz
+content/Âş»­/*.pdf
+content/Âş»­/imgs/
