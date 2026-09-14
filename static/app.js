@@ -1,5 +1,5 @@
 /* 知库 reader 前端：主题、面板折叠、客户端路由、正文渲染、编辑/备注/收藏/删除、双链、快捷键 */
-window.APP_JS_VERSION = 26;
+window.APP_JS_VERSION = 27;
 
 const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
@@ -370,6 +370,23 @@ function enhanceArticleDOM(el) {
     wrap.appendChild(head); wrap.appendChild(pre); // pre 原地移入，hljs 染色保留
     head.querySelector(".cb-copy").addEventListener("click", () =>
       copyText(code.textContent || "", "代码已复制到剪贴板"));
+  });
+  el.querySelectorAll(".a-body blockquote").forEach(bq => {
+    if (bq.classList.contains("tip") || bq.classList.contains("warn")) return;
+    const t = (bq.textContent || "").trim();
+    // 引用变体（排版 v2）：首行 💡 → 蓝色提示；⚠️/❗ → 琥珀警告。纯前端约定，语料不用改。
+    if (/^💡/.test(t)) bq.classList.add("tip");
+    else if (/^[⚠️❗]/.test(t)) bq.classList.add("warn");
+  });
+  el.querySelectorAll(".a-body table").forEach(tb => {
+    if (tb.closest(".tbl-wrap")) return; // 幂等：已包壳跳过
+    const wrap = document.createElement("div"); wrap.className = "tbl-wrap";
+    tb.parentNode.insertBefore(wrap, tb);
+    wrap.appendChild(tb); // 圆角外框 + 横向滚动由 CSS 消费
+  });
+  el.querySelectorAll(".a-body ul li").forEach(li => {
+    // GFM 任务清单：不同 marked 版本不一定给 task-list-item 类，同帧补齐
+    if (li.querySelector(":scope > input[type=checkbox]")) li.classList.add("task-list-item");
   });
   el.querySelectorAll(".mermaid").forEach(div => {
     if (div.querySelector(".m-cap")) return;
