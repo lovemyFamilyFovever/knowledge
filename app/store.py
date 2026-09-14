@@ -30,6 +30,8 @@ FM_RE = re.compile(r"\A\ufeff?---[ \t]*\r?\n(.*?)\r?\n---[ \t]*(?:\r?\n)(?:\r?\n
 SKIP_DIRS = {"_inbox", "_assets", "_unfiled"}
 WRITABLE_EXTS = {".md"}
 SERVABLE_EXTS = {".md", ".html"}
+# 需求#6：正文相对图片直服用的媒体扩展名（/raw/<rel> 允许，不进分类树/索引）
+MEDIA_EXTS = {".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg", ".ico", ".bmp", ".avif"}
 DOMAIN_LABELS = {
     "baike": "百科", "articles": "文章", "interview": "面试", "projects": "项目",
     "handbook": "手册", "career": "职业", "ai-assets": "AI 资产",
