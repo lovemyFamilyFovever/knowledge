@@ -28,29 +28,12 @@ qwenwork/
 .box-agent/
 # 日期戳 + 哈希的一次性 agent 会话目录（例如 2026-09-10-428af70d/）
 20??-??-??-*/
-# 巡检脚本产出的 _probe 前缀文档（不属于知识语料，是测试记录）
-content/**/_probe*.md
-# WorkBuddy 客户端本地工作目录（会话配置、缓存，机器本地）
-.workbuddy/
-# 常见 agent 草稿脚本（若散落在仓库根）
-.refactor*.js
-.body-*.html
-.render-*.html
-.sec-*.html
-.splice.js
-.cleanup.js
 
-# pip/重定向误建文件（如 `pip install "numpy>=4.25.8"` 少写引号）与本地一次性脚本/日志
-/=[0-9]*
-/scripts/_batch*.log
-# Node 工具链（ESLint/stylelint devDependencies；Agent 2026-09-13 引入）
-node_modules/
-
-# ---------- �����������⣨�����ļ������ⲻ���/���������� ----------
-content/С˵/*.txt
-content/С˵/*.epub
-content/С˵/����/
-content/С˵/���࿴�桿*/
-content/����/*.cbz
-content/����/*.pdf
-content/����/imgs/
+# ---------- 大体积个人书库（本地文件，刻意不入库/不入索引） ----------
+content/小说/*.txt
+content/小说/*.epub
+content/小说/刘备/
+content/小说/【多看版】*/
+content/漫画/*.cbz
+content/漫画/*.pdf
+content/漫画/imgs/
