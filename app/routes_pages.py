@@ -15,7 +15,7 @@ from flask import (Blueprint, abort, current_app, redirect, render_template,
                    request, send_file)
 
 from app.fts import open_db, search
-from app.store import (MEDIA_EXTS, SERVABLE_EXTS, SKIP_DIRS, domain_label, inbox_count, load_taxonomy,
+from app.store import (LIBRARY_EXTS, MEDIA_EXTS, SERVABLE_EXTS, SKIP_DIRS, domain_label, inbox_count, load_taxonomy,
                        md_files, parse_frontmatter)
 
 pages_bp = Blueprint("pages", __name__)
@@ -191,8 +191,9 @@ def raw(rel):
     ① /static/echarts.min.js 等本地引用 → /static/ 真实文件（绝对路径在 iframe 下本就命中）；
     ② ./_shared/js/* 相对引用 → /static/（语料内并无 _shared/ 目录，iframe 下必 404）；
     ③ 公网 CDN（jsdelivr 等）→ 本地 vendored 副本，离线可用。
-    需求#6：图片扩展名（MEDIA_EXTS）同样直服，供正文相对图片 /raw 直通。"""
-    p = _safe_rel(rel, SERVABLE_EXTS | MEDIA_EXTS)
+    需求#6：图片扩展名（MEDIA_EXTS）同样直服，供正文相对图片 /raw 直通。
+    需求#12：书库格式直服（.txt/.epub/.pdf/.xlsx）—— 阅读器前端按类型分流渲染。"""
+    p = _safe_rel(rel, SERVABLE_EXTS | MEDIA_EXTS | LIBRARY_EXTS)
     if p.suffix == ".html":
         html = p.read_text(encoding="utf-8", errors="replace")
         html = _rewrite_html_assets(html)

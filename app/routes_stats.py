@@ -102,8 +102,12 @@ def api_dir_tree():
             cjk = a["cjk"]
             untagged = a["untagged"]
             mt = max((d["mtime"] for d in sobj["docs"]), default=0.0)
+            # 需求 #11：单列树 —— 文档清单直接随树下发（内联渲染，替代第二列列表）
             subs.append({"id": sobj["id"], "label": sobj["label"], "n": sobj["n"],
-                         "cjk": cjk, "untagged": untagged, "mtime": int(mt)})
+                         "cjk": cjk, "untagged": untagged, "mtime": int(mt),
+                         "docs": [{"name": d["name"], "title": d["title"],
+                                   "tags": d["tags"], "has_html": d["has_html"],
+                                   "is_html": d["is_html"]} for d in sobj["docs"]]})
             dom_cjk += cjk
             dom_untagged += untagged
             dom_mtime = max(dom_mtime, mt)
