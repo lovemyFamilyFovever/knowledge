@@ -164,6 +164,32 @@ def _resolve_dst(dst_rel: str):
     return dst
 
 
+@files_bp.post("/api/inbox/ignore")
+def api_inbox_ignore():
+    """收件箱忽略（需求 #3）：把文件或其所在目录加入忽略清单，不再出现在待归档。
+    body: {path: "_inbox/desktop/code/dev-output/x.md", scope: "file"|"dir"}
+    scope=dir 时忽略该文件所在目录。清单落 _meta/inbox-ignore.json（可手工编辑回滚）。"""
+    from app.store import add_inbox_ignore
+    data = request.get_json(force=True)
+    rel = str(data.get("path") or "")
+    scope = str(data.get("scope") or "file")
+    if scope not in ("file", "dir"):
+        return jsonify({"ok": False, "error": "scope must be file|dir"}), 400
+    if not rel.startswith("_inbox/"):
+        return jsonify({"ok": False, "error": "path must start with _inbox/"}), 400
+    if scope == "dir":
+        inner = rel[len("_inbox/"):]
+        if "/" in inner:
+            rel = "_inbox/" + inner.rsplit("/", 1)[0]
+        else:
+            scope = "file"  # 根级文件无父目录可忽略，退化为忽略文件本身
+    try:
+        rules = add_inbox_ignore(_content(), rel, scope)
+    except ValueError as e:
+        return jsonify({"ok": False, "error": str(e)}), 400
+    return jsonify({"ok": True, "ignored": rel, "scope": scope, "rules": rules})
+
+
 @files_bp.post("/api/move")
 def api_move():
     """移动/重命名文档（含层级调整）。同步级联：

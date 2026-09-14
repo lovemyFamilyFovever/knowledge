@@ -321,6 +321,7 @@ function initInbox() {
     if (!act) return;
     if (act.dataset.act === "move") inboxMove(row);
     else if (act.dataset.act === "del") inboxDelete(row);
+    else if (act.dataset.act === "ignore") inboxIgnoreDir(row);
   });
 
   /* 拖拽：卡片拖入「归档中」= 勾选暂存；拖回「待读」= 取消；「已归档·最近」是记录列，不收卡 */
@@ -423,6 +424,34 @@ function initInbox() {
       body: JSON.stringify({ path: rel }) });
     if (r.ok) { toast("已移入回收站"); row.remove(); ibUpdate(); }
     else toast("删除失败：" + r.status);
+  }
+
+  /* 需求#3：开发产生的临时/日志/脚本类文件不再进待归档 —— 忽略整个来源目录。
+     忽略清单落 content/_meta/inbox-ignore.json，可手工编辑回滚；源文件不动。 */
+  async function inboxIgnoreDir(row) {
+    const rel = row.dataset.rel;
+    const inner = rel.replace(/^_inbox\//, "");
+    const dir = inner.includes("/") ? inner.slice(0, inner.lastIndexOf("/")) : inner;
+    if (!dir) { toast("根级文件没有目录可忽略，请直接丢弃"); return; }
+    const res = await kbModal({
+      title: "忽略整个目录？",
+      body: `把 <span class='mono'>_inbox/${esc(dir)}/</span> 加入忽略清单：本批与以后扫进该目录的文件都不再出现在待归档（清单可手工编辑回滚，源文件不动）。`,
+      inputs: [{ key: "d", label: "要忽略的目录（相对 _inbox）", value: dir }],
+      confirmText: "忽略",
+    });
+    if (!res || !res.d) return;
+    const r = await fetch("/api/inbox/ignore", { method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ path: "_inbox/" + res.d, scope: "dir" }) });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok || !d.ok) { toast("忽略失败：" + (d.error || r.status)); return; }
+    const gone = rowsInDir(d.ignored);
+    gone.forEach(x => x.remove());
+    ibUpdate();
+    toast(`已忽略 <span class='mono'>${esc(d.ignored)}</span> · ${gone.length} 篇从列表移除`);
+  }
+  function rowsInDir(dir) {
+    const pfx = "_inbox/" + dir.replace(/\/+$/, "") + "/";
+    return items().filter(x => (x.dataset.rel + "/").startsWith(pfx));
   }
 
   ibUpdate();

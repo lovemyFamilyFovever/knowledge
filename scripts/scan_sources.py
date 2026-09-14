@@ -25,7 +25,15 @@ SKIP_DIR_NAMES = {
     ".git", "node_modules", "dist", "build", "coverage", "cache",
     ".vitepress", "__pycache__", "vendor",
 }
-TEXT_EXTS = {".md", ".txt"}
+# 需求#2：agent 会话产物不应进收件箱 —— 隐藏目录（点开头）与已知 agent 目录整棵跳过。
+# 点开头的目录在 iter_files 里统一剪枝；下面是非隐藏的 agent 运行时目录名。
+AGENT_DIR_NAMES = {
+    "node_modules", "dist", "build", "coverage", "__pycache__",
+    ".codebase-memory", ".qoder", ".qoder-archive", ".reasonix",
+    ".trae", ".agent-memory", ".dsh", ".workbuddy", ".ruff_cache",
+    ".venv", "venv", ".pytest_cache", ".mypy_cache", ".idea", ".vscode",
+}
+TEXT_EXTS = {".md"}  # 需求#3：.txt 是日志/临时文件，不再收集
 MARKDOWN_ONLY = {".md"}
 # 桌面上的完整项目目录：百科大全已全量迁移，重扫纯重复
 EXCLUDE_ROOTS = {DESKTOP / "百科大全"}
@@ -33,9 +41,13 @@ EXCLUDE_ROOTS = {DESKTOP / "百科大全"}
 
 def iter_files(src_root: Path, exts: set[str]):
     """Yield files under src_root whose extension is in exts, pruning
-    SKIP_DIR_NAMES subtrees during the walk instead of filtering afterwards."""
+    SKIP_DIR_NAMES subtrees during the walk instead of filtering afterwards.
+    需求#2：所有点开头目录（.trae/.qoder-archive/.agent-memory…）与
+    AGENT_DIR_NAMES 一律剪枝，agent 产物不再混进收件箱。"""
     for dirpath, dirnames, filenames in os.walk(src_root):
-        dirnames[:] = [d for d in dirnames if d not in SKIP_DIR_NAMES]
+        dirnames[:] = [d for d in dirnames
+                       if d not in SKIP_DIR_NAMES and d not in AGENT_DIR_NAMES
+                       and not d.startswith(".")]
         here = Path(dirpath)
         if any(here == ex or ex in here.parents for ex in EXCLUDE_ROOTS):
             dirnames[:] = []

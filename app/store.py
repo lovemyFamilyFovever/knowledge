@@ -319,6 +319,102 @@ def _tree_sig(content: Path) -> str:
 
 
 _INBOX_CACHE = {"t": 0.0, "n": 0}
+_IGNORE_CACHE = {"t": 0.0, "rules": None}
+
+# 收件箱忽略清单：agent 会话产物与临时文件不应出现在待归档里。
+# 段级匹配：相对路径任一层命中即整棵剪掉；后缀级：整文件类跳过。
+INBOX_SKIP_DIR_PARTS = {
+    "desktop/code/.codebase-memory", "desktop/code/.qoder",
+    "desktop/code/.qoder-archive", "desktop/code/.reasonix",
+    "desktop/code/.trae", "desktop/feishu_code/.agent-memory",
+}
+INBOX_HIDDEN_DIR_PREFIXES = ("desktop/code/.", "desktop/feishu_code/.", "desktop/work/.", "desktop/dsh/.")
+INBOX_SKIP_SUFFIXES = {".txt"}
+
+
+def inbox_ignore_rules(content: Path) -> dict:
+    """用户手动忽略规则（content/_meta/inbox-ignore.json）：{"files":[rel],"dirs":[dir]}。
+    rel 为相对 _inbox 的 posix 路径。mtime 缓存。"""
+    path = content / "_meta" / "inbox-ignore.json"
+    try:
+        mtime = path.stat().st_mtime
+    except OSError:
+        return {"files": [], "dirs": []}
+    if _IGNORE_CACHE["rules"] is not None and _IGNORE_CACHE["t"] == mtime:
+        return _IGNORE_CACHE["rules"]
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+        rules = {"files": [str(x).strip().strip("/") for x in (data.get("files") or [])],
+                 "dirs": [str(x).strip().strip("/").rstrip("/") for x in (data.get("dirs") or [])]}
+    except (OSError, ValueError):
+        rules = {"files": [], "dirs": []}
+    _IGNORE_CACHE["t"] = mtime
+    _IGNORE_CACHE["rules"] = rules
+    return rules
+
+
+def add_inbox_ignore(content: Path, rel: str, scope: str) -> dict:
+    """追加忽略规则并落盘。scope: file | dir。返回更新后的规则。"""
+    rel = rel.strip().strip("/")
+    if rel.startswith("_inbox/"):
+        rel = rel[len("_inbox/"):]
+    if not rel or ".." in rel.split("/"):
+        raise ValueError("invalid path")
+    path = content / "_meta" / "inbox-ignore.json"
+    try:
+        data = json.loads(path.read_text(encoding="utf-8")) if path.exists() else {}
+    except (OSError, ValueError):
+        data = {}
+    files = list(data.get("files") or [])
+    dirs = list(data.get("dirs") or [])
+    if scope == "dir":
+        # rel 本身就是目录路径（前端传文件所在目录时由前端先算好父目录）
+        if rel not in dirs:
+            dirs.append(rel)
+    elif rel not in files:
+        files.append(rel)
+    else:
+        return {"files": files, "dirs": dirs}
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps({"files": files, "dirs": dirs}, ensure_ascii=False, indent=2) + "\n",
+                    encoding="utf-8")
+    _IGNORE_CACHE["t"] = 0.0
+    _INBOX_CACHE["t"] = 0.0  # 徽标立即反映新口径，不等 60s TTL
+    return {"files": files, "dirs": dirs}
+
+
+def inbox_iter(content: Path):
+    """收件箱待归档文件迭代器（唯一口径）。
+    - 只数文件，不数目录（旧版 rglob("*") 把 104 个目录也计入 524）
+    - 任一路径段以 "." 开头的隐藏树整棵跳过（.trae/.qoder-archive/.agent-memory…）
+    - INBOX_SKIP_DIR_PARTS 显式名单兜底（防改名漏网）
+    - 用户忽略规则 _meta/inbox-ignore.json（files/dirs）
+    - 跳过 .txt 临时文件与 INVENTORY.md 自身
+    """
+    d = content / "_inbox"
+    if not d.is_dir():
+        return
+    ig = inbox_ignore_rules(content)
+    ig_files = set(ig["files"])
+    ig_dirs = tuple(ig["dirs"])
+    for p in d.rglob("*"):
+        if not p.is_file():
+            continue
+        rel = p.relative_to(d).as_posix()
+        parts = rel.split("/")
+        if any(seg.startswith(".") for seg in parts[:-1]):
+            continue
+        if any(rel == x or rel.startswith(x + "/") for x in INBOX_SKIP_DIR_PARTS):
+            continue
+        if any(rel == x or rel.startswith(x + "/") for x in ig_dirs):
+            continue
+        if rel in ig_files:
+            continue
+        if p.suffix.lower() in INBOX_SKIP_SUFFIXES:
+            continue
+        if p.name == "INVENTORY.md":
+            continue
+        yield p, rel
 
 
 def inbox_count(content: Path) -> int:
@@ -327,7 +423,7 @@ def inbox_count(content: Path) -> int:
         return 0
     now = time.time()
     if now - _INBOX_CACHE["t"] > 60:
-        _INBOX_CACHE["n"] = sum(1 for _ in d.rglob("*"))
+        _INBOX_CACHE["n"] = sum(1 for _ in inbox_iter(content))
         _INBOX_CACHE["t"] = now
     return _INBOX_CACHE["n"]
 

@@ -237,13 +237,14 @@ def inbox_page():
     inbox = content / "_inbox"
     items = []
     if inbox.is_dir():
-        for p in sorted(inbox.rglob("*")):
-            if p.is_file() and p.suffix.lower() in (".md", ".html"):
-                rel = p.relative_to(content).as_posix()
+        from app.store import inbox_iter
+        for p, rel in inbox_iter(content):
+            if p.suffix.lower() in (".md", ".html"):
                 fm, _ = parse_frontmatter(p.read_text(encoding="utf-8", errors="replace")) \
                     if p.suffix == ".md" else ({}, None)
-                items.append({"rel": rel, "title": str(fm.get("title") or p.stem),
+                items.append({"rel": "_inbox/" + rel, "title": str(fm.get("title") or p.stem),
                               "size": f"{p.stat().st_size / 1024:.1f} KB"})
+        items.sort(key=lambda x: x["rel"])
     return render_template("inbox.html", items=items, **_chrome_counts())
 
 
