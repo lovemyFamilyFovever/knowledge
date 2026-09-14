@@ -30,6 +30,8 @@ FM_RE = re.compile(r"\A\ufeff?---[ \t]*\r?\n(.*?)\r?\n---[ \t]*(?:\r?\n)(?:\r?\n
 SKIP_DIRS = {"_inbox", "_assets", "_unfiled"}
 WRITABLE_EXTS = {".md"}
 SERVABLE_EXTS = {".md", ".html"}
+# 需求 #12：书库格式 —— /raw 直服（阅读器按类型分流渲染），不进分类树/FTS/RAG
+LIBRARY_EXTS = {".txt", ".epub", ".pdf", ".xlsx"}
 # 需求#6：正文相对图片直服用的媒体扩展名（/raw/<rel> 允许，不进分类树/索引）
 MEDIA_EXTS = {".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg", ".ico", ".bmp", ".avif"}
 DOMAIN_LABELS = {
@@ -293,15 +295,17 @@ def md_files(content: Path):
 
 def _visible_sub_files(sdir: Path) -> list[Path]:
     """子域目录内可见文件（B2/B3）：os.walk 剪掉嵌套 `_` 目录，排除备注旁挂。
-    替代旧 rglob —— 它会把 baike/algorithms/_tmp/x.md 之类当成文档列进树。"""
+    替代旧 rglob —— 它会把 baike/algorithms/_tmp/x.md 之类当成文档列进树。
+    需求 #12：书库格式（.txt/.epub/.pdf/.xlsx）同样入树（阅读器分流渲染）。"""
     out: list[Path] = []
     for dirpath, dirnames, filenames in os.walk(sdir):
         dirnames[:] = [d for d in dirnames if not d.startswith("_")]
         for fn in filenames:
             if fn.endswith(".notes.md"):
                 continue
-            if fn.endswith(tuple(SERVABLE_EXTS)):
-                out.append(Path(dirpath) / fn)
+            p = Path(dirpath) / fn
+            if p.suffix in SERVABLE_EXTS or p.suffix in LIBRARY_EXTS:
+                out.append(p)
     return sorted(out)
 
 
@@ -448,8 +452,8 @@ def scan_corpus(content: Path) -> list[dict]:
             continue
         dom = {"id": ddir.name, "label": domain_label(tax, ddir.name), "subs": [], "n": 0}
         loose = sorted(p for p in ddir.iterdir()
-                       if p.is_file() and p.suffix in SERVABLE_EXTS
-                       and not p.name.endswith(".notes.md"))  # B2：域根文档的备注旁挂同样不可见
+                       if p.is_file() and (p.suffix in SERVABLE_EXTS or p.suffix in LIBRARY_EXTS)
+                       and not p.name.endswith(".notes.md"))  # B2：域根文档的备注旁挂同样不可见；#12 书库格式入树
         sdirs = sorted(p for p in ddir.iterdir()
                        if p.is_dir() and p.name not in SKIP_DIRS and not p.name.startswith("_"))
         for sdir in sdirs:
@@ -478,6 +482,10 @@ def _scan_sub(sdir: Path, sid: str, label: str, files=None) -> dict:
             if relp[:-5] in md_rel:
                 continue  # 同名 .md 的美化版旁挂
             name, title, is_html = relp, p.stem + ".html", True
+        elif p.suffix in LIBRARY_EXTS:
+            # 需求 #12：书库格式 —— name 保留完整后缀（路由 /doc/<dom>/<sub>/<name>），
+            # 不读 frontmatter（二进制/大文本无意义），不入 FTS/RAG（build_index 只收 .md）
+            name, title, is_html = relp, p.stem + p.suffix, False
         else:
             name, title, is_html = relp[:-3], p.stem, False
             fm, _ = parse_frontmatter(p.read_text(encoding="utf-8", errors="replace"))
@@ -518,7 +526,8 @@ def find_doc(content: Path, domain: str, sub: str, name: str):
     for cand in (sdir / f"{name}.md", sdir / name, sdir / f"{name}.html"):
         if cand.name.endswith(".notes.md"):
             continue  # 旁挂备注永远不是文档（不误伤恰以 .notes 命名的正常文件）
-        if cand.is_file() and cand.suffix in SERVABLE_EXTS:
+        if cand.is_file() and (cand.suffix in SERVABLE_EXTS or cand.suffix in LIBRARY_EXTS):
+            # 需求 #12：书库格式（name 自带后缀）可路由 —— 阅读器分流渲染
             return cand
     return None
 

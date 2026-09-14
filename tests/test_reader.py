@@ -92,8 +92,9 @@ def main() -> int:
         check("/doc 渲染标题", r.status_code == 200 and "测试文档A" in body)
         check("/doc 携带 doc-data JSON", 'id="doc-data"' in body)
         check("/doc 面包屑含分类", "ai/llm-and-agents" in body)
-        check("/doc 保留客户端渲染锚点 id", 'id="list-title"' in body and 'id="tree"' in body
-              and 'id="doc-data"' in body and 'id="doclist"' in body and 'id="article"' in body)
+        check("/doc 保留客户端渲染锚点 id", 'id="tree"' in body
+              and 'id="doc-data"' in body and 'id="article"' in body)
+        # 需求 #11：第二列列表移除 → 文档内联进树；#list-title/#doclist 不再是模板锚点
 
         r = c.get("/doc/ai/llm-and-agents/A.html")
         check("纯 HTML 文档可作为文档打开", r.status_code == 200)

@@ -1,5 +1,5 @@
 /* 知库 reader 前端：主题、面板折叠、客户端路由、正文渲染、编辑/备注/收藏/删除、双链、快捷键 */
-window.APP_JS_VERSION = 30;
+window.APP_JS_VERSION = 31;
 
 const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
@@ -7,11 +7,11 @@ const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;
 /* 问题3 修复：toast 唯一实现收拢到 kb-core 的 KB.util.toast（kb-core defer 顺序在前，可依赖）。
    原先 app.js 与 kb-core.js 各持一个隐藏 timer（_h / _kbh）共用 #toast，两条 toast 先后出现时
    第二条会被第一条的旧 timer 提前隐藏。此处只转调，不再自管 timer。 */
-const toast = m => {
-  if (window.KB && KB.util && KB.util.toast) { KB.util.toast(m); return; }
+const toast = (m, ms) => {
+  if (window.KB && KB.util && KB.util.toast) { KB.util.toast(m, ms); return; }
   const t = $("#toast"); if (!t) return;
   t.innerHTML = m; t.classList.add("show");
-  clearTimeout(t._kbh); t._kbh = setTimeout(() => t.classList.remove("show"), 2600);
+  clearTimeout(t._kbh); t._kbh = setTimeout(() => t.classList.remove("show"), ms || 2600);
 };
 /* 问题8（阶段1）：/doc 与 /raw 的 URL 构造唯一实现在 kb-core.util（_root 补段 + 逐段 encode），
    app.js 只转调。此前 docUrl 在 app.js 与 kb-core 双实现、navigate 里还有第三处局部影子。 */
@@ -38,8 +38,8 @@ try { const saved = localStorage.getItem("kb-theme"); if (saved) applyTheme(save
 
 /* ---------- 面板折叠（workbench） ---------- */
 function setPanel(which, off) {
-  const pid = which === "left" ? "p-left" : "p-list";
-  const cls = which === "left" ? "left-off" : "list-off";
+  const pid = which === "left" ? "p-left" : which === "rail" ? "p-rail" : "p-list";
+  const cls = which === "left" ? "left-off" : which === "rail" ? "rail-off" : "list-off";
   const p = document.getElementById(pid), m = document.querySelector("main");
   if (!p || !m) return;
   p.classList.toggle("collapsed", off);
@@ -196,10 +196,101 @@ async function promptNewDocInDir(dom, sub) {
 }
 window.promptNewDocInDir = promptNewDocInDir;
 
+/* ---------- 需求 #12：书库格式分流渲染 ----------
+   .txt  → fetch 原文 + <pre> 分页阅读（大文件截断展示头部 + 下载入口）
+   .pdf  → 浏览器原生 PDF 查看器（iframe 直通 /raw/）
+   .xlsx → SheetJS 渲染工作表前 200 行
+   .epub → 暂不支持在线渲染，给下载与打开方式 */
+function renderLibraryDoc(el, ext) {
+  el.classList.remove("pretty-mode");
+  const rawHref = rawUrl(DOC.rel);
+  const sizeMiB = (parseFloat(DOC.size) / 1024).toFixed(1); // DOC.size 是 KB 字符串
+  const head = `<div class="a-kicker">${esc(DOC.domain_label)} / ${esc(DOC.sub_label)}</div>
+    <h1 class="a-title">${esc(DOC.title)}</h1>
+    <div class="a-chips"><span class="chip acc">${ext.toUpperCase()} · ${sizeMiB} MB</span>
+      <a class="chip chip-btn" href="${rawHref}" download="${esc((DOC.name || "文件"))}" title="下载原文件">${icon("download", 11)} 下载</a>
+    </div><div class="a-rule"></div>`;
+  if (ext === "pdf") {
+    el.innerHTML = head + `<div class="lib-frame-wrap"><iframe class="lib-frame" src="${rawHref}" title="${esc(DOC.title)}"></iframe></div>`;
+    return;
+  }
+  if (ext === "epub") {
+    el.innerHTML = head + `<div class="a-body"><p>EPUB 电子书暂不支持在线预览。</p>
+      <p><a class="chip chip-btn" href="${rawHref}" download="${esc(DOC.name || "book.epub")}">${icon("download", 11)} 下载后用阅读器打开</a></p></div>`;
+    return;
+  }
+  if (ext === "xlsx") {
+    el.innerHTML = head + `<div class="a-body" id="lib-xlsx"><div class="kb-skeleton" aria-busy="true"><i style="width:60%"></i><i style="width:90%"></i></div></div>`;
+    renderXlsx(rawHref);
+    return;
+  }
+  // txt：>2MB 只展示前 512KB 预览，完整阅读走下载
+  el.innerHTML = head + `<div class="a-body lib-txt" id="lib-txt"><div class="kb-skeleton" aria-busy="true"><i style="width:70%"></i><i style="width:92%"></i><i style="width:84%"></i></div></div>`;
+  fetch(rawHref).then(r => {
+    if (!r.ok) throw new Error("HTTP " + r.status);
+    return r.text();
+  }).then(t => {
+    const LIMIT = 512 * 1024;
+    const truncated = t.length > LIMIT;
+    const body = truncated ? t.slice(0, LIMIT) : t;
+    const pre = document.createElement("pre");
+    pre.className = "lib-txt-pre";
+    pre.textContent = body;
+    const wrap = $("#lib-txt");
+    if (!wrap) return;
+    wrap.innerHTML = "";
+    wrap.appendChild(pre);
+    if (truncated) {
+      const note = document.createElement("div");
+      note.className = "hint";
+      note.style.marginTop = "10px";
+      note.textContent = `文件较大（${sizeMiB} MB），仅预览前 512KB —— 下载后阅读全文。`;
+      wrap.appendChild(note);
+    }
+  }).catch(e => {
+    const wrap = $("#lib-txt");
+    if (wrap) wrap.innerHTML = `<p>读取失败：${esc(String(e.message || e))}</p>`;
+  });
+}
+
+let _sheetjsLoading = null;
+function ensureSheetJS() {
+  if (window.XLSX) return Promise.resolve();
+  if (!_sheetjsLoading) _sheetjsLoading = loadScript("/static/vendor/xlsx.full.min.js")
+    .catch(() => loadScript("https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"));
+  return _sheetjsLoading;
+}
+
+async function renderXlsx(url) {
+  try {
+    await ensureSheetJS();
+    const buf = await (await fetch(url)).arrayBuffer();
+    const wb = window.XLSX.read(buf, { type: "array" });
+    const wrap = $("#lib-xlsx");
+    if (!wrap) return;
+    wrap.innerHTML = wb.SheetNames.map(sn => {
+      const rows = window.XLSX.utils.sheet_to_json(wb.Sheets[sn], { header: 1, defval: "" });
+      const view = rows.slice(0, 200);
+      const th = (view[0] || []).map(c => `<th>${esc(String(c))}</th>`).join("");
+      const tr = view.slice(1).map(r => `<tr>${r.map(c => `<td>${esc(String(c))}</td>`).join("")}</tr>`).join("");
+      return `<div class="lib-sheet"><div class="lib-sheet-h">${esc(sn)} · 共 ${rows.length} 行${rows.length > 200 ? "（预览前 200 行）" : ""}</div>
+        <div class="tbl-wrap"><table><thead><tr>${th}</tr></thead><tbody>${tr}</tbody></table></div></div>`;
+    }).join("");
+  } catch (e) {
+    const wrap = $("#lib-xlsx");
+    if (wrap) wrap.innerHTML = `<p>表格渲染失败：${esc(String(e.message || e))}（可下载后本地打开）</p>`;
+  }
+}
+window.renderArticle = renderArticle;
+
 function renderArticle(forceMd) {
   const el = $("#article");
   if (!el || !DOC) return;
   refreshDocMark(); // 已读/已掌握按钮状态（异步，不阻塞渲染）
+  /* 需求 #12：书库格式分流渲染 —— .txt 直接读文本、.pdf 原生 iframe、
+     .xlsx 用 SheetJS 渲染前 N 行、.epub 给下载/打开方式；不进 markdown 管线 */
+  const libExt = (DOC.name || "").match(/\.(txt|pdf|xlsx|epub)$/i);
+  if (libExt && !forceMd) { renderLibraryDoc(el, libExt[1].toLowerCase()); return; }
   /* 空目录占位（新建目录未放文档时不再 404，正文区给引导） */
   if (DOC.empty) {
     el.classList.remove("pretty-mode");
@@ -244,6 +335,7 @@ function renderArticle(forceMd) {
       (DOC.fm.tags && DOC.fm.tags.length)
         ? DOC.fm.tags.map(t => `<span class="chip acc">${esc(t)}</span>`).join("")
         : `<span class="chip warn">tags 未打标</span>`,
+      !DOC.is_html ? `<button type="button" class="chip chip-btn" onclick="jumpToTagEdit()" title="编辑标签">${icon("tag-outline", 11)} 编辑标签</button>` : "",
     ].join("");
     el.innerHTML = `<div class="a-kicker">${esc(DOC.domain_label)} / ${esc(DOC.sub_label)}</div>
       <h1 class="a-title">${esc(DOC.title)}</h1>
@@ -532,8 +624,36 @@ function renderTree() {
      <span class="dom-glyph" style="--dh:${HUES[d.id] || 158}"><svg><use href="#i-${d.id}"/></svg></span>
      <span class="dom-name">${esc(d.label)}</span><span class="dom-n">${d.n}</span>
     </a>
-    <div class="subs">${d.subs.map(s => `
-      <a class="sub ${CUR && CUR.domain === d.id && CUR.sub === s.id ? "active" : ""}" data-dom="${esc(d.id)}" data-sub="${esc(s.id)}" href="/browse/${d.id}/${s.id}">${esc(s.label)}<span class="n">${s.n}</span></a>`).join("")}
+    <div class="subs">${d.subs.map(s => {
+      // 需求 #11：单列树 —— 文档内联在子域下（第二列列表列已移除）
+      // 需求 #7：多层目录支持 —— name 含斜杠的深层文档按路径分组缩进
+      const cur = CUR && CUR.domain === d.id && CUR.sub === s.id;
+      const docsByDir = {};
+      (s.docs || []).forEach(doc => {
+        const slash = doc.name.lastIndexOf("/");
+        const dir = slash >= 0 ? doc.name.slice(0, slash) : "";
+        (docsByDir[dir] = docsByDir[dir] || []).push(doc);
+      });
+      const dirKeys = Object.keys(docsByDir).sort();
+      const docLink = (doc, dir) => {
+        const href = docUrl(`${d.id}/${s.id}/${doc.name}.md`);
+        const leaf = dir ? doc.name.slice(dir.length + 1) : doc.name;
+        const deep = dir ? dir.split("/").length : 0; // 多层缩进层级
+        return `
+        <a class="doc ${cur && CUR.name === doc.name ? "active" : ""} ${dir ? "in-subdir" : ""}" data-name="${esc(doc.name)}" data-dom="${esc(d.id)}" data-sub="${esc(s.id)}" draggable="true" style="--deep:${deep}" href="${href}" title="${esc(doc.name)}">
+          <div class="doc-t">${doc.has_html ? `<span class="star" title="有美化版">${icon("external-link", 12)}</span>` : ""}${esc(leaf)}</div>
+          <div class="doc-meta">${(doc.tags && doc.tags.length) ? doc.tags.map(t => `<span class="mini tag">${esc(t)}</span>`).join("") : ""}
+          ${doc.has_html ? `<span class="mini html">美化版</span>` : ""}${doc.is_html ? `<span class="mini html">HTML</span>` : ""}</div>
+        </a>`;
+      };
+      const groups = dirKeys.map(dir => dir === ""
+        ? docsByDir[""].map(doc => docLink(doc, "")).join("")
+        : `<div class="tree-subdir" style="--deep:${dir.split("/").length}"><div class="tree-subdir-h" title="${esc(dir)}">${icon("folder", 11)} ${esc(dir.split("/").pop())}</div>${docsByDir[dir].map(doc => docLink(doc, dir)).join("")}</div>`
+      ).join("");
+      return `
+      <a class="sub ${cur ? "active" : ""}" data-dom="${esc(d.id)}" data-sub="${esc(s.id)}" href="/browse/${d.id}/${s.id}">${esc(s.label)}<span class="n">${s.n}</span></a>
+      ${cur ? groups : ""}`;
+    }).join("")}
     </div>
    </div>`;
   }).join("");
@@ -569,7 +689,12 @@ function renderDocList(docs, subLabel, activeName) {
 }
 
 function renderCrumb() {
-  const crumb = $("#crumb"); if (!crumb || !DOC) return;
+  const crumb = $("#crumb"); if (!crumb) return;
+  if (!DOC) {
+    // 无文档态（初始/已删除/404 自愈中）：给一个可用的空态行，不残留旧按钮也不留死白
+    crumb.innerHTML = `<b>未选择文档</b><span class="spacer"></span>`;
+    return;
+  }
   /* 面包屑不再显示 content/<路径>（用户要求）；interview 域美化版文档的
      「Markdown 源 / 新标签页」按钮与 workbench.html 服务端渲染保持同一套结构 */
   const isInterviewPretty = DOC.has_html && DOC.domain === "interview" && !DOC.is_html;
@@ -595,7 +720,8 @@ function renderInfo() {
       <div class="tag-edit-h">${icon("tag-outline", 13)} 标签${editable ? `<button type="button" class="tag-edit-addbtn" id="tag-add-btn" title="添加标签">+ 添加</button>` : ""}</div>
       <div class="tag-chips" id="tag-chips">${tagChips}</div>
       <div class="tag-inputrow" id="tag-inputrow" hidden>
-        <input id="tag-in" placeholder="输入标签，逗号可批量，回车确认" maxlength="64">
+        <input id="tag-in" placeholder="输入标签，逗号可批量，回车确认" maxlength="64" list="kb-tag-datalist" autocomplete="off">
+        <datalist id="kb-tag-datalist"></datalist>
       </div>
     </div>
     <div class="meta-row"><span class="k">版本</span><span class="v">git 全程可追溯</span></div>` + rows;
@@ -603,12 +729,22 @@ function renderInfo() {
   const row = pane.querySelector("#tag-inputrow");
   const input = pane.querySelector("#tag-in");
   if (addBtn && row && input) {
-    addBtn.addEventListener("click", () => { row.hidden = !row.hidden; if (!row.hidden) input.focus(); });
+    addBtn.addEventListener("click", () => { row.hidden = !row.hidden; if (!row.hidden) { fillTagDatalist(); input.focus(); } });
     input.onkeydown = e => {
       if (e.key === "Enter") { e.preventDefault(); const raw = input.value.trim(); if (raw) addTagsFromRaw(raw); input.value = ""; }
       else if (e.key === "Escape") { row.hidden = true; }
     };
   }
+}
+
+/* 快赢：标签智能补全 —— 全库 Top 标签入 datalist，从录入端杜绝「C#/C#C#」式分叉 */
+function fillTagDatalist() {
+  const dl = document.getElementById("kb-tag-datalist");
+  if (!dl || dl.options.length) return;
+  fetch("/api/globalstats").then(r => r.json()).then(d => {
+    if (!d || !Array.isArray(d.top_tags)) return;
+    dl.innerHTML = d.top_tags.slice(0, 60).map(t => `<option value="${esc(t.tag)}">`).join("");
+  }).catch(() => {});
 }
 
 /* ---------- 标签编辑（需求 #2）：走 /api/tags，服务端行级手术写回 ---------- */
@@ -661,8 +797,19 @@ function renderChipsRow() {
     (DOC.fm.tags && DOC.fm.tags.length)
       ? DOC.fm.tags.map(t => `<span class="chip acc">${esc(t)}</span>`).join("")
       : `<span class="chip warn">tags 未打标</span>`,
+    // 标签编辑直接入口：正文头部一眼可见（此前只藏在右栏「信息」页，用户找不到）
+    !DOC.is_html ? `<button type="button" class="chip chip-btn" onclick="jumpToTagEdit()" title="编辑标签">${icon("tag-outline", 11)} 编辑标签</button>` : "",
   ].join("");
   el.innerHTML = chips;
+}
+
+function jumpToTagEdit() {
+  const infoTab = document.querySelector('.rtab[data-pane="info"]');
+  if (infoTab) tab("info", infoTab);
+  const input = $("#tag-in");
+  const row = $("#tag-inputrow");
+  if (row && row.hidden) { const b = $("#tag-add-btn"); if (b) b.click(); }
+  else if (input) input.focus();
 }
 
 function renderNotes() {
@@ -735,10 +882,19 @@ async function openDoc(domain, sub, name) {
     // 第三轮 #10：404 = 树缓存陈旧（文档已删/已移）→ 失效重拉树自愈，右侧列表同步消失
     if (r.status === 404) { invalidate("tree"); await loadTree(); renderTree();
       if (CUR) { const s2 = findSub(CUR.domain, CUR.sub); if (s2) renderDocList(s2.docs, s2.label, null); } }
+    // bug 修复：404 也必须重建 crumb 按钮——此前 crumb 停在上一态（可能是“已删除”纯文本），
+    // 用户看到的就是「编辑/删除/收藏按钮全消失」
+    DOC = null;
+    renderCrumb();
     return;
   }
   const data = await r.json();
   DOC = data.doc;
+  // 编辑态残留防护：openDoc 必须从干净阅读态开始（删除文档后再开新文档时，
+  // 编辑器/class 残留会让新文档的 crumb 按钮“消失”或编辑态错乱）
+  const ed = $("#editor"); if (ed) ed.classList.remove("show");
+  const artEl2 = $("#article"); if (artEl2) artEl2.style.display = "";
+  ED_OPEN = false;
   renderArticle();
   renderCrumb();
   renderInfo();
@@ -747,6 +903,40 @@ async function openDoc(domain, sub, name) {
   linksLoadedFor = null;
   if (document.querySelector("#pane-links.active")) loadLinks(); // 停在双链标签时跟随切换
   const art = document.querySelector(".article"); if (art) art.scrollTop = 0;
+  restoreReadPos();
+}
+
+/* ---------- 快赢：阅读位置记忆 ----------
+   per-doc scrollTop 存 localStorage['kb-readpos']；进入文档恢复，滚动防抖写入。 */
+const READPOS_LS = "kb-readpos";
+let readposTimer = null;
+function readposLoad(rel) {
+  try { return (JSON.parse(localStorage.getItem(READPOS_LS) || "{}")[rel]) | 0; } catch (e) { return 0; }
+}
+function readposSave(rel, top) {
+  try {
+    const all = JSON.parse(localStorage.getItem(READPOS_LS) || "{}");
+    all[rel] = Math.round(top);
+    const keys = Object.keys(all);
+    if (keys.length > 500) delete all[keys[0]]; // 控制体积：只保留最近 500 篇
+    localStorage.setItem(READPOS_LS, JSON.stringify(all));
+  } catch (e) {}
+}
+function wireReadPos() {
+  const art = document.querySelector(".article");
+  if (!art) return;
+  art.addEventListener("scroll", () => {
+    if (!DOC) return;
+    clearTimeout(readposTimer);
+    readposTimer = setTimeout(() => readposSave(DOC.rel, art.scrollTop), 400);
+  }, { passive: true });
+}
+wireReadPos();
+function restoreReadPos() {
+  const art = document.querySelector(".article");
+  if (!art || !DOC) return;
+  const saved = readposLoad(DOC.rel);
+  if (saved > 40) { art.scrollTop = saved; toast("已回到上次阅读位置"); }
 }
 
 /* 点击拦截：阅读页内站内文档/分类链接走客户端路由，不再整页刷新 */
@@ -813,6 +1003,8 @@ function fmSerialize(fm) {
 
 async function openEditor() {
   if (!DOC || DOC.is_html) return;
+  // 需求 #12：书库格式（txt/pdf/xlsx/epub）不进 Markdown 编辑器
+  if (/\.(txt|pdf|xlsx|epub)$/i.test(DOC.name || "")) { toast("书库文件不支持在线编辑，请下载后用本地应用处理"); return; }
   $("#article").style.display = "none";
   $("#editor").classList.add("show");
   const hint = $("#ed-hint");
@@ -1040,6 +1232,7 @@ async function afterMutation() {
 window.afterMutation = afterMutation;
 
 /* ---------- 删除（软删除：移入 _trash，kbModal 统一确认，问题11） ---------- */
+let undoDelete = null; // 快赢：删除可撤销 —— toast 撤销按钮触发的反向 move 闭包
 async function deleteDoc() {
   if (!DOC || DOC.is_html) return;
   const rel = DOC.rel, deletedTitle = DOC.title;
@@ -1085,7 +1278,20 @@ async function deleteDoc() {
     <div class="a-body"><p>《${esc(deletedTitle)}》及其美化版、备注已一起移入 <code>content/_trash/</code>，git 历史亦可找回。</p>
     <p>从左侧选择其他文档继续阅读。</p></div>`;
   $("#crumb").innerHTML = `<b>已删除</b><span class="sep">·</span>${esc(deletedTitle)}`;
-  toast("已移入回收站 · 列表已更新");
+  // 快赢：删除可撤销 —— 5 秒内 toast 内点「撤销」反向 move 回原路径
+  const trashRel = rel.replace(/^content\//, "");
+  const undo = async () => {
+    const r2 = await fetch("/api/move", { method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ src: trashRel, dst: rel }) });
+    if (r2.ok) {
+      toast("已撤销删除，文档已放回原位");
+      invalidate("tree"); await loadTree(); renderTree();
+    } else {
+      toast("撤销失败：文件仍在回收站，可手动移回");
+    }
+  };
+  undoDelete = undo; // 存到模块级变量，toast 按钮触发（toast 是 innerHTML 注入，无法直接闭包）
+  toast(`已移入回收站 · <button type="button" class="undo-del" onclick="undoDelete()" style="background:none;border:1px solid var(--acc-edge);color:var(--acc);border-radius:6px;padding:2px 10px;margin-left:6px;cursor:pointer;font-size:12px">撤销</button>`, 6000);
 }
 
 /* ---------- 双链面板（懒加载） ---------- */
@@ -1313,6 +1519,64 @@ function openCtxStats(dom, sub) {
 /* ---------- 全库聚合统计（顶栏全局「统计」按钮）----------
    与目录统计共用 .ss-* 视觉；数据来自 /api/globalstats。 */
 let GS_OV = null; // 当前全库统计层实例（重开时 close 旧的）
+/* ---------- 中期功能：AI 问吧（RAG 对话）—— /api/ask 检索增强问答 ---------- */
+let ASK_OV = null;
+async function showAsk() {
+  if (ASK_OV) ASK_OV.close("re-open");
+  const ov = KB.overlay.open({
+    html: `<div class="kbm kbm-ask" role="document">
+      <div class="kbm-title">${icon("hint-bulb", 16)} 问知库<span class="spacer" style="flex:1"></span><button class="iconbtn primary ask-close" style="margin-left:8px">关闭</button></div>
+      <div class="kbm-body ask-body" id="ask-body">
+        <div class="ask-msg ask-ai">问点什么都行 —— 回答基于你的语料（语义检索 Top6 + AI 生成），末尾附引用来源。</div>
+      </div>
+      <div class="ask-inputrow">
+        <input id="ask-in" placeholder="例如：我记过哪些关于向量数据库的笔记？" autocomplete="off">
+        <button class="iconbtn primary" id="ask-go">提问</button>
+      </div></div>`,
+  });
+  ASK_OV = ov;
+  ov.root.querySelector(".ask-close").onclick = () => ov.close("btn");
+  ov.root.addEventListener("mousedown", e => { if (e.target === ov.root) ov.close("mask"); });
+  const bodyEl = ov.root.querySelector("#ask-body");
+  const input = ov.root.querySelector("#ask-in");
+  const go = ov.root.querySelector("#ask-go");
+  const esc2 = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c]));
+  const ask = async () => {
+    const qv = input.value.trim();
+    if (!qv || go.disabled) return;
+    go.disabled = true; input.disabled = true;
+    bodyEl.insertAdjacentHTML("beforeend", `<div class="ask-msg ask-me">${esc2(qv)}</div>`);
+    input.value = "";
+    bodyEl.insertAdjacentHTML("beforeend", `<div class="ask-msg ask-ai" id="ask-pending">检索语料并生成中…</div>`);
+    bodyEl.scrollTop = bodyEl.scrollHeight;
+    try {
+      const r = await fetch("/api/ask", { method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ q: qv }) });
+      const d = await r.json().catch(() => ({}));
+      const pending = ov.root.querySelector("#ask-pending");
+      if (pending) pending.remove();
+      if (!r.ok || !d.ok) {
+        const hint = d.error === "not_configured" ? "AI 服务未配置：需要有效的 KB_AI_API_KEY（当前 key 无效或缺失）。其余功能不受影响。"
+          : (d.error || "HTTP " + r.status);
+        bodyEl.insertAdjacentHTML("beforeend", `<div class="ask-msg ask-err">${esc2(hint)}</div>`);
+      } else {
+        const srcs = (d.sources || []).map(s =>
+          `<a href="${s.url || docUrl(String(s.path || "").replace(/\.md$/, ""))}" class="ask-src" title="${esc2(s.path)}">${esc2(String(s.path || "").split("/").slice(-2).join("/"))}</a>`).join("");
+        bodyEl.insertAdjacentHTML("beforeend", `<div class="ask-msg ask-ai">${esc2(d.answer).replace(/\n/g, "<br>")}${srcs ? `<div class="ask-srcs">来源：${srcs}</div>` : ""}</div>`);
+      }
+    } catch (e) {
+      bodyEl.insertAdjacentHTML("beforeend", `<div class="ask-msg ask-err">请求失败：${esc2(String(e.message || e))}</div>`);
+    } finally {
+      go.disabled = false; input.disabled = false; input.focus();
+      bodyEl.scrollTop = bodyEl.scrollHeight;
+    }
+  };
+  go.onclick = ask;
+  input.onkeydown = e => { if (e.key === "Enter") { e.preventDefault(); ask(); } };
+  input.focus();
+}
+window.showAsk = showAsk;
+
 async function showGlobalStats() {
   if (GS_OV) GS_OV.close("re-open"); // 重开时走 close，防监听/计数泄漏
   const ov = KB.overlay.open({
@@ -1520,15 +1784,19 @@ async function moveDocPrompt(rel) {
 /* ---------- 拖拽移动：文档列表 → 左栏目录树 ---------- */
 function wireDragMove() {
   const list = $("#doclist"), nav = $("#tree");
-  if (!list || !nav) return;
-  list.addEventListener("dragstart", e => {
+  if (!nav) return;
+  // 需求 #11：列表列已移除，拖拽源改为树内文档（#doclist 存在时兼容旧模板）
+  const dragSrc = list || nav;
+  dragSrc.addEventListener("dragstart", e => {
     const a = e.target.closest(".doc");
     if (!a) return;
-    e.dataTransfer.setData("text/kb-doc", docRelOf(CUR.domain, CUR.sub, a.dataset.name));
+    const dom = a.dataset.dom || (CUR && CUR.domain);
+    const sub = a.dataset.sub || (CUR && CUR.sub);
+    e.dataTransfer.setData("text/kb-doc", docRelOf(dom, sub, a.dataset.name));
     e.dataTransfer.effectAllowed = "move";
     nav.classList.add("drop-armed");
   });
-  list.addEventListener("dragend", () => {
+  dragSrc.addEventListener("dragend", () => {
     nav.classList.remove("drop-armed");
     nav.querySelectorAll(".drop-hint").forEach(x => x.classList.remove("drop-hint"));
   });
@@ -1574,7 +1842,10 @@ function wireDragMove() {
    第三轮 #7 重排：信息/复制在前，分隔线，移动/删除在后，危险项置底。 */
 function ctxDocItems(docA) {
   const name = docA.dataset.name;
-  const rel = docRelOf(CUR.domain, CUR.sub, name);
+  // 需求 #11：树内联文档自带 data-dom/data-sub；列表文档回退 CUR
+  const domain = docA.dataset.dom || (CUR && CUR.domain);
+  const sub = docA.dataset.sub || (CUR && CUR.sub);
+  const rel = docRelOf(domain, sub, name);
   return [
     { icon: icon("trend"), label: "统计信息", fn: () => showStats(rel) },
     "-",
@@ -1750,7 +2021,7 @@ async function renameSubPrompt(dom, sub) {
    菜单锚定在该元素下方（触摸设备右键不可达的键盘补偿路径） */
 document.addEventListener("keydown", e => {
   if (!WORKBENCH || (e.key !== "ContextMenu" && !(e.shiftKey && e.key === "F10"))) return;
-  const a = e.target.closest && (e.target.closest("#doclist .doc") || e.target.closest("#tree .sub") || e.target.closest("#tree .dom-head"));
+  const a = e.target.closest && (e.target.closest("#doclist .doc") || e.target.closest("#tree .doc") || e.target.closest("#tree .sub") || e.target.closest("#tree .dom-head"));
   if (!a) return;
   e.preventDefault();
   const r = a.getBoundingClientRect();
@@ -1760,9 +2031,9 @@ document.addEventListener("keydown", e => {
 });
 
 document.addEventListener("contextmenu", e => {
-  // 工作台（阅读页）：文档列表 / 分类树 / 域头的右键
+  // 工作台（阅读页）：文档列表 / 分类树（含树内联文档）/ 域头的右键
   if (WORKBENCH) {
-    const docA = e.target.closest("#doclist .doc");
+    const docA = e.target.closest("#doclist .doc") || e.target.closest("#tree .doc");
     if (docA) { e.preventDefault(); openCtxMenu(e.clientX, e.clientY, ctxDocItems(docA)); return; }
     const subA = e.target.closest("#tree .sub");
     if (subA) { e.preventDefault(); openCtxMenu(e.clientX, e.clientY, ctxSubItems(subA)); return; }
@@ -1845,12 +2116,76 @@ document.addEventListener("keydown", e => {
     return;
   }
   if (e.key === "/" && !["INPUT", "TEXTAREA"].includes(document.activeElement.tagName)) { e.preventDefault(); const q = $("#q"); q && q.focus(); }
-  if (e.key === "Escape") { tryCloseEditor(); }
+  if (e.key === "Escape") {
+    // 沉浸模式优先退出（快赢）：编辑器内 Esc 仍归 dirty guard 管辖
+    const mMain = document.querySelector("main");
+    if (mMain && mMain.classList.contains("immersive") && !editorIsOpen()) {
+      mMain.classList.remove("immersive");
+      setPanel("left", false); setPanel("rail", false);
+      toast("已退出沉浸模式");
+    } else { tryCloseEditor(); }
+  }
+  // 快赢：沉浸阅读模式 —— W 键一键收起两侧栏只留正文，再按恢复（编辑器内不劫持）
+  if ((e.key === "w" || e.key === "W") && !e.ctrlKey && !e.metaKey && !e.altKey
+      && !["INPUT", "TEXTAREA"].includes(document.activeElement.tagName)
+      && !editorIsOpen() && WORKBENCH) {
+    e.preventDefault();
+    const m = document.querySelector("main");
+    const immersive = m.classList.toggle("immersive");
+    setPanel("left", immersive);
+    setPanel("rail", immersive);
+    toast(immersive ? "沉浸模式 · 按 W 或 Esc 退出" : "已退出沉浸模式");
+  }
 });
 const q = $("#q");
 if (q) q.addEventListener("keydown", e => {
   if (e.key === "Enter" && q.value.trim()) location.href = "/search?q=" + encodeURIComponent(q.value.trim());
 });
+
+/* ---------- 需求 #9：搜索框空态下拉 —— 点击空的搜索框展示探索面板 ----------
+   数据源：命令面板索引（术语/文档/子域 Top）+ 固定快捷入口 + 最近更新。 */
+function initSearchDrop() {
+  if (!q || q.dataset.sdrop) return;
+  q.dataset.sdrop = "1";
+  let box = null;
+  const close = () => { if (box) { box.remove(); box = null; } };
+  const esc2 = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c]));
+  const shortcuts = [
+    { icon: "i-inbox-tray", label: "收件箱（待归档）", href: "/inbox" },
+    { icon: "i-favorite-heart", label: "我的收藏", href: "/favorites" },
+    { icon: "i-tag-outline", label: "标签管理", href: "/tags" },
+    { icon: "i-stats-chart", label: "月度统计", href: "/stats" },
+    { icon: "i-sort-alpha", label: "术语门户（A-Z）", href: "/glossary" },
+    { icon: "i-clock-heartbeat", label: "间隔复习", href: "/review" },
+  ];
+  q.addEventListener("focus", () => {
+    if (q.value.trim()) return; // 仅空态展示
+    close();
+    box = document.createElement("div");
+    box.className = "kb-sdrop";
+    box.innerHTML = `<div class="kb-sdrop-h">快速前往</div>
+      <div class="kb-sdrop-grid">${shortcuts.map(s =>
+        `<a class="kb-sdrop-item" href="${s.href}"><svg class="i i-14"><use href="#${s.icon}"/></svg>${esc2(s.label)}</a>`).join("")}</div>
+      <div class="kb-sdrop-h">探索语料</div>
+      <div id="kb-sdrop-dyn"><div class="kb-sdrop-tip">正在准备索引…</div></div>
+      <div class="kb-sdrop-h">搜索语法</div>
+      <div class="kb-sdrop-tip">直接输入 = 全文检索 · <span class="mono">? 问题</span> = 语义检索 · <span class="mono">Enter</span> 执行</div>`;
+    document.querySelector("#searchbox").appendChild(box);
+    fetch("/api/palette/index").then(r => r.json()).then(d => {
+      const dyn = box && box.querySelector("#kb-sdrop-dyn");
+      if (!dyn || !d || !d.ok) return;
+      const groups = [];
+      if (Array.isArray(d.docs) && d.docs.length)
+        groups.push(`<div class="kb-sdrop-grid">` + d.docs.slice(0, 6).map(x =>
+          `<a class="kb-sdrop-item" href="${docUrl(x.path || x.rel || "")}"><svg class="i i-14"><use href="#i-file"/></svg>${esc2(x.title || x.name || "")}</a>`).join("") + `</div>`);
+      dyn.innerHTML = groups.length ? groups.join("") : `<div class="kb-sdrop-tip">索引准备中，稍后重试</div>`;
+    }).catch(() => {});
+  });
+  q.addEventListener("input", close);
+  q.addEventListener("blur", () => setTimeout(close, 180)); // 留时间给点击
+  document.addEventListener("keydown", e => { if (e.key === "Escape") close(); });
+}
+initSearchDrop();
 
 /* ---------- 启动 ---------- */
 const docData = document.getElementById("doc-data");
