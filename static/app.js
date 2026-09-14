@@ -1,5 +1,5 @@
 /* 知库 reader 前端：主题、面板折叠、客户端路由、正文渲染、编辑/备注/收藏/删除、双链、快捷键 */
-window.APP_JS_VERSION = 27;
+window.APP_JS_VERSION = 28;
 
 const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
@@ -221,6 +221,7 @@ function renderArticle(forceMd) {
      有旁挂 .html 且未强制 Markdown 视图时，直接内嵌美化版（forceMd=true 可切回） */
   const pretty = DOC.is_html || (DOC.has_html && DOC.domain === "interview" && !forceMd);
   el.classList.toggle("pretty-mode", pretty); // 美化版：去标题区、iframe 撑满父宽
+  teardownReaderMode(); // 非阅读模式（美化版/空目录）不残留进度条与设置坞
   if (pretty) {
     // 整页 HTML：iframe 沙箱内嵌直通 /raw/（保留自带样式/脚本），
     // 绝不走 marked+DOMPurify 管线——大 HTML 过 markdown 解析会把源码平铺成数万节点 DOM，卡且不可读
@@ -249,12 +250,13 @@ function renderArticle(forceMd) {
       <h1 class="a-title">${esc(DOC.title)}</h1>
       <div class="a-chips">${chips}</div>
       <div class="a-rule"></div>
-      <div class="a-body">${DOMPurify.sanitize(renderMarkdownSafe(DOC.md), { FORBID_TAGS: ['style', 'iframe', 'form', 'script'], ADD_ATTR: ['target'] })}</div>
+      <div class="a-body rd-on">${DOMPurify.sanitize(renderMarkdownSafe(DOC.md), { FORBID_TAGS: ['style', 'iframe', 'form', 'script'], ADD_ATTR: ['target'] })}</div>
       <div class="kb-finish-bar" id="kb-finish-bar">
         <span class="kb-finish-q">读完这篇了？</span>
         <button type="button" class="kb-btn" id="mark-read-btn" onclick="toggleDocMark('read')" title="标记已读完（存本地复习库，不写语料）">已读完</button>
         <button type="button" class="kb-btn" id="mark-mastered-btn" onclick="toggleDocMark('mastered')" title="标记已掌握 —— 术语门户会显示为已掌握">已掌握</button>
       </div>`;
+    enhanceReaderMode(el); // 印刷级阅读模式：首字下沉 / 花饰 / 进度条 / 设置坞
   }
   // mermaid：按需懒加载（3.5MB），仅文档真含 mermaid 图时加载
   const mm = el.querySelectorAll("pre code.language-mermaid");
@@ -414,6 +416,80 @@ function scrollToHash() {
   let id; try { id = decodeURIComponent(h.slice(1)); } catch (e) { id = h.slice(1); }
   const t = id && document.getElementById(id);
   if (t) t.scrollIntoView({ block: "start" });
+}
+
+/* ---------- 印刷级阅读模式（Markdown 排版 v2 之后的杂志方案）：
+   首字下沉（仅首段且首字符为拉丁字母）/ 文末花饰 / 阅读进度条 / 底部设置坞。
+   样式全量在 reader.css（.a-body.rd-on 作用域）；设置坞仅阅读模式挂载，
+   字号三档（17/19/21）与主题持久化到 localStorage。 ---------- */
+function enhanceReaderMode(el) {
+  const body = el.querySelector(".a-body.rd-on");
+  if (!body) return;
+  // 首字下沉：首个 <p> 且首字符是拉丁字母（中文段落不做下沉，规范约定）
+  const firstP = body.querySelector("p");
+  if (firstP && /^[A-Za-z]/.test((firstP.textContent || "").trim())) firstP.classList.add("dropcap");
+  // 文末花饰：结尾小符号（SVG 线性图形，非 emoji）
+  if (!body.querySelector(".kb-fleuron")) {
+    const f = document.createElement("div");
+    f.className = "kb-fleuron"; f.setAttribute("aria-hidden", "true");
+    f.innerHTML = `<svg viewBox="0 0 56 20"><path d="M4 10h14M38 10h14M22 10c2-5 5-7 6-7s4 2 6 7c-2 5-5 7-6 7s-4-2-6-7z"/></svg>`;
+    body.appendChild(f);
+  }
+  // 进度条：rAF 节流；随文档切换重建（旧节点随 innerHTML 一起消失）
+  const bar = document.createElement("div");
+  bar.className = "kb-rd-progress"; bar.setAttribute("aria-hidden", "true");
+  document.body.appendChild(bar);
+  const scroller = document.querySelector(".article");
+  let tick = false;
+  const onScroll = () => {
+    if (tick) return; tick = true;
+    requestAnimationFrame(() => {
+      const sc = scroller || document.scrollingElement;
+      const max = (sc ? sc.scrollHeight - sc.clientHeight : 0) || 1;
+      bar.style.transform = `scaleX(${Math.min(1, Math.max(0, (sc ? sc.scrollTop : 0) / max))})`;
+      tick = false;
+    });
+  };
+  (scroller || window).addEventListener("scroll", onScroll, { passive: true });
+  bar.addEventListener("kb:teardown", () => (scroller || window).removeEventListener("scroll", onScroll), { once: true });
+  // 设置坞：A−/A+ 三档字号 + 明暗切换（写进正文清理时避免重复挂载）
+  if (!document.getElementById("kb-rd-dock")) {
+    const dock = document.createElement("div");
+    dock.className = "kb-rd-dock"; dock.id = "kb-rd-dock";
+    dock.setAttribute("role", "toolbar"); dock.setAttribute("aria-label", "阅读设置");
+    dock.innerHTML = `<button id="kb-fs-minus" title="减小字号">A−</button>
+      <span class="fs-label" id="kb-fs-label">19px</span>
+      <button id="kb-fs-plus" title="增大字号">A+</button>
+      <span class="sep"></span>
+      <button id="kb-theme-toggle" title="切换明暗主题"><svg viewBox="0 0 24 24"><path d="M21 12.8A9 9 0 1 1 11.2 3 7 7 0 0 0 21 12.8z"/></svg></button>`;
+    document.body.appendChild(dock);
+    const TIERS = [17, 19, 21];
+    let tier = TIERS.indexOf(+localStorage.getItem("kb_rd_fs")); if (tier < 0) tier = 1;
+    const label = dock.querySelector("#kb-fs-label");
+    const applyFs = () => {
+      document.documentElement.style.setProperty("--rd-fs", TIERS[tier] + "px");
+      label.textContent = TIERS[tier] + "px";
+      localStorage.setItem("kb_rd_fs", String(TIERS[tier]));
+    };
+    applyFs();
+    dock.querySelector("#kb-fs-minus").addEventListener("click", () => { tier = Math.max(0, tier - 1); applyFs(); });
+    dock.querySelector("#kb-fs-plus").addEventListener("click", () => { tier = Math.min(TIERS.length - 1, tier + 1); applyFs(); });
+    dock.querySelector("#kb-theme-toggle").addEventListener("click", () => {
+      if (typeof window.applyTheme === "function") {
+        const now = document.documentElement.getAttribute("data-theme");
+        window.applyTheme(now === "dark" ? "light" : "dark");
+      } else { const h = document.documentElement;
+        const next = h.getAttribute("data-theme") === "dark" ? "light" : "dark";
+        h.setAttribute("data-theme", next); try { localStorage.setItem("kb_theme", next); } catch (e) {} }
+    });
+  }
+}
+/* 阅读模式清理：离开阅读态（美化版/空目录/页面切换）时拆除进度条与设置坞 */
+function teardownReaderMode() {
+  const bar = document.querySelector(".kb-rd-progress");
+  if (bar) { bar.dispatchEvent(new Event("kb:teardown")); bar.remove(); }
+  const dock = document.getElementById("kb-rd-dock");
+  if (dock) dock.remove();
 }
 
 /* 标题 slug id：marked 默认不给标题 id，文内 [x](#小节) 与右栏 TOC 都落不了点。

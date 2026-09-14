@@ -1,0 +1,220 @@
+/* ============================================================
+   知库 · 印刷级阅读排版 v1（「独立杂志」方案，2026-09-14）
+   设计依据：用户《数字阅读 App 单篇阅读界面 · 印刷级排版系统》规范。
+   作用域：.a-body.rd-on 及阅读页配套件（进度条/设置坞/首字下沉/尾注/花饰）。
+   气质：暖纸墨色、66ch 度量锁定、层级靠字号字重与留白，强调色全屏 ≤2 处
+   （首字下沉 + 设置坞激活/书签激活态）。
+   字体双轨：Cormorant Garamond（英标题/引用）× Work Sans（英正文/UI）
+            思源宋体（中标题/引用）× 思源黑体（中正文/UI），离线 woff2。
+   ============================================================ */
+
+/* ---- 0. 字体注册（latin 子集已本地化；中文走系统回退链） ---- */
+@font-face{font-family:"Cormorant Garamond";font-style:normal;font-weight:500;font-display:swap;
+  src:url("/static/vendor/fonts/CormorantGaramond-500.woff2") format("woff2")}
+@font-face{font-family:"Cormorant Garamond";font-style:normal;font-weight:600;font-display:swap;
+  src:url("/static/vendor/fonts/CormorantGaramond-600.woff2") format("woff2")}
+@font-face{font-family:"Cormorant Garamond";font-style:italic;font-weight:500;font-display:swap;
+  src:url("/static/vendor/fonts/CormorantGaramond-500i.woff2") format("woff2")}
+@font-face{font-family:"Work Sans";font-style:normal;font-weight:400;font-display:swap;
+  src:url("/static/vendor/fonts/WorkSans-400.woff2") format("woff2")}
+@font-face{font-family:"Work Sans";font-style:normal;font-weight:500;font-display:swap;
+  src:url("/static/vendor/fonts/WorkSans-500.woff2") format("woff2")}
+@font-face{font-family:"Work Sans";font-style:normal;font-weight:600;font-display:swap;
+  src:url("/static/vendor/fonts/WorkSans-600.woff2") format("woff2")}
+
+/* ---- 1. 阅读模式令牌（昼：暖纸；夜：单独调校，非反色） ----
+   令牌同时挂在 body:has(.a-body.rd-on) 作用域：.a-title/.a-kicker/进度条
+   是 .a-body 的兄弟节点，也能取到 --rd-*（:has 现代浏览器均支持） ---- */
+:root{
+  --rd-disp:"Cormorant Garamond","Noto Serif SC","Source Han Serif SC","Songti SC","SimSun",Georgia,serif;
+  --rd-serif:"Noto Serif SC","Source Han Serif SC","Songti SC","SimSun",Georgia,serif;
+  --rd-sans:"Work Sans","Noto Sans SC","Source Han Sans SC","PingFang SC","Microsoft YaHei",sans-serif;
+  --rd-mono:"Cascadia Mono",Consolas,"Courier New",monospace;
+  --rd-fs:19px; --rd-ease:cubic-bezier(0.2,0,0,1); --rd-t:240ms;
+}
+body:has(.a-body.rd-on),.a-body.rd-on{
+  --rd-paper:#F6F1E6; --rd-ink:#211C13; --rd-ink2:#57503F; --rd-ink3:#6E6452;
+  --rd-hair:#DAD1BD; --rd-acc:#8A3324;
+  --rd-plate:#211C13; --rd-plate-tx:#F6F1E6; --rd-plate2:#B0A184; --rd-plate3:#98896F;
+}
+html[data-theme="dark"] body:has(.a-body.rd-on),
+html[data-theme="dark"] .a-body.rd-on{
+  --rd-paper:#161209; --rd-ink:#E8DEC9; --rd-ink2:#B0A184; --rd-ink3:#98896F;
+  --rd-hair:rgba(232,222,201,0.16); --rd-acc:#C4785A;
+  --rd-plate:#0F0C07; --rd-plate-tx:#E8DEC9;
+}
+html[data-theme="dark"] .a-body.rd-on{
+  background:var(--rd-paper);color:var(--rd-ink);
+  box-shadow:inset 0 0 0 100vmax var(--rd-paper); /* 阅读面板整面换纸色，四周溢出同色 */
+}
+
+/* ---- 2. 正文度量：19px 基准（17/19/21 三档可调）、1.7 行高、中文 1.85、
+        段距 1.4em、66ch 锁定（.article-inner 收窄）、禁两端对齐 ---- */
+.a-body.rd-on{font-family:var(--rd-sans);font-size:var(--rd-fs);line-height:1.7;
+  color:var(--rd-ink);background:var(--rd-paper);
+  transition:background var(--rd-t) var(--rd-ease),color var(--rd-t) var(--rd-ease)}
+.a-body.rd-on p{margin:0 0 1.4em;text-align:left}
+.a-body.rd-on p:lang(zh-CN){line-height:1.85}
+.a-body.rd-on strong{font-weight:600;color:var(--rd-ink)}
+.a-body.rd-on em{font-style:italic}
+.a-body.rd-on del{color:var(--rd-ink3)}
+.a-body.rd-on a{color:var(--rd-ink);text-decoration:underline;
+  text-decoration-color:var(--rd-hair);text-underline-offset:3px;
+  transition:text-decoration-color var(--rd-t) var(--rd-ease)}
+.a-body.rd-on a:hover{text-decoration-color:var(--rd-ink3)}
+.a-body.rd-on code{font-family:var(--rd-mono);font-size:.82em;color:var(--rd-ink);
+  border:1px solid var(--rd-hair);border-radius:4px;padding:.1em .35em;
+  background:color-mix(in srgb,var(--rd-ink) 4%,transparent)}
+
+/* ---- 3. 首字下沉：3 行精确推导 6.375em / lh .8；仅首段；强调色第 1 处；
+        中文段落（首字符非拉丁字母）不做下沉（.dropcap 仅 JS 判定后挂） ---- */
+.a-body.rd-on .dropcap::first-letter{float:left;font-family:var(--rd-disp);font-weight:500;
+  font-size:6.375em;line-height:.8;padding-right:.13em;margin-top:.04em;
+  color:var(--rd-acc)}
+
+/* ---- 4. 阅读模式下的文章头（kicker/H1/来源行作用于 .article 直属层） ---- */
+.article .a-kicker{font-family:var(--rd-sans);font-size:12px;font-weight:600;
+  letter-spacing:.2em;text-transform:uppercase;color:var(--rd-ink3,#6E6452)}
+.article .a-title{font-family:var(--rd-serif);font-weight:600;
+  font-size:clamp(42px,6.2vw,84px);line-height:1.03;letter-spacing:-.02em;
+  text-wrap:balance;margin-bottom:18px;color:var(--rd-ink,#211C13)}
+html[data-theme="dark"] .article .a-title{color:var(--rd-ink)}
+.article .a-title:lang(zh-CN){letter-spacing:.02em}
+.a-body.rd-on h1,.a-body.rd-on h2,.a-body.rd-on h3,.a-body.rd-on h4{
+  font-family:var(--rd-serif);font-weight:600;color:var(--rd-ink);text-wrap:balance}
+.a-body.rd-on h1,.a-body.rd-on h2{font-size:clamp(25px,3vw,31px);line-height:1.16;
+  letter-spacing:-.01em;margin:2.8em 0 1em;border-bottom:none;padding-bottom:0}
+.a-body.rd-on h1:lang(zh-CN),.a-body.rd-on h2:lang(zh-CN){letter-spacing:.01em}
+.a-body.rd-on h3{font-size:21px;margin:2.2em 0 .8em}
+.a-body.rd-on h4{font-size:17px;color:var(--rd-ink2);margin:1.8em 0 .7em;letter-spacing:.02em}
+/* 关掉 v2 时代的 § 前缀与 H1 左竖条（杂志方案以字重留白表达层级） */
+.a-body.rd-on h3::before{content:none}
+.article .a-title{border-left:none;padding-left:0}
+
+/* ---- 5. 引用块：上下发丝线，无色条无底色；意式引体；悬挂引号 ---- */
+.a-body.rd-on blockquote{margin:3.4em 0 3.2em;padding:2.1em 0 1.9em;
+  border-top:1px solid var(--rd-hair);border-bottom:1px solid var(--rd-hair);
+  border-left:none;border-radius:0;background:none;color:var(--rd-ink)}
+.a-body.rd-on blockquote:hover{color:var(--rd-ink)}
+.a-body.rd-on blockquote p{font-family:var(--rd-disp);font-style:italic;font-weight:500;
+  font-size:clamp(22px,2.4vw,27px);line-height:1.45;text-indent:-0.42ch;margin:0}
+.a-body.rd-on blockquote p:lang(zh-CN){font-style:normal;font-family:var(--rd-serif);
+  text-indent:-1ch}
+.a-body.rd-on blockquote cite{display:block;margin-top:1.6em;font-family:var(--rd-sans);
+  font-style:normal;font-weight:500;font-size:12px;line-height:1;
+  letter-spacing:.16em;text-transform:uppercase;color:var(--rd-ink3)}
+.a-body.rd-on blockquote cite:lang(zh-CN){letter-spacing:.08em;text-transform:none}
+/* tip/warn 变体类（v2 钩子产物）在杂志方案下退化为普通引用，不发色 */
+
+/* ---- 6. 列表：编号悬挂衬线数字（1.5em 右对齐 2.4em 列）；无序空心圆点 ---- */
+.a-body.rd-on ol{list-style:none;counter-reset:rdol;margin:0 0 1.4em;padding:0}
+.a-body.rd-on ol li{counter-increment:rdol;position:relative;padding-left:2.4em;margin-bottom:.9em}
+.a-body.rd-on ol li::before{content:counter(rdol);position:absolute;left:0;top:.06em;
+  width:2.4em;text-align:right;font-family:var(--rd-disp);font-weight:500;
+  font-size:1.5em;line-height:1;color:var(--rd-ink2)}
+.a-body.rd-on ul{list-style:none;margin:0 0 1.4em;padding:0}
+.a-body.rd-on ul li{position:relative;padding-left:1.3em;margin-bottom:.7em}
+.a-body.rd-on ul li::before{content:"";position:absolute;left:.15em;top:.62em;
+  width:.42em;height:.42em;border:1px solid var(--rd-ink3);border-radius:50%}
+.a-body.rd-on ul ul li::before{border-style:dashed}
+/* 任务清单：勾选框维持主题绿不可得——杂志方案下用强调色 */
+.a-body.rd-on input[type=checkbox]{accent-color:var(--rd-acc);margin-right:8px;transform:translateY(1px)}
+.a-body.rd-on ul li.task-list-item::before{content:none}
+.a-body.rd-on ul li.task-list-item{padding-left:4px}
+
+/* ---- 7. 行内代码/代码块：墨板（印刷黑），层级靠字重与暖灰 ---- */
+.a-body.rd-on .codeblock{margin:2.2em 0;border:1px solid var(--rd-hair);border-radius:10px;overflow:hidden}
+.a-body.rd-on .codeblock .cb-head{background:var(--rd-plate);
+  border-bottom:1px solid color-mix(in srgb,var(--rd-plate-tx) 12%,transparent)}
+.a-body.rd-on .codeblock .cb-lang{color:var(--rd-plate3);font-family:var(--rd-mono);
+  letter-spacing:.14em;text-transform:uppercase}
+.a-body.rd-on .codeblock .cb-copy{color:var(--rd-plate2);background:none;
+  border:1px solid color-mix(in srgb,var(--rd-plate-tx) 22%,transparent)}
+.a-body.rd-on .codeblock .cb-copy:hover{color:var(--rd-plate-tx);background:none;
+  border-color:color-mix(in srgb,var(--rd-plate-tx) 45%,transparent)}
+.a-body.rd-on .codeblock pre{background:var(--rd-plate);margin:0;border:0;border-radius:0;
+  box-shadow:none;padding:18px 20px}
+.a-body.rd-on .codeblock pre code{background:none;border:none;color:var(--rd-plate-tx);
+  font-family:var(--rd-mono);font-size:13px;line-height:1.8}
+.a-body.rd-on pre:not(.hljs){background:var(--rd-plate);border:1px solid var(--rd-hair);
+  border-radius:10px;color:var(--rd-plate-tx)}
+
+/* ---- 8. 表格：回归印刷三线表气质（发丝线，无斑马无包壳底色） ---- */
+.a-body.rd-on .tbl-wrap{margin:2.2em 0;border:1px solid var(--rd-hair);border-radius:10px;overflow-x:auto}
+.a-body.rd-on table{width:100%;border-collapse:collapse;font-size:.86em;margin:0;min-width:480px}
+.a-body.rd-on th{font-family:var(--rd-sans);font-weight:600;font-size:.78em;
+  letter-spacing:.1em;text-transform:uppercase;color:var(--rd-ink2);text-align:left;
+  padding:10px 14px;background:none;border-bottom:2px solid var(--rd-ink2);white-space:nowrap}
+.a-body.rd-on td{padding:9px 14px;border-bottom:1px solid var(--rd-hair);
+  color:var(--rd-ink);background:none}
+.a-body.rd-on .tbl-wrap tbody tr:last-child td{border-bottom:none}
+.a-body.rd-on .tbl-wrap tbody tr:nth-child(even){background:none}
+.a-body.rd-on .tbl-wrap tbody tr:hover{background:color-mix(in srgb,var(--rd-ink) 4%,transparent)}
+
+/* ---- 9. 图片与图注：极简细框；图注 12px 大写 +0.16em（中文 +0.08em） ---- */
+.a-body.rd-on img{max-width:100%;border:1px solid var(--rd-hair);border-radius:8px;
+  display:block;margin:0 auto;box-shadow:none;transition:transform var(--rd-t) var(--rd-ease)}
+.a-body.rd-on img:not(.kb-img-missing){cursor:zoom-in}
+.a-body.rd-on img:not(.kb-img-missing):hover{transform:scale(1.004)}
+.a-body.rd-on figcaption{font-family:var(--rd-sans);font-weight:500;font-size:12px;
+  letter-spacing:.16em;text-transform:uppercase;color:var(--rd-ink3);
+  margin-top:12px;text-align:center}
+
+/* ---- 10. 尾注：3px double 顶线；条目小字；编号线性 ---- */
+.a-body.rd-on .endnotes{margin-top:4.2em;padding-top:1.4em;border-top:3px double var(--rd-hair)}
+.a-body.rd-on .endnotes li{font-size:13px;line-height:1.7;color:var(--rd-ink2)}
+.a-body.rd-on .endnotes li::before{font-family:var(--rd-sans);font-weight:500;font-size:1em;
+  color:var(--rd-ink3);top:.08em}
+
+/* ---- 11. hr：居中短横（印刷分节符），替代全宽渐隐线 ---- */
+.a-body.rd-on hr{border:none;height:1px;width:88px;margin:3.2em auto;
+  background:var(--rd-ink3)}
+
+/* ---- 12. 结尾花饰（SVG 线性图形，renderArticle 文末插入） ---- */
+.kb-fleuron{display:flex;justify-content:center;margin:4.6em 0 1em;color:var(--rd-ink3,#6E6452)}
+.kb-fleuron svg{width:56px;height:20px;stroke:currentColor;fill:none;stroke-width:1.2;
+  stroke-linecap:round}
+
+/* ---- 13. 阅读进度条：固定顶部 2px，墨色 45%（仅阅读模式挂载） ---- */
+.kb-rd-progress{position:fixed;top:0;left:0;right:0;height:2px;z-index:96;pointer-events:none;
+  background:var(--rd-ink,#211C13);opacity:.45;transform-origin:0 50%;transform:scaleX(0)}
+
+/* ---- 14. 底部设置坞：悬浮胶囊；A−/A+ 三档 + 明暗切换；触控目标 ≥44px ---- */
+.kb-rd-dock{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);z-index:97;
+  display:flex;align-items:center;gap:2px;padding:5px;
+  background:color-mix(in srgb,var(--seed-bg) 86%,transparent);
+  backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+  border:1px solid var(--edge);border-radius:999px;
+  box-shadow:0 8px 32px color-mix(in srgb,var(--seed-fg) 14%,transparent);
+  transition:opacity var(--rd-t) var(--rd-ease)}
+.kb-rd-dock.hide{opacity:0;pointer-events:none}
+.kb-rd-dock button{min-width:44px;height:44px;border:none;background:none;border-radius:999px;
+  font-family:var(--rd-sans);font-weight:500;font-size:13px;color:var(--muted);cursor:pointer;
+  display:grid;place-items:center;transition:all var(--rd-t) var(--rd-ease)}
+.kb-rd-dock button:hover{color:var(--seed-fg);background:color-mix(in srgb,var(--seed-fg) 7%,transparent)}
+.kb-rd-dock button:focus-visible{outline:2px solid var(--acc-edge);outline-offset:2px}
+.kb-rd-dock button:active{transform:scale(.96)}
+.kb-rd-dock .fs-label{min-width:50px;text-align:center;font:500 11.5px/1 var(--mono);color:var(--faint)}
+.kb-rd-dock .sep{width:1px;height:22px;background:var(--hairline);margin:0 5px}
+.kb-rd-dock svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:1.6;
+  stroke-linecap:round;stroke-linejoin:round}
+/* 收件箱悬浮球让位：设置坞出现时上移，避免遮挡 */
+body:has(.kb-rd-dock:not(.hide)) .kb-inbox-fab{bottom:84px}
+
+/* ---- 15. 文章骨架收窄：66ch 度量锁定（仅阅读模式） ---- */
+body:has(.a-body.rd-on) .article-inner{max-width:calc(66ch + 4px)}
+body:has(.a-body.rd-on) .article{background:var(--rd-paper,#F6F1E6)}
+html[data-theme="dark"] body:has(.a-body.rd-on) .article{background:var(--rd-paper)}
+
+/* ---- 16. 尊重 reduced-motion ---- */
+@media (prefers-reduced-motion: reduce){
+  .a-body.rd-on,.kb-rd-dock,.kb-rd-dock button{transition-duration:.01ms}
+  html{scroll-behavior:auto}
+}
+
+/* ---- 17. 响应式：移动端 H1 clamp(36,10vw,47) / 正文 17 / 引用 21 ---- */
+@media (max-width:640px){
+  .a-body.rd-on h1,.a-body.rd-on h2{font-size:clamp(24px,5.6vw,28px)}
+  .a-body.rd-on blockquote p{font-size:21px}
+  .article .a-title{font-size:clamp(36px,10vw,47px)}
+}
