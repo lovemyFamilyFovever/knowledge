@@ -29,11 +29,3 @@ qwenwork/
 # 日期戳 + 哈希的一次性 agent 会话目录（例如 2026-09-10-428af70d/）
 20??-??-??-*/
 
-# ---------- 大体积个人书库（本地文件，刻意不入库/不入索引） ----------
-content/小说/*.txt
-content/小说/*.epub
-content/小说/刘备/
-content/小说/【多看版】*/
-content/漫画/*.cbz
-content/漫画/*.pdf
-content/漫画/imgs/
