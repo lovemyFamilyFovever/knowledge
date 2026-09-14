@@ -1,5 +1,5 @@
 /* 知库 reader 前端：主题、面板折叠、客户端路由、正文渲染、编辑/备注/收藏/删除、双链、快捷键 */
-window.APP_JS_VERSION = 29;
+window.APP_JS_VERSION = 30;
 
 const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
@@ -583,9 +583,86 @@ function renderCrumb() {
 
 function renderInfo() {
   const pane = $("#pane-info"); if (!pane || !DOC) return;
-  pane.innerHTML = (DOC.info_rows || []).map(([k, v]) =>
-    `<div class="meta-row"><span class="k">${esc(k)}</span><span class="v">${esc(v)}</span></div>`).join("")
-    + `<div class="meta-row"><span class="k">版本</span><span class="v">git 全程可追溯</span></div>`;
+  const rows = (DOC.info_rows || []).map(([k, v]) =>
+    `<div class="meta-row"><span class="k">${esc(k)}</span><span class="v">${esc(v)}</span></div>`).join("");
+  const editable = !DOC.is_html; // .md 可写；.html 美化版语料不可写 → 只读展示
+  const tags = (DOC.fm && Array.isArray(DOC.fm.tags)) ? DOC.fm.tags : [];
+  const tagChips = tags.length
+    ? tags.map(t => `<span class="tagchip" data-tag="${esc(t)}"><span class="tagchip-name">${esc(t)}</span>${editable ? `<button type="button" class="tagchip-x" title="移除标签「${esc(t)}」" aria-label="移除标签 ${esc(t)}" onclick="removeTag(this.parentElement)">${icon("cancel-x", 11)}</button>` : ""}</span>`).join("")
+    : (editable ? `<span class="tag-empty">还没有标签</span>` : `<span class="tag-empty">美化版不支持在线编辑标签</span>`);
+  pane.innerHTML =
+    `<div class="tag-edit${editable ? "" : " readonly"}">
+      <div class="tag-edit-h">${icon("tag-outline", 13)} 标签${editable ? `<button type="button" class="tag-edit-addbtn" id="tag-add-btn" title="添加标签">+ 添加</button>` : ""}</div>
+      <div class="tag-chips" id="tag-chips">${tagChips}</div>
+      <div class="tag-inputrow" id="tag-inputrow" hidden>
+        <input id="tag-in" placeholder="输入标签，逗号可批量，回车确认" maxlength="64">
+      </div>
+    </div>
+    <div class="meta-row"><span class="k">版本</span><span class="v">git 全程可追溯</span></div>` + rows;
+  const addBtn = pane.querySelector("#tag-add-btn");
+  const row = pane.querySelector("#tag-inputrow");
+  const input = pane.querySelector("#tag-in");
+  if (addBtn && row && input) {
+    addBtn.addEventListener("click", () => { row.hidden = !row.hidden; if (!row.hidden) input.focus(); });
+    input.onkeydown = e => {
+      if (e.key === "Enter") { e.preventDefault(); const raw = input.value.trim(); if (raw) addTagsFromRaw(raw); input.value = ""; }
+      else if (e.key === "Escape") { row.hidden = true; }
+    };
+  }
+}
+
+/* ---------- 标签编辑（需求 #2）：走 /api/tags，服务端行级手术写回 ---------- */
+function addTagsFromRaw(raw) {
+  // 逗号 / 中文逗号 / 分号分隔批量输入；单枚去空白
+  const tags = raw.split(/[,，;；]/).map(s => s.trim()).filter(Boolean);
+  if (!tags.length) return;
+  apiTags({ op: "add", tags });
+}
+
+function removeTag(chipEl) {
+  const t = chipEl && chipEl.dataset.tag;
+  if (!t) return;
+  apiTags({ op: "remove", tags: [t] });
+}
+
+async function apiTags(payload) {
+  if (!DOC) return;
+  try {
+    const r = await fetch("/api/tags", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ path: DOC.rel, ...payload })
+    });
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok || !data.ok) throw new Error(data.error || ("HTTP " + r.status));
+    DOC.fm.tags = data.tags || [];
+    renderInfo();
+    renderChipsRow();          // 正文头部 chips 同步
+    // 左列表徽标同步：列表数据来自 findSub(domain, sub).docs（含每篇的 tags 快照）
+    if (CUR) {
+      const s2 = findSub(CUR.domain, CUR.sub);
+      if (s2) {
+        const hit = (s2.docs || []).find(d => d.name === DOC.name);
+        if (hit) hit.tags = data.tags || [];
+        renderDocList(s2.docs, s2.label, CUR.name);
+      }
+    }
+    toast(data.tags.length ? `标签已保存（${data.tags.length} 枚）` : "标签已清空");
+  } catch (e) {
+    toast("标签保存失败：" + e.message);
+  }
+}
+
+function renderChipsRow() {
+  const el = document.querySelector(".a-chips"); if (!el || !DOC) return;
+  const chips = [
+    `<span class="chip acc">${esc(DOC.source_label)}</span>`,
+    DOC.fm.source_path ? `<span class="chip">${esc(DOC.fm.source_path)}</span>` : "",
+    DOC.fm.collected ? `<span class="chip">${esc(DOC.fm.collected)} 收录</span>` : "",
+    (DOC.fm.tags && DOC.fm.tags.length)
+      ? DOC.fm.tags.map(t => `<span class="chip acc">${esc(t)}</span>`).join("")
+      : `<span class="chip warn">tags 未打标</span>`,
+  ].join("");
+  el.innerHTML = chips;
 }
 
 function renderNotes() {

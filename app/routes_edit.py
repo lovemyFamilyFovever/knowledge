@@ -90,11 +90,77 @@ def api_favorite():
     其余字节原样；结构无法安全判定时拒绝改写并给出人话错误。"""
     data = request.get_json(force=True)
     p = _safe_rel(data.get("path", ""), WRITABLE_EXTS)
+    if not p.is_file():
+        abort(404, "not found: 文件不存在（可能已被删除或移动）")
     try:
         new_val = store.toggle_fm_bool(p, "favorite")
     except ValueError as e:
         abort(422, f"该文档的 frontmatter 结构无法安全切换收藏：{e}")
     return jsonify({"ok": True, "favorite": new_val})
+
+
+@edit_bp.post("/api/tags")
+def api_tags():
+    """标签编辑（需求 #2）：set 全量覆写 / add 追加去重 / remove 逐个移除。
+
+    与 favorite 同一套行级手术纪律：只动 tags 一行，其余字节原样；
+    tags 出现在嵌套结构中时拒绝改写（422）。写回后外科手术式更新 FTS
+    （tags 参与搜索权重），并清 taxonomy 标签缓存。
+    契约：{path, op: set|add|remove, tags: [..]}
+    返回：{ok, tags}（操作后的全量标签列表，服务端为准）。
+    """
+    data = request.get_json(force=True)
+    p = _safe_rel(data.get("path", ""), WRITABLE_EXTS)
+    if not p.is_file():
+        abort(404, "not found: 文件不存在（可能已被删除或移动）")
+    op = data.get("op") or "set"
+    incoming = data.get("tags", [])
+    if not isinstance(incoming, list):
+        abort(400, "tags 必须是数组")
+    # 规范化：去空白、去空串、去重、每枚 ≤32 字（防手滑粘一整段）
+    incoming = list(dict.fromkeys(
+        str(t).strip() for t in incoming if str(t).strip()
+    ))
+    for t in incoming:
+        if len(t) > 32:
+            abort(400, f"标签过长（>32 字）：{t}")
+
+    raw = p.read_bytes()
+    had_bom = raw[:3] == b"\xef\xbb\xbf"
+    text = store._decode_md(raw)
+    fm, _ = store.parse_frontmatter(text)
+    cur = fm.get("tags")
+    if cur is None:
+        cur = []
+    elif isinstance(cur, list):
+        cur = [str(t) for t in cur]
+    else:
+        # 标量写法 `tags: 随笔` → 当作单标签
+        cur = [str(cur)] if str(cur).strip() else []
+
+    if op == "set":
+        new_tags = incoming
+    elif op == "add":
+        new_tags = cur + [t for t in incoming if t not in cur]
+    elif op == "remove":
+        drop = set(incoming)
+        new_tags = [t for t in cur if t not in drop]
+    else:
+        abort(400, f"未知 op：{op}（可选 set / add / remove）")
+
+    # 行级写回：无块/空值时写 tags: []，非空写 [a, b, c]（与 dump_frontmatter 同风格）
+    value = "[" + ", ".join(new_tags) + "]" if new_tags else "[]"
+    try:
+        out = store.set_fm_scalar(text, "tags", value)
+    except ValueError as e:
+        abort(422, f"该文档的 frontmatter 结构无法安全编辑标签：{e}")
+    p.write_bytes(store._encode_md(out, had_bom))
+
+    # FTS 同步（同 /api/save 的外科手术，但不改正文/双链——tags 行变了而已）
+    content = _content()
+    rel_posix = p.relative_to(content.resolve()).as_posix()
+    upsert_doc_in_index(_indexes(), rel_posix, p, out)
+    return jsonify({"ok": True, "tags": new_tags})
 
 
 @edit_bp.post("/api/mkdir")
