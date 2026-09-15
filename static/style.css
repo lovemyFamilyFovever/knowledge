@@ -185,9 +185,14 @@ html[data-theme="dark"] .brand .zh{background:linear-gradient(92deg,var(--brand-
 .topnav .tn:hover{color:var(--seed-fg);background:var(--acc-soft)}
 .topnav .tn.on{color:var(--acc);background:var(--acc-soft)}
 .topnav .tn.on{color:var(--acc);background:var(--acc-soft)}
-/* 降级后的图标 pill（统计快照 / 收件箱 badge） */
-.pill.icon-only{width:28px;height:28px;padding:0;display:inline-flex;align-items:center;justify-content:center}
-.pill.icon-only .i{width:15px;height:15px}
+/* 图2：右上角图标按钮组 —— 统一 30px 方形、透明底、hover 浮现；徽章绝对定位不挤图标 */
+.pill.icon-only{position:relative;width:30px;height:30px;padding:0;border-radius:var(--radius-sm);
+  display:inline-flex;align-items:center;justify-content:center;background:transparent;border-color:transparent}
+.pill.icon-only:hover{background:var(--acc-soft);border-color:var(--acc-edge);color:var(--acc)}
+.pill.icon-only .i{width:16px;height:16px}
+.pill.icon-only .n{position:absolute;top:-5px;right:-6px;padding:0 4px;min-width:16px;height:15px;
+  display:inline-flex;align-items:center;justify-content:center;box-sizing:border-box;
+  border-radius:999px;background:var(--acc);color:#fff;font:700 9.5px/1 var(--mono)}
 .pill{display:inline-flex;align-items:center;gap:6px;height:26px;padding:0 4px 0 8px;border-radius:var(--radius-pill);
   border:1px solid var(--edge);background:color-mix(in oklab,var(--seed-surface),transparent 40%);
   font-size:11.5px;font-weight:500;color:color-mix(in oklab,var(--seed-fg),transparent 15%);letter-spacing:.02em;cursor:pointer;transition:.2s;white-space:nowrap}
@@ -523,6 +528,8 @@ html[data-theme="dark"] .seg-bar span{background:hsl(var(--dh,158) 68% 60%)}
   border-top:1px solid var(--edge);font-family:var(--mono);font-size:10.5px;color:var(--muted);
   background:var(--glass);backdrop-filter:blur(14px);letter-spacing:.01em}
 .statusbar .sb-acc{color:var(--acc)}
+.statusbar .sb-path{color:var(--seed-fg);opacity:.85;max-width:340px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.statusbar .sb-path:empty{display:none}
 .statusbar .right{margin-left:auto;display:flex;gap:18px}
 #toast{position:fixed;left:50%;bottom:52px;transform:translateX(-50%) translateY(20px);z-index:50;
   background:var(--glass-strong);border:1px solid color-mix(in oklab,var(--acc),transparent 60%);
@@ -557,12 +564,16 @@ html[data-theme="dark"] .pretty-ov{background:color-mix(in oklab,var(--hex-plate
 .ask-srcs{margin-top:8px;display:flex;flex-wrap:wrap;gap:6px}
 .ask-src{font:500 11px/1 var(--mono);color:var(--acc);border:1px solid var(--acc-edge);border-radius:999px;padding:3px 9px;text-decoration:none}
 .ask-src:hover{background:var(--acc-soft)}
-.ask-inputrow{display:flex;gap:8px;margin-top:10px}
+.ask-inputrow{display:flex;gap:8px;margin-top:10px;align-items:stretch}
 .ask-inputrow input{flex:1;min-width:0;border:1px solid var(--edge);border-radius:var(--radius-sm);
   background:var(--seed-surface);color:var(--seed-fg);font:400 13px/1.5 var(--sans);padding:9px 12px;outline:none}
+.ask-inputrow .iconbtn{height:auto;min-height:40px;align-self:stretch;white-space:nowrap}
 .ask-inputrow input:focus{border-color:var(--acc-edge);box-shadow:0 0 0 3px var(--acc-soft)}
 .kbm.kbm-stats{width:min(920px,94vw)}
-.kbm-title{font-family:var(--disp);font-size:17px;font-weight:700;color:var(--seed-fg);margin-bottom:10px}
+/* 图5：弹窗标题行 flex 化 —— 标题左、操作钮/关闭 X 右，垂直居中 */
+.kbm-title{font-family:var(--disp);font-size:17px;font-weight:700;color:var(--seed-fg);margin-bottom:10px;
+  display:flex;align-items:center;gap:8px}
+.kbm-title .iconbtn{font-size:12px}
 .kbm-body{flex:1 1 auto;min-height:0;font-size:13px;line-height:1.85;color:var(--muted);margin-bottom:12px;overflow-y:auto}
 .kbm-body .mono{font-family:var(--mono);font-size:11.5px;color:var(--acc);word-break:break-all}
 .kbm-body b{color:var(--seed-fg)}
@@ -740,7 +751,7 @@ html[data-theme="dark"] .mv-tree{background:color-mix(in oklab,var(--seed-surfac
   .top-right{margin-left:auto;gap:6px}
   .pill{height:26px;padding:0 6px;font-size:11px}
   .pill>span:not(.n):not(.dot){display:none}
-  #theme-btn{width:28px}
+  #theme-btn{width:30px}
   #view-home{padding:20px 16px 40px}
   .home-mark{font-size:170px;top:-30px;right:-14px}
   .hero{flex-wrap:wrap;gap:12px}
@@ -861,6 +872,16 @@ html.motion-ready .hero-mask[data-in="true"]{clip-path:inset(0 0 0 0)}
 [data-magnetic]{transition:box-shadow .3s var(--ease-out),transform .35s var(--ease-back)}
 [data-magnetic]:hover{box-shadow:var(--glow-accent)}
 .article-inner p.lead::first-letter{font-family:var(--font-display-latin);font-weight:700;font-size:3.6em;line-height:.82;float:left;margin:6px 10px 0 0;color:var(--acc)}
+
+/* ============================================================
+   需求 #3（2026-09-15）：隐藏全站滚动条 —— 保留滚动能力，仅去掉滚动条 UI
+   Firefox 走 scrollbar-width:none；WebKit 走 ::-webkit-scrollbar。
+   滚动位置指示由各面板内的视觉分层承担（hairline 边框已有）。
+   ============================================================ */
+*{scrollbar-width:none}
+*::-webkit-scrollbar{width:0;height:0;display:none}
+*::-webkit-scrollbar-thumb{display:none}
+*::-webkit-scrollbar-track{display:none}
 
 /* [16] prefers-reduced-motion：全部降级为静态（spec §4.3） ===== */
 @media (prefers-reduced-motion: reduce){

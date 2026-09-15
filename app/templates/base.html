@@ -234,6 +234,7 @@
 
 <div class="statusbar">
   <span class="sb-acc">知库 · 本地阅读器</span>
+  <span id="sb-path" class="sb-path" title="当前文档路径"></span>
   <span>content/ = 唯一事实源 · 索引只是派生缓存</span>
   {# 问题12：原顶栏「全文检索已就绪」pill 降级为状态栏文字；B22：计数以索引内篇数 fts_n 为准 #}
   <span>{{ fts_n|default(n_md)|default(0) }} 篇已入全文索引</span>

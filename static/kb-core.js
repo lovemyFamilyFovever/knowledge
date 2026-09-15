@@ -591,7 +591,6 @@
       e.stopPropagation(); // 面板内输入不吃全局快捷键
     });
     root.addEventListener("click", function (e) {
-      if (e.target.getAttribute && e.target.getAttribute("data-close") === "1") { palette.close(); return; }
       var item = e.target.closest ? e.target.closest(".kb-pal-item") : null;
       if (item) { palExec(Number(item.dataset.i)); }
     });
@@ -702,7 +701,7 @@
         }).join("") + "</div></div>";
       document.body.appendChild(el);
       el.addEventListener("click", function (e) {
-        if (e.target === el || (e.target.closest && e.target.closest(".kb-help-x"))) toggleHelp(false);
+        if (e.target.closest && e.target.closest(".kb-help-x")) toggleHelp(false);
       });
     }
     var on = force == null ? !el.classList.contains("show") : !!force;

@@ -45,6 +45,9 @@ def api_save():
     body = data.get("content", "")
     if not body.endswith("\n"):
         body += "\n"
+    # 目录不存在时先创建（API 直写新路径不再 500 FileNotFoundError；
+    # mkdir 仅允许落在 content/ 内，_safe_rel 已保证路径合法）
+    p.parent.mkdir(parents=True, exist_ok=True)
     # 新文档（如 Obsidian 里直接创建）没有 frontmatter：首次保存时补齐身世信息；
     # 已有 frontmatter 的原文照写，不做任何改写。
     # B6 修复：编辑器里全选删除正文再保存，body 不含 fm —— 旧逻辑直接落 stamp，

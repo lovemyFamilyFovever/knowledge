@@ -59,6 +59,8 @@ if errorlevel 1 (
 )
 
 echo Starting server at http://127.0.0.1:5001 ...
+rem ---- local private env (gitignored _local_env.bat: KB_AI_API_KEY etc.) ----
+if exist "_local_env.bat" call "_local_env.bat"
 start "" http://127.0.0.1:5001
 %PY% app\app.py %ARGS%
 pause

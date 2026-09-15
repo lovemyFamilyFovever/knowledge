@@ -23,7 +23,7 @@ ai_bp = Blueprint("ai", __name__)
 
 def _cfg() -> dict:
     return {
-        "base": os.environ.get("KB_AI_BASE_URL", "https://token-plan-cn.xiaomimimo.com/v1").rstrip("/"),
+        "base": os.environ.get("KB_AI_BASE_URL", "https://api.xiaomimimo.com/v1").rstrip("/"),
         "key": os.environ.get("KB_AI_API_KEY", ""),
         "model": os.environ.get("KB_AI_MODEL", "mimo-v2.5"),
     }
