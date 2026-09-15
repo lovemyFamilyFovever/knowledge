@@ -1244,3 +1244,32 @@ textarea.kb-input,textarea.inp{height:auto;min-height:88px;padding:10px 12px;fon
 body::after{content:"";position:fixed;inset:0;z-index:1;pointer-events:none;
   opacity:calc(var(--texture-on) * .5);
   background-image:var(--texture);background-size:var(--texture-size)}
+
+/* [15c] 阶段6 响应式三档（追加，与旧断点叠加取更严者） ===== */
+/* 1280–980：收右遥测轨（workbench 由 app.js 的 left-off 类管理，这里补 grid 适配） */
+@media (max-width:980px){
+  main{grid-template-columns:240px minmax(0,1fr)}
+  main.left-off{grid-template-columns:46px minmax(0,1fr)}
+}
+/* 980–860：收左树 */
+@media (max-width:860px){
+  main{grid-template-columns:minmax(0,1fr)}
+  main>section.wb-panel{display:none}
+  main.left-off>section.wb-panel{display:none}
+  /* 品牌名不折行 + 英文副标隐藏 */
+  .brand .zh{white-space:nowrap}
+  .brand .en{display:none}
+  .topnav .tn{padding:8px 9px}
+  /* 触控目标 ≥44px（顶栏/工具钮） */
+  .pill.icon-only{width:34px;height:34px}
+  #theme-btn{width:34px}
+  .iconbtn{min-height:34px}
+  /* 状态栏横向滚动 + 隐藏次要信息 */
+  .statusbar{overflow-x:auto;white-space:nowrap;gap:12px}
+  .statusbar .right{display:none}
+}
+/* <860 单栏（旧 820 断点已收，补触控与可读性） */
+@media (max-width:860px){
+  .kb-btn,.kb-input,.kb-select .btn{min-height:44px}
+  .kb-grade{min-height:64px}
+}

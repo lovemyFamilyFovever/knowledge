@@ -17,7 +17,7 @@
 /doc/{{ p|map('urlencode')|join('/') }}
 {%- endif -%}
 {%- endmacro %}
-<div id="view-home" class="show">
+<main id="view-home" class="show">
  <div class="home-inner">
   <div class="home-mark">知</div>
 
@@ -153,7 +153,7 @@
    {% if not loop.last %}<span class="pipe-line"></span>{% endif %}
    {% endfor %}
   </div>
- </div>
+ </main>
 </div>
 {% endblock %}
 {% block scripts %}
