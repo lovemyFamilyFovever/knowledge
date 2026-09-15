@@ -51,8 +51,9 @@
           <div class="chart-head">
             <span class="chart-title">每日阅读时长 · {{ ym }}</span>
             <div class="chart-hint">
-              <span class="legend"><span class="sw"></span>阅读分钟</span>
-              <span class="legend"><span class="sw a"></span>打开文档数</span>
+              <span class="legend"><span class="sw"></span>阅读分钟（左轴 · min）</span>
+              <span class="legend"><span class="sw a"></span>打开文档数（右轴 · 篇，虚线）</span>
+              <span class="st-src">数据源 reading.db · 截止 {{ ym }} 月末</span>
             </div>
           </div>
           {% if has_chart %}

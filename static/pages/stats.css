@@ -1,53 +1,56 @@
-/* 知库 stats.css · 月度统计页（问题13 重构：布局/图表统一）
-   设计基准 v0.4 第 07 屏。依赖 T0 token（--seed-* / --hex-* / --dh-* / --ill-*、--edge / --hairline、--mono / --disp / --num）。
-   组件级零硬编码 hex；双主题靠 token 自动切换。图表一律内联 SVG（零外链）。 */
+/* 知库 stats.css v1.0-INSTRUMENT（阶段4 · 月度统计页）
+   分工：stats.js 生成的类名 .st-axis/.st-grid/.st-lbl/.st-lbl-doc/.st-bar/
+   .st-bar-hot/.st-doc-line/.st-doc-dot/.st-peak-lbl/.spark-fill/.spark-dot 与
+   模板类 .kpi-card/.chart-card/.delta/.mini-spark/.st-ratio/.sbar/.st-leaderboard/
+   .lb-row[data-hue]、.st-note、.st-nochart、.mascot 全部保留为消费契约。
+   INSTRUMENT 化：KPI tile 平面薄板 + --f-disp 大字、图表卡结界线、
+   第二序列（文档数折线）改虚线 dash（色盲兜底：线型+色双重编码）、
+   图例色块方点化。取色全走 var()/color-mix，JS 侧已用 var(--acc)/var(--acc2)。
 
 /* ── 页面骨架 ─────────────────────────────────────── */
-/* 覆盖 style.css 里给「全库统计弹窗」复用的 .stats-body（这里是页面级，不该自带滚动） */
+/* 覆盖 style.css 里给「全库统计弹窗」复用的 .stats-body（页面级不自带滚动） */
 .stats-body{display:flex;flex-direction:column;gap:16px;padding:6px 2px 10px;
-  color:var(--seed-fg);overflow:visible}
+  color:var(--c-ink);overflow:visible}
 
-/* ── 统一卡片皮肤（KPI / 图表卡共用同一套圆角·描边·底·内距） ── */
-.kpi-card,.chart-card{position:relative;border-radius:var(--radius-lg);border:1px solid var(--edge);
-  background:color-mix(in oklab,var(--seed-surface),transparent 45%);
-  padding:16px 18px}
+/* ── 统一卡片：平面薄板 + 结界线 + 1px 硬边投影 ── */
+.kpi-card,.chart-card{position:relative;border-radius:var(--rd-card);border:1px solid var(--c-line);
+  background:var(--c-panel);box-shadow:var(--elev-1);padding:16px 18px}
 
-/* ── KPI 行 ──────────────────────────────────────── */
+/* ── KPI 行：--f-disp 大字 + 环比语义色 + sparkline ── */
 .kpi-row{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
-.kpi-card .label{display:flex;align-items:center;gap:7px;font:600 11px/1 var(--mono);
-  letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.kpi-card .label{display:flex;align-items:center;gap:7px;font:600 var(--fs-11)/1 var(--f-mono);
+  letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
 .kpi-card .label svg{color:var(--faint)}
-.kpi-card .num{margin-top:8px;font:600 28px/1.05 var(--disp);letter-spacing:-.01em;
-  color:color-mix(in oklab,var(--seed-fg),transparent 5%);
-  font-variant-numeric:tabular-nums;font-feature-settings:"tnum"}
-.kpi-card .num .unit{margin-left:4px;font:400 13px/1 var(--sans);color:var(--muted)}
+.kpi-card .num{margin-top:8px;font:700 28px/1.05 var(--f-disp);letter-spacing:.01em;
+  color:var(--c-ink);font-variant-numeric:tabular-nums;font-feature-settings:"tnum"}
+.kpi-card .num .unit{margin-left:4px;font:400 13px/1 var(--f-body);color:var(--muted)}
 
+/* 环比：涨 --c-ok / 跌 --c-danger / 平 --faint（色+箭头图标双编码） */
 .kpi-card .delta{display:inline-flex;align-items:center;gap:3px;margin-top:8px;
-  padding:2px 8px;border-radius:var(--radius-pill);
-  font:500 11px/1.5 var(--mono);font-variant-numeric:tabular-nums}
+  padding:2px 8px;border-radius:var(--rd-ctl);
+  font:600 var(--fs-11)/1.5 var(--f-mono);font-variant-numeric:tabular-nums}
 .kpi-card .delta svg{stroke-width:2;flex:none}
-.kpi-card .delta.up{color:var(--acc);background:var(--acc-soft);border:1px solid var(--acc-edge)}
-.kpi-card .delta.down{color:var(--warn);background:var(--warn-soft);border:1px solid var(--warn-edge)}
-.kpi-card .delta.flat{color:var(--faint);border:1px solid var(--edge)}
+.kpi-card .delta.up{color:var(--c-ok);background:color-mix(in oklab,var(--c-ok),transparent 91%);border:1px solid color-mix(in oklab,var(--c-ok),transparent 55%)}
+.kpi-card .delta.down{color:var(--c-danger);background:var(--danger-soft);border:1px solid color-mix(in oklab,var(--c-danger),transparent 55%)}
+.kpi-card .delta.flat{color:var(--faint);border:1px solid var(--c-line)}
 
 .kpi-card .mini-spark{height:26px;margin-top:10px}
 .kpi-card .mini-spark svg{display:block;width:100%;height:26px}
-.kpi-card .mini-spark .spark-fill{opacity:.14}
+.kpi-card .mini-spark .spark-fill{opacity:.12}
 .kpi-card .mini-spark .spark-dot{r:2}
 
-/* 读完文档占比条 */
+/* 读完文档占比条（平面 + 结界线） */
 .kpi-card .st-ratio{display:flex;align-items:center;gap:8px;margin-top:10px}
 .kpi-card .st-ratio .sbar{flex:1;margin-top:0}
-.kpi-card .st-ratio-n{font:500 10.5px/1 var(--mono);color:var(--faint);font-variant-numeric:tabular-nums}
-.kpi-card .sbar{height:5px;border-radius:5px;background:var(--edge);overflow:hidden}
-.kpi-card .sbar i{display:block;height:100%;border-radius:5px;
-  background:linear-gradient(90deg,var(--acc),var(--acc2))}
+.kpi-card .st-ratio-n{font:600 10.5px/1 var(--f-mono);color:var(--faint);font-variant-numeric:tabular-nums}
+.kpi-card .sbar{height:5px;border-radius:1px;background:var(--c-sunk);border:1px solid var(--c-line);overflow:hidden}
+.kpi-card .sbar i{display:block;height:100%;background:var(--c-acc)}
 
 /* 第 4 张卡的角落 mascot：给 label 让位，避免遮挡 */
 .kpi-card.st-mascot-card .label{padding-right:44px}
 .kpi-card .mascot-corner{position:absolute;right:8px;top:8px;width:34px;height:34px;opacity:.9}
 
-/* mascot 部位（页面级；色相全走 --ill-* token，双主题自动切换） */
+/* mascot 部位（页面级；色相全走 --ill-* token） */
 svg.mascot .head{fill:var(--ill-skin)}
 svg.mascot .hair{fill:var(--ill-hair)}
 svg.mascot .eye{fill:var(--ill-line)}
@@ -57,44 +60,46 @@ svg.mascot .halo{fill:var(--ill-halo)}
 svg.mascot .shadow{fill:var(--ill-shadow)}
 svg.mascot .bubble{fill:var(--ill-bubble);stroke:var(--ill-line);stroke-width:1.2}
 
-/* ── 图表卡 ─────────────────────────────────────── */
+/* ── 图表卡：图例（方点=分钟柱 / 圆点+虚线=文档数线，形状双编码） ── */
 .chart-card .chart-head{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:14px}
-.chart-card .chart-title{font:600 15.5px/1.35 var(--disp);letter-spacing:.01em;
-  color:color-mix(in oklab,var(--seed-fg),transparent 8%)}
+.chart-card .chart-title{font:600 15.5px/1.35 var(--f-disp);letter-spacing:.01em;color:var(--c-ink)}
 .chart-card .chart-hint{display:inline-flex;align-items:center;gap:14px;margin-left:auto;
   font-size:11px;color:var(--faint)}
 .chart-card .legend{display:inline-flex;align-items:center;gap:6px;font-size:11px;color:var(--muted)}
-.chart-card .legend .sw{width:10px;height:10px;border-radius:2px;background:var(--acc)}
-.chart-card .legend .sw.a{background:var(--acc2);border-radius:50%}
+.chart-card .legend .sw{width:10px;height:10px;border-radius:1px;background:var(--c-acc)}
+.chart-card .legend .sw.a{background:transparent;border:2px dashed var(--c-info);border-radius:50%;width:9px;height:9px}
+.st-src{font:500 10px/1 var(--f-mono);color:var(--faint);letter-spacing:.04em}
 
-/* 条形图区（不再是吉祥物占位槽） */
+/* 条形图区 */
 .st-chart-wrap{position:relative;padding-right:0}
 .st-chart-wrap svg{display:block}
 .st-chart-wrap .st-bar{cursor:default}
-.st-note{margin-top:10px;font:500 10.5px/1.75 var(--mono);color:var(--faint);
-  font-variant-numeric:tabular-nums}
-.st-note b{color:var(--muted);font-weight:500}
+.st-note{margin-top:10px;font:500 10.5px/1.75 var(--f-mono);color:var(--faint);font-variant-numeric:tabular-nums}
+.st-note b{color:var(--muted);font-weight:600}
 
 /* 无数据时的图表卡空态 */
 .st-nochart{display:flex;align-items:center;gap:9px;padding:20px 4px;font-size:12.5px;color:var(--faint)}
 .st-nochart svg{color:var(--faint);flex:none}
 
-/* 图表内联元素（stats.js 生成） */
-#stDailyChart .st-axis{stroke:var(--edge);stroke-width:1}
-#stDailyChart .st-grid{stroke:var(--edge);stroke-dasharray:2 4;opacity:.5}
-#stDailyChart .st-lbl{font-family:var(--mono);font-size:9px;fill:var(--faint)}
-#stDailyChart .st-lbl-doc{font-family:var(--mono);font-size:9px;fill:color-mix(in oklab,var(--acc2),transparent 30%)}
-#stDailyChart .st-doc-line{fill:none;stroke:var(--acc2);stroke-width:1.6;stroke-linejoin:round;stroke-linecap:round}
-#stDailyChart .st-doc-dot{fill:var(--acc2)}
-#stDailyChart .st-bar-hot rect{stroke:var(--warn);stroke-width:1.5}
-#stDailyChart .st-peak-lbl{font-family:var(--num);font-size:10px;font-weight:600;fill:var(--warn)}
+/* 图表内联元素（stats.js 生成；取色全令牌）
+   色盲兜底：第二序列（文档数）= info 色 + 4-3 虚线 dash + 圆点，
+   与第一序列（主色实柱）在任一灰度下均可区分 */
+#stDailyChart .st-axis{stroke:var(--c-line2);stroke-width:1}
+#stDailyChart .st-grid{stroke:var(--c-line);stroke-dasharray:2 4;opacity:.5}
+#stDailyChart .st-lbl{font-family:var(--f-mono);font-size:9px;fill:var(--faint)}
+#stDailyChart .st-lbl-doc{font-family:var(--f-mono);font-size:9px;fill:var(--c-info)}
+#stDailyChart .st-doc-line{fill:none;stroke:var(--c-info);stroke-width:1.6;
+  stroke-dasharray:5 3;stroke-linejoin:round;stroke-linecap:round}
+#stDailyChart .st-doc-dot{fill:var(--c-info)}
+#stDailyChart .st-bar-hot rect{stroke:var(--c-warn);stroke-width:1.5}
+#stDailyChart .st-peak-lbl{font-family:var(--f-mono);font-size:10px;font-weight:600;fill:var(--c-warn)}
 
 /* ── 文档榜（名次 + hue glyph + title + path + pct/分钟） ── */
 .st-leaderboard{display:flex;flex-direction:column}
 .lb-row{display:grid;grid-template-columns:24px 16px 1fr 96px;gap:10px;align-items:center;
-  padding:8px 0;font-size:12.5px;color:var(--seed-fg);text-decoration:none;
-  border-bottom:1px dashed color-mix(in oklab,var(--seed-fg),transparent 92%);
-  --dh:var(--acc);transition:background .2s}
+  padding:8px 0;font-size:12.5px;color:var(--c-ink);text-decoration:none;
+  border-bottom:1px dashed var(--c-line);
+  --dh:var(--c-acc);transition:background var(--dur-1)}
 .lb-row:last-child{border-bottom:none}
 .lb-row:hover{background:color-mix(in oklab,var(--dh),transparent 94%)}
 .lb-row[data-hue="baike"]{--dh:var(--dh-baike)}
@@ -105,22 +110,20 @@ svg.mascot .bubble{fill:var(--ill-bubble);stroke:var(--ill-line);stroke-width:1.
 .lb-row[data-hue="career"]{--dh:var(--dh-career)}
 .lb-row[data-hue="ai"]{--dh:var(--dh-ai)}
 .lb-row[data-hue="ai_assets"]{--dh:var(--dh-ai)}
-.lb-row .lb-rank{text-align:center;font:600 11px/1 var(--num);color:var(--faint);
-  font-variant-numeric:tabular-nums}
-.lb-row:nth-child(-n+3) .lb-rank{color:var(--acc)}
+.lb-row .lb-rank{text-align:center;font:600 11px/1 var(--f-mono);color:var(--faint);font-variant-numeric:tabular-nums}
+.lb-row:nth-child(-n+3) .lb-rank{color:var(--c-acc)}
 .lb-row .lb-icw{width:16px;display:flex;justify-content:center}
 .lb-row .lb-ic{width:14px;height:14px;stroke:var(--dh);fill:none;stroke-width:1.8}
-.lb-row .lb-t{font-weight:500;color:color-mix(in oklab,var(--seed-fg),transparent 10%)}
-.lb-row .lb-p{margin-left:8px;font:500 10.5px/1 var(--mono);color:var(--faint);
-  word-break:break-all}
-.lb-row .lb-bar{display:block;margin-top:5px;height:6px;border-radius:3px;
-  background:color-mix(in oklab,var(--seed-fg),transparent 92%);overflow:hidden}
-.lb-row .lb-bar>i{display:block;height:100%;border-radius:3px;background:var(--dh)}
-.lb-row .lb-min{text-align:right;font-family:var(--mono);font-size:11px;color:var(--acc);
+.lb-row .lb-t{font-weight:500;color:var(--c-ink)}
+.lb-row .lb-p{margin-left:8px;font:500 10.5px/1 var(--f-mono);color:var(--faint);word-break:break-all}
+.lb-row .lb-bar{display:block;margin-top:5px;height:6px;border-radius:1px;
+  background:var(--c-sunk);border:1px solid var(--c-line);overflow:hidden}
+.lb-row .lb-bar>i{display:block;height:100%;background:var(--dh)}
+.lb-row .lb-min{text-align:right;font-family:var(--f-mono);font-size:11px;color:var(--c-acc);
   font-variant-numeric:tabular-nums;white-space:nowrap}
 .lb-row .lb-opens{display:block;color:var(--faint)}
 
-/* ── 空态微调（容器样式继承 style.css .empty） ───────── */
+/* ── 空态微调（容器样式继承 style.css .empty / .kb-empty） ───────── */
 .empty .mascot ellipse.head{fill:var(--ill-skin)}
 
 /* ── 响应式 ─────────────────────────────────────── */
