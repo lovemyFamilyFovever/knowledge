@@ -2209,12 +2209,80 @@ if (q) q.addEventListener("keydown", e => {
 
 /* ---------- 需求 #9：搜索框空态下拉 —— 点击空的搜索框展示探索面板 ----------
    数据源：命令面板索引（术语/文档/子域 Top）+ 固定快捷入口 + 最近更新。 */
-function initSearchDrop() {
-  if (!q || q.dataset.sdrop) return;
-  q.dataset.sdrop = "1";
-  let box = null;
-  const close = () => { if (box) { box.remove(); box = null; } };
-  const esc2 = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c]));
+/* ---------- L2 就地搜索浮层（阶段5 STEP2 授权接线） ----------
+   旧 searchdrop 下拉退役：快速前往/探索语料并入浮层空态。
+   钩子保留：#searchbox #q（触发器 + `/` 键）；Esc 关闭；无 backdrop 关闭（反模式纪律）。 */
+const SO = {
+  ov: null, box: null, input: null, body: null, stat: null,
+  engine: "fts", scope: "", tag: "", timer: null, seq: 0, lastQ: "",
+  esc2: s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c])),
+};
+
+function soOpen() {
+  if (!SO.ov) SO.ov = document.getElementById("kb-search-ov");
+  if (!SO.ov) return;
+  SO.box = SO.box || SO.ov.querySelector(".kb-search-box");
+  SO.input = SO.input || document.getElementById("kb-so-q");
+  SO.body = SO.body || document.getElementById("kb-so-body");
+  SO.stat = SO.stat || document.getElementById("kb-so-stat");
+  SO.ov.hidden = false;
+  SO.ov.classList.add("show");
+  if (!SO.ov.dataset.wired) {
+    soWire();
+    SO.ov.dataset.wired = "1";
+  }
+  SO.body.innerHTML = soEmptyState();
+  setTimeout(() => { if (SO.input) SO.input.focus(); }, 0);
+  // 打开即带出最近查询（纯前端 localStorage，无编造）
+  soRenderRecent();
+}
+
+function soClose() {
+  if (!SO.ov) return;
+  SO.ov.classList.remove("show");
+  SO.ov.hidden = true;
+  if (q) { try { q.blur(); } catch (e) {} }
+}
+
+function soWire() {
+  SO.ov.addEventListener("keydown", e => {
+    if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); soClose(); }
+    else if (e.key === "Enter" && e.shiftKey) { e.preventDefault(); soToL3(); }
+    else if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); soOpenFirst(); }
+    else if (e.key === "F2") { e.preventDefault(); soSetEngine("fts"); }
+    else if (e.key === "F3") { e.preventDefault(); soSetEngine("semantic"); }
+    e.stopPropagation();
+  });
+  SO.ov.querySelectorAll(".kb-eng-chip").forEach(ch => {
+    ch.addEventListener("click", () => soSetEngine(ch.dataset.eng));
+  });
+  SO.ov.querySelectorAll(".kb-scope-chip").forEach(ch => {
+    ch.addEventListener("click", () => {
+      const v = ch.dataset.scope || "";
+      SO.scope = v.startsWith("fav") || v.startsWith("unmastered") ? "" : v;
+      SO.tag = "";
+      SO.ov.querySelectorAll(".kb-scope-chip").forEach(x => x.classList.toggle("on", x === ch));
+      soRun();
+    });
+  });
+  if (SO.input) SO.input.addEventListener("input", () => {
+    clearTimeout(SO.timer);
+    SO.timer = setTimeout(soRun, 240);
+  });
+}
+
+function soSetEngine(eng) {
+  if (!["hybrid", "fts", "semantic"].includes(eng)) return;
+  SO.engine = eng;
+  SO.ov.querySelectorAll(".kb-eng-chip").forEach(ch => {
+    const on = ch.dataset.eng === eng;
+    ch.classList.toggle("on", on);
+    ch.setAttribute("aria-pressed", on ? "true" : "false");
+  });
+  soRun();
+}
+
+function soEmptyState() {
   const shortcuts = [
     { icon: "i-inbox-tray", label: "收件箱（待归档）", href: "/inbox" },
     { icon: "i-favorite-heart", label: "我的收藏", href: "/favorites" },
@@ -2223,32 +2291,125 @@ function initSearchDrop() {
     { icon: "i-sort-alpha", label: "术语门户（A-Z）", href: "/glossary" },
     { icon: "i-clock-heartbeat", label: "间隔复习", href: "/review" },
   ];
-  q.addEventListener("focus", () => {
-    if (q.value.trim()) return; // 仅空态展示
-    close();
-    box = document.createElement("div");
-    box.className = "kb-sdrop";
-    box.innerHTML = `<div class="kb-sdrop-h">快速前往</div>
-      <div class="kb-sdrop-grid">${shortcuts.map(s =>
-        `<a class="kb-sdrop-item" href="${s.href}"><svg class="i i-14"><use href="#${s.icon}"/></svg>${esc2(s.label)}</a>`).join("")}</div>
-      <div class="kb-sdrop-h">探索语料</div>
-      <div id="kb-sdrop-dyn"><div class="kb-sdrop-tip">正在准备索引…</div></div>
-      <div class="kb-sdrop-h">搜索语法</div>
-      <div class="kb-sdrop-tip">直接输入 = 全文检索 · <span class="mono">? 问题</span> = 语义检索 · <span class="mono">Enter</span> 执行</div>`;
-    document.querySelector("#searchbox").appendChild(box);
-    fetch("/api/palette/index").then(r => r.json()).then(d => {
-      const dyn = box && box.querySelector("#kb-sdrop-dyn");
-      if (!dyn || !d || !d.ok) return;
-      const groups = [];
-      if (Array.isArray(d.docs) && d.docs.length)
-        groups.push(`<div class="kb-sdrop-grid">` + d.docs.slice(0, 6).map(x =>
-          `<a class="kb-sdrop-item" href="${docUrl(x.path || x.rel || "")}"><svg class="i i-14"><use href="#i-file"/></svg>${esc2(x.title || x.name || "")}</a>`).join("") + `</div>`);
-      dyn.innerHTML = groups.length ? groups.join("") : `<div class="kb-sdrop-tip">索引准备中，稍后重试</div>`;
-    }).catch(() => {});
+  return `<div class="kb-sr-group">快速前往</div>
+    <div class="kb-sdrop-grid">${shortcuts.map(s =>
+      `<a class="kb-sdrop-item" href="${s.href}"><svg class="i i-14"><use href="#${s.icon}"/></svg>${SO.esc2(s.label)}</a>`).join("")}</div>
+    <div class="kb-sr-group">搜索语法</div>
+    <div style="font:400 12px/1.8 var(--f-body);color:var(--faint);padding:2px 2px 8px">
+      直接输入 = 混合检索 · <span class="mono">? 问题</span> = 语义 · <span class="mono">Enter</span> 打开首条 · <span class="mono">Shift+Enter</span> 结果页</div>`;
+}
+
+function soRenderRecent() {
+  try {
+    const list = JSON.parse(localStorage.getItem("kb-recent-queries") || "[]");
+    if (!Array.isArray(list) || !list.length) return;
+    const body = document.getElementById("kb-so-body");
+    if (!body || body.dataset.hasResults === "1") return;
+    const div = document.createElement("div");
+    div.innerHTML = `<div class="kb-sr-group">最近查询<span class="n">本地</span></div>` +
+      list.slice(0, 5).map(qs => `<div class="kb-sr"><div class="sr-top"><span class="idx">↺</span><span class="path">${SO.esc2(qs)}</span></div></div>`).join("");
+    body.insertBefore(div, body.firstChild);
+  } catch (e) {}
+}
+
+function soRemember(qstr) {
+  try {
+    let list = JSON.parse(localStorage.getItem("kb-recent-queries") || "[]");
+    list = [qstr, ...list.filter(x => x !== qstr)].slice(0, 8);
+    localStorage.setItem("kb-recent-queries", JSON.stringify(list));
+  } catch (e) {}
+}
+
+function soRun() {
+  const qstr = (SO.input ? SO.input.value : "").trim();
+  SO.lastQ = qstr;
+  if (!qstr) { SO.body.innerHTML = soEmptyState(); soRenderRecent(); if (SO.stat) SO.stat.textContent = "— · 输入以检索"; return; }
+  const seq = ++SO.seq;
+  const eng = SO.engine === "semantic" ? "semantic" : SO.engine;
+  const pfx = SO.engine === "semantic" && !qstr.startsWith("?") ? "?" + qstr : qstr;
+  const params = new URLSearchParams({ q: pfx, engine: eng, limit: "12" });
+  if (SO.scope) params.set("domain", SO.scope);
+  fetch("/api/search?" + params.toString()).then(r => r.json()).then(j => {
+    if (seq !== SO.seq) return; // 旧响应丢弃
+    soRenderResults(j, qstr);
+  }).catch(() => {
+    if (seq !== SO.seq) return;
+    SO.body.innerHTML = `<div class="kb-sr-group">检索失败</div><div style="font:400 12.5px/1.7 var(--f-body);color:var(--faint);padding:8px 2px">网络或索引异常，稍后重试。</div>`;
   });
-  q.addEventListener("input", close);
-  q.addEventListener("blur", () => setTimeout(close, 180)); // 留时间给点击
-  document.addEventListener("keydown", e => { if (e.key === "Escape") close(); });
+}
+
+const SO_GROUP_TITLES = { exact: "精确命中", prefix: "标题前缀", contains: "标题包含", tag: "标签命中", title: "标题命中", body: "正文命中", semantic: "语义相近" };
+
+function soRenderResults(j, qstr) {
+  soRemember(qstr);
+  const all = (j.exact || []).concat(j.hits || []);
+  const hybrid = j.mode === "hybrid";
+  const groups = {};
+  all.forEach(it => {
+    const g = hybrid ? (it.match || "body") : (it.match === "semantic" ? "semantic" : (it.match || "body"));
+    (groups[g] = groups[g] || []).push(it);
+  });
+  let html = "";
+  let idx = 0;
+  Object.keys(groups).forEach(g => {
+    const arr = groups[g];
+    html += `<div class="kb-sr-group">${SO.esc2(SO_GROUP_TITLES[g] || g)}<span class="n">${arr.length}</span></div>`;
+    arr.slice(0, 6).forEach(it => {
+      idx += 1;
+      const num = String(idx).padStart(2, "0");
+      const hl = s => SO.esc2(s || "").replace(/&lt;mark&gt;/g, "<mark>").replace(/&lt;\/mark&gt;/g, "</mark>");
+      let scoreHtml = "";
+      if (hybrid && it.score_fts != null && it.score_semantic != null) {
+        const wf = Math.max(2, Math.min(100, Math.round(parseFloat(it.score_fts) * 100)));
+        const ws = Math.max(2, Math.min(100, Math.round(parseFloat(it.score_semantic) * 100)));
+        scoreHtml = `<span class="sr-scores" title="FTS 与语义双路归一化分">
+          <span class="sc sc-fts" style="--w:${wf}%"><i></i><b>${SO.esc2(String(it.score_fts))}</b></span>
+          <span class="sc sc-sem" style="--w:${ws}%"><i></i><b>${SO.esc2(String(it.score_semantic))}</b></span></span>`;
+      } else {
+        scoreHtml = `<span class="score">${SO.esc2(it.score_label || "")}</span>`;
+      }
+      const pos = (it.hit_in_snippet != null && it.hit_in_snippet >= 0) ? ` · 命中位 ${it.hit_in_snippet}` : "";
+      html += `<a class="kb-sr" href="${it.url || docUrl(it.path || "")}" data-path="${SO.esc2(it.path || "")}">
+        <div class="sr-top"><span class="idx">${num}</span>
+          <span class="path">${SO.esc2(it.path || "")}${SO.esc2(pos)}</span>${scoreHtml}</div>
+        <div class="sr-title">${hl(it.title || "")}</div>
+        <div class="sr-snippet">${(it.snippet || "")}</div>
+        ${(it.tags && it.tags.length) ? `<div class="kb-res-tags">${it.tags.slice(0, 4).map(tg => `<span class="kb-tag mute">${SO.esc2(tg)}</span>`).join("")}</div>` : ""}
+      </a>`;
+    });
+  });
+  SO.body.innerHTML = html || `<div class="kb-sr-group">无结果</div><div style="font:400 12.5px/1.7 var(--f-body);color:var(--faint);padding:8px 2px">换个关键词，或 <span class="mono">Shift+Enter</span> 进结果页。</div>`;
+  SO.body.dataset.hasResults = all.length ? "1" : "0";
+  if (SO.stat) {
+    const e = j.engines || {};
+    const parts = [];
+    if (e.fts_ms != null) parts.push("FTS " + e.fts_ms + "ms");
+    if (e.rag_ms != null) parts.push("RAG " + e.rag_ms + "ms");
+    SO.stat.textContent = (j.mode || "—") + " · " + (parts.join(" + ") || j.took_ms + "ms") + " · " + j.total + " 条";
+  }
+}
+
+function soOpenFirst() {
+  const first = SO.body.querySelector("a.kb-sr[href]");
+  if (first && !first.href.endsWith("#")) location.href = first.href;
+}
+
+function soToL3() {
+  const qstr = (SO.input ? SO.input.value : "").trim();
+  if (!qstr) return;
+  const eng = SO.engine;
+  const pre = eng === "semantic" && !qstr.startsWith("?") ? "?" : "";
+  location.href = "/search?q=" + encodeURIComponent(pre + qstr) + (eng !== "hybrid" ? "&engine=" + eng : "");
+}
+
+function initSearchDrop() {
+  if (!q || q.dataset.sdrop) return;
+  q.dataset.sdrop = "1";
+  // L1 触发器（阶段5 STEP2）：点击容器任意位置（图标/文案/键帽）开 L2；
+  // Tab 聚焦 input 也开；Esc 关闭在浮层内处理。旧 searchdrop 下拉退役。
+  const sbEl = document.getElementById("searchbox");
+  if (sbEl) sbEl.addEventListener("click", () => soOpen());
+  q.addEventListener("focus", () => { if (!q.value.trim()) soOpen(); });
 }
 initSearchDrop();
 

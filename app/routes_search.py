@@ -13,6 +13,7 @@ from urllib.parse import quote
 from flask import Blueprint, current_app, jsonify, render_template, request
 
 from app import fts
+from app.fts import _clean_snippet
 from app.learn import BadParam, BadQuery, LearnError, LearnStore
 
 try:  # RAG 是可选依赖：缺失时语义检索降级为 FTS / 命令面板照常工作
@@ -141,6 +142,13 @@ def _snippet(text: str, n: int = 140) -> str:
     return s[:n] + ("…" if len(s) > n else "")
 
 
+# hybrid 归一化权重（阶段5 授权默认值）：FTS 相关性权重 0.6 / 语义相似 0.4。
+# 归一化：两路分数各自 min-max 到 [0,1] 后加权求和；分母带 ε 防 0 除。
+HYBRID_W_FTS = 0.6
+HYBRID_W_SEM = 0.4
+_HYBRID_EPS = 1e-9
+
+
 def _tidy(text: str) -> str:
     """还原 FTS「逐字插空格」留下的空格（保留 <mark> 高亮标签本身）。"""
     s = _RE_SPACE_BEFORE_PUNCT.sub(r"\1", str(text or ""))
@@ -256,16 +264,20 @@ def page_glossary():
 @search_bp.get("/api/search")
 @_guard
 def api_search():
-    """统一检索。
+    """统一检索（阶段5 STEP2 引擎参数化）。
 
-    查询串以 `?` 开头走语义（RAG），否则走 FTS；RAG 不可用时降级 FTS 并带 rag_error。
-    置顶规则：title 精确相等 > title 前缀 > title 包含 > body 命中；
-    精确命中进 exact[]，其余进 hits[]。
+    engine=fts|semantic|hybrid（默认 hybrid）；显式 `?` 前缀仍强制语义。
+    hybrid：FTS 与语义两路各自 min-max 归一化后按 HYBRID_W_FTS/HYBRID_W_SEM
+    加权合并，每条并列输出 score_fts / score_semantic（原始分保留在各自字段）。
+    置顶规则不变：title 精确相等 > 前缀 > 包含 > body；精确命中进 exact[]。
     """
     t0 = time.perf_counter()
     q = (request.args.get("q") or "").strip()
     if not q:
         raise BadQuery("q 必填")
+    engine = (request.args.get("engine") or "fts").strip().lower()
+    if engine not in ("fts", "semantic", "hybrid"):
+        engine = "hybrid"
     try:
         limit = max(1, min(int(request.args.get("limit", 30)), 100))
     except (TypeError, ValueError):
@@ -289,8 +301,9 @@ def api_search():
             return False
         return True
 
-    semantic = q.startswith("?")
-    query = q[1:].strip() if semantic else q
+    raw_is_sem = q.startswith("?")
+    engine = "semantic" if raw_is_sem else engine  # ? 前缀强制语义（向后兼容）
+    query = q[1:].strip() if raw_is_sem else q
     if not query:
         raise BadQuery("q 只有 `?` 没有实质查询词")
 
@@ -298,7 +311,7 @@ def api_search():
     emb = rstore = None
     rag_error = None
     semantic_available = False
-    if semantic:
+    if engine in ("semantic", "hybrid"):
         get_rag = _hooks().get("get_rag")
         if callable(get_rag):
             try:
@@ -312,14 +325,19 @@ def api_search():
 
     items: list[dict] = []
     mode = "fts"
-    if semantic and emb is not None and rstore is not None:
-        mode = "semantic"
+    rag_ms = None
+    fts_ms = None
+    sem_items: list[dict] = []
+    if engine in ("semantic", "hybrid") and emb is not None and rstore is not None:
+        rag_t0 = time.perf_counter()
         try:
             hits = query_rag(rstore, emb, query, k=limit * 2)
         except Exception as e:
-            mode = "fts"
             rag_error = f"语义检索失败：{e}"
         else:
+            rag_ms = round((time.perf_counter() - rag_t0) * 1000)
+            if engine == "semantic":
+                mode = "semantic"
             seen: set[str] = set()
             for h in hits:
                 f = h.get("file") or ""
@@ -332,11 +350,11 @@ def api_search():
                 tags = list(info.get("tags") or [])
                 if not _pass(d, s, tags):
                     continue
-                items.append({
+                sem_items.append({
                     "path": f,
                     "title": info.get("title") or h.get("title") or f,
                     "url": h.get("url") or doc_url(f),
-                    "snippet": _snippet(h.get("contents") or "", 160),
+                    "snippet": _clean_snippet(_snippet(h.get("contents") or "", 160)),
                     "score_label": f"{float(h.get('score') or 0):.2f}",
                     "score": round(float(h.get("score") or 0), 4),
                     "domain": d,
@@ -345,8 +363,15 @@ def api_search():
                     "tags": tags,
                     "match": "semantic",
                 })
+    if engine in ("semantic", "hybrid") and sem_items and mode != "semantic":
+        # hybrid：语义路成功但 engine 仍是 hybrid → 记账后继续走 FTS 路
+        pass
+    elif sem_items and mode == "semantic":
+        items = sem_items
     if mode == "fts":
+        fts_t0 = time.perf_counter()
         rows = fts.search(_indexes(), query, limit=limit * 4) or []
+        fts_ms = round((time.perf_counter() - fts_t0) * 1000)
         needle = query.lower()
         for r in rows:
             p = r.get("path") or ""
@@ -367,8 +392,72 @@ def api_search():
                 "score_label": f"{score:.2f}", "score": score,
                 "domain": d, "sub": s, "sub_label": _sub_label(d, s),
                 "tags": tags, "match": match,
+                "hit_in_snippet": r.get("hit_in_snippet", -1),
             })
         items.sort(key=lambda x: (-float(x.get("score") or 0), str(x.get("title") or "")))
+
+    # ---- hybrid 合并（阶段5 授权范围 #1）：两路归一化 + 加权 ----
+    if engine == "hybrid" and (items or sem_items):
+        def _norm(pairs: list[tuple[str, float]]) -> dict[str, float]:
+            if not pairs:
+                return {}
+            vals = [v for _, v in pairs]
+            lo, hi = min(vals), max(vals)
+            span = (hi - lo) or _HYBRID_EPS
+            return {k: (v - lo) / span for k, v in pairs}
+
+        fts_n = _norm([(x["path"], float(x.get("score") or 0)) for x in items])
+        sem_n = _norm([(x["path"], float(x.get("score") or 0)) for x in sem_items])
+
+        merged: dict[str, dict] = {}
+
+        def _absorb(item: dict, road: str):
+            """把一路结果并进 merged：首到者建档，后到者补另一路分数/摘要。"""
+            path_ = item["path"]
+            score_raw = float(item.get("score") or 0)
+            if path_ not in merged:
+                it = dict(item)
+                it.pop("_w", None)
+                it["score_fts"] = score_raw if road == "fts" else None
+                it["score_semantic"] = score_raw if road == "sem" else None
+                merged[path_] = it
+                return
+            cur = merged[path_]
+            if road == "fts":
+                if cur.get("score_fts") is None:
+                    cur["score_fts"] = score_raw
+                # FTS snippet 带 <mark>，信息量更高 → 覆盖
+                if item.get("snippet"):
+                    cur["snippet"] = item["snippet"]
+                if cur.get("hit_in_snippet") in (None, -1):
+                    cur["hit_in_snippet"] = item.get("hit_in_snippet", -1)
+                if item.get("match") in ("exact", "prefix", "contains") and cur.get("match") in ("semantic", "body", None):
+                    cur["match"] = item["match"]
+            else:
+                if cur.get("score_semantic") is None:
+                    cur["score_semantic"] = score_raw
+
+        for it in sem_items:
+            _absorb(it, "sem")
+        for it in items:
+            _absorb(it, "fts")
+
+        items = list(merged.values())
+        for it in items:
+            wf = HYBRID_W_FTS * fts_n.get(it["path"], 0.0) if it.get("score_fts") is not None else 0.0
+            ws = HYBRID_W_SEM * sem_n.get(it["path"], 0.0) if it.get("score_semantic") is not None else 0.0
+            it["score"] = round(wf + ws, 4)
+            parts = []
+            if it.get("score_fts") is not None:
+                parts.append(f"FTS {it['score_fts']:.2f}")
+            if it.get("score_semantic") is not None:
+                parts.append(f"语义 {it['score_semantic']:.2f}")
+            if parts:
+                it["score_label"] = " + ".join(parts)
+            if it.get("match") == "semantic":
+                it["match"] = "body"
+        items.sort(key=lambda x: (-float(x.get("score") or 0), str(x.get("title") or "")))
+        mode = "hybrid"
 
     exact = [x for x in items if x.get("match") == "exact"]
     hits_out = [x for x in items if x.get("match") != "exact"]
@@ -389,10 +478,11 @@ def api_search():
                       for k, v in sorted(facets["tags"].items(), key=lambda kv: -kv[1])[:20]]
 
     payload = {
-        "q": query, "raw_q": q, "mode": mode, "total": total,
+        "q": query, "raw_q": q, "mode": mode, "engine": engine, "total": total,
         "took_ms": round((time.perf_counter() - t0) * 1000),
         "exact": exact[:limit], "hits": hits_out[:max(0, limit - len(exact[:limit]))],
         "facets": facets, "semantic_available": semantic_available,
+        "engines": {"fts_ms": fts_ms, "rag_ms": rag_ms},
     }
     if rag_error:
         payload["rag_error"] = rag_error

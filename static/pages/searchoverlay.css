@@ -50,3 +50,12 @@
 .kb-sr .sr-snippet mark{background:color-mix(in oklab,var(--c-mark),transparent 60%);color:var(--c-ink)}
 .kb-sr-group{font:600 10px/1 var(--f-mono);letter-spacing:.16em;text-transform:uppercase;color:var(--faint);padding:10px 2px 6px}
 .kb-sr-group .n{color:var(--c-acc);margin-left:6px}
+
+/* 双评分条（hybrid）：FTS 主色 / 语义 info 色，宽度=归一化分，数值并列（权重可肉眼验证） */
+.kb-sr .sr-scores{display:inline-flex;align-items:center;gap:8px;margin-left:auto}
+.kb-sr .sc{position:relative;display:inline-flex;align-items:center;gap:4px;width:64px;height:14px}
+.kb-sr .sc i{position:absolute;left:0;top:5px;height:4px;width:var(--w,0%);border-radius:1px;background:var(--c-acc);opacity:.85}
+.kb-sr .sc-sem i{background:var(--c-info)}
+.kb-sr .sc b{position:relative;font:600 9px/1 var(--f-mono);color:var(--faint);margin-left:auto;font-variant-numeric:tabular-nums}
+.kb-sr .kb-res-tags{display:flex;flex-wrap:wrap;gap:5px}
+.kb-sr .kb-tag{font:500 9.5px/1 var(--f-mono);letter-spacing:.04em;color:var(--faint);border:1px solid var(--c-line);border-radius:var(--rd-ctl);padding:2px 6px;background:var(--c-sunk)}

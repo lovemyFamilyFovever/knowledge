@@ -154,6 +154,45 @@ def build_match(q: str) -> str:
     return " OR ".join(phrases)
 
 
+# 结果摘要清洗：FTS snippet 来自 Markdown 源文，剥离强调/标题/代码记号与装饰 emoji，
+# 避免「# 向量 … 📌」这类源文记号漏进结果摘要（阶段5 复验项）。
+_SNIPPET_EMOJI = re.compile(
+    "[" "\U0001F300-\U0001FAFF" "\U0001F000-\U0001F2FF" "\u2600-\u27BF" "\uFE0F" "]+")
+_SNIPPET_WIKI = re.compile(r"\[\[([^\[\]|]+)(?:\|([^\[\]]*))?\]\]")
+_SNIPPET_LINK = re.compile(r"\[([^\]]*)\]\([^)]*\)")
+_SNIPPET_LINE_LEAD = re.compile(r"(?m)^(?:#{1,6}\s+|[-*+]\s+|\d+\.\s+|>\s?)")
+_SNIPPET_BOLD = re.compile(r"\*\*|__|~~")
+_SNIPPET_EM = re.compile(r"(?<![\w*`])[*_](?![\w*`])")
+
+
+def _strip_bold(mark_join_pattern):
+    """跨分段成对剥 **：对整段文本先按 <mark> 切分计数不现实——直接全局替换即可，
+    ** 本身无语义歧义（成对出现），全局删安全。"""
+    return mark_join_pattern
+
+
+def _clean_snippet(s: str) -> str:
+    """snippet 清洗终版：行首记号、成对强调记号（**/__/~~ 全局删，_ 单字符保守）、
+    wiki 链转可读、emoji 剔除、空白压缩。<mark></mark> 绕行保留。"""
+    def _wiki_sub(m):
+        return m.group(2) or m.group(1)
+
+    s = _SNIPPET_WIKI.sub(_wiki_sub, s or "")
+    s = _SNIPPET_LINK.sub(r"\1", s)
+    parts = re.split(r"(</?mark>)", s)
+    for i, part in enumerate(parts):
+        if part in ("<mark>", "</mark>"):
+            continue
+        part = _SNIPPET_LINE_LEAD.sub("", part)
+        part = _SNIPPET_BOLD.sub("", part)
+        part = _SNIPPET_EM.sub("", part)
+        part = _SNIPPET_EMOJI.sub("", part)
+        parts[i] = part
+    s = "".join(parts)
+    s = re.sub(r"\s{2,}", " ", s).replace(" \n", " ").replace("\n", " ")
+    return s.strip()
+
+
 def search(indexes: Path, q: str, limit: int = 50) -> list[dict]:
     if not re.findall(r"\w+", q):
         return []
@@ -165,7 +204,16 @@ def search(indexes: Path, q: str, limit: int = 50) -> list[dict]:
             "FROM docs WHERE docs MATCH ? ORDER BY rank LIMIT ?",
             (match, limit),
         ).fetchall()
-        return [{"path": r[0], "title": cjk_clean(r[1]), "snippet": cjk_clean(r[2])} for r in rows]
+        out = []
+        for r in rows:
+            raw = cjk_clean(r[2])
+            # 命中在摘要内的偏移：首个 <mark> 前的字符数（跨环境可移植，
+            # 本机 SQLite 的 offsets/highlight 辅助函数不可用，探针已证）
+            hit_in_snippet = raw.find("<mark>")
+            snip = _clean_snippet(raw)
+            out.append({"path": r[0], "title": cjk_clean(r[1]), "snippet": snip,
+                        "hit_in_snippet": max(0, hit_in_snippet)})
+        return out
     finally:
         con.close()
 

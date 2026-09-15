@@ -345,10 +345,12 @@
      ================================================================== */
   var LS_PAL = "kb-palette";
   var GROUP_META = [
-    { key: "terms", title: "术语", max: 8, icon: "i-sort-alpha" },
-    { key: "docs", title: "文档", max: 8, icon: "i-file" },
-    { key: "subs", title: "子域", max: 6, icon: "i-scope-domain" },
-    { key: "commands", title: "命令", max: 6, icon: "i-palette" }
+    /* 阶段5 职责收窄（授权 #4）：命令/动作为主组，文档检索降为次级 section；
+       Ctrl+K 搜文档能力保留（docs max 8→6，terms 靠后），不硬删 */
+    { key: "commands", title: "命令", max: 6, icon: "i-palette" },
+    { key: "subs", title: "子域", max: 4, icon: "i-scope-domain" },
+    { key: "terms", title: "术语", max: 6, icon: "i-sort-alpha" },
+    { key: "docs", title: "文档", max: 6, icon: "i-file" }
   ];
 
   var palette = (KB.palette = {
