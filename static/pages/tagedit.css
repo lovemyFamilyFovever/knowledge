@@ -4,42 +4,42 @@
    ============================================================ */
 
 /* ---- 标签编辑区（右栏「信息·标签」页顶部） ---- */
-.tag-edit{border:1px solid var(--edge);border-radius:var(--radius);background:color-mix(in oklab,var(--seed-surface),transparent 30%);
+.tag-edit{border:1px solid var(--c-line);border-radius:var(--rd-card);background:color-mix(in oklab,var(--c-panel),transparent 30%);
   padding:14px 15px;margin-bottom:14px}
-html[data-theme="dark"] .tag-edit{background:color-mix(in oklab,var(--seed-surface),transparent 72%)}
-.tag-edit-h{display:flex;align-items:center;gap:7px;font-family:var(--disp);font-size:13.5px;font-weight:600;color:var(--seed-fg);margin-bottom:11px}
-.tag-edit-h svg{color:var(--acc)}
+html[data-theme="dark"] .tag-edit{background:color-mix(in oklab,var(--c-panel),transparent 72%)}
+.tag-edit-h{display:flex;align-items:center;gap:7px;font-family:var(--f-disp);font-size:13.5px;font-weight:600;color:var(--c-ink);margin-bottom:11px}
+.tag-edit-h svg{color:var(--c-acc)}
 .tag-edit-addbtn{margin-left:auto;display:inline-flex;align-items:center;gap:4px;
-  border:1px solid var(--acc-edge);background:var(--acc-soft);color:var(--acc);
-  font:600 11.5px/1 var(--sans);padding:6px 12px;border-radius:var(--radius-sm);cursor:pointer;
+  border:1px solid var(--acc-line);background:var(--acc-soft);color:var(--c-acc);
+  font:600 11.5px/1 var(--f-body);padding:6px 12px;border-radius:var(--rd-ctl);cursor:pointer;
   transition:background .15s,border-color .15s}
-.tag-edit-addbtn:hover{background:var(--acc-edge)}
+.tag-edit-addbtn:hover{background:var(--acc-line)}
 .tag-chips{display:flex;flex-wrap:wrap;gap:7px}
 .tag-chips .tag-empty{font-size:12px;color:var(--faint);font-style:normal;padding:2px 0}
 .tagchip{display:inline-flex;align-items:center;gap:5px;max-width:100%;
-  border:1px solid var(--acc-edge);background:var(--acc-soft);color:var(--acc);
-  font:500 11.5px/1 var(--mono);padding:5px 6px 5px 11px;border-radius:999px}
+  border:1px solid var(--acc-line);background:var(--acc-soft);color:var(--c-acc);
+  font:500 11.5px/1 var(--f-mono);padding:5px 6px 5px 11px;border-radius:999px}
 .tagchip-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:200px}
 .tagchip-x{display:inline-flex;align-items:center;justify-content:center;flex:none;
-  width:17px;height:17px;border:none;background:transparent;color:var(--acc);
+  width:17px;height:17px;border:none;background:transparent;color:var(--c-acc);
   opacity:.55;border-radius:50%;cursor:pointer;padding:0}
-.tagchip-x:hover{opacity:1;background:var(--acc-edge)}
+.tagchip-x:hover{opacity:1;background:var(--acc-line)}
 .tagchip-x svg{display:block}
 .tag-inputrow{margin-top:11px}
-.tag-inputrow input{width:100%;box-sizing:border-box;border:1px solid var(--edge);border-radius:var(--radius-sm);
-  background:var(--seed-surface);color:var(--seed-fg);font:400 12.5px/1.4 var(--sans);padding:9px 12px;outline:none}
-.tag-inputrow input:focus{border-color:var(--acc-edge);box-shadow:0 0 0 3px var(--acc-soft)}
+.tag-inputrow input{width:100%;box-sizing:border-box;border:1px solid var(--c-line);border-radius:var(--rd-ctl);
+  background:var(--c-panel);color:var(--c-ink);font:400 12.5px/1.4 var(--f-body);padding:9px 12px;outline:none}
+.tag-inputrow input:focus{border-color:var(--acc-line);box-shadow:0 0 0 3px var(--acc-soft)}
 .tag-inputrow input::placeholder{color:var(--faint)}
 /* HTML 美化版文档：语料不可写 → 隐藏编辑控件，仅展示 */
 .tag-edit.readonly .tag-edit-addbtn{display:none}
 .tag-edit.readonly .tagchip-x{display:none}
 
 /* ---- 需求 #12：书库格式阅读样式（txt/pdf/xlsx/epub 分流渲染） ---- */
-.lib-frame-wrap{height:calc(100vh - 220px);min-height:520px;border:1px solid var(--edge);border-radius:var(--radius);overflow:hidden;background:#fff}
+.lib-frame-wrap{height:calc(100vh - 220px);min-height:520px;border:1px solid var(--c-line);border-radius:var(--rd-card);overflow:hidden;background:var(--c-panel)}
 .lib-frame{width:100%;height:100%;border:none}
-.lib-txt-pre{white-space:pre-wrap;word-break:break-word;font:13.5px/1.9 var(--mono);
-  background:var(--glass-strong);border:1px solid var(--edge);border-radius:var(--radius);
+.lib-txt-pre{white-space:pre-wrap;word-break:break-word;font:13.5px/1.9 var(--f-mono);
+  background:var(--c-panel);border:1px solid var(--c-line);border-radius:var(--rd-card);
   padding:18px 20px;max-height:calc(100vh - 240px);overflow:auto}
 .lib-sheet{margin-bottom:22px}
-.lib-sheet-h{font:500 12px/1.4 var(--mono);color:var(--muted);margin-bottom:8px}
+.lib-sheet-h{font:500 12px/1.4 var(--f-mono);color:var(--muted);margin-bottom:8px}
 .lib-sheet .tbl-wrap{max-height:60vh;overflow:auto}

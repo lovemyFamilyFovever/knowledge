@@ -8,60 +8,60 @@
 /* [1] 页头：查询 chip + 通道切换 ===== */
 .srch-body{padding:20px 28px;display:flex;flex-direction:column;gap:14px}
 .srch-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
-.query-chip{display:inline-flex;align-items:center;gap:7px;padding:5px 13px;border-radius:var(--radius-pill);
-  background:color-mix(in oklab,var(--seed-fg),transparent 95%);border:1px solid var(--edge);
-  font-family:var(--mono);font-size:12px;color:var(--seed-fg);max-width:100%}
+.query-chip{display:inline-flex;align-items:center;gap:7px;padding:5px 13px;border-radius:var(--rd-pill);
+  background:color-mix(in oklab,var(--c-ink),transparent 95%);border:1px solid var(--c-line);
+  font-family:var(--f-mono);font-size:12px;color:var(--c-ink);max-width:100%}
 .query-chip .q-text{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:32ch}
 .query-chip .q-sep{color:var(--faint)}
-.query-chip .q-mode{font-weight:600;color:var(--acc);letter-spacing:.03em}
+.query-chip .q-mode{font-weight:600;color:var(--c-acc);letter-spacing:.03em}
 .query-chip.info .q-mode{color:var(--info)}
 .query-chip.switch{cursor:pointer;transition:border-color .2s,background .2s;color:var(--muted)}
-.query-chip.switch:hover{border-color:var(--edge-hi);color:var(--seed-fg)}
+.query-chip.switch:hover{border-color:var(--c-line2);color:var(--c-ink)}
 .query-chip.switch .pre{color:var(--info);font-weight:600}
-.query-chip.switch.alt-fts .pre{color:var(--acc)}
+.query-chip.switch.alt-fts .pre{color:var(--c-acc)}
 .srch-meta{margin-left:auto}
 
 /* [2] 双通道结果列（设计稿 .results-col：FTS 绿 / 语义蓝） ===== */
-.results-col{padding:14px 16px;border:1px solid var(--edge);border-radius:var(--radius-lg);
-  background:color-mix(in oklab,var(--seed-surface),transparent 45%);display:flex;flex-direction:column;gap:8px}
+.results-col{padding:14px 16px;border:1px solid var(--c-line);border-radius:var(--radius-lg);
+  background:color-mix(in oklab,var(--c-panel),transparent 45%);display:flex;flex-direction:column;gap:8px}
 .results-col.info{border-color:color-mix(in oklab,var(--info),transparent 68%)}
 .rc-head{display:flex;align-items:center;gap:8px;padding-bottom:8px;margin-bottom:2px;
-  border-bottom:1px solid var(--edge);font-size:11.5px;color:var(--muted);
+  border-bottom:1px solid var(--c-line);font-size:11.5px;color:var(--muted);
   letter-spacing:.05em;text-transform:uppercase;font-weight:600}
 .rc-head .mode-ic{width:22px;height:22px;padding:3px;border-radius:6px;flex:none;
-  background:color-mix(in oklab,var(--acc),transparent 88%);color:var(--acc);
+  background:color-mix(in oklab,var(--c-acc),transparent 88%);color:var(--c-acc);
   display:inline-flex;align-items:center;justify-content:center}
 .rc-head .mode-ic svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 .rc-head.info .mode-ic{background:color-mix(in oklab,var(--info),transparent 88%);color:var(--info)}
-.rc-head .n{margin-left:auto;font-family:var(--mono);text-transform:none;letter-spacing:0;color:var(--faint);font-size:11px;font-weight:500}
+.rc-head .n{margin-left:auto;font-family:var(--f-mono);text-transform:none;letter-spacing:0;color:var(--faint);font-size:11px;font-weight:500}
 
 /* 结果卡：域 hue 图标 chip + 面包屑 + mono path + score + title + snippet */
 .results{display:flex;flex-direction:column;gap:8px}
-.result{display:flex;flex-direction:column;gap:5px;padding:12px 14px;border:1px solid var(--edge);
-  border-radius:var(--radius);background:color-mix(in oklab,var(--seed-surface),transparent 45%);
+.result{display:flex;flex-direction:column;gap:5px;padding:12px 14px;border:1px solid var(--c-line);
+  border-radius:var(--rd-card);background:color-mix(in oklab,var(--c-panel),transparent 45%);
   transition:border-color .18s,transform .18s,box-shadow .18s;position:relative}
-.result:hover{border-color:color-mix(in oklab,var(--acc),transparent 55%);
+.result:hover{border-color:color-mix(in oklab,var(--c-acc),transparent 55%);
   transform:translateX(4px);box-shadow:var(--glow-accent)}
 .result.info{border-color:color-mix(in oklab,var(--info),transparent 60%)}
 .result.info:hover{border-color:var(--info);box-shadow:0 0 0 1px color-mix(in oklab,var(--info),transparent 65%),0 10px 28px color-mix(in oklab,var(--info),transparent 86%)}
 .result .rh{display:flex;align-items:baseline;gap:8px;font-size:12.5px;min-width:0}
-.result .domain{display:inline-flex;align-items:center;gap:5px;padding:1.5px 8px;border-radius:var(--radius-pill);
-  background:color-mix(in oklab,var(--dh,var(--acc)),transparent 88%);color:var(--dh,var(--acc));
+.result .domain{display:inline-flex;align-items:center;gap:5px;padding:1.5px 8px;border-radius:var(--rd-pill);
+  background:color-mix(in oklab,var(--dh,var(--c-acc)),transparent 88%);color:var(--dh,var(--c-acc));
   font-size:10.5px;letter-spacing:.02em;font-weight:600;white-space:nowrap}
 .result .domain svg{stroke:currentColor;fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
 .result.info .domain{background:color-mix(in oklab,var(--info),transparent 88%);color:var(--info)}
-.result .path{font:500 11px/1 var(--mono);color:var(--faint);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
-.result .score{margin-left:auto;flex:none;font:500 10.5px/1 var(--mono);color:var(--acc);
-  padding:2.5px 7px;border-radius:var(--radius-pill);background:color-mix(in oklab,var(--acc),transparent 90%);font-variant-numeric:tabular-nums}
+.result .path{font:500 11px/1 var(--f-mono);color:var(--faint);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.result .score{margin-left:auto;flex:none;font:500 10.5px/1 var(--f-mono);color:var(--c-acc);
+  padding:2.5px 7px;border-radius:var(--rd-pill);background:color-mix(in oklab,var(--c-acc),transparent 90%);font-variant-numeric:tabular-nums}
 .result.info .score{color:var(--info);background:color-mix(in oklab,var(--info),transparent 90%)}
-.result .title{font-family:var(--disp);font-size:14.5px;font-weight:600;letter-spacing:.01em;
-  color:color-mix(in oklab,var(--seed-fg),transparent 5%);line-height:1.55}
-.result .title .sub-sect{font-family:var(--mono);font-size:11.5px;font-weight:500;color:var(--faint)}
+.result .title{font-family:var(--f-disp);font-size:14.5px;font-weight:600;letter-spacing:.01em;
+  color:color-mix(in oklab,var(--c-ink),transparent 5%);line-height:1.55}
+.result .title .sub-sect{font-family:var(--f-mono);font-size:11.5px;font-weight:500;color:var(--faint)}
 .result .snippet{font-size:12.5px;color:var(--muted);line-height:1.65;overflow-wrap:break-word}
 
 /* <mark> 命中高亮：FTS 绿系 / 语义蓝系（覆盖兼容层 [10] 的 warn 黄） */
-.result .snippet mark,.result .title mark{background:color-mix(in oklab,var(--acc),transparent 82%);
-  color:color-mix(in oklab,var(--seed-fg),transparent 5%);padding:0 3px;border-radius:2px;font-weight:600}
+.result .snippet mark,.result .title mark{background:color-mix(in oklab,var(--c-acc),transparent 82%);
+  color:color-mix(in oklab,var(--c-ink),transparent 5%);padding:0 3px;border-radius:2px;font-weight:600}
 .result.info .snippet mark,.result.info .title mark{background:color-mix(in oklab,var(--info),transparent 82%)}
 
 /* 7 域 hue 映射（taxonomy 权威；oklch token 见 style.css [2]） */
@@ -93,16 +93,16 @@
 .kb-srch-facets{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px}
 .kb-srch-facets[hidden]{display:none}
 .kb-facet-group{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
-.kb-facet-t{font:500 10px/1 var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--faint);margin-right:2px}
+.kb-facet-t{font:500 10px/1 var(--f-mono);letter-spacing:.12em;text-transform:uppercase;color:var(--faint);margin-right:2px}
 .kb-facet{
-  display:inline-flex;align-items:center;gap:6px;min-height:30px;padding:0 11px;border-radius:var(--radius-pill);
-  border:1px solid var(--edge);background:transparent;color:var(--muted);font-size:11.5px;cursor:pointer;
+  display:inline-flex;align-items:center;gap:6px;min-height:30px;padding:0 11px;border-radius:var(--rd-pill);
+  border:1px solid var(--c-line);background:transparent;color:var(--muted);font-size:11.5px;cursor:pointer;
   transition:border-color .15s,color .15s,background .15s;
 }
-.kb-facet:hover{color:var(--seed-fg);border-color:var(--edge-hi)}
-.kb-facet.on{background:var(--acc-soft);border-color:var(--acc-edge);color:var(--acc);font-weight:600}
-.kb-facet .kb-facet-n{font:500 10px/1 var(--mono);color:var(--faint);font-variant-numeric:tabular-nums}
-.kb-facet.on .kb-facet-n{color:var(--acc)}
+.kb-facet:hover{color:var(--c-ink);border-color:var(--c-line2)}
+.kb-facet.on{background:var(--acc-soft);border-color:var(--acc-line);color:var(--c-acc);font-weight:600}
+.kb-facet .kb-facet-n{font:500 10px/1 var(--f-mono);color:var(--faint);font-variant-numeric:tabular-nums}
+.kb-facet.on .kb-facet-n{color:var(--c-acc)}
 .kb-facet.clear{margin-left:auto;border-style:dashed;color:var(--warn);border-color:var(--warn-edge)}
 .kb-facet-warn{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;color:var(--warn)}
 .kb-facet-warn svg{color:var(--warn)}
@@ -111,12 +111,12 @@
 .kb-srch-exact[hidden]{display:none}
 .kb-badge-exact{
   display:inline-flex;align-items:center;gap:4px;flex:none;margin-left:2px;
-  font:600 10px/1 var(--mono);letter-spacing:.03em;color:var(--acc);
-  background:var(--acc-soft);border:1px solid var(--acc-edge);border-radius:var(--radius-pill);padding:3px 8px;
+  font:600 10px/1 var(--f-mono);letter-spacing:.03em;color:var(--c-acc);
+  background:var(--acc-soft);border:1px solid var(--acc-line);border-radius:var(--rd-pill);padding:3px 8px;
 }
 .result.kb-exact{
-  border-color:var(--acc-edge);
-  background:linear-gradient(100deg,var(--acc-soft),color-mix(in oklab,var(--seed-surface),transparent 45%) 60%);
+  border-color:var(--acc-line);
+  background:linear-gradient(100deg,var(--acc-soft),color-mix(in oklab,var(--c-panel),transparent 45%) 60%);
 }
 .kb-res-tags{display:flex;flex-wrap:wrap;gap:5px;margin-top:2px}
 .kb-srch-hits{display:flex;flex-direction:column;gap:12px}

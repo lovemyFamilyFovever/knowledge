@@ -9,38 +9,38 @@
 .home-hero::before{content:"";position:absolute;inset:-30% -10% auto -10%;height:120%;z-index:0;
   background:radial-gradient(50% 60% at 72% 40%,var(--wash-hero),transparent 70%);pointer-events:none}
 .home-hero>*{position:relative;z-index:1}
-.hero-eyebrow{display:inline-flex;align-items:center;gap:6px;font:600 var(--fs-label)/1 var(--mono);
-  letter-spacing:.14em;text-transform:uppercase;color:var(--acc);margin-bottom:12px}
+.hero-eyebrow{display:inline-flex;align-items:center;gap:6px;font:600 var(--fs-label)/1 var(--f-mono);
+  letter-spacing:.14em;text-transform:uppercase;color:var(--c-acc);margin-bottom:12px}
 .hero-eyebrow svg{width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
-.hero-title{font-family:var(--font-display-latin);font-weight:700;font-size:var(--fs-hero);line-height:.92;
+.hero-title{font-family:var(--f-disp);font-weight:700;font-size:var(--fs-hero);line-height:.92;
   letter-spacing:-.045em;color:var(--ink);margin:0;display:flex;gap:0}
 /* gap 必须为 0：--fs-hero 巨型字号下哪怕 .06em 也是 ~9px 的「知 库」裂缝（2026-09-13 实测截图），
    spec 的 -.045em 收紧意图对中文 flex item 不生效——两字间距只由 gap 决定 */
 /* 中文走 Georgia 600（spec §3.1 Hero display 行） */
-.hero-title .line{font-family:var(--disp);color:var(--acc);font-weight:600;display:inline-block}
-.hero-tagline{margin-top:16px;font-family:var(--font-display-latin);font-weight:500;
+.hero-title .line{font-family:var(--f-disp);color:var(--c-acc);font-weight:600;display:inline-block}
+.hero-tagline{margin-top:16px;font-family:var(--f-disp);font-weight:500;
   font-size:clamp(1.35rem,2.7vw,2.4rem);line-height:1.3;max-width:22ch;color:var(--muted);letter-spacing:-.01em}
 .hero-tagline [data-reveal]{display:inline-block}
 .hero-sub{margin-top:12px;font-size:14px;line-height:1.7;color:var(--muted);max-width:44ch}
-.hero-sub strong{color:var(--acc);font-variant-numeric:tabular-nums}
+.hero-sub strong{color:var(--c-acc);font-variant-numeric:tabular-nums}
 .hero-cta{margin-top:18px;display:flex;gap:10px;flex-wrap:wrap;align-items:center}
-.iconbtn{display:inline-flex;align-items:center;gap:7px;height:34px;padding:0 14px;border-radius:var(--radius-pill);
-  border:1px solid var(--edge);background:color-mix(in oklab,var(--seed-surface),transparent 40%);
-  font-size:12.5px;font-weight:500;color:color-mix(in oklab,var(--seed-fg),transparent 15%);letter-spacing:.02em;
+.iconbtn{display:inline-flex;align-items:center;gap:7px;height:34px;padding:0 14px;border-radius:var(--rd-pill);
+  border:1px solid var(--c-line);background:color-mix(in oklab,var(--c-panel),transparent 40%);
+  font-size:12.5px;font-weight:500;color:color-mix(in oklab,var(--c-ink),transparent 15%);letter-spacing:.02em;
   cursor:pointer;transition:.25s var(--ease-out);white-space:nowrap}
 .iconbtn svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
-.iconbtn:hover{color:var(--seed-fg);border-color:var(--edge-hi);box-shadow:var(--glow-accent)}
-.iconbtn.primary{background:linear-gradient(165deg,var(--acc),var(--acc2));border-color:transparent;
-  color:color-mix(in oklab,var(--seed-bg),white 6%);font-weight:600}
+.iconbtn:hover{color:var(--c-ink);border-color:var(--c-line2);}
+.iconbtn.primary{background:linear-gradient(165deg,var(--c-acc),var(--c-info));border-color:transparent;
+  color:color-mix(in oklab,var(--c-bg),white 6%);font-weight:600}
 [data-magnetic]{transition:box-shadow .3s var(--ease-out),transform .35s var(--ease-back)}
-[data-magnetic]:hover{box-shadow:var(--glow-accent)}
+[data-magnetic]:hover{}
 .home-hero-visual{position:relative;display:flex;justify-content:center;align-items:center;min-height:320px}
 .home-hero-visual .mascot-hero{width:min(100%,380px);height:auto}
 .parallax-layer{will-change:transform;transform:translate(var(--px,0),var(--py,0))}
 /* mascot 8 层配色全部走 --ill-* token（T0 定义，含 halo/shadow/五官/徽章） */
 .mascot .halo{fill:url(#bgHalo)}
 .mascot .shadow{fill:var(--ill-shadow)}
-.mascot .body-line{stroke:color-mix(in oklab,var(--seed-fg),transparent 60%);stroke-width:1.6;fill:none;stroke-linecap:round;stroke-linejoin:round}
+.mascot .body-line{stroke:color-mix(in oklab,var(--c-ink),transparent 60%);stroke-width:1.6;fill:none;stroke-linecap:round;stroke-linejoin:round}
 .mascot .neck{fill:var(--ill-skin-shadow)}
 .mascot .head{fill:var(--ill-skin)}
 .mascot .ear{fill:var(--ill-skin-shadow)}
@@ -49,7 +49,7 @@
 .mascot .eye{fill:var(--ill-hair)}
 .mascot .mouth{stroke:var(--ill-hair);stroke-width:1.6;fill:none;stroke-linecap:round}
 .mascot .cheek{fill:var(--rose);opacity:.28}
-.mascot .glasses-lens{fill:color-mix(in oklab,var(--seed-fg),transparent 96%);stroke:var(--ill-glasses);stroke-width:1.4}
+.mascot .glasses-lens{fill:color-mix(in oklab,var(--c-ink),transparent 96%);stroke:var(--ill-glasses);stroke-width:1.4}
 .mascot .glasses-arm{stroke:var(--ill-glasses);stroke-width:1.4;fill:none;stroke-linecap:round}
 .mascot .shirt{fill:var(--ill-shirt)}
 .mascot .shirt-line{stroke:var(--ill-shirt-shadow);stroke-width:1.4;fill:none;stroke-linecap:round}
@@ -58,48 +58,48 @@
 .mascot .book-page{fill:var(--ill-paper)}
 .mascot .page-line{stroke:var(--ill-line);stroke-width:1;opacity:.55}
 .mascot .bubble{fill:var(--ill-bubble);stroke:var(--ill-line);stroke-width:1}
-.mascot .bubble-txt{stroke:var(--acc);stroke-width:2;fill:none;stroke-linecap:round;stroke-linejoin:round}
+.mascot .bubble-txt{stroke:var(--c-acc);stroke-width:2;fill:none;stroke-linecap:round;stroke-linejoin:round}
 
 /* ---------- KPI 条（真实数字 countUp） ---------- */
-.kpi-strip{display:grid;grid-template-columns:repeat(4,1fr);border-top:1px solid var(--hairline);
-  border-bottom:1px solid var(--hairline);padding:20px 0}
-.kpi-strip .k{display:flex;flex-direction:column;gap:3px;padding:0 20px;border-left:1px solid var(--hairline)}
+.kpi-strip{display:grid;grid-template-columns:repeat(4,1fr);border-top:1px solid var(--c-line);
+  border-bottom:1px solid var(--c-line);padding:20px 0}
+.kpi-strip .k{display:flex;flex-direction:column;gap:3px;padding:0 20px;border-left:1px solid var(--c-line)}
 .kpi-strip .k:first-child{border-left:0;padding-left:0}
-.kpi-strip .kn{font-family:var(--font-display-latin);font-weight:700;font-size:clamp(1.9rem,4vw,2.9rem);
+.kpi-strip .kn{font-family:var(--f-disp);font-weight:700;font-size:clamp(1.9rem,4vw,2.9rem);
   line-height:1;color:var(--ink);font-variant-numeric:tabular-nums;letter-spacing:-.02em}
-.kpi-strip .kn .u{font-size:.85rem;font-family:var(--sans);color:var(--muted);margin-left:3px;font-weight:500}
-.kpi-strip .kl{font:500 11px/1.3 var(--sans);letter-spacing:.05em;text-transform:uppercase;color:var(--faint);
+.kpi-strip .kn .u{font-size:.85rem;font-family:var(--f-body);color:var(--muted);margin-left:3px;font-weight:500}
+.kpi-strip .kl{font:500 11px/1.3 var(--f-body);letter-spacing:.05em;text-transform:uppercase;color:var(--faint);
   display:flex;align-items:center;gap:5px}
 .kpi-strip .kl svg{width:12px;height:12px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 
 /* ---------- 小节标签 ---------- */
-.home-sec-label{display:flex;align-items:baseline;gap:10px;font:600 12px/1 var(--mono);letter-spacing:.14em;
-  text-transform:uppercase;color:var(--acc);margin:26px 0 8px}
-.home-sec-label::after{content:"";flex:1;height:1px;background:var(--hairline)}
-.home-sec-label .n{color:var(--faint);font-family:var(--sans);text-transform:none;letter-spacing:0;font-size:11.5px;font-weight:400}
+.home-sec-label{display:flex;align-items:baseline;gap:10px;font:600 12px/1 var(--f-mono);letter-spacing:.14em;
+  text-transform:uppercase;color:var(--c-acc);margin:26px 0 8px}
+.home-sec-label::after{content:"";flex:1;height:1px;background:var(--c-line)}
+.home-sec-label .n{color:var(--faint);font-family:var(--f-body);text-transform:none;letter-spacing:0;font-size:11.5px;font-weight:400}
 
 /* ---------- 最近更新：跑马灯 ---------- */
-.marquee{overflow:hidden;mask:linear-gradient(90deg,transparent,#000 6%,#000 94%,transparent);
-  padding:4px 0;border-top:1px solid var(--hairline);border-bottom:1px solid var(--hairline)}
+.marquee{overflow:hidden;mask:linear-gradient(90deg,transparent,var(--c-ink) 6%,var(--c-ink) 94%,transparent);
+  padding:4px 0;border-top:1px solid var(--c-line);border-bottom:1px solid var(--c-line)}
 .marquee-track{display:inline-flex;gap:26px;white-space:nowrap;will-change:transform;
   animation:homeMq calc(42s * var(--motion-scale,1)) linear infinite}
 .marquee:hover .marquee-track{animation-play-state:paused}
 @keyframes homeMq{to{transform:translateX(-50%)}}
 .mq-item{display:inline-flex;align-items:center;gap:8px;font-size:13px;color:var(--muted);padding:9px 0}
-.mq-item:hover .t{color:var(--acc)}
-.mq-item .d{width:7px;height:7px;border-radius:50%;flex:none;background:var(--acc)}
-.mq-item .t{color:color-mix(in oklab,var(--seed-fg),transparent 8%);font-weight:500}
-.mq-item .rp{font-family:var(--mono);font-size:10.5px;color:var(--faint)}
-.mq-item .tm{font:500 10.5px/1 var(--mono);color:var(--faint);font-variant-numeric:tabular-nums}
+.mq-item:hover .t{color:var(--c-acc)}
+.mq-item .d{width:7px;height:7px;border-radius:50%;flex:none;background:var(--c-acc)}
+.mq-item .t{color:color-mix(in oklab,var(--c-ink),transparent 8%);font-weight:500}
+.mq-item .rp{font-family:var(--f-mono);font-size:10.5px;color:var(--faint)}
+.mq-item .tm{font:500 10.5px/1 var(--f-mono);color:var(--faint);font-variant-numeric:tabular-nums}
 
 /* ---------- 域卡：7 域 + 新建域 = 8 列；hover 光晕中心色 --dh ----------
    轨道用 minmax(0,1fr)：1fr === minmax(auto,1fr) 会把轨道抬到 min-content
    （.dsub 的 nowrap 文本可达 200px+），8 列总宽溢出容器被裁掉。 */
 .dom-cards{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:12px}
-.dom-card{padding:11px 10px;border:1px solid var(--edge);border-radius:var(--radius-lg);
-  background:var(--glass);backdrop-filter:blur(18px);cursor:pointer;position:relative;display:flex;
+.dom-card{padding:11px 10px;border:1px solid var(--c-line);border-radius:var(--radius-lg);
+  background:var(--c-panel);backdrop-filter:blur(18px);cursor:pointer;position:relative;display:flex;
   flex-direction:column;gap:8px;min-height:118px;min-width:0;transition:.25s var(--ease-out);
-  box-shadow:var(--shadow);text-decoration:none}
+  box-shadow:var(--elev-1);text-decoration:none}
 .dom-card:hover{transform:translateY(-3px);border-color:color-mix(in oklab,hsl(var(--dh,158) 55% 45%),transparent 45%);
   box-shadow:0 0 0 1px color-mix(in oklab,hsl(var(--dh,158) 55% 45%),transparent 65%),
     0 10px 28px color-mix(in oklab,hsl(var(--dh,158) 55% 45%),transparent 86%)}
@@ -108,41 +108,41 @@
   color:hsl(var(--dh,158) 55% 40%);background:hsl(var(--dh,158) 55% 42% / .10)}
 html[data-theme="dark"] .dom-card .glyph-wrap{color:hsl(var(--dh,158) 72% 64%);background:hsl(var(--dh,158) 70% 60% / .12)}
 .dom-card .glyph-wrap svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
-.dom-card .label{font-size:12.5px;font-weight:600;color:var(--seed-fg);letter-spacing:.02em;
+.dom-card .label{font-size:12.5px;font-weight:600;color:var(--c-ink);letter-spacing:.02em;
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.dom-card .n{margin-left:auto;font:700 9.5px/1 var(--mono);padding:2px 5px;border-radius:var(--radius-pill);
+.dom-card .n{margin-left:auto;font:700 9.5px/1 var(--f-mono);padding:2px 5px;border-radius:var(--rd-pill);
   color:hsl(var(--dh,158) 55% 38%);background:hsl(var(--dh,158) 55% 42% / .08);font-variant-numeric:tabular-nums}
 html[data-theme="dark"] .dom-card .n{color:hsl(var(--dh,158) 70% 66%)}
 .dom-card .seg-bar{display:flex;gap:2px;height:4px;margin-top:auto}
 .dom-card .seg-bar span{display:block;border-radius:2px;background:hsl(var(--dh,158) 55% 45%)}
-.dom-card .dsub{font-family:var(--mono);font-size:9.5px;color:var(--faint);letter-spacing:.02em;
+.dom-card .dsub{font-family:var(--f-mono);font-size:9.5px;color:var(--faint);letter-spacing:.02em;
   min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.dom-card.new-card .glyph-wrap{background:color-mix(in oklab,var(--acc),transparent 90%);color:var(--acc)}
+.dom-card.new-card .glyph-wrap{background:color-mix(in oklab,var(--c-acc),transparent 90%);color:var(--c-acc)}
 .dom-card.new-card .new-note{font-size:11px;color:var(--faint);line-height:1.5;margin-top:auto}
-.dom-card.new-card .new-note code{font-size:10px;color:var(--acc)}
+.dom-card.new-card .new-note code{font-size:10px;color:var(--c-acc)}
 
 /* ---------- 归档管线（现状真实模块，重绘为设计语言） ---------- */
-.home-pipe{display:flex;align-items:flex-start;border:1px solid var(--edge);border-radius:var(--radius-lg);
-  padding:20px 24px 16px;background:var(--glass);backdrop-filter:blur(18px);box-shadow:var(--shadow)}
+.home-pipe{display:flex;align-items:flex-start;border:1px solid var(--c-line);border-radius:var(--radius-lg);
+  padding:20px 24px 16px;background:var(--c-panel);backdrop-filter:blur(18px);box-shadow:var(--elev-1)}
 .home-pipe .pipe-node{display:flex;flex-direction:column;align-items:center;gap:9px;min-width:88px}
 .home-pipe .pic{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;
-  border:1px solid var(--edge);color:var(--muted);background:color-mix(in oklab,var(--seed-surface),transparent 30%)}
+  border:1px solid var(--c-line);color:var(--muted);background:color-mix(in oklab,var(--c-panel),transparent 30%)}
 .home-pipe .pic svg{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
-.home-pipe .done .pic{color:var(--acc);border-color:color-mix(in oklab,var(--acc),transparent 60%)}
-.home-pipe .active .pic{color:var(--acc2);border-color:color-mix(in oklab,var(--acc2),transparent 55%);
-  box-shadow:0 0 0 3px color-mix(in oklab,var(--acc2),transparent 90%)}
+.home-pipe .done .pic{color:var(--c-acc);border-color:color-mix(in oklab,var(--c-acc),transparent 60%)}
+.home-pipe .active .pic{color:var(--c-info);border-color:color-mix(in oklab,var(--c-info),transparent 55%);
+  box-shadow:0 0 0 3px color-mix(in oklab,var(--c-info),transparent 90%)}
 .home-pipe .pl{font-size:11px;color:var(--muted);letter-spacing:.02em}
-.home-pipe .active .pl{color:var(--acc2);font-weight:600}
+.home-pipe .active .pl{color:var(--c-info);font-weight:600}
 .home-pipe .pipe-line{flex:1;height:1px;margin-top:15px;
-  background:linear-gradient(90deg,color-mix(in oklab,var(--acc),transparent 60%),var(--edge))}
+  background:linear-gradient(90deg,color-mix(in oklab,var(--c-acc),transparent 60%),var(--c-line))}
 
 /* ---------- 空态（mascot 插画零件，第 11/12 屏） ---------- */
 .empty-state{display:flex;flex-direction:column;align-items:center;gap:10px;padding:28px 20px;text-align:center;
-  border:1px dashed var(--edge);border-radius:var(--radius-lg);background:color-mix(in oklab,var(--seed-surface),transparent 55%)}
+  border:1px dashed var(--c-line);border-radius:var(--radius-lg);background:color-mix(in oklab,var(--c-panel),transparent 55%)}
 .empty-state .mascot{width:150px;height:120px}
-.empty-state .e-title{font-size:14px;font-weight:500;color:color-mix(in oklab,var(--seed-fg),transparent 20%)}
+.empty-state .e-title{font-size:14px;font-weight:500;color:color-mix(in oklab,var(--c-ink),transparent 20%)}
 .empty-state .e-desc{font-size:12.5px;color:var(--muted)}
-.empty-state .e-desc code{font-size:11.5px;color:var(--acc)}
+.empty-state .e-desc code{font-size:11.5px;color:var(--c-acc)}
 
 /* ---------- 动效挂载与降级（页面级；motion.js 驱动，无 JS / 无 GSAP 时内容始终可见） ---------- */
 html.motion-ready .home-hero [data-reveal],

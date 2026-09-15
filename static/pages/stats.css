@@ -5,7 +5,7 @@
    .lb-row[data-hue]、.st-note、.st-nochart、.mascot 全部保留为消费契约。
    INSTRUMENT 化：KPI tile 平面薄板 + --f-disp 大字、图表卡结界线、
    第二序列（文档数折线）改虚线 dash（色盲兜底：线型+色双重编码）、
-   图例色块方点化。取色全走 var()/color-mix，JS 侧已用 var(--acc)/var(--acc2)。
+   图例色块方点化。取色全走 var()/color-mix，JS 侧已用 var(--c-acc)/var(--c-info)。
 
 /* ── 页面骨架 ─────────────────────────────────────── */
 /* 覆盖 style.css 里给「全库统计弹窗」复用的 .stats-body（页面级不自带滚动） */
