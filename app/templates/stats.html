@@ -42,7 +42,7 @@
             <div class="label"><svg class="i i-12"><use href="#i-check-circle"/></svg>读完文档</div>
             <div class="num"><span data-counter data-count="{{ kpi.finished_docs }}">{{ kpi.finished_docs }}</span><span class="unit">篇</span></div>
             {% if kpi.opened_docs %}<div class="st-ratio"><span class="sbar"><i style="width:{{ (100 * kpi.finished_docs / kpi.opened_docs) | round(0) }}%"></i></span><span class="st-ratio-n">{{ ((100 * kpi.finished_docs / kpi.opened_docs) | round(0)) }}%</span></div>{% endif %}
-            <svg class="mascot mascot-corner" viewBox="0 0 40 40" aria-hidden="true"><ellipse class="head" cx="20" cy="16" rx="8" ry="9"/><path class="hair" d="M13 14 Q14 8 20 8 Q26 8 27 14 Q25 11 20 11 Q15 11 13 14 Z"/><path class="body-line" d="M10 26 Q20 22 30 26 L28 36 H12 Z" style="fill:url(#uniformGrad)"/><circle cx="30" cy="18" r="4" stroke="var(--acc)" stroke-width="1.2" fill="none"/><path d="M32 20 L36 24" stroke="var(--acc)" stroke-width="1.5" stroke-linecap="round"/></svg>
+            <svg class="mascot mascot-corner" viewBox="0 0 40 40" aria-hidden="true"><ellipse class="head" cx="20" cy="16" rx="8" ry="9"/><path class="hair" d="M13 14 Q14 8 20 8 Q26 8 27 14 Q25 11 20 11 Q15 11 13 14 Z"/><path class="body-line" d="M10 26 Q20 22 30 26 L28 36 H12 Z" style="fill:url(#uniformGrad)"/><circle cx="30" cy="18" r="4" stroke="var(--c-acc)" stroke-width="1.2" fill="none"/><path d="M32 20 L36 24" stroke="var(--c-acc)" stroke-width="1.5" stroke-linecap="round"/></svg>
           </div>
         </div>
 
@@ -105,9 +105,9 @@
         <svg class="mascot" viewBox="0 0 160 120" aria-hidden="true">
           <circle cx="112" cy="42" r="14" fill="var(--warn)" opacity=".85"/>
           <circle cx="112" cy="42" r="22" fill="var(--warn)" opacity=".14"/>
-          <path d="M8 96 L44 48 L80 96 Z" fill="var(--acc2)" opacity=".35"/>
-          <path d="M52 96 L88 52 L124 96 Z" fill="var(--acc2)" opacity=".6"/>
-          <path d="M96 96 L124 62 L152 96 Z" fill="var(--acc)" opacity=".9"/>
+          <path d="M8 96 L44 48 L80 96 Z" fill="var(--c-info)" opacity=".35"/>
+          <path d="M52 96 L88 52 L124 96 Z" fill="var(--c-info)" opacity=".6"/>
+          <path d="M96 96 L124 62 L152 96 Z" fill="var(--c-acc)" opacity=".9"/>
           <line x1="8" y1="96" x2="152" y2="96" stroke="var(--ill-line)" stroke-width="1.2" stroke-linecap="round"/>
           <rect x="14" y="94" width="52" height="8" rx="2.5" fill="var(--ill-book)"/>
           <rect x="14" y="94" width="52" height="3" rx="1.5" fill="var(--ill-paper)" opacity=".55"/>
