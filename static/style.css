@@ -496,7 +496,7 @@ h1.a-title{font-family:var(--f-disp);font-weight:700;font-size:28px;line-height:
 .kb-skeleton{padding:20px 4px;display:flex;flex-direction:column;gap:14px}
 .kb-skeleton i{height:14px;border-radius:var(--rd-ctl);background:linear-gradient(90deg,var(--c-sunk) 25%,var(--c-line) 50%,var(--c-sunk) 75%);background-size:200% 100%;animation:kbSkl 1.2s linear infinite}
 @keyframes kbSkl{from{background-position:200% 0}to{background-position:-200% 0}}
-.toc a{display:block;font-size:13px;color:var(--muted);text-decoration:none;padding:6px 9px;border-radius:var(--rd-ctl);border-left:2px solid transparent;transition:color var(--dur-1),background var(--dur-1);line-height:1.5;cursor:pointer}
+.toc a{display:block;font-size:13px;color:var(--muted);text-decoration:none;padding:6px 9px;border-radius:var(--rd-ctl);border-left:2px solid transparent;transition:color var(--dur-1),background var(--dur-1);line-height:1.5;cursor:pointer;overflow-wrap:anywhere}
 .toc a:hover{color:var(--c-ink);background:var(--c-sunk)}
 .toc a.on{color:var(--c-acc);border-left-color:var(--c-acc);background:var(--acc-soft);font-weight:600}
 .toc a.lv3{padding-left:22px;font-size:12.5px}

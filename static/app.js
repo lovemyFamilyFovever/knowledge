@@ -623,7 +623,7 @@ function buildToc() {
   const heads = $$("#article .a-body h1, #article .a-body h2, #article .a-body h3");
   if (!heads.length) { pane.innerHTML = `<div style="font-size:12.5px;color:var(--faint);padding:6px 2px">本文无小节标题。</div>`; return; }
   pane.innerHTML = "";
-  const used = new Set([...el.querySelectorAll("[id]")].map(x => x.id));
+  const used = new Set([...$("#article").querySelectorAll("[id]")].map(x => x.id));
   const pairs = [];
   heads.forEach((h, i) => {
     h.id = h.id || slugifyHeading(h.textContent, used);
