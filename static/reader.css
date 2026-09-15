@@ -15,7 +15,8 @@
   src:url("/static/vendor/fonts/CormorantGaramond-500.woff2") format("woff2")}
 @font-face{font-family:"Cormorant Garamond";font-style:normal;font-weight:600;font-display:swap;
   src:url("/static/vendor/fonts/CormorantGaramond-600.woff2") format("woff2")}
-@font-face{font-family:"Cormorant Garamond";font-style:italic;font-weight:500;font-display:swap;
+/* INSTRUMENT 无斜体规范：italic 字面已从排版偏好移除，仅保留 @font-face 声明占位防 404 */
+@font-face{font-family:"Cormorant Garamond";font-style:normal;font-weight:500;font-display:swap;
   src:url("/static/vendor/fonts/CormorantGaramond-500i.woff2") format("woff2")}
 @font-face{font-family:"Work Sans";font-style:normal;font-weight:400;font-display:swap;
   src:url("/static/vendor/fonts/WorkSans-400.woff2") format("woff2")}
@@ -30,5 +31,4 @@
 .a-body.rd-fonts h1,.a-body.rd-fonts h2,.a-body.rd-fonts h3,.a-body.rd-fonts h4,
 .a-body.rd-fonts blockquote p{
   font-family:"Cormorant Garamond","Noto Serif SC","Source Han Serif SC","Songti SC","SimSun",Georgia,serif}
-.a-body.rd-fonts blockquote p{font-style:italic}
-.a-body.rd-fonts blockquote p:lang(zh-CN){font-style:normal}
+.a-body.rd-fonts blockquote p{font-style:normal}

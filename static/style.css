@@ -10,119 +10,212 @@
    规则：组件层零硬编码 hex、零 emoji、零外链；
         T1–T5 重写前旧模板依赖的类名全部保留（兼容层），由 T6 收口清理。
    ===================================================================== */
+/* =====================================================================
+   知库 · 底座样式 v1.0-INSTRUMENT（工程仪表体系 · 阶段1 令牌层）
+   结构索引：
+   [1] 字体  [2] token 定义区（原始 hex + 皮肤档案，raw hex 只在此处）
+   [3] 派生层（color-mix 派生 + 旧令牌兼容别名）  [4] 基础 reset / 图标工具
+   [5] 背景层（aurora/grain 已退役为平面薄板，DOM 结构保留）
+   [6]-[15] 组件区（阶段1 未动，零硬编码 hex 纪律见阶段2 收口）
+   [16] prefers-reduced-motion + 全局纹理
+   规则：raw hex 只允许出现在 [2]；组件层一律 var() + color-mix。
+   ===================================================================== */
 
-/* [1] 字体：Latin 可变字重本地子集（SIL OFL 1.1 · 见 static/vendor/README.md） */
-@font-face{font-family:"Space Grotesk Variable";src:url("vendor/space-grotesk-var.woff2") format("woff2-variations");font-weight:300 700;font-style:normal;font-display:swap}
-
-/* [2] token 定义区 ===== seed + hex（raw hex 只在此处） ===== */
+/* [1] 字体 ===== 本机字族，不新增 @font-face 网络字体 ===== */
 :root{
+  --f-disp:"Bahnschrift SemiCondensed","Bahnschrift","DIN Alternate","Franklin Gothic Medium",var(--f-body);
+  --f-body:"Segoe UI","Microsoft YaHei UI","Microsoft YaHei","PingFang SC",sans-serif;
+  --f-mono:"Cascadia Mono",Consolas,"Courier New",monospace;
+}
+/* [2] token 定义区 ===== 原始层（raw hex 只在此区）===== */
+:root{
+  /* -- 基准皮肤「仪表 instrument」Light -- */
+  --hex-bg:#e9edf0; --hex-panel:#ffffff; --hex-sunk:#dde3e8;
+  --hex-ink:#131c23; --hex-line:#d5dce1; --hex-line2:#aebbc6;
+  --hex-primary:#0d8a5f; --hex-info:#0f7fa3; --hex-warn:#9a6700;
+  --hex-danger:#b3261e; --hex-ok:#12864b; --hex-mark:#ffd973;
+  /* -- 仪表 Dark -- */
+  --hex-bg-d:#0c1116; --hex-panel-d:#131a21; --hex-sunk-d:#0a0f14;
+  --hex-ink-d:#dbe5ec; --hex-line-d:#243139; --hex-line2-d:#415462;
+  --hex-primary-d:#3ecf8e; --hex-info-d:#4fc3e8; --hex-warn-d:#e5aa2f;
+  --hex-danger-d:#ff6b61; --hex-ok-d:#3ecf8e; --hex-mark-d:#6b5a22;
+  /* -- 皮肤档案原始值（skins.css 只写 var 映射，hex 上收于此）--
+     仪表 instrument=基准(本区上面两行)；蓝图/夜航/石墨/信号灯/纸样 见下 */
+  --sk-blueprint-bg:#dfe8ef; --sk-blueprint-panel:#f4f8fb; --sk-blueprint-sunk:#cfdce6;
+  --sk-blueprint-ink:#12283a; --sk-blueprint-line:#bfcfdc; --sk-blueprint-line2:#8fa8bc;
+  --sk-blueprint-primary:#14508c; --sk-blueprint-info:#0e6f8e; --sk-blueprint-warn:#8a5a00;
+  --sk-blueprint-danger:#a03028; --sk-blueprint-ok:#1c7a4c; --sk-blueprint-mark:#ffd973;
+  --sk-nightblue-bg:#0a1524; --sk-nightblue-panel:#101d30; --sk-nightblue-sunk:#081020;
+  --sk-nightblue-ink:#d7e4f2; --sk-nightblue-line:#1d3048; --sk-nightblue-line2:#37536f;
+  --sk-nightblue-primary:#45d0a4; --sk-nightblue-info:#54c2ea; --sk-nightblue-warn:#e0a63a;
+  --sk-nightblue-danger:#ff6f66; --sk-nightblue-ok:#45d0a4; --sk-nightblue-mark:#6b5a2a;
+  --sk-graphite-bg:#f2f2f1; --sk-graphite-panel:#ffffff; --sk-graphite-sunk:#e4e4e2;
+  --sk-graphite-ink:#161615; --sk-graphite-line:#d9d9d6; --sk-graphite-line2:#a8a8a3;
+  --sk-graphite-primary:#161615; --sk-graphite-info:#4a4a48; --sk-graphite-warn:#8a5a00;
+  --sk-graphite-danger:#a03028; --sk-graphite-ok:#1c7a4c; --sk-graphite-mark:#ffd973;
+  --sk-graphite-bg-d:#0d0d0c; --sk-graphite-panel-d:#161615; --sk-graphite-sunk-d:#080807;
+  --sk-graphite-ink-d:#e7e7e4; --sk-graphite-line-d:#262624; --sk-graphite-line2-d:#4a4a46;
+  --sk-graphite-primary-d:#f2f2f1; --sk-graphite-info-d:#b0b0ac; --sk-graphite-warn-d:#e0a63a;
+  --sk-graphite-danger-d:#ff6f66; --sk-graphite-ok-d:#45d0a4; --sk-graphite-mark-d:#6b5a2a;
+  --sk-signal-bg:#f3ecd9; --sk-signal-panel:#faf5e6; --sk-signal-sunk:#e8dfc4;
+  --sk-signal-ink:#241f12; --sk-signal-line:#ddd2b0; --sk-signal-line2:#b0a377;
+  --sk-signal-primary:#a06a08; --sk-signal-info:#0e6f8e; --sk-signal-warn:#a06a08;
+  --sk-signal-danger:#a03028; --sk-signal-ok:#5c7a10; --sk-signal-mark:#ffd973;
+  --sk-signal-bg-d:#15130a; --sk-signal-panel-d:#1d1a0e; --sk-signal-sunk-d:#0f0d06;
+  --sk-signal-ink-d:#ecdfb4; --sk-signal-line-d:#322c16; --sk-signal-line2-d:#5c5227;
+  --sk-signal-primary-d:#f0b43c; --sk-signal-info-d:#54c2ea; --sk-signal-warn-d:#f0b43c;
+  --sk-signal-danger-d:#ff6f66; --sk-signal-ok-d:#a8cc3c; --sk-signal-mark-d:#6b5a2a;
+  --sk-paper-bg:#f6f3ea; --sk-paper-panel:#fdfbf3; --sk-paper-sunk:#ebe6d6;
+  --sk-paper-ink:#26241c; --sk-paper-line:#ded8c4; --sk-paper-line2:#aaa38a;
+  --sk-paper-primary:#3d6b50; --sk-paper-info:#3d5a80; --sk-paper-warn:#8a5a00;
+  --sk-paper-danger:#a03028; --sk-paper-ok:#3d6b50; --sk-paper-mark:#ffd973;
+  --sk-paper-bg-d:#171610; --sk-paper-panel-d:#201e15; --sk-paper-sunk-d:#100f0a;
+  --sk-paper-ink-d:#e6e0cd; --sk-paper-line-d:#322f20; --sk-paper-line2-d:#575236;
+  --sk-paper-primary-d:#7fb894; --sk-paper-info-d:#7fa8c9; --sk-paper-warn-d:#e0a63a;
+  --sk-paper-danger-d:#ff6f66; --sk-paper-ok-d:#7fb894; --sk-paper-mark-d:#6b5a2a;
+  /* 旧 6 皮肤(hex 种子)——保留原始值供 skins.css 演化映射与回退 */
   --hex-bg-light:#f2efe7; --hex-fg-light:#22312c;
   --hex-primary-light:#0c9a6a; --hex-accent-light:#0f86b8; --hex-surface-light:#ffffff;
   --hex-warn-light:#a5680b; --hex-danger-light:#b23a3a; --hex-rose-light:#b53d75;
   --hex-plate-light-a:#122028; --hex-plate-light-b:#0c151d;
-  --hex-skin-light:#e8cba9; --hex-skin-shadow-light:#c9a482; --hex-hair-light:#2a3833;
-  --hex-glasses-light:#3d4b47; --hex-shirt-light:#f7f7f2; --hex-shirt-shadow-light:#dcded6; --hex-device-light:#4a5d58;
   --hex-bg-dark:#060a0e; --hex-fg-dark:#e2ece8;
   --hex-primary-dark:#37e6a6; --hex-accent-dark:#38cdf0; --hex-surface-dark:#0f1a20;
   --hex-warn-dark:#f0b438; --hex-danger-dark:#ff6b6b; --hex-rose-dark:#f0599b;
   --hex-plate-dark-a:#0f1c25; --hex-plate-dark-b:#0a131b;
-  --hex-skin-dark:#c9a483; --hex-skin-shadow-dark:#a58467; --hex-hair-dark:#0d1714;
-  --hex-glasses-dark:#c8d5d0; --hex-shirt-dark:#dbe1dc; --hex-shirt-shadow-dark:#a2ada9; --hex-device-dark:#8fa4a0; --hex-paper-dark:#22312c;
-  --brand-glow-a:#b8ffe4; --brand-glow-b:#5fe8c0; --brand-glow-c:#4fc7e8;
+  --hex-paper-dark:#22312c;
   --code-fg:#cfe0da; --code-kw:#8be0c1; --code-str:#f0b438; --code-com:#5c716c; --code-fn:#7cd2ff;
-  /* Awwwards 动效 / 排印 token（spec §3.1） */
-  --font-display-latin:"Space Grotesk Variable","Space Grotesk",Georgia,"Times New Roman",serif;
+  /* mascot --ill-* 族（Light 种子，Dark patch 在 [3] 尾部） */
+  --hex-skin-light:#e8cba9; --hex-skin-shadow-light:#c9a482; --hex-hair-light:#2a3833;
+  --hex-glasses-light:#3d4b47; --hex-shirt-light:#f7f7f2; --hex-shirt-shadow-light:#dcded6; --hex-device-light:#4a5d58;
+  --hex-skin-dark:#c9a483; --hex-skin-shadow-dark:#a58467; --hex-hair-dark:#0d1714;
+  --hex-glasses-dark:#c8d5d0; --hex-shirt-dark:#dbe1dc; --hex-shirt-shadow-dark:#a2ada9; --hex-device-dark:#8fa4a0;
+
+  /* ===== 尺度层 ===== */
+  --fs-10:10px; --fs-11:11px; --fs-12:12.5px; --fs-14:14px; --fs-16:16px; --fs-20:20px; --fs-26:26px; --fs-34:34px;
+  --sp-1:4px; --sp-2:8px; --sp-3:12px; --sp-4:16px; --sp-5:24px; --sp-6:32px; --sp-7:48px;
+  --sp-dens:1;
+  --rd-ctl:3px; --rd-card:4px; --rd-pill:999px;
+  --z-raised:60; --z-pop:70; --z-modal:80; --z-toast:90;
+  --dur-1:.12s; --dur-2:.2s; --dur-3:.35s;
+  --ease-out:cubic-bezier(.16,1,.3,1);
+  --h-l:268px; --h-r:252px;
+  /* 旧尺度兼容（[6]-[15] 组件区仍引用） */
+  --radius:var(--rd-card); --radius-sm:var(--rd-ctl); --radius-lg:calc(var(--rd-card) + 4px); --radius-pill:var(--rd-pill);
+  --ease-back:cubic-bezier(.34,1.56,.64,1); --ease-inout:cubic-bezier(.65,0,.35,1);
+  --motion-scale:1;
   --fs-hero:clamp(4rem,12vw,11rem); --fs-display:clamp(2rem,4.5vw,3.5rem);
   --fs-h2:clamp(1.25rem,2vw,1.75rem); --fs-body:15.5px; --fs-label:11.5px;
-  --ease-out:cubic-bezier(.16,1,.3,1); --ease-back:cubic-bezier(.34,1.56,.64,1); --ease-inout:cubic-bezier(.65,0,.35,1);
-  --motion-scale:1;
-  /* 派生 seed */
-  --seed-bg:var(--hex-bg-light); --seed-fg:var(--hex-fg-light);
-  --seed-primary:var(--hex-primary-light); --seed-accent:var(--hex-accent-light);
-  --seed-surface:var(--hex-surface-light); --seed-radius:10px;
-  --muted:color-mix(in oklab,var(--seed-fg),var(--seed-bg) 42%);
-  --faint:color-mix(in oklab,var(--seed-fg),var(--seed-bg) 68%);
-  --acc:var(--seed-primary); --acc2:var(--seed-accent);
-  --acc-soft:color-mix(in oklab,var(--acc),transparent 90%);
-  /* 阅读偏好默认值（kb 排印；原 L777 独立 :root 并入，消除重复选择器） */
-  --kb-fs-scale:1;
-  --kb-measure:none;
-  --kb-font:var(--sans);
-  --kb-line:1.75;
-  --acc-edge:color-mix(in oklab,var(--acc),transparent 70%);
-  --info:var(--seed-accent);
-  --warn:var(--hex-warn-light); --danger:var(--hex-danger-light); --rose:var(--hex-rose-light); --success:var(--seed-primary);
-  --warn-soft:color-mix(in oklab,var(--warn),transparent 92%);
-  --warn-edge:color-mix(in oklab,var(--warn),transparent 65%);
-  --glass:linear-gradient(165deg,color-mix(in oklab,var(--seed-surface),transparent 22%),color-mix(in oklab,var(--seed-surface),transparent 45%));
-  --glass-strong:linear-gradient(165deg,color-mix(in oklab,var(--seed-surface),transparent 5%),color-mix(in oklab,var(--seed-surface),transparent 25%));
-  --edge:color-mix(in oklab,var(--seed-fg),transparent 87%);
-  --edge-hi:color-mix(in oklab,var(--seed-fg),transparent 70%);
-  --hairline:color-mix(in oklab,var(--seed-fg),transparent 92%);
-  --glow-accent:0 0 0 1px color-mix(in oklab,var(--acc),transparent 65%),0 10px 28px color-mix(in oklab,var(--acc),transparent 86%);
-  --wash-hero:color-mix(in oklab,var(--acc),var(--seed-bg) 88%);
-  --shadow:0 10px 30px color-mix(in oklab,var(--seed-fg),transparent 90%),inset 0 1px 0 color-mix(in oklab,var(--seed-surface),transparent 25%);
-  --shadow-hi:0 18px 44px color-mix(in oklab,var(--seed-fg),transparent 82%);
+
+  /* ===== 派生层（全 color-mix，零硬编码）===== */
+  --c-bg:var(--hex-bg); --c-panel:var(--hex-panel); --c-sunk:var(--hex-sunk);
+  --c-ink:var(--hex-ink); --c-line:var(--hex-line); --c-line2:var(--hex-line2);
+  --c-acc:var(--hex-primary); --c-info:var(--hex-info); --c-warn:var(--hex-warn);
+  --c-danger:var(--hex-danger); --c-ok:var(--hex-ok); --c-mark:var(--hex-mark);
+  --muted:color-mix(in oklab,var(--c-ink),var(--c-bg) 40%);
+  --faint:color-mix(in oklab,var(--c-ink),var(--c-bg) 62%);
+  --acc:var(--c-acc);
+  --acc2:var(--c-info);
+  --acc-soft:color-mix(in oklab,var(--c-acc),transparent 91%);
+  --acc-line:color-mix(in oklab,var(--c-acc),transparent 55%);
+  --acc-edge:var(--acc-line);
+  --acc-soft-strong:color-mix(in oklab,var(--c-acc),transparent 84%);
+  --info:var(--c-info);
+  --info-soft:color-mix(in oklab,var(--c-info),transparent 91%);
+  --warn:var(--c-warn);
+  --warn-soft:color-mix(in oklab,var(--c-warn),transparent 91%);
+  --warn-edge:color-mix(in oklab,var(--c-warn),transparent 55%);
+  --danger:var(--c-danger);
+  --danger-soft:color-mix(in oklab,var(--c-danger),transparent 91%);
+  --rose:var(--c-danger);
+  --success:var(--c-ok);
+  --ok:var(--c-ok);
+  --mark:var(--c-mark);
+  /* 结界线族（旧 --edge/--edge-hi/--hairline 兼容映射） */
+  --edge:var(--c-line);
+  --edge-hi:var(--c-line2);
+  --hairline:var(--c-line);
+  /* 平面薄板面板（玻璃拟态退役：--glass 变实底派生） */
+  --glass:var(--c-panel);
+  --glass-strong:var(--c-panel);
+  --elev-1:0 1px 0 var(--c-line);
+  --elev-pop:0 14px 34px color-mix(in oklab,var(--c-ink),transparent 84%),0 0 0 1px var(--c-line2);
+  --ring:0 0 0 2px var(--c-bg),0 0 0 4px color-mix(in oklab,var(--c-acc),transparent 25%);
+  --shadow:var(--elev-1);
+  --shadow-hi:var(--elev-pop);
+  --glow-accent:none;
+  --wash-hero:color-mix(in oklab,var(--c-acc),var(--c-bg) 90%);
+  /* LCD 代码板（固定暗色，不随主题翻转） */
   --plate:linear-gradient(165deg,var(--hex-plate-light-a),var(--hex-plate-light-b));
   --plate-text:var(--code-fg); --plate-faint:var(--code-com);
-  --grain:.028;
-  /* mascot --ill-* 族（Light） */
-  --ill-skin:var(--hex-skin-light); --ill-skin-shadow:var(--hex-skin-shadow-light); --ill-hair:var(--hex-hair-light);
-  --ill-glasses:var(--hex-glasses-light); --ill-shirt:var(--hex-shirt-light); --ill-shirt-shadow:var(--hex-shirt-shadow-light);
-  --ill-uniform:var(--seed-primary); --ill-uniform-alt:var(--seed-accent);
-  --ill-device:var(--hex-device-light); --ill-book:color-mix(in oklab,var(--seed-fg),white 10%);
-  --ill-paper:color-mix(in oklab,var(--seed-surface),var(--seed-bg) 40%);
-  --ill-badge:var(--warn); --ill-bubble:color-mix(in oklab,var(--seed-fg),transparent 90%);
-  --ill-line:color-mix(in oklab,var(--seed-fg),transparent 55%);
-  --ill-halo:color-mix(in oklab,var(--seed-primary),transparent 82%);
-  --ill-shadow:color-mix(in oklab,var(--seed-fg),transparent 88%);
-  /* 圆角族 / 字体 */
-  --radius:var(--seed-radius); --radius-sm:calc(var(--seed-radius) - 4px); --radius-lg:calc(var(--seed-radius) + 8px); --radius-pill:999px;
-  --sans:"Segoe UI","Microsoft YaHei UI","Microsoft YaHei","PingFang SC",sans-serif;
-  --disp:Georgia,"Times New Roman",serif;
-  --num:var(--sans);
-  --mono:Consolas,"Cascadia Mono","Courier New",monospace;
-  /* 7 域色相（taxonomy.json 权威 · oklch 派生；旧模板内联的数字 --dh 走 hsl() 兼容层） */
+  /* 纹理（点阵，皮肤可覆写形状/开关） */
+  --texture-on:1;
+  --texture:radial-gradient(color-mix(in oklab,var(--c-ink),transparent 88%) 1px,transparent 1px);
+  --texture-size:22px 22px;
+  --grain:.014;
+  /* 旧 seed 兼容别名（[6]-[15] 组件区大量引用） */
+  --seed-bg:var(--c-bg); --seed-fg:var(--c-ink);
+  --seed-primary:var(--c-acc); --seed-accent:var(--c-info); --seed-surface:var(--c-panel);
+  --seed-radius:var(--rd-card);
+  /* 字体别名（旧引用） */
+  --sans:var(--f-body);
+  --disp:var(--f-disp);
+  --mono:var(--f-mono);
+  --num:var(--f-mono);
+  --font-display-latin:var(--f-disp);
+  /* 7 域色相（taxonomy.json 权威 · oklch 派生） */
   --dh-baike:oklch(58% .10 158); --dh-articles:oklch(58% .10 200); --dh-interview:oklch(58% .10 340);
   --dh-projects:oklch(58% .10 22); --dh-handbook:oklch(58% .10 96); --dh-career:oklch(58% .10 42); --dh-ai:oklch(58% .10 262);
   /* 兼容别名（旧模板 / 旧 JS 内联引用，勿删） */
-  --bg0:var(--seed-bg); --ink:var(--seed-fg);
+  --bg0:var(--c-bg); --ink:var(--c-ink);
+  /* 阅读偏好默认值（kb 排印，[8] 区引用） */
+  --kb-fs-scale:1; --kb-measure:none; --kb-font:var(--f-body); --kb-line:1.75;
 }
-/* [3] 暗色 patch（对齐 v0.4 [data-preview-theme="dark"]） */
+/* [3] 暗色 patch ===== 仪表 Dark ===== */
 html[data-theme="dark"]{
-  --seed-bg:var(--hex-bg-dark); --seed-fg:var(--hex-fg-dark);
-  --seed-primary:var(--hex-primary-dark); --seed-accent:var(--hex-accent-dark); --seed-surface:var(--hex-surface-dark);
-  --warn:var(--hex-warn-dark); --danger:var(--hex-danger-dark); --rose:var(--hex-rose-dark);
+  --c-bg:var(--hex-bg-d); --c-panel:var(--hex-panel-d); --c-sunk:var(--hex-sunk-d);
+  --c-ink:var(--hex-ink-d); --c-line:var(--hex-line-d); --c-line2:var(--hex-line2-d);
+  --c-acc:var(--hex-primary-d); --c-info:var(--hex-info-d); --c-warn:var(--hex-warn-d);
+  --c-danger:var(--hex-danger-d); --c-ok:var(--hex-ok-d); --c-mark:var(--hex-mark-d);
   --plate:linear-gradient(165deg,var(--hex-plate-dark-a),var(--hex-plate-dark-b));
+  /* mascot --ill-*（Dark） */
   --ill-skin:var(--hex-skin-dark); --ill-skin-shadow:var(--hex-skin-shadow-dark); --ill-hair:var(--hex-hair-dark);
   --ill-glasses:var(--hex-glasses-dark); --ill-shirt:var(--hex-shirt-dark); --ill-shirt-shadow:var(--hex-shirt-shadow-dark);
   --ill-device:var(--hex-device-dark); --ill-book:var(--hex-fg-dark); --ill-paper:var(--hex-paper-dark);
   --dh-baike:oklch(70% .14 158); --dh-articles:oklch(70% .14 200); --dh-interview:oklch(70% .14 340);
   --dh-projects:oklch(70% .14 22); --dh-handbook:oklch(70% .14 96); --dh-career:oklch(70% .14 42); --dh-ai:oklch(70% .14 262);
-  --grain:.05;
+  --grain:.028;
+}
+/* Light 态 mascot 种子（旧 [2] 区内联，此处保持等价） */
+:root{
+  --ill-skin:var(--hex-skin-light); --ill-skin-shadow:var(--hex-skin-shadow-light); --ill-hair:var(--hex-hair-light);
+  --ill-glasses:var(--hex-glasses-light); --ill-shirt:var(--hex-shirt-light); --ill-shirt-shadow:var(--hex-shirt-shadow-light);
+  --ill-uniform:var(--c-acc); --ill-uniform-alt:var(--c-info);
+  --ill-device:var(--hex-device-light); --ill-book:color-mix(in oklab,var(--c-ink),white 10%);
+  --ill-paper:color-mix(in oklab,var(--c-panel),var(--c-bg) 40%);
+  --ill-badge:var(--c-warn); --ill-bubble:color-mix(in oklab,var(--c-ink),transparent 90%);
+  --ill-line:color-mix(in oklab,var(--c-ink),transparent 55%);
+  --ill-halo:color-mix(in oklab,var(--c-acc),transparent 82%);
+  --ill-shadow:color-mix(in oklab,var(--c-ink),transparent 88%);
 }
 
 /* [4] 基础 reset / 图标工具 ===== */
 *,*::before,*::after{box-sizing:border-box}
 *{margin:0;padding:0}
 html,body{height:100%}
-::selection{background:color-mix(in oklab,var(--acc),transparent 75%)}
+::selection{background:color-mix(in oklab,var(--c-acc),transparent 75%)}
 ::-webkit-scrollbar{width:9px;height:9px}
 ::-webkit-scrollbar-thumb{background:var(--edge-hi);border-radius:8px}
 ::-webkit-scrollbar-track{background:transparent}
-body{font:var(--fs-body)/1.75 var(--sans);color:var(--seed-fg);background:var(--seed-bg);
-  overflow:hidden;display:flex;flex-direction:column;transition:background .4s,color .4s;-webkit-font-smoothing:antialiased}
+body{font:var(--fs-14)/1.7 var(--f-body);color:var(--c-ink);background:var(--c-bg);
+  overflow:hidden;display:flex;flex-direction:column;transition:background var(--dur-2),color var(--dur-2);-webkit-font-smoothing:antialiased;
+  font-variant-numeric:tabular-nums}
 a{color:inherit;text-decoration:none}
 button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer}
 svg{display:block}
-/* 兜底：未显式指定尺寸的内联 <svg>（图标 <use> 载体）不得按替换元素默认 300×150 渲染，
-   否则在页面级样式表尚未生效的首帧（FOUC）会放出"所有图标都巨大"的错误画面。
-   用 :where() 把特异度压到元素级（0,0,1），任何自带的 svg 尺寸规则（.x svg）都能覆盖它；
-   排除 [width] / [class] / [style]，避免误伤图表、插画（mascot）与精灵表容器。 */
 svg:where(:not([width]):not([class]):not([style])){width:16px;height:16px}
-code,kbd,.mono{font-family:var(--mono)}
-h1,h2,h3,h4{font-family:var(--disp);font-weight:600;letter-spacing:-.01em}
-:focus-visible{outline:3px solid color-mix(in oklab,var(--acc),transparent 20%);outline-offset:2px;border-radius:4px}
+code,kbd,.mono{font-family:var(--f-mono)}
+h1,h2,h3,h4{font-family:var(--f-disp);font-weight:600;letter-spacing:.01em;font-style:normal}
+:focus-visible{outline:none;box-shadow:var(--ring);border-radius:var(--rd-ctl)}
 .i{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;display:inline-block;vertical-align:-2px;flex:none}
 .i-10{width:10px;height:10px;stroke-width:2}.i-11{width:11px;height:11px}
 .i-12{width:12px;height:12px;stroke-width:1.9}.i-14{width:14px;height:14px}
@@ -133,25 +226,14 @@ h1,h2,h3,h4{font-family:var(--disp);font-weight:600;letter-spacing:-.01em}
 .i-hue{color:var(--dh,var(--acc))}
 .i-spin{animation:spin 1.6s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
-.mono-sm{font:500 10.5px/1 var(--mono);color:var(--faint);letter-spacing:.02em;font-variant-numeric:tabular-nums}
+.mono-sm{font:500 10.5px/1 var(--f-mono);color:var(--faint);letter-spacing:.02em;font-variant-numeric:tabular-nums}
 .dsp-fc{display:inline-flex;align-items:center;gap:6px}
 .dsp-fc4{display:inline-flex;align-items:center;gap:4px}
 
-/* [5] aurora + grain 背景（保留旧结构，色值全部 token 化） ===== */
-.aurora{position:fixed;inset:0;z-index:0;overflow:hidden;pointer-events:none}
-.aurora::before{content:"";position:absolute;inset:0;background:
-  radial-gradient(52% 42% at 12% 8%,color-mix(in oklab,var(--seed-primary),transparent 88%),transparent 62%),
-  radial-gradient(46% 40% at 88% 14%,color-mix(in oklab,var(--seed-accent),transparent 90%),transparent 60%),
-  radial-gradient(60% 52% at 74% 92%,color-mix(in oklab,var(--warn),transparent 94%),transparent 64%),
-  radial-gradient(42% 36% at 32% 86%,color-mix(in oklab,var(--seed-primary),transparent 91%),transparent 62%),
-  var(--seed-bg)}
-.blob{position:absolute;border-radius:50%;filter:blur(90px);opacity:.55;mix-blend-mode:multiply}
-html[data-theme="dark"] .blob{mix-blend-mode:screen;opacity:.5}
-.b1{width:46vw;height:30vh;left:-8vw;top:-6vh;background:radial-gradient(closest-side,color-mix(in oklab,var(--seed-primary),transparent 70%),transparent);animation:drift1 26s ease-in-out infinite alternate}
-.b2{width:40vw;height:34vh;right:-6vw;top:8vh;background:radial-gradient(closest-side,color-mix(in oklab,var(--seed-accent),transparent 78%),transparent);animation:drift2 32s ease-in-out infinite alternate}
-.b3{width:34vw;height:26vh;left:30vw;bottom:-10vh;background:radial-gradient(closest-side,color-mix(in oklab,var(--warn),transparent 86%),transparent);animation:drift1 38s ease-in-out infinite alternate-reverse}
-@keyframes drift1{to{transform:translate(7vw,4vh) scale(1.12)}}
-@keyframes drift2{to{transform:translate(-6vw,6vh) scale(.92)}}
+/* [5] 背景层 ===== aurora/grain 退役为平面薄板（DOM 保留，视觉归零）===== */
+.aurora{position:fixed;inset:0;z-index:0;overflow:hidden;pointer-events:none;background:var(--c-bg)}
+.aurora::before{content:none}
+.blob{display:none}
 .grain{position:fixed;inset:0;z-index:1;pointer-events:none;opacity:var(--grain);
   background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='.6'/%3E%3C/svg%3E")}
 
@@ -160,9 +242,9 @@ header{position:relative;z-index:7;height:56px;flex:none;display:flex;align-item
   border-bottom:1px solid var(--edge);background:var(--glass);backdrop-filter:blur(18px) saturate(1.1);transition:background .4s}
 .brand{display:inline-flex;align-items:center;gap:7px;user-select:none}
 .brand .brand-mark{width:20px;height:20px;color:var(--acc)}
-.brand .zh{font-family:var(--disp);font-weight:700;font-size:19px;letter-spacing:.06em;color:var(--acc)}
-html[data-theme="dark"] .brand .zh{background:linear-gradient(92deg,var(--brand-glow-a),var(--brand-glow-b) 45%,var(--brand-glow-c));-webkit-background-clip:text;background-clip:text;color:transparent}
-.brand .en{font-family:var(--disp);font-style:italic;font-weight:400;font-size:13px;color:var(--muted);letter-spacing:.04em}
+.brand .zh{font-family:var(--f-disp);font-weight:700;font-size:19px;letter-spacing:.06em;color:var(--acc)}
+html[data-theme="dark"] .brand .zh{color:var(--hex-primary-d)}
+.brand .en{font-family:var(--f-mono);font-style:normal;font-weight:400;font-size:11px;color:var(--faint);letter-spacing:.14em;text-transform:uppercase}
 .brand .tag{font-family:var(--mono);font-size:9.5px;letter-spacing:.16em;color:var(--acc);border:1px solid var(--acc-edge);border-radius:4px;padding:2px 7px}
 .searchbox{margin:0 auto;display:flex;align-items:center;gap:9px;height:34px;padding:0 12px;width:min(520px,42%);
   border-radius:var(--radius);border:1px solid var(--edge);background:color-mix(in oklab,var(--seed-surface),transparent 55%);
@@ -366,12 +448,12 @@ html[data-theme="dark"] .chip{background:color-mix(in oklab,var(--seed-surface),
 .a-body a{color:var(--acc);border-bottom:1px solid var(--acc-edge);transition:border-color .15s,background .15s}
 .a-body a:hover{border-bottom-color:var(--acc);background:var(--acc-soft)}
 .a-body strong{color:var(--acc);font-weight:700}
-.a-body em{color:var(--warn);font-style:italic}
+.a-body em{color:var(--warn);font-weight:600;font-style:normal}
 .a-body del{color:var(--faint)}
 .a-body blockquote{margin:16px 0;padding:13px 18px;border-left:3px solid var(--acc);border-radius:0 var(--radius-sm) var(--radius-sm) 0;
   background:var(--acc-soft);color:var(--muted);transition:color .3s}
 .a-body blockquote:hover{color:var(--seed-fg)}
-/* 引用变体（enhanceArticleDOM 按首行 💡/⚠️ 约定加类，语料不用改） */
+/* 引用变体（enhanceArticleDOM 按首行标记约定加类，语料不用改） */
 .a-body blockquote.tip{border-left-color:var(--acc2);background:color-mix(in oklab,var(--acc2),transparent 92%)}
 .a-body blockquote.warn{border-left-color:var(--warn);background:color-mix(in oklab,var(--warn),transparent 92%)}
 .a-body code{font-family:var(--mono);font-size:.85em;color:var(--acc);background:var(--acc-soft);border:1px solid var(--acc-edge);border-radius:4px;padding:1px 5px}
@@ -681,7 +763,7 @@ html[data-theme="dark"] .mv-tree{background:color-mix(in oklab,var(--seed-surfac
   border-radius:9px;padding:10px 12px;background:var(--acc-soft);min-height:38px;line-height:1.7}
 .mv-dst-dir{color:var(--muted)}
 .mv-dst-file{color:var(--acc);font-weight:700}
-.mv-dst-empty{color:var(--faint);font-style:italic}
+.mv-dst-empty{color:var(--faint);font-style:normal}
 .mv-dst.mv-dst-same{color:var(--faint);border-color:var(--edge);background:transparent}
 .mv-dst.mv-dst-same .mv-dst-file{color:var(--faint)}
 .mv-hint{font-size:11px;line-height:1.7;color:var(--faint);margin-top:auto;padding-top:10px}
@@ -921,3 +1003,8 @@ html.motion-ready .hero-mask[data-in="true"]{clip-path:inset(0 0 0 0)}
   .kb-ring{width:88px;height:88px}
   .kb-ring-txt b{font-size:18px}
 }
+
+/* [17] 全局纹理层（皮肤性格参数：--texture / --texture-size / --texture-on） ===== */
+body::after{content:"";position:fixed;inset:0;z-index:1;pointer-events:none;
+  opacity:calc(var(--texture-on) * .5);
+  background-image:var(--texture);background-size:var(--texture-size)}

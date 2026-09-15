@@ -15,7 +15,7 @@ html[data-theme="dark"] .tag-edit{background:color-mix(in oklab,var(--seed-surfa
   transition:background .15s,border-color .15s}
 .tag-edit-addbtn:hover{background:var(--acc-edge)}
 .tag-chips{display:flex;flex-wrap:wrap;gap:7px}
-.tag-chips .tag-empty{font-size:12px;color:var(--faint);font-style:italic;padding:2px 0}
+.tag-chips .tag-empty{font-size:12px;color:var(--faint);font-style:normal;padding:2px 0}
 .tagchip{display:inline-flex;align-items:center;gap:5px;max-width:100%;
   border:1px solid var(--acc-edge);background:var(--acc-soft);color:var(--acc);
   font:500 11.5px/1 var(--mono);padding:5px 6px 5px 11px;border-radius:999px}

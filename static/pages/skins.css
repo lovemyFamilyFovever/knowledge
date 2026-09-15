@@ -1,50 +1,73 @@
 /* ============================================================
-   skins.css —— 任务8：5 版整体 UI 风格（皮肤层）
-   机制：html[data-skin="xxx"] 覆写 token 定义区的 seed hex；
-   深浅色由既有 data-theme 继续（每套皮肤自动适配明暗两态）。
-   切换：applySkin()（app.js）写 localStorage['kb-skin']。
+   skins.css v1.0-INSTRUMENT · 阶段1
+   机制：html[data-skin] 覆写 [2] 区角色令牌（--hex-bg/--hex-ink/...）。
+   raw hex 全部上收 style.css [2] 皮肤档案（--sk-*）；本文件只写 var() 映射。
+   旧 5 皮肤（ink/midnight/forest/rose/graphite）沿用各自 legacy 种子
+   （--hex-*-light/dark，仍保留在 [2]）重映射进新体系，保证切换不失效。
+   基准「仪表 instrument」= 新 [2] 默认值，无需覆写。
+   阶段6：六套升级性格层（圆角/纹理/字距）+ 新皮肤接入切换器。
    ============================================================ */
 
-/* ---- Skin 1 · 默认「青瓷」(celadon)：现状配色，作为基准不覆写 ---- */
+/* ---- 仪表（celadon 槽位，= 基准，无覆写） ---- */
 
-/* ---- Skin 2 · 墨韵（ink）：宣纸底 + 墨色 + 朱砂点缀，文人书斋 ---- */
+/* ---- 墨韵（ink）：legacy 种子重映射 ---- */
 html[data-skin="ink"]{
-  --hex-bg-light:#f7f4ec; --hex-fg-light:#2b2a26;
-  --hex-primary-light:#8c3a2e; --hex-accent-light:#3d5a80; --hex-surface-light:#fffdf8;
-  --hex-bg-dark:#14120e; --hex-fg-dark:#e8e2d4;
-  --hex-primary-dark:#e07a5f; --hex-accent-dark:#7fa8c9; --hex-surface-dark:#1e1b16;
+  --hex-bg:var(--hex-bg-light); --hex-panel:var(--hex-surface-light); --hex-sunk:color-mix(in oklab,var(--hex-bg-light),var(--hex-fg-light) 5%);
+  --hex-ink:var(--hex-fg-light); --hex-line:color-mix(in oklab,var(--hex-fg-light),var(--hex-bg-light) 82%); --hex-line2:color-mix(in oklab,var(--hex-fg-light),var(--hex-bg-light) 62%);
+  --hex-primary:var(--hex-primary-light); --hex-info:var(--hex-accent-light); --hex-warn:var(--hex-warn-light); --hex-danger:var(--hex-danger-light);
+}
+html[data-skin="ink"][data-theme="dark"]{
+  --hex-bg-d:var(--hex-bg-dark); --hex-panel-d:var(--hex-surface-dark); --hex-sunk-d:color-mix(in oklab,var(--hex-bg-dark),black 30%);
+  --hex-ink-d:var(--hex-fg-dark); --hex-line-d:color-mix(in oklab,var(--hex-fg-dark),var(--hex-bg-dark) 80%); --hex-line2-d:color-mix(in oklab,var(--hex-fg-dark),var(--hex-bg-dark) 60%);
+  --hex-primary-d:var(--hex-primary-dark); --hex-info-d:var(--hex-accent-dark); --hex-warn-d:var(--hex-warn-dark); --hex-danger-d:var(--hex-danger-dark);
 }
 
-/* ---- Skin 3 · 午夜蓝（midnight）：深蓝底 + 冰蓝强调，工程仪表感 ---- */
+/* ---- 午夜蓝（midnight）：legacy 种子重映射 ---- */
 html[data-skin="midnight"]{
-  --hex-bg-light:#eef2f7; --hex-fg-light:#1c2733;
-  --hex-primary-light:#2563eb; --hex-accent-light:#0891b2; --hex-surface-light:#ffffff;
-  --hex-bg-dark:#0b1220; --hex-fg-dark:#dbe6f4;
-  --hex-primary-dark:#60a5fa; --hex-accent-dark:#22d3ee; --hex-surface-dark:#111a2e;
+  --hex-bg:var(--hex-bg-light); --hex-panel:var(--hex-surface-light); --hex-sunk:color-mix(in oklab,var(--hex-bg-light),var(--hex-fg-light) 5%);
+  --hex-ink:var(--hex-fg-light); --hex-line:color-mix(in oklab,var(--hex-fg-light),var(--hex-bg-light) 82%); --hex-line2:color-mix(in oklab,var(--hex-fg-light),var(--hex-bg-light) 62%);
+  --hex-primary:var(--hex-primary-light); --hex-info:var(--hex-accent-light); --hex-warn:var(--hex-warn-light); --hex-danger:var(--hex-danger-light);
+}
+html[data-skin="midnight"][data-theme="dark"]{
+  --hex-bg-d:var(--hex-bg-dark); --hex-panel-d:var(--hex-surface-dark); --hex-sunk-d:color-mix(in oklab,var(--hex-bg-dark),black 30%);
+  --hex-ink-d:var(--hex-fg-dark); --hex-line-d:color-mix(in oklab,var(--hex-fg-dark),var(--hex-bg-dark) 80%); --hex-line2-d:color-mix(in oklab,var(--hex-fg-dark),var(--hex-bg-dark) 60%);
+  --hex-primary-d:var(--hex-primary-dark); --hex-info-d:var(--hex-accent-dark); --hex-warn-d:var(--hex-warn-dark); --hex-danger-d:var(--hex-danger-dark);
 }
 
-/* ---- Skin 4 · 森绿（forest）：暖米底 + 苔绿 + 菌菇棕，自然沉稳 ---- */
+/* ---- 森绿（forest）：legacy 种子重映射 ---- */
 html[data-skin="forest"]{
-  --hex-bg-light:#f4f2e9; --hex-fg-light:#26302a;
-  --hex-primary-light:#4a7c59; --hex-accent-light:#b0713a; --hex-surface-light:#fdfcf7;
-  --hex-bg-dark:#101511; --hex-fg-dark:#e0e6dc;
-  --hex-primary-dark:#7fb88a; --hex-accent-dark:#d9a05b; --hex-surface-dark:#1a221c;
+  --hex-bg:var(--hex-bg-light); --hex-panel:var(--hex-surface-light); --hex-sunk:color-mix(in oklab,var(--hex-bg-light),var(--hex-fg-light) 5%);
+  --hex-ink:var(--hex-fg-light); --hex-line:color-mix(in oklab,var(--hex-fg-light),var(--hex-bg-light) 82%); --hex-line2:color-mix(in oklab,var(--hex-fg-light),var(--hex-bg-light) 62%);
+  --hex-primary:var(--hex-primary-light); --hex-info:var(--hex-accent-light); --hex-warn:var(--hex-warn-light); --hex-danger:var(--hex-danger-light);
+}
+html[data-skin="forest"][data-theme="dark"]{
+  --hex-bg-d:var(--hex-bg-dark); --hex-panel-d:var(--hex-surface-dark); --hex-sunk-d:color-mix(in oklab,var(--hex-bg-dark),black 30%);
+  --hex-ink-d:var(--hex-fg-dark); --hex-line-d:color-mix(in oklab,var(--hex-fg-dark),var(--hex-bg-dark) 80%); --hex-line2-d:color-mix(in oklab,var(--hex-fg-dark),var(--hex-bg-dark) 60%);
+  --hex-primary-d:var(--hex-primary-dark); --hex-info-d:var(--hex-accent-dark); --hex-warn-d:var(--hex-warn-dark); --hex-danger-d:var(--hex-danger-dark);
 }
 
-/* ---- Skin 5 · 暮色玫瑰（rose）：冷灰底 + 玫瑰金 + 紫藤，杂志感 ---- */
+/* ---- 暮色玫瑰（rose）：legacy 种子重映射 ---- */
 html[data-skin="rose"]{
-  --hex-bg-light:#f6f2f3; --hex-fg-light:#322830;
-  --hex-primary-light:#a34a5e; --hex-accent-light:#7069a8; --hex-surface-light:#fffefe;
-  --hex-bg-dark:#171114; --hex-fg-dark:#f0e4e8;
-  --hex-primary-dark:#e88ca0; --hex-accent-dark:#a79ce0; --hex-surface-dark:#221a1e;
+  --hex-bg:var(--hex-bg-light); --hex-panel:var(--hex-surface-light); --hex-sunk:color-mix(in oklab,var(--hex-bg-light),var(--hex-fg-light) 5%);
+  --hex-ink:var(--hex-fg-light); --hex-line:color-mix(in oklab,var(--hex-fg-light),var(--hex-bg-light) 82%); --hex-line2:color-mix(in oklab,var(--hex-fg-light),var(--hex-bg-light) 62%);
+  --hex-primary:var(--hex-primary-light); --hex-info:var(--hex-accent-light); --hex-warn:var(--hex-warn-light); --hex-danger:var(--hex-danger-light);
+}
+html[data-skin="rose"][data-theme="dark"]{
+  --hex-bg-d:var(--hex-bg-dark); --hex-panel-d:var(--hex-surface-dark); --hex-sunk-d:color-mix(in oklab,var(--hex-bg-dark),black 30%);
+  --hex-ink-d:var(--hex-fg-dark); --hex-line-d:color-mix(in oklab,var(--hex-fg-dark),var(--hex-bg-dark) 80%); --hex-line2-d:color-mix(in oklab,var(--hex-fg-dark),var(--hex-bg-dark) 60%);
+  --hex-primary-d:var(--hex-primary-dark); --hex-info-d:var(--hex-accent-dark); --hex-warn-d:var(--hex-warn-dark); --hex-danger-d:var(--hex-danger-dark);
 }
 
-/* ---- Skin 6 · 石墨（graphite）：纯净中性灰 + 单一强调橙，零装饰 ---- */
+/* ---- 石墨（graphite）：legacy 种子重映射 ---- */
 html[data-skin="graphite"]{
-  --hex-bg-light:#f5f5f4; --hex-fg-light:#1c1c1a;
-  --hex-primary-light:#1c1c1a; --hex-accent-light:#c2410c; --hex-surface-light:#ffffff;
-  --hex-bg-dark:#0f0f0e; --hex-fg-dark:#e8e8e5;
-  --hex-primary-dark:#f5f5f4; --hex-accent-dark:#fb923c; --hex-surface-dark:#1b1b19;
+  --hex-bg:var(--hex-bg-light); --hex-panel:var(--hex-surface-light); --hex-sunk:color-mix(in oklab,var(--hex-bg-light),var(--hex-fg-light) 5%);
+  --hex-ink:var(--hex-fg-light); --hex-line:color-mix(in oklab,var(--hex-fg-light),var(--hex-bg-light) 82%); --hex-line2:color-mix(in oklab,var(--hex-fg-light),var(--hex-bg-light) 62%);
+  --hex-primary:var(--hex-primary-light); --hex-info:var(--hex-accent-light); --hex-warn:var(--hex-warn-light); --hex-danger:var(--hex-danger-light);
+}
+html[data-skin="graphite"][data-theme="dark"]{
+  --hex-bg-d:var(--hex-bg-dark); --hex-panel-d:var(--hex-surface-dark); --hex-sunk-d:color-mix(in oklab,var(--hex-bg-dark),black 30%);
+  --hex-ink-d:var(--hex-fg-dark); --hex-line-d:color-mix(in oklab,var(--hex-fg-dark),var(--hex-bg-dark) 80%); --hex-line2-d:color-mix(in oklab,var(--hex-fg-dark),var(--hex-bg-dark) 60%);
+  --hex-primary-d:var(--hex-primary-dark); --hex-info-d:var(--hex-accent-dark); --hex-warn-d:var(--hex-warn-dark); --hex-danger-d:var(--hex-danger-dark);
 }
 
 /* ---- 皮肤切换弹层（顶栏油滴/调色按钮触发） ---- */
