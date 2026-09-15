@@ -269,6 +269,11 @@ header{position:relative;z-index:7;height:56px;flex:none;display:flex;align-item
 .pill.danger{border-color:color-mix(in oklab,var(--c-danger),transparent 55%);color:var(--c-danger)}
 .pill.danger .n{background:color-mix(in oklab,var(--c-danger),transparent 88%);color:var(--c-danger)}
 #theme-btn{width:30px;justify-content:center;padding:0}
+/* L1 触发器观感（阶段5 STEP1）：引擎能力文案 + 键帽；行为仍走原输入框 */
+.searchbox .sb-eng{flex:none;font:500 10px/1 var(--f-mono);letter-spacing:.06em;color:var(--faint);
+  border-left:1px solid var(--c-line);padding-left:9px;white-space:nowrap}
+@media (max-width:1280px){.searchbox .sb-eng{display:none}}
+
 
 /* [7] 布局与面板（三栏骨架不动；面板 = 平面薄板 + 1px 硬边投影） ===== */
 main{position:relative;z-index:4;flex:1;display:grid;grid-template-columns:280px minmax(0,1fr) 264px;

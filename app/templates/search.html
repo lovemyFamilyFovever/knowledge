@@ -29,8 +29,14 @@
         <span class="srch-meta mono-sm">{% if results %}共 {{ results|length }} 条{% endif %}</span>
       </div>
 
-      {# ===== 需求11：分面 chips + 精确命中（由 pages/search.js 调 /api/search 渲染） ===== #}
-      <div class="kb-srch-facets" id="kb-facets"></div>
+      {# ===== 需求11：分面 chips + 精确命中（由 pages/search.js 调 /api/search 渲染） =====
+          阶段5 L3 三栏：左分面（kb-facets 就位）/ 中列表（exact+hits）/ 右预览（占位） #}
+      <div class="srch-grid">
+      <aside class="srch-facet-col srch-facet-box" aria-label="分面筛选">
+        <span class="f-cap">查询</span>
+        <div class="kb-srch-facets" id="kb-facets"></div>
+      </aside>
+      <div class="srch-main-col">
       <div class="kb-srch-exact" id="kb-exact"></div>
       <div class="kb-srch-hits" id="kb-hits">
 
@@ -78,6 +84,14 @@
           </a>
           {% endfor %}
         </div>
+      </div>
+      </div>
+      <aside class="srch-preview-col" aria-label="结果预览">
+        <div class="srch-preview-box">
+          <div class="pv-t">预览</div>
+          掌握度 / 复习次数 / 双链健康 / 命中分布 —— 数据源待 STEP 0 报告批准后接线。
+        </div>
+      </aside>
       </div>
 
       {% else %}

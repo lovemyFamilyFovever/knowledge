@@ -11,6 +11,7 @@
 <link rel="stylesheet" href="/static/hljs-github-dark.min.css?v={{ av('hljs-github-dark.min.css') }}">
 <script>window.LABELS={{ LABELS|tojson }};window.HUES={{ HUES|tojson }};window.SUB_LABELS={{ SUB_LABELS|tojson }};window.SOURCE_LABELS={{ SOURCE_LABELS|tojson }};</script>
 <link rel="stylesheet" href="/static/kb-core.css?v={{ av('kb-core.css') }}">
+<link rel="stylesheet" href="/static/pages/searchoverlay.css?v={{ av('pages/searchoverlay.css') }}">
 <link rel="stylesheet" href="/static/pages/searchdrop.css?v={{ av('pages/searchdrop.css') }}">
 <link rel="stylesheet" href="/static/pages/skins.css?v={{ av('pages/skins.css') }}">
 <script src="/static/kb-core.js?v={{ av('kb-core.js') }}" defer></script>
@@ -217,9 +218,10 @@
     <a class="tn tn-act {{ 'on' if p.startswith('/favorites') }}" href="/favorites" title="收藏"><svg class="i i-13"><use href="#i-favorite-heart"/></svg>收藏</a>
     <a class="tn tn-act {{ 'on' if p.startswith('/tags') }}" href="/tags" title="标签管理"><svg class="i i-13"><use href="#i-tag-outline"/></svg>标签</a>
   </nav>
-  <div class="searchbox" id="searchbox">
+  <div class="searchbox" id="searchbox" role="search">
     <svg class="i i-14" aria-hidden="true"><use href="#i-search-magnifier"/></svg>
-    <input id="q" placeholder="全文检索，? 前缀走语义…" autocomplete="off" value="{{ q|default('') }}">
+    <input id="q" placeholder="检索，? 前缀走语义…" autocomplete="off" value="{{ q|default('') }}">
+    <span class="sb-eng" aria-hidden="true">全文 / 语义 / 标签</span>
     <kbd>/</kbd>
   </div>
   <div class="top-right">
@@ -243,6 +245,49 @@
 <div id="toast"></div>
 {# 命令面板 / 阅读偏好面板容器（kb-core.js 在首次打开时注入内部结构） #}
 <div id="kb-palette"></div>
+<div class="kb-search-ov" id="kb-search-ov" hidden>
+  <div class="kb-search-box" role="dialog" aria-label="就地搜索">
+    <div class="kb-search-head">
+      <svg class="i" aria-hidden="true"><use href="#i-search-magnifier"/></svg>
+      <input id="kb-so-q" placeholder="检索正文 / 标签 / 术语…（? 前缀走语义）" autocomplete="off" spellcheck="false" aria-label="搜索词">
+      <kbd>Esc</kbd>
+    </div>
+    <div class="kb-search-engines" role="tablist" aria-label="检索引擎">
+      <span class="eng-cap">ENGINE</span>
+      <button type="button" class="kb-eng-chip on" data-eng="hybrid" aria-pressed="true">混合 Hybrid</button>
+      <button type="button" class="kb-eng-chip" data-eng="fts" aria-pressed="false">全文 FTS5</button>
+      <button type="button" class="kb-eng-chip" data-eng="semantic" aria-pressed="false">语义 RAG</button>
+      <button type="button" class="kb-eng-chip" data-eng="tags" aria-pressed="false">标签</button>
+      <span class="kb-sr-todo" title="引擎参数接线属 STEP 0 待批项">…</span>
+    </div>
+    <div class="kb-search-scopes" aria-label="范围筛选">
+      <span class="eng-cap" style="margin-right:2px">SCOPE</span>
+      <button type="button" class="kb-scope-chip on" data-scope="">全部域</button>
+      <button type="button" class="kb-scope-chip" data-scope="baike"><span class="dh" style="--dh:var(--dh-baike)"></span>百科</button>
+      <button type="button" class="kb-scope-chip" data-scope="articles"><span class="dh" style="--dh:var(--dh-articles)"></span>文章</button>
+      <button type="button" class="kb-scope-chip" data-scope="interview"><span class="dh" style="--dh:var(--dh-interview)"></span>面试</button>
+      <button type="button" class="kb-scope-chip" data-scope="projects"><span class="dh" style="--dh:var(--dh-projects)"></span>项目</button>
+      <button type="button" class="kb-scope-chip" data-scope="handbook"><span class="dh" style="--dh:var(--dh-handbook)"></span>手册</button>
+      <button type="button" class="kb-scope-chip" data-scope="career"><span class="dh" style="--dh:var(--dh-career)"></span>职场</button>
+      <button type="button" class="kb-scope-chip" data-scope="ai"><span class="dh" style="--dh:var(--dh-ai)"></span>AI 资产</button>
+      <button type="button" class="kb-scope-chip" data-scope="fav">仅收藏</button>
+      <button type="button" class="kb-scope-chip" data-scope="unmastered">仅未掌握</button>
+    </div>
+    <div class="kb-search-body" id="kb-so-body">
+      <div class="kb-sr-group">最近查询<span class="n">本地</span></div>
+      <div class="kb-sr-todo" style="font:400 12px/1.7 var(--f-body);color:var(--faint);padding:6px 2px">
+        结果渲染待接线（STEP 0 报告已交，等引擎参数与浮层开关授权）。
+      </div>
+    </div>
+    <div class="kb-search-foot">
+      <span class="kbd-hint"><kbd>↑↓</kbd>选择</span>
+      <span class="kbd-hint"><kbd>Enter</kbd>打开</span>
+      <span class="kbd-hint"><kbd>F2</kbd>/<kbd>F3</kbd>切引擎</span>
+      <span class="kbd-hint"><kbd>Shift+Enter</kbd>结果页</span>
+      <span class="eng-stat" id="kb-so-stat">— · 待接线</span>
+    </div>
+  </div>
+</div>
 {% block scripts %}{% endblock %}
 </body>
 </html>

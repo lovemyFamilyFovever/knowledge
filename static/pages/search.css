@@ -129,3 +129,24 @@
   .kb-facet{min-height:44px;padding:0 14px;font-size:12.5px}
   .kb-facet-t{width:100%}
 }
+
+/* [L3] 三栏重排（阶段5 STEP1）：左分面 / 中结果 / 右预览。
+   #kb-facets #kb-exact #kb-hits 渲染容器原样保留（search.js 契约），
+   仅外层布局从单列改三栏；右预览为占位（数据源待 STEP 0 批准）。 */
+.srch-grid{display:grid;grid-template-columns:210px minmax(0,1fr) 240px;gap:14px;align-items:start}
+.srch-facet-col{position:sticky;top:8px;display:flex;flex-direction:column;gap:10px}
+.srch-facet-box{border:1px solid var(--c-line);border-radius:var(--rd-card);background:var(--c-panel);box-shadow:var(--elev-1);padding:11px 12px}
+.srch-facet-box .f-cap{font:600 10px/1 var(--f-mono);letter-spacing:.14em;text-transform:uppercase;color:var(--faint);margin-bottom:8px;display:block}
+.srch-facet-box .kb-tag{display:inline-flex;margin:0 4px 4px 0}
+.srch-main-col{min-width:0}
+.srch-preview-col{position:sticky;top:8px}
+.srch-preview-box{border:1px dashed var(--c-line2);border-radius:var(--rd-card);padding:14px;color:var(--faint);font-size:12px;line-height:1.7;background:color-mix(in oklab,var(--c-sunk),transparent 55%)}
+.srch-preview-box .pv-t{font:600 10px/1 var(--f-mono);letter-spacing:.14em;text-transform:uppercase;margin-bottom:8px;color:var(--muted)}
+@media (max-width:1280px){
+  .srch-grid{grid-template-columns:190px minmax(0,1fr)}
+  .srch-preview-col{display:none}
+}
+@media (max-width:860px){
+  .srch-grid{grid-template-columns:minmax(0,1fr)}
+  .srch-facet-col{position:static;flex-direction:row;flex-wrap:wrap}
+}

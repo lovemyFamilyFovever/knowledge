@@ -1,0 +1,52 @@
+/* =====================================================================
+   知库 · searchoverlay.css（阶段5 STEP1 · L2 就地搜索浮层壳）
+   状态：样式与壳已就位；渲染接线（openSearchOverlay/结果填充）属 STEP 0 待批项，
+        本壳的打开态由测试 preJs 注入 .show 验证，非产品行为。
+   范式：复用阶段2 .kb-ov/.kb-pop 浮层语言（遮罩 72% ink / drop 落款 / elev-pop）。
+   规则：颜色全走 var()/color-mix；零 hex 零 emoji 零外链。
+   ===================================================================== */
+.kb-search-ov{position:fixed;inset:0;z-index:var(--z-modal,80);display:none;align-items:flex-start;justify-content:center;
+  padding:9vh 16px 16px;background:color-mix(in oklab,var(--c-ink),transparent 72%);
+  animation:kbDrop var(--dur-1) var(--ease-out)}
+.kb-search-ov.show{display:flex}
+.kb-search-box{width:min(760px,100%);max-height:80vh;display:flex;flex-direction:column;
+  background:var(--c-panel);border:1px solid var(--c-line2);border-radius:var(--rd-card);
+  box-shadow:var(--elev-pop);overflow:hidden;animation:kbDrop var(--dur-2) var(--ease-out)}
+.kb-search-head{flex:none;display:flex;align-items:center;gap:10px;height:52px;padding:0 16px;border-bottom:1px solid var(--c-line)}
+.kb-search-head .i{color:var(--c-acc)}
+.kb-search-head input{flex:1;min-width:0;border:none;background:none;outline:none;color:var(--c-ink);
+  font:400 16px/1.4 var(--f-body)}
+.kb-search-head input::placeholder{color:var(--faint)}
+.kb-search-head kbd{font:600 10px/1 var(--f-mono);color:var(--faint);border:1px solid var(--c-line);border-radius:var(--rd-ctl);padding:3px 6px;background:var(--c-sunk)}
+.kb-search-engines{flex:none;display:flex;align-items:center;gap:6px;padding:9px 16px;border-bottom:1px solid var(--c-line);background:var(--c-sunk)}
+.kb-search-engines .eng-cap{font:600 10px/1 var(--f-mono);letter-spacing:.16em;color:var(--faint)}
+.kb-eng-chip{font:500 10.5px/1 var(--f-mono);letter-spacing:.04em;padding:5px 10px;border-radius:var(--rd-ctl);
+  border:1px solid var(--c-line);background:var(--c-panel);color:var(--muted);cursor:pointer}
+.kb-eng-chip:hover{color:var(--c-ink);border-color:var(--c-line2);background:var(--c-sunk)}
+.kb-eng-chip.on{color:var(--c-acc);border-color:var(--acc-line);background:var(--acc-soft);box-shadow:inset 0 -2px 0 var(--c-acc)}
+.kb-eng-chip[data-eng="semantic"].on{color:var(--c-info);border-color:color-mix(in oklab,var(--c-info),transparent 55%);box-shadow:inset 0 -2px 0 var(--c-info)}
+.kb-search-scopes{flex:none;display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding:9px 16px;border-bottom:1px solid var(--c-line)}
+.kb-scope-chip{display:inline-flex;align-items:center;gap:5px;font:500 10px/1 var(--f-mono);letter-spacing:.04em;
+  padding:5px 9px;border-radius:var(--rd-ctl);border:1px solid var(--c-line);background:var(--c-panel);color:var(--muted);cursor:pointer}
+.kb-scope-chip .dh{width:7px;height:7px;border-radius:1px;background:var(--dh,var(--c-acc))}
+.kb-scope-chip:hover{color:var(--c-ink);border-color:var(--c-line2);background:var(--c-sunk)}
+.kb-scope-chip.on{color:var(--c-acc);border-color:var(--acc-line);background:var(--acc-soft)}
+.kb-search-body{flex:1;min-height:120px;overflow-y:auto;padding:10px 16px}
+.kb-search-foot{flex:none;display:flex;align-items:center;gap:12px;padding:9px 16px;border-top:1px solid var(--c-line);
+  background:var(--c-sunk);font:500 10.5px/1 var(--f-mono);color:var(--faint)}
+.kb-search-foot .kbd-hint{display:inline-flex;align-items:center;gap:4px}
+.kb-search-foot .kbd-hint kbd{font:600 9.5px/1 var(--f-mono);color:var(--faint);border:1px solid var(--c-line);border-radius:var(--rd-ctl);padding:2px 5px;background:var(--c-panel)}
+.kb-search-foot .eng-stat{margin-left:auto;font-variant-numeric:tabular-nums}
+/* 结果条（壳内样式预置；数据填充待接线） */
+.kb-sr{display:flex;flex-direction:column;gap:3px;padding:10px 12px;border-radius:var(--rd-card);border:1px solid var(--c-line);background:var(--c-panel);margin-bottom:8px}
+.kb-sr:hover{border-color:var(--c-line2);background:var(--c-sunk)}
+.kb-sr .sr-top{display:flex;align-items:center;gap:8px;font:500 10px/1 var(--f-mono);color:var(--faint)}
+.kb-sr .sr-top .idx{color:var(--c-acc);font-weight:600}
+.kb-sr .sr-top .path{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
+.kb-sr .sr-top .score{color:var(--c-acc);font-variant-numeric:tabular-nums}
+.kb-sr .sr-title{font-weight:600;font-size:13.5px;color:var(--c-ink)}
+.kb-sr .sr-title mark{background:color-mix(in oklab,var(--c-mark),transparent 60%);border-bottom:1px solid var(--c-mark);color:var(--c-ink)}
+.kb-sr .sr-snippet{font-size:12.5px;line-height:1.7;color:var(--muted)}
+.kb-sr .sr-snippet mark{background:color-mix(in oklab,var(--c-mark),transparent 60%);color:var(--c-ink)}
+.kb-sr-group{font:600 10px/1 var(--f-mono);letter-spacing:.16em;text-transform:uppercase;color:var(--faint);padding:10px 2px 6px}
+.kb-sr-group .n{color:var(--c-acc);margin-left:6px}
