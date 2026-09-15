@@ -54,16 +54,10 @@
   --sk-graphite-bg:#f5f5f4; --sk-graphite-panel:#f1f1ef; --sk-graphite-sunk:#e8e8e6; --sk-graphite-ink:#1c1c1a; --sk-graphite-line:#ddddd9; --sk-graphite-line2:#b0b0aa; --sk-graphite-primary:#1c1c1a; --sk-graphite-info:#4a4a48; --sk-graphite-warn:#8a5a00; --sk-graphite-danger:#a03028; --sk-graphite-ok:#1c7a4c; --sk-graphite-mark:#ffd973;
   --sk-graphite-bg-d:#0f0f0e; --sk-graphite-panel-d:#1b1b19; --sk-graphite-sunk-d:#080807; --sk-graphite-ink-d:#e8e8e5; --sk-graphite-line-d:#262624; --sk-graphite-line2-d:#4a4a46; --sk-graphite-primary-d:#f5f5f4; --sk-graphite-info-d:#b0b0ac; --sk-graphite-warn-d:#e0a63a; --sk-graphite-danger-d:#ff6f66; --sk-graphite-ok-d:#45d0a4; --sk-graphite-mark-d:#6b5a2a;
   /* 旧 6 皮肤(hex 种子)——保留原始值供 skins.css 演化映射与回退 */
-  --hex-bg-light:#f2efe7; --hex-fg-light:#22312c;
-  --hex-primary-light:#0c9a6a; --hex-accent-light:#0f86b8; --hex-surface-light:#ffffff;
-  --hex-warn-light:#a5680b; --hex-danger-light:#b23a3a; --hex-rose-light:#b53d75;
   --hex-plate-light-a:#122028; --hex-plate-light-b:#0c151d;
-  --hex-bg-dark:#060a0e; --hex-fg-dark:#e2ece8;
-  --hex-primary-dark:#37e6a6; --hex-accent-dark:#38cdf0; --hex-surface-dark:#0f1a20;
-  --hex-warn-dark:#f0b438; --hex-danger-dark:#ff6b6b; --hex-rose-dark:#f0599b;
   --hex-plate-dark-a:#0f1c25; --hex-plate-dark-b:#0a131b;
   --hex-paper-dark:#22312c;
-  --code-fg:#cfe0da; --code-kw:#8be0c1; --code-str:#f0b438; --code-com:#5c716c; --code-fn:#7cd2ff;
+  --code-fg:#cfe0da; --code-com:#5c716c;
   /* mascot --ill-* 族（Light 种子，Dark patch 在 [3] 尾部） */
   --hex-skin-light:#e8cba9; --hex-skin-shadow-light:#c9a482; --hex-hair-light:#2a3833;
   --hex-glasses-light:#3d4b47; --hex-shirt-light:#f7f7f2; --hex-shirt-shadow-light:#dcded6; --hex-device-light:#4a5d58;
@@ -71,14 +65,9 @@
   --hex-glasses-dark:#c8d5d0; --hex-shirt-dark:#dbe1dc; --hex-shirt-shadow-dark:#a2ada9; --hex-device-dark:#8fa4a0;
 
   /* ===== 尺度层 ===== */
-  --fs-10:10px; --fs-11:11px; --fs-12:12.5px; --fs-14:14px; --fs-16:16px; --fs-20:20px; --fs-26:26px; --fs-34:34px;
-  --sp-1:4px; --sp-2:8px; --sp-3:12px; --sp-4:16px; --sp-5:24px; --sp-6:32px; --sp-7:48px;
-  --sp-dens:1;
   --rd-ctl:3px; --rd-card:4px; --rd-pill:999px;
-  --z-raised:60; --z-pop:70; --z-modal:80; --z-toast:90;
   --dur-1:.12s; --dur-2:.2s; --dur-3:.35s;
   --ease-out:cubic-bezier(.16,1,.3,1);
-  --h-l:268px; --h-r:252px;
   /* 旧尺度兼容（[6]-[15] 组件区仍引用） */
   --radius:var(--rd-card); --radius-sm:var(--rd-ctl); --radius-lg:calc(var(--rd-card) + 4px); --radius-pill:var(--rd-pill);
   --ease-back:cubic-bezier(.34,1.56,.64,1); --ease-inout:cubic-bezier(.65,0,.35,1);
@@ -98,7 +87,6 @@
   --acc-soft:color-mix(in oklab,var(--c-acc),transparent 91%);
   --acc-line:color-mix(in oklab,var(--c-acc),transparent 55%);
   --acc-edge:var(--acc-line);
-  --acc-soft-strong:color-mix(in oklab,var(--c-acc),transparent 84%);
   --info:var(--c-info);
   --info-soft:color-mix(in oklab,var(--c-info),transparent 91%);
   --warn:var(--c-warn);
@@ -108,8 +96,6 @@
   --danger-soft:color-mix(in oklab,var(--c-danger),transparent 91%);
   --rose:var(--c-danger);
   --success:var(--c-ok);
-  --ok:var(--c-ok);
-  --mark:var(--c-mark);
   /* 结界线族（旧 --edge/--edge-hi/--hairline 兼容映射） */
   --edge:var(--c-line);
   --edge-hi:var(--c-line2);
@@ -134,8 +120,6 @@
   --grain:.014;
   /* 旧 seed 兼容别名（[6]-[15] 组件区大量引用） */
   --seed-bg:var(--c-bg); --seed-fg:var(--c-ink);
-  --seed-primary:var(--c-acc); --seed-accent:var(--c-info); --seed-surface:var(--c-panel);
-  --seed-radius:var(--rd-card);
   /* 字体别名（旧引用） */
   --sans:var(--f-body);
   --disp:var(--f-disp);
@@ -146,7 +130,6 @@
   --dh-baike:oklch(58% .10 158); --dh-articles:oklch(58% .10 200); --dh-interview:oklch(58% .10 340);
   --dh-projects:oklch(58% .10 22); --dh-handbook:oklch(58% .10 96); --dh-career:oklch(58% .10 42); --dh-ai:oklch(58% .10 262);
   /* 兼容别名（旧模板 / 旧 JS 内联引用，勿删） */
-  --bg0:var(--c-bg); --ink:var(--c-ink);
   /* 阅读偏好默认值（kb 排印，[8] 区引用） */
   --kb-fs-scale:1; --kb-measure:none; --kb-font:var(--f-body); --kb-line:1.75;
 }
@@ -213,7 +196,6 @@ h1,h2,h3,h4{font-family:var(--f-disp);font-weight:600;letter-spacing:.01em;font-
 /* [5] 背景层 ===== aurora/grain 退役为平面薄板（DOM 保留，视觉归零）===== */
 .aurora{position:fixed;inset:0;z-index:0;overflow:hidden;pointer-events:none;background:var(--c-bg)}
 .aurora::before{content:none}
-.blob{display:none}
 .grain{position:fixed;inset:0;z-index:1;pointer-events:none;opacity:var(--grain);
   background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='.6'/%3E%3C/svg%3E")}
 /* [6] 顶栏 shell（INSTRUMENT：平面仪表条 + 结界线，玻璃退役） ===== */
