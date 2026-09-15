@@ -463,6 +463,40 @@ h1.a-title{font-family:var(--f-disp);font-weight:700;font-size:28px;line-height:
   background:var(--plate);color:var(--plate-text);font:13px/1.75 var(--f-mono);padding:16px 18px}
 .editor textarea:focus{border-color:var(--c-acc)}
 
+/* [8.5] 读数头（阶段3 · workbench 读数头 + 元信息 chip + 正文进度条 + 断链态） ===== */
+.crumb .rh-path{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;letter-spacing:.02em}
+.crumb .rh-path .rh-sep{font-style:normal;color:var(--faint);margin:0 6px}
+.crumb .rh-path .rh-sep::before{content:"/"}
+.rh-head-pad .rh-path b{color:var(--c-acc);font-weight:600}
+/* 读数元信息条：等宽 chip 行（域 / 子域 / 状态 / 收录 / 大小） */
+.readhead{flex:none;display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding:8px 16px 0}
+.rh-chip{display:inline-flex;align-items:center;gap:5px;height:20px;padding:0 9px;border-radius:var(--rd-ctl);
+  border:1px solid var(--c-line);background:var(--c-sunk);color:var(--muted);
+  font:500 10px/1 var(--f-mono);letter-spacing:.08em;text-transform:uppercase;font-variant-numeric:tabular-nums;white-space:nowrap}
+.rh-chip.rh-acc{color:var(--c-acc);border-color:var(--acc-line);background:var(--acc-soft)}
+.rh-chip.rh-mono{color:var(--faint);text-transform:none;letter-spacing:.04em}
+.rh-chip::before{content:"";width:5px;height:5px;flex:none;border-radius:1px;background:var(--c-line2)}
+.rh-chip.rh-acc::before{background:var(--c-acc)}
+/* 正文阅读进度条（.article 顶部粘性 2px；--kb-read-pct 由 JS/内联供给，缺省 0） */
+.article{position:relative}
+.article::before{content:"";position:sticky;top:0;left:0;z-index:3;display:block;height:2px;width:var(--kb-read-pct,0%);
+  background:var(--c-acc);transition:width var(--dur-2) var(--ease-out);margin-bottom:calc(-1 * var(--kb-read-pct-h, 0px))}
+/* 正文内 wikilink 断链：warn 色虚线（JS 渲染 .wikilink.dead） */
+.a-body .wikilink{color:var(--c-acc);border-bottom:1px dashed color-mix(in oklab,var(--c-acc),transparent 55%);padding-bottom:1px;cursor:pointer}
+.a-body .wikilink:hover{border-bottom-style:solid}
+.a-body .wikilink.dead{color:var(--c-warn);border-bottom-color:var(--warn-edge)}
+.a-body .wikilink.dead::after{content:"断链";font:500 9px/1 var(--f-mono);color:var(--c-warn);
+  border:1px solid var(--warn-edge);border-radius:var(--rd-ctl);padding:1px 4px;margin-left:5px;vertical-align:1px;letter-spacing:.08em}
+/* 双链面板断链行 + 补建动作（pane-links 由 workbench.js 注入列表，样式在此消费） */
+.kblink-row{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:var(--rd-ctl);font-size:12.5px;color:var(--c-ink)}
+.kblink-row:hover{background:var(--c-sunk)}
+.kblink-row .dir{flex:none;font:600 10px/1 var(--f-mono);color:var(--faint);letter-spacing:.1em;width:26px}
+.kblink-row.dead .t{color:var(--c-warn)}
+.kblink-row .fix{margin-left:auto;flex:none;font:500 10px/1 var(--f-mono);color:var(--c-acc);border:1px dashed var(--acc-line);
+  border-radius:var(--rd-ctl);padding:2px 7px;background:none;cursor:pointer}
+.kblink-row .fix:hover{background:var(--acc-soft);border-style:solid}
+.kblink-sec{font:600 10px/1 var(--f-mono);letter-spacing:.14em;text-transform:uppercase;color:var(--faint);padding:8px 8px 4px}
+
 /* [9] 右栏 rail（tab = 2px 下边条选中） ===== */
 .rail{display:flex;flex-direction:column;min-height:0}
 .rtabs{flex:none;display:flex;border-bottom:1px solid var(--c-line);position:relative;background:var(--c-sunk)}

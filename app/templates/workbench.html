@@ -39,15 +39,26 @@
     {% endif %}
 
   <section class="panel article-wrap" id="p-article" data-reveal data-reveal-y="14">
+    {# ============ 读数头（INSTRUMENT：等宽路径行 → 标题 → 元信息 chip 行 → 工具组） ============
+       结构改动仅视觉重排：全部 id / onclick / 结构 class 原样保留（JS 契约零变更）。 #}
     <div class="crumb" id="crumb">
-      <svg class="i i-12 i-acc"><use href="#i-file"/></svg>
-      <b>{{ doc.title }}</b><span class="spacer"></span>
+      <span class="rh-path mono-sm" aria-label="文档路径">content<i class="rh-sep">/</i>{{ doc.rel }}</span>
+      <span class="spacer"></span>
       {% if doc.has_html and doc.domain == "interview" and not doc.is_html %}<button class="iconbtn" id="kb-md-src-btn" onclick="renderArticle(true)" title="切回 Markdown 渲染视图"><svg class="i i-12"><use href="#i-file-md"/></svg> Markdown 源</button>{% endif %}
       {% if doc.has_html %}<a class="iconbtn" href="/raw/{{ doc.html_rel }}" target="_blank" title="新标签页打开美化版"><svg class="i i-12"><use href="#i-external-link"/></svg> 新标签页</a>{% endif %}
       {% if not doc.is_html %}<button class="iconbtn" onclick="openEditor()"><svg class="i i-12"><use href="#i-edit-pencil"/></svg> 编辑</button>
-      <button class="iconbtn" onclick="deleteDoc()" title="移入 content/_trash/"><svg class="i i-12"><use href="#i-trash-outline"/></svg> 删除</button>
+      <button class="iconbtn danger" onclick="deleteDoc()" title="移入 content/_trash/"><svg class="i i-12"><use href="#i-trash-outline"/></svg> 删除</button>
       <button class="iconbtn" onclick="jumpToTagEdit()" title="编辑本篇标签（右栏信息·标签页）"><svg class="i i-12"><use href="#i-tag-outline"/></svg> 标签</button>{% endif %}
       <button class="iconbtn primary{% if doc.favorite %} faved{% endif %}" id="fav-btn" onclick="toggleFav()"><svg class="i i-12"><use href="#i-star"/></svg> {% if doc.favorite %}已收藏{% else %}收藏{% endif %}</button>
+    </div>
+    {# 读数元信息条：域/子域 与状态由模板静态注入（doc-data JSON 仍为 JS 唯一事实源） #}
+    <div class="readhead" aria-hidden="false">
+      <span class="rh-chip">{{ doc.domain_label|default(doc.domain) }}</span>
+      <span class="rh-chip">{{ sub_label }}</span>
+      <span class="rh-chip rh-acc">{{ doc.status_label|default(doc.fm.status|default('—')|upper) }}</span>
+      <span class="rh-chip rh-mono">{{ doc.fm.collected|default('—') }} 收录</span>
+      <span class="rh-chip rh-mono">{{ doc.size|default('—') }}</span>
+      {% if doc.has_html %}<span class="rh-chip">美化版可用</span>{% endif %}
     </div>
     <div class="article"><div class="article-inner" id="article"></div></div>
     <div class="editor" id="editor" role="dialog" aria-label="Markdown 编辑器">

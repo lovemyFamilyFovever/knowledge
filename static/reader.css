@@ -1,23 +1,21 @@
 /* ============================================================
-   知库 · 阅读字体双轨层（2026-09-14）
-   印刷排版系统试验已按用户决定还原（v2 排版全量回归 style.css），
-   本文件仅保留字体资产与其应用规则：
-   - 英文标题/引用：Cormorant Garamond（latin 子集 woff2 离线，回退 Georgia）
-   - 英文正文/UI：Work Sans（latin 子集 woff2 离线，回退系统无衬线）
-   - 中文标题/引用：思源宋体 → 宋体回退链
-   - 中文正文/UI：思源黑体 → PingFang/微软雅黑回退链
-   仅替换字体家族，不触碰任何字号/行高/间距/颜色/版式（那些归 style.css v2）。
-   作用域：.a-body.rd-fonts（applyReaderFonts 在渲染时挂类）。
+   知库 · reader.css v1.0-INSTRUMENT（阶段3 · 阅读排版层）
+   结构：
+   [F] 字体注册（离线 woff2 双轨，保留；INSTRUMENT 无斜体）
+   [R1] 正文量尺：72ch 居中 / 16px / 1.7（rd-measure 挂类生效）
+   [R2] 小节码：h2 上方 --f-mono SEC 编码 + 2px 下边线
+   [R3] LCD 代码板：固定暗色 --plate-* + 语言标签 + 复制（.codeblock 由
+       app.js enhanceArticleDOM 同帧生成，本层只消费）
+   [R4] mark / wikilink（断链 dead 走 style.css [8.5]）
+   [R5] callout：tip/warn 引用变体 + CONSTRAINT 等宽小标签
+   规则：颜色全走 var()；阅读排印规格由 --kb-* 偏好令牌协调（KB.prefs）。
    ============================================================ */
 
-/* ---- 字体注册（latin 子集，font-display:swap 防白屏） ---- */
+/* [F] 字体注册（latin 子集，font-display:swap 防白屏） ---- */
 @font-face{font-family:"Cormorant Garamond";font-style:normal;font-weight:500;font-display:swap;
   src:url("/static/vendor/fonts/CormorantGaramond-500.woff2") format("woff2")}
 @font-face{font-family:"Cormorant Garamond";font-style:normal;font-weight:600;font-display:swap;
   src:url("/static/vendor/fonts/CormorantGaramond-600.woff2") format("woff2")}
-/* INSTRUMENT 无斜体规范：italic 字面已从排版偏好移除，仅保留 @font-face 声明占位防 404 */
-@font-face{font-family:"Cormorant Garamond";font-style:normal;font-weight:500;font-display:swap;
-  src:url("/static/vendor/fonts/CormorantGaramond-500i.woff2") format("woff2")}
 @font-face{font-family:"Work Sans";font-style:normal;font-weight:400;font-display:swap;
   src:url("/static/vendor/fonts/WorkSans-400.woff2") format("woff2")}
 @font-face{font-family:"Work Sans";font-style:normal;font-weight:500;font-display:swap;
@@ -25,10 +23,72 @@
 @font-face{font-family:"Work Sans";font-style:normal;font-weight:600;font-display:swap;
   src:url("/static/vendor/fonts/WorkSans-600.woff2") format("woff2")}
 
-/* ---- 双轨应用：正文/UI 无衬线栈；标题/引用衬线栈 ----
-   中文回退链保证无网络/无 woff2 时仍是宋黑分工，版式尺寸不变。 */
+/* ---- 双轨应用（用户阅读偏好开启时）：正文/UI 无衬线栈；标题/引用衬线栈 ---- */
 .a-body.rd-fonts{font-family:"Work Sans","Noto Sans SC","Source Han Sans SC","PingFang SC","Microsoft YaHei",sans-serif}
 .a-body.rd-fonts h1,.a-body.rd-fonts h2,.a-body.rd-fonts h3,.a-body.rd-fonts h4,
 .a-body.rd-fonts blockquote p{
   font-family:"Cormorant Garamond","Noto Serif SC","Source Han Serif SC","Songti SC","SimSun",Georgia,serif}
 .a-body.rd-fonts blockquote p{font-style:normal}
+
+/* [R1] 正文量尺（阶段3）：72ch 居中 + 16px/1.7。
+   挂 .rd-measure 才收紧（applyReaderFonts 偏好体系外的新挂点，由 reader 偏好开）；
+   缺省保持 style.css v2 排印（用户已认可 760px 版式），互不踩。 */
+.a-body.rd-measure{max-width:72ch;margin-left:auto;margin-right:auto;font-size:16px;line-height:1.7}
+.a-body.rd-measure p,.a-body.rd-measure li{line-height:1.7}
+
+/* [R2] 小节码（INSTRUMENT）：h2 计数编码 + 2px 下边线。
+   计数由 CSS counter 生成（SEC 01 起），不依赖 JS；标题文字保持干净。 */
+.a-body{counter-reset:kbsec}
+.a-body h2{counter-increment:kbsec;position:relative}
+.a-body h2::before{content:"SEC " counter(kbsec,decimal-leading-zero);
+  display:block;font:600 10px/1 var(--f-mono);letter-spacing:.22em;color:var(--c-acc);
+  margin-bottom:6px;text-transform:uppercase}
+.a-body h2{border-bottom:2px solid var(--c-line2)}
+/* h3 收紧：§ 前缀已有（style.css v2），这里收字距与边距 */
+.a-body.rd-measure h3{letter-spacing:.01em;margin:20px 0 8px}
+
+/* [R3] LCD 代码板：codeblock 包壳（JS 生成 .codeblock > .cb-head + pre）。
+   视觉 = 固定暗色 LCD 板 + 等宽大写语言标签 + 右侧复制钮；不随主题翻转。 */
+.codeblock{margin:16px 0;border-radius:var(--rd-card);border:1px solid var(--c-line2);
+  background:var(--plate);overflow:hidden}
+.codeblock .cb-head{display:flex;align-items:center;gap:8px;padding:6px 12px;
+  background:color-mix(in oklab,var(--plate-text),transparent 92%);
+  border-bottom:1px solid color-mix(in oklab,var(--plate-text),transparent 84%);
+  font:600 10px/1 var(--f-mono);letter-spacing:.14em;text-transform:uppercase;color:var(--plate-faint)}
+.codeblock .cb-lang{color:var(--acc)}
+.codeblock .cb-file{opacity:.6;text-transform:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.codeblock .cb-copy{margin-left:auto;display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:var(--rd-ctl);
+  color:var(--plate-faint);cursor:pointer;transition:color var(--dur-1),background var(--dur-1);border:1px solid transparent;background:none}
+.codeblock .cb-copy svg{width:11px;height:11px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.codeblock .cb-copy:hover{color:var(--acc);background:color-mix(in oklab,var(--plate-text),transparent 88%);border-color:color-mix(in oklab,var(--plate-text),transparent 80%)}
+.codeblock .cb-copy.ok{color:var(--c-ok)}
+.codeblock pre{margin:0;border:0;border-radius:0;background:none;box-shadow:none;padding:12px 14px}
+.codeblock pre code{font-size:12.5px;line-height:1.7;color:var(--plate-text)}
+/* 裸 pre（未经包壳的兜底，如 RSS/直出）也走 LCD 板 */
+.a-body pre:not(.codeblock pre){background:var(--plate);border:1px solid var(--c-line2);border-radius:var(--rd-card)}
+
+/* [R4] mark / wikilink */
+.a-body mark{background:color-mix(in oklab,var(--c-mark),transparent 62%);color:var(--c-ink);
+  border-bottom:2px solid var(--c-mark);border-radius:1px;padding:0 2px}
+.result .r-snippet mark,.searchdrop mark{background:color-mix(in oklab,var(--c-mark),transparent 62%);color:var(--c-ink)}
+
+/* [R5] callout：tip/warn 变体（首行 💡/⚠️ 由 app.js 归类）+ CONSTRAINT 等宽小标签 */
+.a-body blockquote{position:relative}
+.a-body blockquote.tip{border-left:3px solid var(--c-info);background:var(--info-soft)}
+.a-body blockquote.warn{border-left:3px solid var(--c-warn);background:var(--warn-soft)}
+.a-body blockquote.tip::before,.a-body blockquote.warn::before{
+  font:600 9.5px/1 var(--f-mono);letter-spacing:.18em;text-transform:uppercase;display:block;margin-bottom:5px}
+.a-body blockquote.tip::before{content:"TIP";color:var(--c-info)}
+.a-body blockquote.warn::before{content:"WARNING";color:var(--c-warn)}
+/* CONSTRAINT 约定（首行大写词匹配由后处理完成时）：callout 小标签通用样式 */
+.a-body .kb-callout-tag{display:inline-block;font:600 9.5px/1 var(--f-mono);letter-spacing:.18em;
+  color:var(--c-info);border:1px solid color-mix(in oklab,var(--c-info),transparent 55%);
+  border-radius:var(--rd-ctl);padding:2px 6px;margin-bottom:6px;text-transform:uppercase}
+
+/* ---- 编辑器 textarea（LCD 源码板，消费方 style.css [8]；此处仅行高微调） ---- */
+.editor textarea{line-height:1.75}
+
+/* ---- 窄屏（<1280 行宽自适应；断点整体归 T6） ---- */
+@media (max-width:1280px){
+  .a-body.rd-measure{padding:0 4px}
+}
