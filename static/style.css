@@ -184,7 +184,7 @@ html[data-theme="dark"]{
 html,body{height:100%}
 ::selection{background:color-mix(in oklab,var(--c-acc),transparent 75%)}
 ::-webkit-scrollbar{width:9px;height:9px}
-::-webkit-scrollbar-thumb{background:var(--edge-hi);border-radius:8px}
+::-webkit-scrollbar-thumb{background:var(--c-line2);border-radius:8px}
 ::-webkit-scrollbar-track{background:transparent}
 body{font:var(--fs-14)/1.7 var(--f-body);color:var(--c-ink);background:var(--c-bg);
   overflow:hidden;display:flex;flex-direction:column;transition:background var(--dur-2),color var(--dur-2);-webkit-font-smoothing:antialiased;
@@ -201,9 +201,9 @@ h1,h2,h3,h4{font-family:var(--f-disp);font-weight:600;letter-spacing:.01em;font-
 .i-12{width:12px;height:12px;stroke-width:1.9}.i-14{width:14px;height:14px}
 .i-16{width:16px;height:16px}.i-20{width:20px;height:20px}.i-24{width:24px;height:24px;stroke-width:1.7}
 .i-fill{fill:currentColor;stroke:none}
-.i-faint{color:var(--faint)}.i-muted{color:var(--muted)}.i-acc{color:var(--acc)}
+.i-faint{color:var(--faint)}.i-muted{color:var(--muted)}.i-acc{color:var(--c-acc)}
 .i-info{color:var(--info)}.i-warn{color:var(--warn)}.i-danger{color:var(--danger)}.i-rose{color:var(--rose)}
-.i-hue{color:var(--dh,var(--acc))}
+.i-hue{color:var(--dh,var(--c-acc))}
 .i-spin{animation:spin 1.6s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
 .mono-sm{font:500 10.5px/1 var(--f-mono);color:var(--faint);letter-spacing:.02em;font-variant-numeric:tabular-nums}
@@ -837,14 +837,14 @@ h1.a-title{font-family:var(--f-disp);font-weight:700;font-size:28px;line-height:
   .dom-grid{grid-template-columns:1fr 1fr;gap:10px}
   .dcard{padding:12px 13px}
   .stats-kpis{display:grid;grid-template-columns:1fr 1fr}
-  .skpi{border-right:1px solid var(--edge);border-bottom:1px solid var(--edge)}
+  .skpi{border-right:1px solid var(--c-line);border-bottom:1px solid var(--c-line)}
 }
 @media (max-width:440px){
   .dom-grid{grid-template-columns:1fr}
   .hero .hi{font-size:22px}
   .hero .cd .n{font-size:24px}
   .stats-kpis{grid-template-columns:1fr 1fr}
-  .skpi{border-right:1px solid var(--edge);border-bottom:1px solid var(--edge)}
+  .skpi{border-right:1px solid var(--c-line);border-bottom:1px solid var(--c-line)}
 }
 
 /* [13] v0.4 公共组件（kbmodal / toast / ctx / 空态 / 骨架 / 排印类；平面化） ===== */
