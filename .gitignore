@@ -32,3 +32,5 @@ qwenwork/
 # 日期戳 + 哈希的一次性 agent 会话目录（例如 2026-09-10-428af70d/）
 20??-??-??-*/
 
+/.workbuddy
+/node_modules
