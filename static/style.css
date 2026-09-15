@@ -176,14 +176,18 @@ html[data-theme="dark"] .brand .zh{background:linear-gradient(92deg,var(--brand-
 .searchbox.semantic kbd{color:var(--info);border-color:color-mix(in oklab,var(--info),transparent 60%)}
 .top-right{display:flex;align-items:center;gap:8px}
 /* 一级导航（问题12）：阅读/复习/术语/统计显式入口，服务端渲染 active 高亮 */
-.topnav{display:flex;gap:2px;margin-left:4px}
-.topnav .tn{font:600 12.5px/1 var(--sans);letter-spacing:.06em;color:var(--muted);padding:8px 12px;border-radius:9px;
-  text-decoration:none;transition:.15s;white-space:nowrap}
+.topnav{display:flex;gap:2px;margin-left:4px;align-items:center}
+.topnav .tn{display:inline-flex;align-items:center;gap:5px;font:600 12.5px/1 var(--sans);letter-spacing:.06em;color:var(--muted);padding:8px 12px;border-radius:var(--radius-sm);cursor:pointer;text-decoration:none;background:transparent;border:none}
+.topnav .tn svg{color:currentColor;flex:none}
+.topnav .tn-act{color:var(--muted)}
+.topnav .tn-act:hover{color:var(--acc);background:var(--acc-soft)}
+.tn-sep{width:1px;height:16px;background:var(--edge);margin:0 6px;flex:none}
 .topnav .tn:hover{color:var(--seed-fg);background:var(--acc-soft)}
 .topnav .tn.on{color:var(--acc);background:var(--acc-soft)}
+.topnav .tn.on{color:var(--acc);background:var(--acc-soft)}
 /* 降级后的图标 pill（统计快照 / 收件箱 badge） */
-.pill.icon-only{padding:0 9px}
-.pill.icon-only .n{margin-left:5px}
+.pill.icon-only{width:28px;height:28px;padding:0;display:inline-flex;align-items:center;justify-content:center}
+.pill.icon-only .i{width:15px;height:15px}
 .pill{display:inline-flex;align-items:center;gap:6px;height:26px;padding:0 4px 0 8px;border-radius:var(--radius-pill);
   border:1px solid var(--edge);background:color-mix(in oklab,var(--seed-surface),transparent 40%);
   font-size:11.5px;font-weight:500;color:color-mix(in oklab,var(--seed-fg),transparent 15%);letter-spacing:.02em;cursor:pointer;transition:.2s;white-space:nowrap}
@@ -335,10 +339,11 @@ html[data-theme="dark"] .iconbtn{background:color-mix(in oklab,var(--seed-surfac
 @keyframes rise{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
 .a-kicker{font-family:var(--mono);font-size:10px;letter-spacing:.22em;color:var(--acc);text-transform:uppercase;margin-bottom:10px}
 h1.a-title{font-family:var(--disp);font-weight:700;font-size:28px;line-height:1.4;letter-spacing:-.01em;margin-bottom:14px;color:var(--acc)}
-.a-chips{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:8px}
-.chip{font-family:var(--mono);font-size:10.5px;color:var(--muted);border:1px solid var(--edge);border-radius:5px;padding:2.5px 8px;background:color-mix(in oklab,var(--seed-surface),transparent 45%)}
+.a-chips{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px}
+.chip{display:inline-flex;align-items:center;gap:5px;font-family:var(--mono);font-size:11px;line-height:1;color:var(--muted);
+  border:1px solid var(--edge);border-radius:999px;padding:5px 11px;background:color-mix(in oklab,var(--seed-surface),transparent 30%)}
 html[data-theme="dark"] .chip{background:color-mix(in oklab,var(--seed-surface),transparent 72%)}
-.chip.acc{color:var(--acc);border-color:var(--acc-edge)}
+.chip.acc{color:var(--acc);border-color:var(--acc-edge);background:var(--acc-soft)}
 .chip.warn{color:var(--warn);border-color:var(--warn-edge);border-style:dashed}
 .a-rule{height:1px;margin:18px 0 26px;background:linear-gradient(90deg,var(--acc-edge),transparent)}
 /* ---- .a-body 正文排版 v2（markdown-redesign-preview.html v1 落地版） ----

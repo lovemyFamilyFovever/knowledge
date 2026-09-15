@@ -12,6 +12,7 @@
 <script>window.LABELS={{ LABELS|tojson }};window.HUES={{ HUES|tojson }};window.SUB_LABELS={{ SUB_LABELS|tojson }};window.SOURCE_LABELS={{ SOURCE_LABELS|tojson }};</script>
 <link rel="stylesheet" href="/static/kb-core.css?v={{ av('kb-core.css') }}">
 <link rel="stylesheet" href="/static/pages/searchdrop.css?v={{ av('pages/searchdrop.css') }}">
+<link rel="stylesheet" href="/static/pages/skins.css?v={{ av('pages/skins.css') }}">
 <script src="/static/kb-core.js?v={{ av('kb-core.js') }}" defer></script>
 <script src="/static/marked.umd.js" defer></script>
 <script src="/static/purify.min.js" defer></script>
@@ -210,6 +211,11 @@
     <a class="tn {{ 'on' if p.startswith('/review') or p.startswith('/quiz') }}" href="/review" title="间隔复习（SM-2 抽卡）">复习</a>
     <a class="tn {{ 'on' if p.startswith('/glossary') }}" href="/glossary" title="术语门户">术语</a>
     <a class="tn {{ 'on' if p.startswith('/stats') }}" href="/stats" title="月度阅读统计">统计</a>
+    {# 需求 #6 修正：问吧/收藏/标签 放在左侧文字链接旁（统计右边），不在右侧图标区 #}
+    <span class="tn-sep" aria-hidden="true"></span>
+    <button class="tn tn-act" onclick="showAsk()" title="AI 问吧：基于语料的检索增强问答"><svg class="i i-13"><use href="#i-hint-bulb"/></svg>问吧</button>
+    <a class="tn tn-act {{ 'on' if p.startswith('/favorites') }}" href="/favorites" title="收藏"><svg class="i i-13"><use href="#i-favorite-heart"/></svg>收藏</a>
+    <a class="tn tn-act {{ 'on' if p.startswith('/tags') }}" href="/tags" title="标签管理"><svg class="i i-13"><use href="#i-tag-outline"/></svg>标签</a>
   </nav>
   <div class="searchbox" id="searchbox">
     <svg class="i i-14" aria-hidden="true"><use href="#i-search-magnifier"/></svg>
@@ -217,10 +223,6 @@
     <kbd>/</kbd>
   </div>
   <div class="top-right">
-    {# 需求 #8：收藏 / 标签管理提升到顶栏（原左下角四按钮删除）；中期：AI 问吧 #}
-    <button class="pill" onclick="showAsk()" title="AI 问吧：基于语料的检索增强问答"><svg class="i i-14"><use href="#i-hint-bulb"/></svg>问吧</button>
-    <a class="pill" href="/favorites" title="收藏"><svg class="i i-14"><use href="#i-favorite-heart"/></svg>收藏</a>
-    <a class="pill" href="/tags" title="标签管理"><svg class="i i-14"><use href="#i-tag-outline"/></svg>标签</a>
     <button class="pill icon-only" id="global-stats-btn" onclick="showGlobalStats()" title="全库快照：总量 / 各域分布 / 标签覆盖 / 双链健康"><svg class="i i-14"><use href="#i-chart"/></svg></button>
     <a class="pill icon-only" href="/inbox" title="收件箱（待归档 {{ inbox_n|default(0) }}）"><svg class="i i-14"><use href="#i-inbox-tray"/></svg><span class="n">{{ inbox_n|default(0) }}</span></a>
     <button class="pill icon-only" id="theme-btn" title="切换白天 / 夜间"><svg class="i i-16"><use href="#i-sun"/></svg></button>

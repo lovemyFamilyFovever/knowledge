@@ -45,7 +45,8 @@
       {% if doc.has_html and doc.domain == "interview" and not doc.is_html %}<button class="iconbtn" id="kb-md-src-btn" onclick="renderArticle(true)" title="切回 Markdown 渲染视图"><svg class="i i-12"><use href="#i-file-md"/></svg> Markdown 源</button>{% endif %}
       {% if doc.has_html %}<a class="iconbtn" href="/raw/{{ doc.html_rel }}" target="_blank" title="新标签页打开美化版"><svg class="i i-12"><use href="#i-external-link"/></svg> 新标签页</a>{% endif %}
       {% if not doc.is_html %}<button class="iconbtn" onclick="openEditor()"><svg class="i i-12"><use href="#i-edit-pencil"/></svg> 编辑</button>
-      <button class="iconbtn" onclick="deleteDoc()" title="移入 content/_trash/"><svg class="i i-12"><use href="#i-trash-outline"/></svg> 删除</button>{% endif %}
+      <button class="iconbtn" onclick="deleteDoc()" title="移入 content/_trash/"><svg class="i i-12"><use href="#i-trash-outline"/></svg> 删除</button>
+      <button class="iconbtn" onclick="jumpToTagEdit()" title="编辑本篇标签（右栏信息·标签页）"><svg class="i i-12"><use href="#i-tag-outline"/></svg> 标签</button>{% endif %}
       <button class="iconbtn primary{% if doc.favorite %} faved{% endif %}" id="fav-btn" onclick="toggleFav()"><svg class="i i-12"><use href="#i-star"/></svg> {% if doc.favorite %}已收藏{% else %}收藏{% endif %}</button>
     </div>
     <div class="article"><div class="article-inner" id="article"></div></div>

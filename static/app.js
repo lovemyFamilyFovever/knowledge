@@ -28,13 +28,59 @@ function applyTheme(t) {
   window.dispatchEvent(new CustomEvent("theme-changed", { detail: t }));
   try { localStorage.setItem("kb-theme", t); } catch (e) {}
 }
+/* 任务8：5 版皮肤切换（墨韵/午夜蓝/森绿/暮色玫瑰/石墨 + 默认青瓷） */
+const SKINS = [
+  { id: "celadon", name: "青瓷", desc: "默认 · 现状", a: "#0c9a6a", b: "#0f86b8" },
+  { id: "ink", name: "墨韵", desc: "宣纸 × 朱砂", a: "#8c3a2e", b: "#3d5a80" },
+  { id: "midnight", name: "午夜蓝", desc: "工程仪表感", a: "#2563eb", b: "#0891b2" },
+  { id: "forest", name: "森绿", desc: "苔绿 × 菌菇棕", a: "#4a7c59", b: "#b0713a" },
+  { id: "rose", name: "暮色玫瑰", desc: "玫瑰金 × 紫藤", a: "#a34a5e", b: "#7069a8" },
+  { id: "graphite", name: "石墨", desc: "中性 × 橙点缀", a: "#1c1c1a", b: "#c2410c" },
+];
+function applySkin(id) {
+  const skin = SKINS.find(s => s.id === id) || SKINS[0];
+  if (skin.id === "celadon") document.documentElement.removeAttribute("data-skin");
+  else document.documentElement.setAttribute("data-skin", skin.id);
+  try { localStorage.setItem("kb-skin", skin.id); } catch (e) {}
+  window.dispatchEvent(new CustomEvent("skin-changed", { detail: skin.id }));
+}
+function showSkinPicker() {
+  const old = document.querySelector(".kb-skin-pop");
+  if (old) { old.remove(); return; }
+  const cur = (localStorage.getItem("kb-skin") || "celadon");
+  const pop = document.createElement("div");
+  pop.className = "kb-skin-pop";
+  pop.innerHTML = `<div class="kb-skin-pop-h">界面风格 · 深浅色按钮继续可用</div>
+    <div class="kb-skin-grid">${SKINS.map(s => `
+      <button type="button" class="kb-skin-card ${s.id === cur ? "on" : ""}" data-skin="${s.id}">
+        <span class="kb-skin-dot" style="--sd-a:${s.a};--sd-b:${s.b}"></span>
+        <span><b>${s.name}</b><i>${s.desc}</i></span>
+      </button>`).join("")}</div>`;
+  const tr = $("#theme-btn").closest(".top-right");
+  (tr || document.body).style.position = "relative";
+  (tr || document.body).appendChild(pop);
+  pop.addEventListener("click", e => {
+    const card = e.target.closest(".kb-skin-card");
+    if (card) { applySkin(card.dataset.skin); pop.remove(); }
+  });
+  setTimeout(() => document.addEventListener("mousedown", function h(ev) {
+    if (!pop.contains(ev.target) && ev.target !== $("#theme-btn")) { pop.remove(); document.removeEventListener("mousedown", h); }
+  }), 0);
+}
+window.applySkin = applySkin;
+window.showSkinPicker = showSkinPicker;
 const themeBtn = $("#theme-btn");
-if (themeBtn) themeBtn.onclick = () => {
-  const now = document.documentElement.getAttribute("data-theme");
-  applyTheme(now === "dark" ? "light" : "dark");
-  if (window.DOC && document.querySelector("#article .mermaid")) renderArticle();
-};
+if (themeBtn) {
+  themeBtn.onclick = () => {
+    const now = document.documentElement.getAttribute("data-theme");
+    applyTheme(now === "dark" ? "light" : "dark");
+    if (window.DOC && document.querySelector("#article .mermaid")) renderArticle();
+  };
+  themeBtn.oncontextmenu = e => { e.preventDefault(); showSkinPicker(); }; // 右键弹皮肤选择
+  themeBtn.title = "切换白天 / 夜间（右键换 5 版界面风格）";
+}
 try { const saved = localStorage.getItem("kb-theme"); if (saved) applyTheme(saved); } catch (e) {}
+try { const savedSkin = localStorage.getItem("kb-skin"); if (savedSkin) applySkin(savedSkin); } catch (e) {}
 
 /* ---------- 面板折叠（workbench） ---------- */
 function setPanel(which, off) {
@@ -702,7 +748,8 @@ function renderCrumb() {
     ${isInterviewPretty ? `<button class="iconbtn" id="kb-md-src-btn" onclick="renderArticle(true)" title="切回 Markdown 渲染视图">${icon("file-md", 13)} Markdown 源</button>` : ""}
     ${DOC.has_html ? `<a class="iconbtn" href="${rawUrl(DOC.is_html ? DOC.rel : DOC.html_rel)}" target="_blank" title="新标签页打开美化版">${icon("external-link", 13)} 新标签页</a>` : ""}
     ${!DOC.is_html ? `<button class="iconbtn" onclick="openEditor()">${icon("edit",13)} 编辑</button>
-    <button class="iconbtn" onclick="deleteDoc()" title="移入 content/_trash/">${icon("trash",13)} 删除</button>` : ""}
+    <button class="iconbtn" onclick="deleteDoc()" title="移入 content/_trash/">${icon("trash",13)} 删除</button>
+    <button class="iconbtn" onclick="jumpToTagEdit()" title="编辑本篇标签（右栏信息·标签页）">${icon("tag-outline",13)} 标签</button>` : ""}
     <button class="iconbtn primary ${DOC.favorite ? "faved" : ""}" id="fav-btn" onclick="toggleFav()">${icon("star",13)} ${DOC.favorite ? "已收藏" : "收藏"}</button>`;
 }
 
@@ -797,20 +844,19 @@ function renderChipsRow() {
     (DOC.fm.tags && DOC.fm.tags.length)
       ? DOC.fm.tags.map(t => `<span class="chip acc">${esc(t)}</span>`).join("")
       : `<span class="chip warn">tags 未打标</span>`,
-    // 标签编辑直接入口：正文头部一眼可见（此前只藏在右栏「信息」页，用户找不到）
-    !DOC.is_html ? `<button type="button" class="chip chip-btn" onclick="jumpToTagEdit()" title="编辑标签">${icon("tag-outline", 11)} 编辑标签</button>` : "",
   ].join("");
   el.innerHTML = chips;
 }
 
+/* 需求 #2 补充：编辑标签入口在右上角 crumb 按钮组（收藏旁），点开右栏「信息·标签」页 */
 function jumpToTagEdit() {
   const infoTab = document.querySelector('.rtab[data-pane="info"]');
   if (infoTab) tab("info", infoTab);
-  const input = $("#tag-in");
   const row = $("#tag-inputrow");
   if (row && row.hidden) { const b = $("#tag-add-btn"); if (b) b.click(); }
-  else if (input) input.focus();
+  else { const input = $("#tag-in"); if (input) input.focus(); }
 }
+window.jumpToTagEdit = jumpToTagEdit;
 
 function renderNotes() {
   const pane = $("#pane-notes"); if (!pane || !DOC) return;
