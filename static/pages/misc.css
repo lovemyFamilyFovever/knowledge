@@ -10,7 +10,7 @@
 .sub-h .n{font:500 10.5px/1.4 var(--f-mono);color:var(--faint);letter-spacing:.04em;font-family:var(--f-mono)}
 
 /* [B] 标签云（第 08 屏：字号四档 + hot + 计数胶囊） */
-.tcloud{display:flex;flex-wrap:wrap;gap:8px;padding:16px;border:1px solid var(--c-line);border-radius:var(--radius-lg);
+.tcloud{display:flex;flex-wrap:wrap;gap:8px;padding:16px;border:1px solid var(--c-line);border-radius:var(--rd-card);
   background:color-mix(in oklab,var(--c-panel),transparent 45%);line-height:1;align-items:center}
 .tcloud .t{display:inline-flex;align-items:center;gap:7px;padding:6px 12px;border-radius:var(--rd-pill);
   border:1px solid var(--c-line2);background:color-mix(in oklab,var(--c-panel),transparent 25%);
@@ -51,7 +51,7 @@
 
 /* [E] 收件箱 kanban（第 09 屏：三列 / 列头色点 --warn --acc --acc2 / 复选批量 / drop hint） */
 .kanban{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;padding:14px;border:1px solid var(--c-line);
-  border-radius:var(--radius-lg);background:color-mix(in oklab,var(--c-panel),transparent 45%)}
+  border-radius:var(--rd-card);background:color-mix(in oklab,var(--c-panel),transparent 45%)}
 .kan-col{display:flex;flex-direction:column;gap:6px;min-height:220px;border-radius:var(--rd-ctl);
   transition:background .18s,outline-color .18s}
 .kan-col .kh{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600;

@@ -22,7 +22,7 @@
 .srch-meta{margin-left:auto}
 
 /* [2] 双通道结果列（设计稿 .results-col：FTS 绿 / 语义蓝） ===== */
-.results-col{padding:14px 16px;border:1px solid var(--c-line);border-radius:var(--radius-lg);
+.results-col{padding:14px 16px;border:1px solid var(--c-line);border-radius:var(--rd-card);
   background:color-mix(in oklab,var(--c-panel),transparent 45%);display:flex;flex-direction:column;gap:8px}
 .results-col.info{border-color:color-mix(in oklab,var(--info),transparent 68%)}
 .rc-head{display:flex;align-items:center;gap:8px;padding-bottom:8px;margin-bottom:2px;
