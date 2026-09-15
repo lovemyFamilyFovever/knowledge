@@ -21,7 +21,6 @@
 .kb-learn-side{display:flex;flex-direction:column;gap:12px;position:sticky;top:16px}
 
 /* ---- 卡片：平面薄板 + 结界线（kb-core 基础上的仪表化覆盖） ---- */
-.kb-card{border:1px solid var(--c-line);border-radius:var(--rd-card);background:var(--c-panel);box-shadow:var(--elev-1)}
 .kb-card-kicker .kb-dot{width:6px;height:6px;border-radius:1px;background:var(--c-acc)}
 .kb-card-src{margin-top:14px;font:400 10.5px/1.5 var(--f-mono);color:var(--faint);word-break:break-all}
 .kb-card-src a{color:var(--c-acc)}

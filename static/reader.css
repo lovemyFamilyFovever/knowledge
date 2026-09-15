@@ -55,12 +55,12 @@
   background:color-mix(in oklab,var(--plate-text),transparent 92%);
   border-bottom:1px solid color-mix(in oklab,var(--plate-text),transparent 84%);
   font:600 10px/1 var(--f-mono);letter-spacing:.14em;text-transform:uppercase;color:var(--plate-faint)}
-.codeblock .cb-lang{color:var(--acc)}
+.codeblock .cb-lang{color:var(--c-acc)}
 .codeblock .cb-file{opacity:.6;text-transform:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .codeblock .cb-copy{margin-left:auto;display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:var(--rd-ctl);
   color:var(--plate-faint);cursor:pointer;transition:color var(--dur-1),background var(--dur-1);border:1px solid transparent;background:none}
 .codeblock .cb-copy svg{width:11px;height:11px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
-.codeblock .cb-copy:hover{color:var(--acc);background:color-mix(in oklab,var(--plate-text),transparent 88%);border-color:color-mix(in oklab,var(--plate-text),transparent 80%)}
+.codeblock .cb-copy:hover{color:var(--c-acc);background:color-mix(in oklab,var(--plate-text),transparent 88%);border-color:color-mix(in oklab,var(--plate-text),transparent 80%)}
 .codeblock .cb-copy.ok{color:var(--c-ok)}
 .codeblock pre{margin:0;border:0;border-radius:0;background:none;box-shadow:none;padding:12px 14px}
 .codeblock pre code{font-size:12.5px;line-height:1.7;color:var(--plate-text)}
