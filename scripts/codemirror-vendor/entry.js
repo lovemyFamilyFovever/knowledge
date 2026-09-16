@@ -6,23 +6,25 @@ import { markdown } from "@codemirror/lang-markdown";
 import { HighlightStyle, syntaxHighlighting } from "@codemirror/language";
 import { tags } from "@lezer/highlight";
 
-// 主题继承项目 CSS 变量（--c-panel/--c-ink/--c-line/--f-mono），
-// 明暗主题由 html[data-theme] 驱动，编辑器自动跟随，无需另造 token。
+// 主题继承项目 CSS 变量（--c-ink/--c-acc/--c-line 等），明暗主题随 html[data-theme] 自动跟随。
+// 字体/字号走 --ed-mono / --ed-fs / --ed-lh（workbench.css 定义），带 --f-mono / 13px / 1.7
+// 兜底：改字体只动 CSS，不必重新打包 bundle。
 const theme = EditorView.theme({
   "&": {
-    fontSize: "14.5px", flex: "1", minHeight: "0",
+    fontSize: "var(--ed-fs, 13px)", flex: "1", minHeight: "0",
     backgroundColor: "transparent", color: "var(--c-ink)",
-    fontFamily: "var(--f-mono)",
+    fontFamily: "var(--ed-mono, var(--f-mono))",
   },
   ".cm-scroller": {
-    fontFamily: "var(--f-mono)", lineHeight: "1.75",
+    fontFamily: "var(--ed-mono, var(--f-mono))",
+    lineHeight: "var(--ed-lh, 1.7)",
     padding: "10px 14px 40px",
   },
   ".cm-content": { caretColor: "var(--c-acc)", padding: "0" },
   ".cm-gutters": {
     backgroundColor: "transparent", color: "var(--c-line2)",
     border: "none", borderRight: "1px solid var(--c-line)",
-    paddingRight: "8px", fontSize: "12px",
+    paddingRight: "8px", fontSize: "var(--ed-gutter-fs, 11.5px)",
   },
   ".cm-activeLineGutter": { backgroundColor: "transparent", color: "var(--c-acc)" },
   ".cm-activeLine": { backgroundColor: "color-mix(in oklab, var(--c-acc), transparent 94%)" },

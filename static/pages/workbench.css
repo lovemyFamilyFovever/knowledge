@@ -63,11 +63,24 @@
 .editor .editor-hint b{color:var(--c-info)}
 .editor textarea{flex:1;min-height:0}
 /* ---- [12] CodeMirror 6 编辑器（Story 2）：CM 接管可见输入，textarea 降为值事实源 ---- */
+/* 编辑器字体 token：bundle 主题读 --ed-mono/--ed-fs/--ed-lh（带 --f-mono/13px/1.7 兜底）。
+   偏编程风格连字栈：本机常见 Cascadia Code / JetBrains Mono（含 Nerd Font 变体名
+   JetBrainsMono NF）优先，再列 Fira Code / Sarasa 兜底；遵守项目「本机字族、不新增
+   @font-face 网络字体」原则（style.css [1] 段）。中文回落雅黑/苹方保证中英混排协调。
+   字号对齐原 textarea 13px 基准。 */
+.editor{
+  --ed-mono:"Cascadia Code","JetBrainsMono NF","JetBrains Mono","Fira Code","Sarasa Mono SC","Microsoft YaHei UI","PingFang SC",var(--f-mono);
+  --ed-fs:13px;
+  --ed-lh:1.75;
+  --ed-gutter-fs:11.5px;
+}
 .cm-host{flex:1;min-height:0;display:flex;flex-direction:column;overflow:hidden;
   border:1px solid var(--c-line2);border-radius:var(--rd-card);background:var(--c-panel)}
 .cm-host .cm-editor{flex:1;min-height:0;outline:none}
 .cm-host .cm-editor.cm-focused{outline:none}
 .cm-host .cm-scroller{overflow:auto}
+/* 编程连字（=> -> !== 等）：字体栈里的 Fira/JetBrains/Cascadia Code 均自带 ligatures */
+.cm-host .cm-content{font-variant-ligatures:contextual;font-feature-settings:"calt" 1,"liga" 1}
 /* CM 接管后隐藏原生 textarea（保留在 DOM 作值事实源，app.js 照旧读写 .value）。
    用 clip-path 而非已废弃的 clip（stylelint property-no-deprecated）。 */
 .editor textarea.cm-hidden{position:absolute;width:1px;height:1px;padding:0;margin:-1px;
