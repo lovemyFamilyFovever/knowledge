@@ -1,4 +1,4 @@
-import { EditorState } from "@codemirror/state";
+import { EditorState, Prec } from "@codemirror/state";
 import { EditorView, keymap, lineNumbers, highlightActiveLine,
          highlightActiveLineGutter, drawSelection, rectangularSelection } from "@codemirror/view";
 import { defaultKeymap, history, historyKeymap, indentWithTab } from "@codemirror/commands";
@@ -65,6 +65,16 @@ const toLF = (s) => String(s == null ? "" : s).replace(/\r\n?/g, "\n");
  */
 function create(parent, doc, opts) {
   opts = opts || {};
+  // 补全键（↑↓/Enter/Tab/Esc）走高优先级 keymap，在 CM 默认 Enter/Tab 之前拦截——
+  // 否则默认 Enter 会先插换行、docChanged 让补全下拉自行关闭（实测坑）。
+  // handleKey 返回 true = 已消费（下拉打开时），CM 不再执行默认行为。
+  const completionKeymap = opts.onCompletionKey ? Prec.high(keymap.of([
+    { key: "ArrowDown", run: () => !!opts.onCompletionKey({ key: "ArrowDown" }) },
+    { key: "ArrowUp", run: () => !!opts.onCompletionKey({ key: "ArrowUp" }) },
+    { key: "Enter", run: () => !!opts.onCompletionKey({ key: "Enter" }) },
+    { key: "Tab", run: () => !!opts.onCompletionKey({ key: "Tab" }) },
+    { key: "Escape", run: () => !!opts.onCompletionKey({ key: "Escape" }) },
+  ])) : [];
   return new EditorView({
     parent,
     state: EditorState.create({
@@ -74,6 +84,7 @@ function create(parent, doc, opts) {
         history(), drawSelection(), rectangularSelection(),
         EditorView.lineWrapping,
         highlightActiveLine(),
+        completionKeymap,
         keymap.of([...defaultKeymap, ...historyKeymap, indentWithTab]),
         markdown(),
         syntaxHighlighting(hl),

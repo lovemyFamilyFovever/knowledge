@@ -1138,7 +1138,10 @@ async function openEditor() {
   ED_INITIAL_HEAD = head;   // 保存前用来判断用户有没有动过 frontmatter
   ED_OPEN = true;
   ED_SNAPSHOT = $("#ed-text").value; // dirty guard 基准快照
-  $("#ed-text").focus();
+  /* Story 2：CodeMirror 接管输入载体。attach 内部会 loadIntoCM(ta.value)
+     并把内容实时同步回 ta.value —— 上面刚设好的 value/ED_SNAPSHOT 契约不变。
+     bundle 未加载时 attach 静默返回，回落裸 textarea。 */
+  if (window.KBED) KBED.attach(); else $("#ed-text").focus();
   toast("编辑态 · 保存即写回文件系统，git 记录本次变更");
 }
 function editorIsOpen() {
@@ -1152,6 +1155,8 @@ function closeEditor() {
   ed.classList.remove("show");
   $("#article").style.display = "";
   ED_OPEN = false;
+  // Story 2：退出编辑态前把 CM 最终内容落回 ta.value 并隐藏 CM
+  if (window.KBED) KBED.detach();
 }
 /* 未保存确认弹窗：kbModal 只有两键，按其视觉规范做三键弹层（问题11 前例）。
    resolve "save" | "discard" | null（继续编辑 / Esc / 遮罩）。问题13：走 KB.overlay 原语。 */

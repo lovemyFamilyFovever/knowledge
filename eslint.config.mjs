@@ -36,6 +36,12 @@ export default [
         esc: "writable",
         invalidate: "writable",
         util: "readonly",
+        // app.js 定义的文档态全局（页面脚本读取当前文档元数据）：
+        DOC: "writable",
+        // Story 1/2：编辑器桥接层与双链补全的跨脚本全局
+        // KBCM = vendor/codemirror.bundle.js 暴露；KBED = pages/cm-editor.js 暴露
+        KBCM: "readonly",
+        KBED: "readonly",
         // base.html / vendor 库暴露：
         DOMPurify: "readonly",
         marked: "readonly",

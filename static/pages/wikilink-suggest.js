@@ -1,11 +1,15 @@
 /* =====================================================================
-   知库 · 编辑器 [[ 双链补全（Story 1）
-   契约：textarea#ed-text 输入 [[ 触发；调 /api/wikilink/suggest（后端现成，
-   返回 items: [{name, rel, kind, sub_label}]）；键盘 ↑↓ 选择、Enter/Tab 插入、
-   Esc 关闭；鼠标 hover/click 同步。插入格式 [[name]]（name 即标题/词，
-   与 fts.resolve_wikilink 的 by_title / by_stem 解析对齐，不产生死链）。
-   设计约束：不改 app.js 任何保存/fm 逻辑，纯增强层；textarea 值读写走
-   原生 value + setRangeText，ED_SNAPSHOT dirty 契约不受影响。
+   知库 · 编辑器 [[ 双链补全（Story 1 + Story 2 双模式）
+   契约：输入 [[ 触发；调 /api/wikilink/suggest（后端现成，返回
+   items:[{name,rel,kind,sub_label}]）；↑↓ 选择、Enter/Tab 插入、Esc 关闭；
+   鼠标 hover/click 同步。插入 [[name]]（name=标题/词，与 fts.resolve_wikilink
+   的 by_title/by_stem 解析对齐，不产生死链）。
+   两种输入载体（Story 2 后 textarea 被 CM 接管并隐藏）：
+     · CM 模式（KBED.active()）：事件走 KBED.on('doc'/'key'/'blur'/'state')，
+       定位用 view.coordsAtPos，插入用 KBED.replaceRange。
+     · textarea 模式（回落）：事件走原生 DOM listener，定位用镜像法。
+   不改 app.js 保存/fm 逻辑；插入后 CM 分支自动 syncToTextarea，textarea
+   分支 dispatch input，两条路都让 ED_SNAPSHOT dirty 契约看到新值。
    ===================================================================== */
 (function () {
   "use strict";
@@ -13,13 +17,27 @@
 
   var ta = null;          // textarea#ed-text
   var box = null;         // 补全下拉 DOM
-  var items = [];         // 当前候选
-  var active = 0;         // 高亮下标
+  var items = [];
+  var active = 0;
   var open = false;
-  var trigStart = -1;     // `[[` 中第一个 [ 的 caret 位置
+  var trigStart = -1;     // `[[` 中第一个 [ 的下标
   var debounceTimer = 0;
   var blurTimer = 0;
   var lastQuery = "";
+
+  /* ---------- 模式判定与位置抽象（CM / textarea 两分支） ---------- */
+  function cmMode() { return !!(window.KBED && KBED.active && KBED.active()); }
+  function beforeText() {
+    return cmMode() ? KBED.textBeforeCursor() : ta.value.slice(0, ta.selectionStart);
+  }
+  function cursorPos() {
+    if (cmMode()) { var s = KBED.cursorPos(); return s ? s.from : -1; }
+    return ta.selectionStart;
+  }
+  function cursorCollapsed() {
+    if (cmMode()) { var s = KBED.cursorPos(); return !!s && s.from === s.to; }
+    return ta.selectionStart === ta.selectionEnd;
+  }
 
   /* ---------- DOM ---------- */
   function ensureBox() {
@@ -30,8 +48,7 @@
     box.style.display = "none";
     document.body.appendChild(box);
     box.addEventListener("mousedown", function (e) {
-      // 用 mousedown 而非 click：抢在 textarea blur 之前完成插入
-      e.preventDefault();
+      e.preventDefault(); // 抢在 blur 之前完成插入
       var li = e.target.closest && e.target.closest("[data-idx]");
       if (li) pick(parseInt(li.dataset.idx, 10));
     });
@@ -46,18 +63,16 @@
 
   /* ---------- 触发检测：caret 前是否处于 [[... 未闭合 ---------- */
   function detectTrigger() {
-    var pos = ta.selectionStart;
-    if (pos !== ta.selectionEnd) return -1; // 有选区不触发
-    var before = ta.value.slice(0, pos);
+    if (!cursorCollapsed()) return -1; // 有选区不触发
+    var before = beforeText();
     var m = before.match(/\[\[([^\[\]\n]{0,40})$/);
     if (!m) return -1;
-    // 排除 [[a]]b 这种已闭合后再输入的情形：match 已保证 [[ 后无 ]，天然排除
-    return pos - m[0].length; // 返回 `[[` 起始下标
+    return before.length - m[0].length; // `[[` 起始下标
   }
 
   function currentQuery() {
     if (trigStart < 0) return "";
-    return ta.value.slice(trigStart + 2, ta.selectionStart);
+    return beforeText().slice(trigStart + 2);
   }
 
   /* ---------- 取数 ---------- */
@@ -70,8 +85,7 @@
       .then(function (r) { return r.ok ? r.json() : null; })
       .then(function (d) {
         if (!d || !d.ok) return close();
-        // 竞态守卫：请求发出后用户又敲了字，旧响应直接丢
-        if (currentQuery() !== lastQuery) return;
+        if (currentQuery() !== lastQuery) return; // 竞态守卫：旧响应丢弃
         items = d.items || [];
         active = 0;
         if (!items.length) { renderEmpty(); return; }
@@ -81,9 +95,7 @@
   }
 
   /* ---------- 渲染 ---------- */
-  function kindBadge(kind) {
-    return kind === "term" ? '<span class="wl-kind">术语</span>' : "";
-  }
+  function kindBadge(kind) { return kind === "term" ? '<span class="wl-kind">术语</span>' : ""; }
   function render() {
     ensureBox();
     box.innerHTML = items.map(function (it, i) {
@@ -117,9 +129,18 @@
     });
   }
 
-  /* ---------- 定位：镜像法测 caret 视口坐标 ---------- */
+  /* ---------- 定位：CM 用 coordsAtPos（精确）；textarea 用镜像法 ---------- */
   var mirror = null;
   function caretRect() {
+    if (cmMode()) {
+      var v = KBED.view, pos = cursorPos();
+      var c = v.coordsAtPos(pos); // 可能 null（行未渲染）
+      if (c) return { left: c.left, top: c.top, lineH: Math.max(12, c.bottom - c.top) };
+      // 回落：取 scroller 左上角
+      var sc = v.scrollDOM.getBoundingClientRect();
+      return { left: sc.left + 20, top: sc.top + 20, lineH: 20 };
+    }
+    // textarea 镜像法
     if (!mirror) {
       mirror = document.createElement("div");
       mirror.setAttribute("aria-hidden", "true");
@@ -150,7 +171,7 @@
     var bw = 320, bh = Math.min(box.offsetHeight || 240, 280);
     var x = Math.max(8, Math.min(c.left, window.innerWidth - bw - 8));
     var y = c.top + c.lineH + 4;
-    if (y + bh > window.innerHeight - 8) y = c.top - bh - 4; // 下方放不下翻转到上方
+    if (y + bh > window.innerHeight - 8) y = c.top - bh - 4; // 下方放不下翻到上方
     box.style.left = x + "px";
     box.style.top = Math.max(8, y) + "px";
     box.style.width = bw + "px";
@@ -160,13 +181,16 @@
   function pick(i) {
     var it = items[i];
     if (!it) return;
-    var pos = ta.selectionStart;
     var insert = "[[" + it.name + "]]";
-    // 替换从 trigStart 到 caret 的整段（含用户已敲的查询词）
-    ta.setRangeText(insert, trigStart, pos, "end");
-    ta.dispatchEvent(new Event("input", { bubbles: true })); // 保持 dirty 追踪一致
+    if (cmMode()) {
+      KBED.replaceRange(trigStart, cursorPos(), insert); // 内部 dispatch + syncToTextarea
+    } else {
+      var pos = ta.selectionStart;
+      ta.setRangeText(insert, trigStart, pos, "end");
+      ta.dispatchEvent(new Event("input", { bubbles: true })); // dirty 追踪一致
+      ta.focus();
+    }
     close();
-    ta.focus();
   }
 
   function close() {
@@ -177,8 +201,8 @@
     if (box) box.style.display = "none";
   }
 
-  /* ---------- 事件 ---------- */
-  function onInput() {
+  /* ---------- 事件处理（两模式共用） ---------- */
+  function handleInput() {
     clearTimeout(debounceTimer);
     var t = detectTrigger();
     if (t < 0) { close(); return; }
@@ -187,34 +211,38 @@
     lastQuery = q;
     debounceTimer = setTimeout(function () { fetchSuggest(q); }, 120);
   }
-
-  function onKeydown(e) {
-    if (!open) return;
-    if (e.key === "ArrowDown") { e.preventDefault(); if (items.length) { active = (active + 1) % items.length; paint(); } }
-    else if (e.key === "ArrowUp") { e.preventDefault(); if (items.length) { active = (active - 1 + items.length) % items.length; paint(); } }
-    else if (e.key === "Enter" || e.key === "Tab") {
-      if (items.length) { e.preventDefault(); e.stopPropagation(); pick(active); }
-    }
-    else if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); close(); }
+  /* 返回 true = 已消费该按键（CM 模式下阻止默认行为） */
+  function handleKey(e) {
+    if (!open) return false;
+    if (e.key === "ArrowDown") { if (items.length) { active = (active + 1) % items.length; paint(); } return true; }
+    if (e.key === "ArrowUp") { if (items.length) { active = (active - 1 + items.length) % items.length; paint(); } return true; }
+    if (e.key === "Enter" || e.key === "Tab") { if (items.length) { pick(active); return true; } return false; }
+    if (e.key === "Escape") { close(); return true; }
+    return false;
   }
-
-  function onBlur() {
-    // 延迟关闭：让 box 的 mousedown 先触发（虽然已 preventDefault，双保险）
+  function handleBlur() {
     clearTimeout(blurTimer);
-    blurTimer = setTimeout(close, 150);
+    blurTimer = setTimeout(close, 150); // 让 box 的 mousedown 先触发（双保险）
   }
+  function handleScrollOrResize() { if (open) place(); }
 
-  function onScrollOrResize() { if (open) place(); }
-
-  /* ---------- 挂载：编辑器打开时绑定（textarea 是静态 DOM，直接绑一次即可） ---------- */
+  /* ---------- 挂载 ---------- */
   function init() {
     ta = $("#ed-text");
     if (!ta) return;
-    ta.addEventListener("input", onInput);
-    ta.addEventListener("keydown", onKeydown);
-    ta.addEventListener("blur", onBlur);
-    ta.addEventListener("scroll", onScrollOrResize);
-    window.addEventListener("resize", onScrollOrResize);
+    // textarea 回落分支：原生 DOM 事件（CM 未接管时才触发）
+    ta.addEventListener("input", function () { if (!cmMode()) handleInput(); });
+    ta.addEventListener("keydown", function (e) { if (!cmMode() && handleKey(e)) { e.preventDefault(); e.stopPropagation(); } });
+    ta.addEventListener("blur", function () { if (!cmMode()) handleBlur(); });
+    ta.addEventListener("scroll", handleScrollOrResize);
+    window.addEventListener("resize", handleScrollOrResize);
+    // CM 分支：订阅桥接层事件
+    if (window.KBED && KBED.on) {
+      KBED.on("doc", handleInput);
+      KBED.on("key", handleKey);
+      KBED.on("blur", handleBlur);
+      KBED.on("state", function (on) { if (!on) close(); }); // detach 时关下拉
+    }
   }
 
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init);
