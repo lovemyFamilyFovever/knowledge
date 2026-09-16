@@ -34,3 +34,4 @@ qwenwork/
 
 /.workbuddy
 /node_modules
+scripts/codemirror-vendor/node_modules/
