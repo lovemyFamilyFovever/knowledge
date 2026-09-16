@@ -11,11 +11,11 @@
         <a class="dom-head {% if cur.domain == d.id %}active{% endif %}" href="/browse/{{ d.id }}/{{ d.subs[0].id }}">
           <span class="dom-caret" role="button" tabindex="0" aria-label="折叠或展开 {{ d.label }}" aria-expanded="false" title="折叠/展开"></span>
           <span class="dom-glyph"><svg><use href="#i-{{ d.id }}"/></svg></span>
-          <span class="dom-name">{{ d.label }}</span><span class="dom-n">{{ d.n }}</span>
+          <span class="dom-name" title="{{ d.label }}">{{ d.label }}</span><span class="dom-n">{{ d.n }}</span>
         </a>
         <div class="subs">
           {% for s in d.subs %}
-          <a class="sub {% if cur.domain == d.id and cur.sub == s.id %}active{% endif %}" href="/browse/{{ d.id }}/{{ s.id }}">{{ s.label }}<span class="n">{{ s.n }}</span></a>
+          <a class="sub {% if cur.domain == d.id and cur.sub == s.id %}active{% endif %}" href="/browse/{{ d.id }}/{{ s.id }}" title="{{ s.label }}">{{ s.label }}<span class="n">{{ s.n }}</span></a>
           {% endfor %}
         </div>
       </div>

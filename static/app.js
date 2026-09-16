@@ -257,16 +257,19 @@ function renderLibraryDoc(el, ext) {
     </div><div class="a-rule"></div>`;
   if (ext === "pdf") {
     el.innerHTML = head + `<div class="lib-frame-wrap"><iframe class="lib-frame" src="${rawHref}" title="${esc(DOC.title)}"></iframe></div>`;
+    buildToc(); // 清空残留目录
     return;
   }
   if (ext === "epub") {
     el.innerHTML = head + `<div class="a-body"><p>EPUB 电子书暂不支持在线预览。</p>
       <p><a class="chip chip-btn" href="${rawHref}" download="${esc(DOC.name || "book.epub")}">${icon("download", 11)} 下载后用阅读器打开</a></p></div>`;
+    buildToc();
     return;
   }
   if (ext === "xlsx") {
     el.innerHTML = head + `<div class="a-body" id="lib-xlsx"><div class="kb-skeleton" aria-busy="true"><i style="width:60%"></i><i style="width:90%"></i></div></div>`;
     renderXlsx(rawHref);
+    buildToc();
     return;
   }
   // txt：>2MB 只展示前 512KB 预览，完整阅读走下载
@@ -278,13 +281,45 @@ function renderLibraryDoc(el, ext) {
     const LIMIT = 512 * 1024;
     const truncated = t.length > LIMIT;
     const body = truncated ? t.slice(0, LIMIT) : t;
-    const pre = document.createElement("pre");
-    pre.className = "lib-txt-pre";
-    pre.textContent = body;
+    /* 章节识别：按行扫描常见章节标题（第X章/Chapter N/序章/番外等），
+       命中 ≥2 个则渲染为带锚点标题的可导航文本，右栏目录随之生成 */
+    const lines = body.split(/\r?\n/);
+    const chapRe = /^\s*(第[0-9零一二三四五六七八九十百千两]+[章回卷节部集]|Chapter\s+\d+|CHAPTER\s+\d+|序[章言]?|楔子|引子|番外[篇·]?\S*|尾声|终章|后记)\s*[^\n]{0,40}$/;
+    const segs = [];
+    let cur = null;
+    lines.forEach(ln => {
+      if (chapRe.test(ln) && ln.trim().length <= 42) {
+        if (cur) segs.push(cur);
+        cur = { title: ln.trim(), lines: [] };
+      } else if (cur) cur.lines.push(ln);
+      else { if (!cur) cur = { title: "", lines: [] }; cur.lines.push(ln); }
+    });
+    if (cur) segs.push(cur);
+    const hasChapters = segs.filter(s => s.title).length >= 2;
     const wrap = $("#lib-txt");
     if (!wrap) return;
     wrap.innerHTML = "";
-    wrap.appendChild(pre);
+    if (hasChapters) {
+      const used = new Set();
+      segs.forEach(s => {
+        if (s.title) {
+          const h = document.createElement("h2");
+          h.className = "lib-txt-chap";
+          h.textContent = s.title;
+          h.id = slugifyHeading(s.title, used);
+          wrap.appendChild(h);
+        }
+        const pre = document.createElement("pre");
+        pre.className = "lib-txt-pre";
+        pre.textContent = s.lines.join("\n").replace(/^\n+/, "");
+        wrap.appendChild(pre);
+      });
+    } else {
+      const pre = document.createElement("pre");
+      pre.className = "lib-txt-pre";
+      pre.textContent = body;
+      wrap.appendChild(pre);
+    }
     if (truncated) {
       const note = document.createElement("div");
       note.className = "hint";
@@ -292,9 +327,11 @@ function renderLibraryDoc(el, ext) {
       note.textContent = `文件较大（${sizeMiB} MB），仅预览前 512KB —— 下载后阅读全文。`;
       wrap.appendChild(note);
     }
+    buildToc(); // 章节标题已就位，重建右栏目录（含空态提示）
   }).catch(e => {
     const wrap = $("#lib-txt");
     if (wrap) wrap.innerHTML = `<p>读取失败：${esc(String(e.message || e))}</p>`;
+    buildToc();
   });
 }
 
@@ -713,7 +750,7 @@ function renderTree() {
     <a class="dom-head ${CUR && CUR.domain === d.id ? "active" : ""}" href="/browse/${d.id}/${d.subs[0].id}">
      <span class="dom-caret" role="button" tabindex="0" aria-label="折叠或展开 ${esc(d.label)}" aria-expanded="${isOpen ? "true" : "false"}" title="折叠/展开"></span>
      <span class="dom-glyph" style="--dh:${HUES[d.id] || 158}"><svg><use href="#i-${d.id}"/></svg></span>
-     <span class="dom-name">${esc(d.label)}</span><span class="dom-n">${d.n}</span>
+     <span class="dom-name" title="${esc(d.label)}">${esc(d.label)}</span><span class="dom-n">${d.n}</span>
     </a>
     <div class="subs">${d.subs.map(s => {
       // 需求 #11：单列树 —— 文档内联在子域下（第二列列表列已移除）
@@ -742,7 +779,7 @@ function renderTree() {
         : `<div class="tree-subdir" style="--deep:${dir.split("/").length}"><div class="tree-subdir-h" title="${esc(dir)}">${icon("folder", 11)} ${esc(dir.split("/").pop())}</div>${docsByDir[dir].map(doc => docLink(doc, dir)).join("")}</div>`
       ).join("");
       return `
-      <a class="sub ${cur ? "active" : ""}" data-dom="${esc(d.id)}" data-sub="${esc(s.id)}" href="/browse/${d.id}/${s.id}">${esc(s.label)}<span class="n">${s.n}</span></a>
+      <a class="sub ${cur ? "active" : ""}" data-dom="${esc(d.id)}" data-sub="${esc(s.id)}" href="/browse/${d.id}/${s.id}" title="${esc(s.label)}">${esc(s.label)}<span class="n">${s.n}</span></a>
       ${cur ? groups : ""}`;
     }).join("")}
     </div>

@@ -721,10 +721,14 @@
     }
     /* KB.overlay 系弹层在场时让位：Esc 由弹层自身处理（问题13），
        其余按键一律不劫持，防止「弹层开着按 j 也翻列表」的双动作。 */
-    if (KB.overlay && KB.overlay.openCount > 0) return false;
-    /* ② Escape：关补全 → 关面板 → 关帮助 → 关编辑器（保留 app.js 原有行为） */
+    var soOv = document.getElementById("kb-search-ov");
+    var soOpenState = !!(soOv && soOv.classList.contains("show"));
+    var soTarget = soOpenState && (e.target === soOv || !soOv.querySelector(".kb-search-box").contains(e.target));
+    if (!soTarget && KB.overlay && KB.overlay.openCount > 0) return false;
+    /* ② Escape：关补全 → 关搜索浮层 → 关面板 → 关帮助 → 关编辑器（保留 app.js 原有行为） */
     if (e.key === "Escape") {
       if (KB.wl && KB.wl.suggestOpen && KB.wl.suggestOpen()) { KB.wl.hideSuggest(); e.preventDefault(); return true; }
+      if (soOpenState) { soOv.classList.remove("show"); soOv.hidden = true; e.preventDefault(); return true; }
       if (palette.isOpen()) { if (palette.mode === "readpref") { palette.mode = "palette"; palRender(); } else palette.close(); e.preventDefault(); return true; }
       var helpEl = document.getElementById("kb-help");
       if (helpEl && helpEl.classList.contains("show")) { toggleHelp(false); e.preventDefault(); return true; }
@@ -951,6 +955,14 @@
     if (gear && !gear.dataset.kbBound) {
       gear.dataset.kbBound = "1";  // boot 幂等跑两次，防重复绑定
       gear.addEventListener("click", function () { KB.settings.open(); });
+    }
+    /* 搜索浮层：点遮罩空白处关闭（点在 .kb-search-box 内部不关） */
+    var soOv = document.getElementById("kb-search-ov");
+    if (soOv && !soOv.dataset.kbMaskBound) {
+      soOv.dataset.kbMaskBound = "1";
+      soOv.addEventListener("click", function (e) {
+        if (e.target === soOv) { soOv.classList.remove("show"); soOv.hidden = true; }
+      });
     }
     if (booted) return;
     booted = true;
