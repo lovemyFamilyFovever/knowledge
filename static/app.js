@@ -953,6 +953,7 @@ async function openDoc(domain, sub, name) {
   linksLoadedFor = null;
   if (document.querySelector("#pane-links.active")) loadLinks(); // 停在双链标签时跟随切换
   const art = document.querySelector(".article"); if (art) art.scrollTop = 0;
+  resetReadProgress(); // C1：新文档渲染前进度归零（restoreReadPos 回跳时 scroll 事件自然续上）
   restoreReadPos();
 }
 
@@ -982,6 +983,28 @@ function wireReadPos() {
   }, { passive: true });
 }
 wireReadPos();
+/* ---------- C1：阅读进度条接线（--kb-read-pct，阶段3 埋的 .article::before） ----------
+   passive + rAF 节流（不每帧强制重排）；reset 与 navigate 的 scrollTop=0 同帧。 */
+let readPctRaf = 0;
+function wireReadProgress() {
+  const art = document.querySelector(".article");
+  if (!art || art.dataset.kbReadPct === "1") return;
+  art.dataset.kbReadPct = "1";
+  art.addEventListener("scroll", () => {
+    if (readPctRaf) return;
+    readPctRaf = requestAnimationFrame(() => {
+      readPctRaf = 0;
+      const max = art.scrollHeight - art.clientHeight;
+      const pct = max > 40 ? Math.min(100, Math.max(0, (art.scrollTop / max) * 100)) : 0;
+      art.style.setProperty("--kb-read-pct", pct.toFixed(2) + "%");
+    });
+  }, { passive: true });
+}
+wireReadProgress();
+function resetReadProgress() {
+  const art = document.querySelector(".article");
+  if (art) art.style.setProperty("--kb-read-pct", "0%");
+}
 function restoreReadPos() {
   const art = document.querySelector(".article");
   if (!art || !DOC) return;
