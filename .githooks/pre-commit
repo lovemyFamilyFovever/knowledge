@@ -53,6 +53,11 @@ if [ -f "tests/test_govern.py" ]; then
   $PY tests/test_govern.py || exit 1
 fi
 
+# 悬空令牌检查（批6 整行删除回归教训）：var() 使用必须有定义/fallback/运行时注入兜底，
+# 差集非空即拒绝提交。纯标准库，不依赖 flask，与上方解释器探测解耦。
+echo "[pre-commit] running dangling-token check..."
+$PY scripts/check_dangling_tokens.py || exit 1
+
 echo "[pre-commit] running RAG smoke (SKIP if deps missing)..."
 $PY tests/test_rag.py || exit 1
 
