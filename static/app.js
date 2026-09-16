@@ -643,7 +643,56 @@ function buildToc() {
   }, { root: document.querySelector(".article"), rootMargin: "0px 0px -72% 0px", threshold: 0 });
   heads.forEach(h => spy.observe(h));
   tocOn(pairs[0][1]);
+  renderTocSpark();
   function tocOn(a) { $$("#pane-toc a").forEach(x => x.classList.remove("on")); a.classList.add("on"); }
+}
+
+/* ---------- C3-B1：TOC 下方近 7 日阅读篇数 sparkline（reading.db 只读供数） ---------- */
+let tocSparkSeq = 0;
+function renderTocSpark() {
+  const pane = $("#pane-toc"); if (!pane) return;
+  const host = document.createElement("div");
+  host.className = "kb-toc-spark";
+  host.id = "kb-toc-spark";
+  host.innerHTML = `<div class="kb-toc-spark-h">近 7 日阅读</div><div class="kb-toc-spark-b">…</div>`;
+  pane.appendChild(host);
+  const seq = ++tocSparkSeq;
+  fetch("/api/learn/recent_read")
+    .then(r => r.json())
+    .then(d => {
+      if (seq !== tocSparkSeq) return;           // 文档已切换，丢弃过期响应
+      const body = host.querySelector(".kb-toc-spark-b");
+      const days = (d && d.days) || [];
+      const counts = days.map(x => x.count);
+      if (!counts.length || counts.every(c => c === 0)) {
+        body.innerHTML = `<div class="kb-toc-spark-empty">近 7 日暂无阅读</div>`;
+        return;
+      }
+      const W = 210, H = 46, base = H - 14, top = 6;
+      const max = Math.max(...counts, 1);
+      const n = counts.length, slot = W / n, bw = Math.min(18, slot * 0.55);
+      const avg = counts.reduce((s, c) => s + c, 0) / n;
+      const peak = Math.max(...counts);
+      let bars = "";
+      counts.forEach((c, i) => {
+        const h = c > 0 ? Math.max(2, (c / max) * (base - top)) : 1.5;
+        const x = (i * slot + (slot - bw) / 2).toFixed(1);
+        const y = (base - h).toFixed(1);
+        const fill = c > 0 ? "var(--c-acc)" : "var(--c-line)";
+        const op = c > 0 ? "" : ` opacity=".55"`;
+        bars += `<rect x="${x}" y="${y}" width="${bw.toFixed(1)}" height="${h.toFixed(1)}" rx="2" fill="${fill}"${op}><title>${days[i].date}：${c} 篇</title></rect>`;
+      });
+      const avgY = (base - Math.max(2, (avg / max) * (base - top))).toFixed(1);
+      body.innerHTML = `<svg viewBox="0 0 ${W} ${H}" width="100%" height="${H}" role="img" aria-label="近 7 日阅读篇数柱状图">
+        <line x1="0" y1="${base + 1}" x2="${W}" y2="${base + 1}" stroke="var(--c-line)" stroke-width="1"/>
+        <line x1="0" y1="${avgY}" x2="${W}" y2="${avgY}" stroke="var(--c-line)" stroke-width="1" stroke-dasharray="3 3" opacity=".8"/>
+        ${bars}</svg>
+        <div class="kb-toc-spark-meta"><span>峰值 ${peak} 篇</span><span>日均 ${avg.toFixed(1)} 篇</span></div>`;
+    })
+    .catch(() => {
+      const body = host.querySelector(".kb-toc-spark-b");
+      if (body && seq === tocSparkSeq) body.innerHTML = `<div class="kb-toc-spark-empty">近 7 日暂无阅读</div>`;
+    });
 }
 
 /* ---------- 分类树 / 文档列表（客户端渲染） ---------- */

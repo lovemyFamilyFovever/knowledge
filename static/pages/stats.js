@@ -226,9 +226,48 @@
     resizeTimer = setTimeout(function () { drawDaily(); }, 180);
   }
 
+  /* ---------- C3-B2：复习卡覆盖 · 阶段分布（7 域骨架，三段计数堆叠条） ---------- */
+  function initMastery() {
+    var body = document.getElementById("stMasteryBody");
+    var sum = document.getElementById("stMasterySum");
+    if (!body || !window.KB || !KB.api) return;
+    KB.api.mastery({ scope: "domain", all: 1 }).then(function (j) {
+      var items = j.items || [];
+      var tot = j.totals || {};
+      if (!items.length || !tot.total) {
+        body.innerHTML = '<div class="kb-empty" style="padding:8px 2px">复习库暂无数据</div>';
+        return;
+      }
+      var covered = items.filter(function (x) { return x.total > 0; }).length;
+      if (sum) sum.textContent = tot.total + " 卡 · 覆盖 " + covered + "/" + items.length +
+        " 域 · new " + (tot.new || 0) + " / learning " + (tot.learning || 0) + " / mastered " + (tot.mastered || 0);
+      body.innerHTML = items.map(function (it) {
+        var total = it.total || 0;
+        var wN = total ? (it.new / total) * 100 : 0;
+        var wL = total ? (it.learning / total) * 100 : 0;
+        var wM = total ? (it.mastered / total) * 100 : 0;
+        var segs = total ? (
+          '<i class="s-new" style="width:' + wN.toFixed(2) + '%"></i>' +
+          '<i class="s-learn" style="width:' + wL.toFixed(2) + '%"></i>' +
+          '<i class="s-master" style="width:' + wM.toFixed(2) + '%"></i>'
+        ) : "";
+        var counts = total
+          ? '<span class="st-mastery-n"><b class="c-new">' + it.new + '</b> / <b class="c-learn">' + it.learning + '</b> / <b class="c-master">' + it.mastered + '</b></span>'
+          : '<span class="st-mastery-none">未建卡</span>';
+        return '<div class="st-mastery-row' + (total ? "" : " is-empty") + '">' +
+          '<span class="dot" style="--dh:' + (it.hue || 158) + '"></span>' +
+          '<span class="lab">' + it.label + '</span>' +
+          '<span class="bar">' + segs + '</span>' + counts + '</div>';
+      }).join("");
+    }).catch(function () {
+      body.innerHTML = '<div class="kb-empty" style="padding:8px 2px">复习库暂无数据</div>';
+    });
+  }
+
   function init() {
     initSparks();
     drawDaily();
+    initMastery();
     if (!(window.gsap && window.Motion && !reduced)) ensureRevealed();   // GSAP 未就绪 → 立即显示
     setTimeout(ensureRevealed, 1200);                                   // 失败安全：超时仍隐形就强制显示
     window.addEventListener("resize", onResize);

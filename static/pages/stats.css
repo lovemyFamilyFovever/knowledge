@@ -139,3 +139,24 @@ svg.mascot .bubble{fill:var(--ill-bubble);stroke:var(--ill-line);stroke-width:1.
 @media (prefers-reduced-motion: reduce){
   .lb-row{transition:none}
 }
+
+/* [C3-B2] 复习卡覆盖 · 阶段分布（7 域骨架，三段计数） ===== */
+.st-mastery{margin-top:14px;border:1px solid var(--c-line);border-radius:var(--rd-card);
+  background:var(--c-panel);box-shadow:var(--elev-1);padding:14px 16px}
+.st-mastery-head{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:10px}
+.st-mastery-sum{font-family:var(--f-mono);font-size:10.5px;color:var(--faint);letter-spacing:.04em}
+.st-mastery-row{display:flex;align-items:center;gap:9px;padding:5px 0;font-size:12px}
+.st-mastery-row .dot{flex:none;width:8px;height:8px;border-radius:2px;background:oklch(58% .10 var(--dh,158))}
+.st-mastery-row .lab{flex:none;width:52px;color:var(--c-ink)}
+.st-mastery-row .bar{flex:1;height:8px;border-radius:var(--rd-ctl);background:var(--c-sunk);
+  display:flex;overflow:hidden}
+.st-mastery-row .bar i{display:block;height:100%}
+.st-mastery-row .bar .s-new{background:var(--c-line)}
+.st-mastery-row .bar .s-learn{background:var(--c-info)}
+.st-mastery-row .bar .s-master{background:var(--c-ok)}
+.st-mastery-row.is-empty .lab,.st-mastery-row.is-empty .dot{opacity:.45}
+.st-mastery-n{flex:none;font-family:var(--f-mono);font-size:10.5px;color:var(--muted);font-variant-numeric:tabular-nums}
+.st-mastery-n .c-new{color:var(--muted);font-weight:600}
+.st-mastery-n .c-learn{color:var(--c-info);font-weight:600}
+.st-mastery-n .c-master{color:var(--c-ok);font-weight:600}
+.st-mastery-none{flex:none;font-size:10.5px;color:var(--faint);letter-spacing:.06em}

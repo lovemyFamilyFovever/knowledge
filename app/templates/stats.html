@@ -46,7 +46,18 @@
           </div>
         </div>
 
-        {# ── 每日阅读柱状图（内联 SVG，横轴按日历 1..N 日定位） ── #}
+        {# ── C3-B2：复习卡覆盖 · 阶段分布（learn 库只读派生，7 域骨架） ── #}
+<section class="st-mastery" id="stMastery" aria-label="复习卡覆盖与阶段分布">
+  <div class="st-mastery-head">
+    <span class="chart-title">复习卡覆盖 · 阶段分布</span>
+    <span class="st-mastery-sum" id="stMasterySum"></span>
+  </div>
+  <div class="st-mastery-body" id="stMasteryBody">
+    <div class="kb-empty" style="padding:8px 2px">复习库加载中…</div>
+  </div>
+</section>
+
+{# ── 每日阅读柱状图（内联 SVG，横轴按日历 1..N 日定位） ── #}
         <div class="chart-card">
           <div class="chart-head">
             <span class="chart-title">每日阅读时长 · {{ ym }}</span>
