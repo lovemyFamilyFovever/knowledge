@@ -1394,15 +1394,51 @@ function loadLinks() {
         `<a class="result" href="${docUrl(x.path)}"><div class="doc-t">${esc(x.title)}</div><div class="rp">${esc(x.path)}</div></a>`).join("");
       const fwd = d.outgoing.map(x => x.resolved
         ? `<a class="result" href="${docUrl(x.path)}"><div class="doc-t">${esc(x.title)}</div><div class="rp">${esc(x.path)}</div></a>`
-        : `<div class="result"><div class="doc-t" style="color:var(--warn)">未解析：${esc(x.raw)}</div><div class="rp">没有匹配的文档——整理时顺手修掉或删除</div></div>`).join("");
+        : `<div class="kblink-row dead"><span class="t">未解析：${esc(x.raw)}</span><button type="button" class="fix" data-raw="${esc(x.raw)}" title="为该断链目标创建占位文档">补建</button></div>`).join("");
       pane.innerHTML =
         `<div class="home-sec" style="margin-top:4px">谁引用了它 · ${d.incoming.length}</div>` +
         (back || `<div style="font-size:12.5px;color:var(--faint);padding:4px 2px">还没有。写别的文档时打个 [[${esc(DOC.title)}]] 就连上了。</div>`) +
         `<div class="home-sec" style="margin-top:16px">它引用 · ${d.outgoing.length}</div>` +
         (fwd || `<div style="font-size:12.5px;color:var(--faint);padding:4px 2px">本文没有 [[双链]]。</div>`);
+      pane.querySelectorAll(".kblink-row .fix").forEach(b => {
+        b.addEventListener("click", () => fixDeadLink(b.dataset.raw || ""));
+      });
       document.dispatchEvent(new CustomEvent("kb:links-rendered")); // roam 增强挂点（问题8：替代 observer）
     })
     .catch(() => { pane.innerHTML = `<div class="empty" style="padding:10px 2px">加载失败，稍后再试。</div>`; linksLoadedFor = null; });
+}
+
+/* ---------- C2：断链「补建占位」——走既有 /api/save 写回，不新造通道 ----------
+   目标域解析：/api/wikilink/suggest Top1 有 → 落该建议所在子域（复用既有分类）；
+   无建议 → 落当前文档同域根（不落 _inbox：_ 前缀目录 api_save 400 拒写且不进索引，
+   补建的占位文档必须可解析、可检索）。确认弹窗防误建；失败 toast 不静默。 */
+async function fixDeadLink(raw) {
+  raw = String(raw || "").trim();
+  if (!raw) return;
+  let sug = null;
+  try {
+    const r = await fetch("/api/wikilink/suggest?q=" + encodeURIComponent(raw) + "&limit=1");
+    const d = await r.json();
+    if (d && d.items && d.items[0] && d.items[0].score >= 70) sug = d.items[0]; // 仅采信高分建议（精确/前缀/包含）
+  } catch (e) {}
+  const rel = sug ? sug.rel : (DOC ? DOC.rel.split("/").slice(0, 2).join("/") + "/" + raw + ".md" : raw + ".md");
+  const where = sug ? `已有相似文档「${sug.name}」在 ${sug.rel}——将创建的占位仍按你输入命名` : `落当前文档同域：${rel}`;
+  const res = await kbModal({
+    title: "补建占位文档",
+    body: `为断链 <span class='mono'>[[${esc(raw)}]]</span> 创建占位 Markdown。<br><span style="color:var(--faint);font-size:12px">${esc(where)}</span>`,
+    inputs: [{ key: "nm", label: "目标路径（域/子域/文件名.md）", value: rel }],
+    confirmText: "创建",
+  });
+  if (!res || !res.nm) return; // 取消 → 不建
+  const r = await fetch("/api/save", { method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ path: res.nm, content: `# ${raw}\n\n> 由断链补建占位生成（源：[[${raw}]]），待整理。\n` }) });
+  if (!r.ok) { toast("补建失败：" + r.status); return; }
+  toast("占位已创建：" + res.nm);
+  await afterMutation();          // 既有刷新链（FTS/树/计数）
+  invalidateWikilinkMap();        // 正文 [[双链]] 解析表失效
+  linksLoadedFor = null;          // 双链面板缓存失效
+  if (DOC && $("#article")) renderArticle(); // 当前正文重渲染：dead wikilink 即时转正常
+  if (document.querySelector("#pane-links.active")) loadLinks(); // 面板停留时立即重载（断链行消失）
 }
 
 /* ---------- 美化版弹窗（KB.overlay：Esc/遮罩/焦点归还统一，问题13） ---------- */
