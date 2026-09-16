@@ -210,6 +210,38 @@ def main() -> int:
               saved.startswith("---") and 'title: "newfile"' in saved and 'source: "reader-edit"' in saved
               and "随手记的内容" in saved)
 
+        # ── Story 2 护栏：编辑器桥接层保存 CRLF 语料，fm 字节必须保真 ──
+        # 契约（app.js saveDoc 安全网同源）：编辑器视图的文本永远是 LF
+        #   —— textarea.value 与 CodeMirror 默认 lineSeparator 都是 "\n"，
+        #   服务端 write_text 再按平台翻译成 CRLF。若桥接层提交含 \r\n 的文本，
+        #   会二次翻译成 \r\r\n 污染语料。故 CM 接入必须保持 LF 提交。
+        # 注意：/api/save 拒写 _ 前缀目录（不变量 2），探针放普通目录并用完即删。
+        pb = root / "content/handbook"
+        pb.mkdir(parents=True, exist_ok=True)
+        (pb / "nested.md").write_bytes(NESTED_DOC.encode("utf-8"))  # CRLF 嵌套原文
+        from app.store import set_fm_scalar as _sfs
+        _t = _decode_md((pb / "nested.md").read_bytes())
+        _edited = _sfs(_t, "title", "改名后的手册")
+        _as_editor = _edited.replace("\r\n", "\n")  # 编辑器视图归一到 LF（真实桥接层行为）
+        r = c.post("/api/save", json={"path": "handbook/nested.md", "content": _as_editor})
+        check("桥接层改 fm 标量后保存成功", r.status_code == 200, f"got {r.status_code}")
+        _after = (pb / "nested.md").read_bytes()
+        check("LF 提交时嵌套 fm 结构原样（hero/tagline 未压平）",
+              b"hero:" in _after and b"name:" in _after and b"tagline" in _after
+              and b"tags:" in _after and _after.count(b"---") == 2,
+              _after[:140])
+        check("CRLF 语料落盘不出现 \\r\\r 双重化", b"\r\r" not in _after, _after[:100])
+        # 反向护栏：桥接层若误提交 CRLF 文本，服务端会二次翻译——这条断言锁住
+        # 「编辑器必须提交 LF」的前提，CM 集成改动时若破了此契约会立即暴露。
+        _probe = _edited.replace("\r\n", "\n")
+        check("编辑器桥接层文本不含裸 CR（LF-only 提交契约）", "\r" not in _probe)
+        # 探针清理：handbook/nested.md 不进树，避免扰动后面的 dir/tree 聚合断言
+        (pb / "nested.md").unlink(missing_ok=True)
+        try:
+            pb.rmdir()
+        except OSError:
+            pass
+
         r = c.get("/api/links?path=career/B.md")
         j = r.get_json()
         check("/api/links 反向链找到 A", any("测试文档A" in x["title"] for x in j["incoming"]))
