@@ -53,3 +53,21 @@ html[data-theme="dark"] .tag-edit{background:color-mix(in oklab,var(--c-panel),t
 .lib-sheet{margin-bottom:22px}
 .lib-sheet-h{font:500 12px/1.4 var(--f-mono);color:var(--muted);margin-bottom:8px}
 .lib-sheet .tbl-wrap{max-height:60vh;overflow:auto}
+
+/* ---- EPUB 在线阅读器（epub.js，需求 #12 扩展） ---- */
+.epub-reader{display:flex;flex-direction:column;gap:10px}
+.epub-toolbar{display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid var(--c-line);
+  border-radius:var(--rd-card);background:var(--c-sunk)}
+.epub-toolbar .iconbtn{font-size:12px}
+.epub-loc{font:500 11px/1 var(--f-mono);color:var(--faint);min-width:60px;text-align:center}
+.epub-body-row{display:flex;gap:12px;align-items:stretch;min-height:520px;height:calc(100vh - 260px)}
+.epub-toc{flex:0 0 220px;overflow-y:auto;border:1px solid var(--c-line);border-radius:var(--rd-card);
+  background:var(--c-panel);padding:8px}
+.epub-toc-item{display:block;padding:6px 9px;font-size:12.5px;color:var(--muted);text-decoration:none;
+  border-radius:var(--rd-ctl);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;line-height:1.5;
+  transition:background var(--dur-1),color var(--dur-1)}
+.epub-toc-item:hover{background:var(--c-sunk);color:var(--c-ink)}
+.epub-toc-item.on{background:var(--acc-soft);color:var(--c-acc);font-weight:600}
+.epub-toc-empty{padding:14px 10px;font-size:12px;color:var(--faint)}
+.epub-view{flex:1;min-width:0;border:1px solid var(--c-line);border-radius:var(--rd-card);
+  background:#ffffff;overflow:hidden}

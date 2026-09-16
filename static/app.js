@@ -261,9 +261,8 @@ function renderLibraryDoc(el, ext) {
     return;
   }
   if (ext === "epub") {
-    el.innerHTML = head + `<div class="a-body"><p>EPUB 电子书暂不支持在线预览。</p>
-      <p><a class="chip chip-btn" href="${rawHref}" download="${esc(DOC.name || "book.epub")}">${icon("download", 11)} 下载后用阅读器打开</a></p></div>`;
-    buildToc();
+    el.innerHTML = head + `<div class="a-body" id="lib-epub"><div class="kb-skeleton" aria-busy="true"><i style="width:65%"></i><i style="width:88%"></i><i style="width:76%"></i></div><p style="color:var(--faint);font-size:12.5px">EPUB 解析中…</p></div>`;
+    renderEpub(rawHref);
     return;
   }
   if (ext === "xlsx") {
@@ -361,6 +360,108 @@ async function renderXlsx(url) {
   } catch (e) {
     const wrap = $("#lib-xlsx");
     if (wrap) wrap.innerHTML = `<p>表格渲染失败：${esc(String(e.message || e))}（可下载后本地打开）</p>`;
+  }
+}
+
+/* ---------- EPUB 在线阅读（epub.js + jszip，vendor 离线） ---------- */
+let _epubLibLoading = null;
+function ensureEpubLib() {
+  if (window.ePub) return Promise.resolve();
+  if (!_epubLibLoading) {
+    _epubLibLoading = loadScript("/static/vendor/jszip.min.js")
+      .then(() => loadScript("/static/vendor/epub.min.js"));
+  }
+  return _epubLibLoading;
+}
+
+let _epubBook = null, _epubRendition = null;
+async function renderEpub(url) {
+  const wrap = $("#lib-epub");
+  if (!wrap) return;
+  try {
+    await ensureEpubLib();
+    // 销毁上一本（切换文档时防泄漏）
+    if (_epubRendition) { try { _epubRendition.destroy(); } catch (e) {} _epubRendition = null; }
+    if (_epubBook) { try { _epubBook.destroy(); } catch (e) {} _epubBook = null; }
+
+    wrap.innerHTML = `
+      <div class="epub-reader">
+        <div class="epub-toolbar">
+          <button class="iconbtn epub-prev" title="上一页">${icon("chev-left", 13)} 上一页</button>
+          <span class="epub-loc" id="epub-loc">—</span>
+          <button class="iconbtn epub-next" title="下一页">下一页 ${icon("chev-right", 13)}</button>
+          <span class="spacer" style="flex:1"></span>
+          <button class="iconbtn epub-font-dec" title="缩小字号">A-</button>
+          <button class="iconbtn epub-font-inc" title="放大字号">A+</button>
+        </div>
+        <div class="epub-body-row">
+          <nav class="epub-toc" id="epub-toc" aria-label="书籍目录"></nav>
+          <div class="epub-view" id="epub-view"></div>
+        </div>
+      </div>`;
+
+    const book = window.ePub(url);
+    _epubBook = book;
+    const rendition = book.renderTo("epub-view", {
+      width: "100%", height: "100%", spread: "none", flow: "scrolled-doc"
+    });
+    _epubRendition = rendition;
+    // 主题适配：注入浅色阅读样式到 epub iframe
+    rendition.themes.default({
+      body: { color: "#131c23", background: "#ffffff", "font-size": "16px", "line-height": "1.85", padding: "8px 4px" },
+      p: { "margin": "0.6em 0" }
+    });
+
+    let fontSize = 100;
+    const applyFont = () => rendition.themes.fontSize(fontSize + "%");
+
+    await rendition.display();
+
+    // 目录
+    const nav = await book.loaded.navigation;
+    const tocEl = $("#epub-toc");
+    if (nav && nav.toc && nav.toc.length) {
+      tocEl.innerHTML = nav.toc.map(item =>
+        `<a class="epub-toc-item" href="#" data-href="${esc(item.href)}" title="${esc(item.label)}">${esc(item.label.trim() || "（无标题）")}</a>`
+      ).join("");
+      tocEl.addEventListener("click", e => {
+        const a = e.target.closest(".epub-toc-item");
+        if (!a) return;
+        e.preventDefault();
+        rendition.display(a.dataset.href);
+        tocEl.querySelectorAll(".epub-toc-item").forEach(x => x.classList.toggle("on", x === a));
+      });
+    } else {
+      tocEl.innerHTML = `<div class="epub-toc-empty">本书无目录</div>`;
+    }
+
+    // 翻页与位置
+    const locEl = $("#epub-loc");
+    rendition.on("relocated", loc => {
+      const pct = book.locations && book.locations.length() ? "" : "";
+      locEl.textContent = (loc && loc.start && loc.start.cfi) ? "·" : "—";
+      // 高亮当前章
+      const href = loc && loc.start && loc.start.href;
+      if (href) tocEl.querySelectorAll(".epub-toc-item").forEach(x =>
+        x.classList.toggle("on", x.dataset.href === href || href.startsWith(x.dataset.href)));
+    });
+    const prev = () => rendition.prev();
+    const next = () => rendition.next();
+    wrap.querySelector(".epub-prev").onclick = prev;
+    wrap.querySelector(".epub-next").onclick = next;
+    wrap.querySelector(".epub-font-dec").onclick = () => { fontSize = Math.max(70, fontSize - 10); applyFont(); };
+    wrap.querySelector(".epub-font-inc").onclick = () => { fontSize = Math.min(180, fontSize + 10); applyFont(); };
+    // 键盘 ←→ 翻页（焦点在阅读器时）
+    wrap.tabIndex = 0;
+    wrap.addEventListener("keydown", e => {
+      if (e.key === "ArrowLeft") { e.preventDefault(); prev(); }
+      else if (e.key === "ArrowRight") { e.preventDefault(); next(); }
+    });
+    buildToc(); // epub 自带目录在工具栏左侧，右栏 rail 显示空态
+  } catch (e) {
+    wrap.innerHTML = `<div class="a-body"><p>EPUB 解析失败：${esc(String(e && e.message || e))}</p>
+      <p><a class="chip chip-btn" href="${url}" download="${esc(DOC.name || "book.epub")}">${icon("download", 11)} 下载后用阅读器打开</a></p></div>`;
+    buildToc();
   }
 }
 window.renderArticle = renderArticle;
