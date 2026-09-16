@@ -244,7 +244,7 @@
   /* 行宽限宽已取消（用户要求正文撑满）——measure 保留为 null 仅作旧 localStorage 兼容，
      get()/set()/apply() 均忽略它，--kb-measure 恒为 none。 */
   var PREF_DEF = { scale: 1.0, font: "sans", line: 1.75 };
-  var FONT_MAP = { sans: "var(--sans)", serif: "var(--disp)", mono: "var(--mono)" };
+  var FONT_MAP = { sans: "var(--f-body)", serif: "var(--f-disp)", mono: "var(--f-mono)" };
 
   var prefs = (KB.prefs = {
     LS: LS_PREF,

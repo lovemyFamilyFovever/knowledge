@@ -95,7 +95,7 @@
     var minutes = SERIES.rows.map(function (r) { return r.minutes; });
     var docs = SERIES.rows.map(function (r) { return r.docs; });
     var presence = SERIES.rows.map(function (r) { return r.minutes > 0 ? 1 : 0; });
-    var map = { minutes: [minutes, "var(--acc)"], docs: [docs, "var(--acc2)"], presence: [presence, "var(--acc)"] };
+    var map = { minutes: [minutes, "var(--c-acc)"], docs: [docs, "var(--c-info)"], presence: [presence, "var(--c-acc)"] };
     Array.prototype.forEach.call(document.querySelectorAll("[data-spark]"), function (c) {
       var cfg = map[c.getAttribute("data-spark")];
       c.textContent = "";
@@ -159,11 +159,11 @@
       if (r.minutes > 0) {
         var hMin = Math.max(2, (r.minutes / maxMin) * (base - top));
         g.appendChild(el("rect", { x: (cx - barW / 2).toFixed(1), y: (base - hMin).toFixed(1),
-          width: barW.toFixed(1), height: hMin.toFixed(1), rx: 2, fill: "var(--acc)" }));
+          width: barW.toFixed(1), height: hMin.toFixed(1), rx: 2, fill: "var(--c-acc)" }));
       } else {
         /* 缺失/零数据日：留一条极细基线刻度，保证日历连续可读 */
         g.appendChild(el("rect", { x: (cx - barW / 2).toFixed(1), y: (base - 1.5).toFixed(1),
-          width: barW.toFixed(1), height: 1.5, rx: 0.6, fill: "var(--edge)" }));
+          width: barW.toFixed(1), height: 1.5, rx: 0.6, fill: "var(--c-line)" }));
       }
       bars.appendChild(g);
       docPts.push([cx, base - (maxDoc > 0 ? (r.docs / maxDoc) * (base - top) : 0), r.docs]);

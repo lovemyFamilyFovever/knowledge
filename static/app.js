@@ -1353,7 +1353,7 @@ async function deleteDoc() {
     }
   };
   undoDelete = undo; // 存到模块级变量，toast 按钮触发（toast 是 innerHTML 注入，无法直接闭包）
-  toast(`已移入回收站 · <button type="button" class="undo-del" onclick="undoDelete()" style="background:none;border:1px solid var(--acc-edge);color:var(--acc);border-radius:6px;padding:2px 10px;margin-left:6px;cursor:pointer;font-size:12px">撤销</button>`, 6000);
+  toast(`已移入回收站 · <button type="button" class="undo-del" onclick="undoDelete()" style="background:none;border:1px solid var(--c-line);color:var(--c-acc);border-radius:6px;padding:2px 10px;margin-left:6px;cursor:pointer;font-size:12px">撤销</button>`, 6000);
 }
 
 /* ---------- 双链面板（懒加载） ---------- */

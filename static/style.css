@@ -68,8 +68,6 @@
   --rd-ctl:3px; --rd-card:4px; --rd-pill:999px;
   --dur-1:.12s; --dur-2:.2s; --dur-3:.35s;
   --ease-out:cubic-bezier(.16,1,.3,1);
-  /* 旧尺度兼容（[6]-[15] 组件区仍引用） */
-  --radius:var(--rd-card); --radius-sm:var(--rd-ctl); --radius-lg:calc(var(--rd-card) + 4px); --radius-pill:var(--rd-pill);
   --ease-back:cubic-bezier(.34,1.56,.64,1); --ease-inout:cubic-bezier(.65,0,.35,1);
   --motion-scale:1;
   --fs-hero:clamp(4rem,12vw,11rem); --fs-display:clamp(2rem,4.5vw,3.5rem);
@@ -82,11 +80,8 @@
   --c-danger:var(--hex-danger); --c-ok:var(--hex-ok); --c-mark:var(--hex-mark);
   --muted:color-mix(in oklab,var(--c-ink),var(--c-bg) 40%);
   --faint:color-mix(in oklab,var(--c-ink),var(--c-bg) 62%);
-  --acc:var(--c-acc);
-  --acc2:var(--c-info);
   --acc-soft:color-mix(in oklab,var(--c-acc),transparent 91%);
   --acc-line:color-mix(in oklab,var(--c-acc),transparent 55%);
-  --acc-edge:var(--acc-line);
   --info:var(--c-info);
   --info-soft:color-mix(in oklab,var(--c-info),transparent 91%);
   --warn:var(--c-warn);
@@ -96,18 +91,9 @@
   --danger-soft:color-mix(in oklab,var(--c-danger),transparent 91%);
   --rose:var(--c-danger);
   --success:var(--c-ok);
-  /* 结界线族（旧 --edge/--edge-hi/--hairline 兼容映射） */
-  --edge:var(--c-line);
-  --edge-hi:var(--c-line2);
-  --hairline:var(--c-line);
-  /* 平面薄板面板（玻璃拟态退役：--glass 变实底派生） */
-  --glass:var(--c-panel);
-  --glass-strong:var(--c-panel);
   --elev-1:0 1px 0 var(--c-line);
   --elev-pop:0 14px 34px color-mix(in oklab,var(--c-ink),transparent 84%),0 0 0 1px var(--c-line2);
   --ring:0 0 0 2px var(--c-bg),0 0 0 4px color-mix(in oklab,var(--c-acc),transparent 25%);
-  --shadow:var(--elev-1);
-  --shadow-hi:var(--elev-pop);
   --glow-accent:none;
   --wash-hero:color-mix(in oklab,var(--c-acc),var(--c-bg) 90%);
   /* LCD 代码板（固定暗色，不随主题翻转） */
@@ -118,18 +104,9 @@
   --texture:radial-gradient(color-mix(in oklab,var(--c-ink),transparent 88%) 1px,transparent 1px);
   --texture-size:22px 22px;
   --grain:.014;
-  /* 旧 seed 兼容别名（[6]-[15] 组件区大量引用） */
-  --seed-bg:var(--c-bg); --seed-fg:var(--c-ink);
-  /* 字体别名（旧引用） */
-  --sans:var(--f-body);
-  --disp:var(--f-disp);
-  --mono:var(--f-mono);
-  --num:var(--f-mono);
-  --font-display-latin:var(--f-disp);
   /* 7 域色相（taxonomy.json 权威 · oklch 派生） */
   --dh-baike:oklch(58% .10 158); --dh-articles:oklch(58% .10 200); --dh-interview:oklch(58% .10 340);
   --dh-projects:oklch(58% .10 22); --dh-handbook:oklch(58% .10 96); --dh-career:oklch(58% .10 42); --dh-ai:oklch(58% .10 262);
-  /* 兼容别名（旧模板 / 旧 JS 内联引用，勿删） */
   /* 阅读偏好默认值（kb 排印，[8] 区引用） */
   --kb-fs-scale:1; --kb-measure:none; --kb-font:var(--f-body); --kb-line:1.75;
 }
