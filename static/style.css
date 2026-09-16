@@ -62,7 +62,7 @@
   --hex-skin-light:#e8cba9; --hex-skin-shadow-light:#c9a482; --hex-hair-light:#2a3833;
   --hex-glasses-light:#3d4b47; --hex-shirt-light:#f7f7f2; --hex-shirt-shadow-light:#dcded6; --hex-device-light:#4a5d58;
   --hex-skin-dark:#c9a483; --hex-skin-shadow-dark:#a58467; --hex-hair-dark:#0d1714;
-  --hex-glasses-dark:#c8d5d0; --hex-shirt-dark:#dbe1dc; --hex-shirt-shadow-dark:#a2ada9; --hex-device-dark:#8fa4a0;
+  --hex-glasses-dark:#c8d5d0; --hex-shirt-dark:#dbe1dc; --hex-shirt-shadow-dark:#a2ada9; --hex-device-dark:#8fa4a0; --hex-fg-dark:#e2ece8; /* 批6 误删恢复（mascot dark） */
 
   /* ===== 尺度层 ===== */
   --rd-ctl:3px; --rd-card:4px; --rd-pill:999px;
@@ -72,6 +72,8 @@
   --motion-scale:1;
   --fs-hero:clamp(4rem,12vw,11rem); --fs-display:clamp(2rem,4.5vw,3.5rem);
   --fs-h2:clamp(1.25rem,2vw,1.75rem); --fs-body:15.5px; --fs-label:11.5px;
+  /* 批6 误删恢复（在用令牌）：--fs-11/12/14（body font 简写 IACVT 根因） */
+  --fs-11:11px; --fs-12:12.5px; --fs-14:14px;
 
   /* ===== 派生层（全 color-mix，零硬编码）===== */
   --c-bg:var(--hex-bg); --c-panel:var(--hex-panel); --c-sunk:var(--hex-sunk);
@@ -79,6 +81,7 @@
   --c-acc:var(--hex-primary); --c-info:var(--hex-info); --c-warn:var(--hex-warn);
   --c-danger:var(--hex-danger); --c-ok:var(--hex-ok); --c-mark:var(--hex-mark);
   --muted:color-mix(in oklab,var(--c-ink),var(--c-bg) 40%);
+  --ink:var(--c-ink); /* 批6 误删恢复（home.css 引用） */
   --faint:color-mix(in oklab,var(--c-ink),var(--c-bg) 62%);
   --acc-soft:color-mix(in oklab,var(--c-acc),transparent 91%);
   --acc-line:color-mix(in oklab,var(--c-acc),transparent 55%);
