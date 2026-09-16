@@ -133,7 +133,7 @@ html [hidden]{display:none}
 .kb-pal-box{
   position:absolute;left:50%;top:4vh;transform:translateX(-50%);
   width:min(620px,calc(100vw - 32px));max-height:92vh;display:flex;flex-direction:column;
-  border:1px solid var(--c-line);border-radius:calc(var(--rd-card) + 4px);background:var(--c-panel);
+  border:1px solid var(--c-line);border-radius:var(--rd-card);background:var(--c-panel);
   backdrop-filter:blur(24px);box-shadow:var(--elev-pop);overflow:hidden;color:var(--c-ink);
   animation:kb-pop .22s var(--ease-out);
 }
@@ -247,7 +247,7 @@ html [hidden]{display:none}
 .kb-help{position:fixed;inset:0;z-index:920;display:none;align-items:center;justify-content:center;
   background:color-mix(in oklab,var(--c-bg),transparent 30%);backdrop-filter:blur(5px)}
 .kb-help.show{display:flex}
-.kb-help-box{width:min(460px,calc(100vw - 32px));border:1px solid var(--c-line);border-radius:calc(var(--rd-card) + 4px);
+.kb-help-box{width:min(460px,calc(100vw - 32px));border:1px solid var(--c-line);border-radius:var(--rd-card);
   background:var(--c-panel);box-shadow:var(--elev-pop);overflow:hidden;color:var(--c-ink)}
 .kb-help-h{display:flex;align-items:center;gap:9px;padding:14px 18px 8px;font-family:var(--f-disp);font-size:15px;font-weight:600}
 .kb-help-h svg{color:var(--c-acc)}

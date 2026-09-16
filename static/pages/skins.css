@@ -226,7 +226,7 @@ html[data-skin="graphite"][data-theme="dark"]{
 
 /* ---- 皮肤切换弹层（顶栏油滴/调色按钮触发） ---- */
 .kb-skin-pop{position:absolute;top:calc(100% + 10px);right:0;width:300px;
-  background:var(--c-panel);border:1px solid var(--c-line2);border-radius:calc(var(--rd-card) + 4px);
+  background:var(--c-panel);border:1px solid var(--c-line2);border-radius:var(--rd-card);
   box-shadow:var(--elev-pop);padding:14px;z-index:920}
 .kb-skin-pop-h{font:600 10.5px/1 var(--f-mono);letter-spacing:.1em;text-transform:uppercase;color:var(--faint);margin-bottom:10px}
 .kb-skin-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
