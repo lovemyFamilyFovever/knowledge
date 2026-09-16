@@ -96,6 +96,20 @@ class ReadingStore:
                        "docs": int(d[2])} for d in daily],
         }
 
+    def recent_days(self, n: int = 7) -> list[dict]:
+        """近 n 日每天阅读篇数（open 去重口径，同 monthly().daily）。缺日补 0，老→新。
+        day 列区间查询天然跨月；只读 SELECT，不动任何表。"""
+        n = max(1, min(int(n or 7), 31))
+        import time as _t
+        days = [_t.strftime("%Y-%m-%d", _t.localtime(_t.time() - 86400 * i))
+                for i in range(n - 1, -1, -1)]
+        qs = ",".join("?" * n)
+        rows = self.con.execute(
+            f"""SELECT day, COUNT(DISTINCT CASE WHEN event='open' THEN path END)
+                FROM reading_events WHERE day IN ({qs}) GROUP BY day""", days).fetchall()
+        by = {r[0]: int(r[1] or 0) for r in rows}
+        return [{"date": d, "count": by.get(d, 0)} for d in days]
+
     def get_mark(self, path: str) -> dict:
         """单篇文档的已读/已掌握标记。"""
         row = self.con.execute(

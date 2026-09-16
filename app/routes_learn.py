@@ -235,14 +235,34 @@ def api_mastery():
     if scope not in ("sub", "domain"):
         raise BadParam("scope 只能是 sub 或 domain")
     domain = request.args.get("domain") or None
+    all_doms = (request.args.get("all") or "").strip().lower() in ("1", "true", "yes")
     ls = LearnStore(_indexes(), _content())
     try:
         ls.ensure_synced(_content())
-        r = ls.mastery(scope=scope, domain=domain)
+        r = ls.mastery(scope=scope, domain=domain, all=all_doms)
     finally:
         ls.close()
     return jsonify({"ok": True, "scope": r["scope"], "items": r["items"],
                     "totals": r["totals"]})
+
+
+@learn_bp.get("/api/learn/recent_read")
+@_guard
+def api_recent_read():
+    """近 7 日阅读篇数（reading.db 只读派生查询；TOC sparkline 供数）。"""
+    try:
+        n = int(request.args.get("days", 7))
+    except (TypeError, ValueError):
+        n = 7
+    rs = _hooks().get("ReadingStore")
+    if rs is None:
+        return jsonify({"ok": True, "days": []})
+    rsx = rs(_indexes())
+    try:
+        days = rsx.recent_days(n)
+    finally:
+        rsx.close()
+    return jsonify({"ok": True, "days": days})
 
 
 @learn_bp.get("/api/learn/today")

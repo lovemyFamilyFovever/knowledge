@@ -589,7 +589,8 @@ class LearnStore:
                 break
         return streak
 
-    def mastery(self, scope: str = "sub", domain: str | None = None) -> dict:
+    def mastery(self, scope: str = "sub", domain: str | None = None,
+                all: bool = False) -> dict:
         """掌握度面板：已掌握 / 学习中 / 未学 的分布。
 
         判定与 app/sm2.py 保持同一套公式：interval>=21 且 reps>=3 ⇒ 已掌握。
@@ -665,6 +666,25 @@ class LearnStore:
                 totals[k] += int(it[k])
         totals["pct"] = round(100 * totals["mastered"] / max(1, totals["total"]))
         totals["items"] = len(items)
+        # C3：all=True 且 scope=domain 时，以 taxonomy 域为骨架补零行——
+        # GROUP BY 只产出有卡域，7 域全景视图需要无卡域也可见（未建卡态）。
+        # 默认 False 走原路径，既有消费（learn.js 子域 chips / 测试）零变化。
+        if all and scope == "domain":
+            have = {it["domain"] for it in items}
+            tax = self._tax()
+            doms = list((tax or {}).get("domains", {}).keys())
+            if not doms:
+                doms = list(kbstore.GRAPH_HUES.keys())
+            for dom in doms:
+                if dom in have:
+                    continue
+                items.append({
+                    "id": dom, "label": self._domain_label(dom), "domain": dom, "sub": "",
+                    "total": 0, "mastered": 0, "learning": 0, "new": 0, "pct": 0,
+                    "hue": self._hue(dom), "ef_avg": EF_INIT, "due_n": 0,
+                })
+            items.sort(key=lambda x: (x["domain"], -x["total"], x["label"]))
+
         return {"scope": scope, "items": items, "totals": totals}
 
     def today_stats(self, domain: str | None = None) -> dict:
