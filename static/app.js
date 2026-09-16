@@ -1733,36 +1733,96 @@ function openCtxStats(dom, sub) {
 /* ---------- 全库聚合统计（顶栏全局「统计」按钮）----------
    与目录统计共用 .ss-* 视觉；数据来自 /api/globalstats。 */
 let GS_OV = null; // 当前全库统计层实例（重开时 close 旧的）
-/* ---------- 中期功能：AI 问吧（RAG 对话）—— /api/ask 检索增强问答 ---------- */
+/* ---------- 中期功能：AI 问吧（RAG 对话）—— /api/ask 检索增强问答 ----------
+   v2 美化：快捷提问 chips / 打字动效 / 时间戳 / 来源卡片 / 复制 / 清空对话 */
 let ASK_OV = null;
+const ASK_SUGGESTIONS = [
+  { icon: "i-file-md", q: "我最近收录了哪些笔记？" },
+  { icon: "i-search-magnifier", q: "我记过哪些关于向量数据库的内容？" },
+  { icon: "i-tag-outline", q: "帮我总结一下面试相关的要点" },
+  { icon: "i-hint-bulb", q: "有哪些值得复习的知识点？" },
+];
+function askTime() { const d = new Date(); return String(d.getHours()).padStart(2,"0") + ":" + String(d.getMinutes()).padStart(2,"0"); }
 async function showAsk() {
   if (ASK_OV) ASK_OV.close("re-open");
   const ov = KB.overlay.open({
     html: `<div class="kbm kbm-ask" role="document">
-      <div class="kbm-title">${icon("hint-bulb", 16)} 问知库<span class="spacer" style="flex:1"></span><button class="iconbtn ask-close" title="关闭（Esc）" aria-label="关闭">${icon("cancel-x", 14)}</button></div>
+      <div class="kbm-title ask-head">
+        <span class="ask-logo">${icon("hint-bulb", 16)}</span>
+        <span class="ask-title-txt">问知库</span>
+        <span class="ask-sub">RAG · 语义检索 Top6 + AI 生成</span>
+        <span class="spacer" style="flex:1"></span>
+        <button class="iconbtn ask-clear" title="清空对话" aria-label="清空对话">${icon("trash-outline", 13)}</button>
+        <button class="iconbtn ask-close" title="关闭（Esc）" aria-label="关闭">${icon("cancel-x", 14)}</button>
+      </div>
+      <div class="ask-suggests" id="ask-suggests">
+        ${ASK_SUGGESTIONS.map(s => `<button class="ask-chip" data-q="${s.q.replace(/"/g,"&quot;")}">${icon(s.icon, 12)} ${s.q}</button>`).join("")}
+      </div>
       <div class="kbm-body ask-body" id="ask-body">
-        <div class="ask-msg ask-ai">问点什么都行 —— 回答基于你的语料（语义检索 Top6 + AI 生成），末尾附引用来源。</div>
+        <div class="ask-msg ask-ai ask-welcome">
+          <div class="ask-msg-text">问点什么都行 —— 回答基于你的语料（语义检索 Top6 + AI 生成），末尾附引用来源。</div>
+          <div class="ask-msg-time">${askTime()}</div>
+        </div>
       </div>
       <div class="ask-inputrow">
-        <input id="ask-in" placeholder="例如：我记过哪些关于向量数据库的笔记？" autocomplete="off">
-        <button class="iconbtn primary" id="ask-go">提问</button>
+        <input id="ask-in" placeholder="输入问题，Enter 发送 · Shift+Enter 换行…" autocomplete="off">
+        <button class="iconbtn primary ask-go" id="ask-go">${icon("move-arrow", 13)} 提问</button>
       </div></div>`,
   });
   ASK_OV = ov;
   ov.root.querySelector(".ask-close").onclick = () => ov.close("btn");
-  
+
   const bodyEl = ov.root.querySelector("#ask-body");
   const input = ov.root.querySelector("#ask-in");
   const go = ov.root.querySelector("#ask-go");
+  const suggests = ov.root.querySelector("#ask-suggests");
   const esc2 = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c]));
+  const scrollB = () => { bodyEl.scrollTop = bodyEl.scrollHeight; };
+  const hideSuggests = () => { if (suggests) suggests.style.display = "none"; };
+
+  /* 快捷提问 chips */
+  if (suggests) suggests.addEventListener("click", e => {
+    const chip = e.target.closest(".ask-chip");
+    if (!chip) return;
+    input.value = chip.dataset.q;
+    input.focus();
+    ask();
+  });
+
+  /* 清空对话 */
+  ov.root.querySelector(".ask-clear").onclick = () => {
+    bodyEl.innerHTML = `<div class="ask-msg ask-ai ask-welcome"><div class="ask-msg-text">对话已清空。问点什么都行 —— 回答基于你的语料，末尾附引用来源。</div><div class="ask-msg-time">${askTime()}</div></div>`;
+    if (suggests) suggests.style.display = "";
+    input.focus();
+  };
+
+  /* 打字机式加载动效 */
+  const showPending = () => {
+    bodyEl.insertAdjacentHTML("beforeend",
+      `<div class="ask-msg ask-ai ask-pending" id="ask-pending"><div class="ask-typing"><i></i><i></i><i></i></div><div class="ask-msg-text ask-pending-txt">检索语料并生成中…</div></div>`);
+    scrollB();
+  };
+
+  /* 追加一条消息（含时间戳 + AI 消息复制按钮） */
+  const addMsg = (cls, html, isAI) => {
+    const id = "ask-m" + Date.now() + Math.random().toString(36).slice(2,6);
+    bodyEl.insertAdjacentHTML("beforeend",
+      `<div class="ask-msg ${cls}" id="${id}">
+        <div class="ask-msg-text">${html}</div>
+        <div class="ask-msg-meta"><span class="ask-msg-time">${askTime()}</span>${isAI ? `<button class="ask-copy" title="复制回答">${icon("save-write", 11)} 复制</button>` : ""}</div>
+      </div>`);
+    scrollB();
+    return ov.root.querySelector("#" + id);
+  };
+
   const ask = async () => {
     const qv = input.value.trim();
     if (!qv || go.disabled) return;
     go.disabled = true; input.disabled = true;
-    bodyEl.insertAdjacentHTML("beforeend", `<div class="ask-msg ask-me">${esc2(qv)}</div>`);
+    hideSuggests();
+    addMsg("ask-me", esc2(qv), false);
     input.value = "";
-    bodyEl.insertAdjacentHTML("beforeend", `<div class="ask-msg ask-ai" id="ask-pending">检索语料并生成中…</div>`);
-    bodyEl.scrollTop = bodyEl.scrollHeight;
+    showPending();
     try {
       const r = await fetch("/api/ask", { method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ q: qv }) });
@@ -1772,21 +1832,32 @@ async function showAsk() {
       if (!r.ok || !d.ok) {
         const hint = d.error === "not_configured" ? "AI 服务未配置：需要有效的 KB_AI_API_KEY（当前 key 无效或缺失）。其余功能不受影响。"
           : (d.error || "HTTP " + r.status);
-        bodyEl.insertAdjacentHTML("beforeend", `<div class="ask-msg ask-err">${esc2(hint)}</div>`);
+        addMsg("ask-err", esc2(hint), false);
       } else {
         const srcs = (d.sources || []).map(s =>
-          `<a href="${s.url || docUrl(String(s.path || "").replace(/\.md$/, ""))}" class="ask-src" title="${esc2(s.path)}">${esc2(String(s.path || "").split("/").slice(-2).join("/"))}</a>`).join("");
-        bodyEl.insertAdjacentHTML("beforeend", `<div class="ask-msg ask-ai">${esc2(d.answer).replace(/\n/g, "<br>")}${srcs ? `<div class="ask-srcs">来源：${srcs}</div>` : ""}</div>`);
+          `<a href="${s.url || docUrl(String(s.path || "").replace(/\.md$/, ""))}" class="ask-src" title="${esc2(s.path)}">${icon("file-md", 10)} ${esc2(String(s.path || "").split("/").slice(-2).join("/"))}</a>`).join("");
+        addMsg("ask-ai", esc2(d.answer).replace(/\n/g, "<br>") + (srcs ? `<div class="ask-srcs"><span class="ask-srcs-cap">来源</span>${srcs}</div>` : ""), true);
       }
     } catch (e) {
-      bodyEl.insertAdjacentHTML("beforeend", `<div class="ask-msg ask-err">请求失败：${esc2(String(e.message || e))}</div>`);
+      const pending = ov.root.querySelector("#ask-pending");
+      if (pending) pending.remove();
+      addMsg("ask-err", "请求失败：" + esc2(String(e.message || e)), false);
     } finally {
       go.disabled = false; input.disabled = false; input.focus();
-      bodyEl.scrollTop = bodyEl.scrollHeight;
+      scrollB();
     }
   };
+
+  /* 复制回答（事件委托） */
+  bodyEl.addEventListener("click", e => {
+    const cp = e.target.closest(".ask-copy");
+    if (!cp) return;
+    const txt = cp.closest(".ask-msg").querySelector(".ask-msg-text").innerText;
+    copyText(txt, "已复制到剪贴板");
+  });
+
   go.onclick = ask;
-  input.onkeydown = e => { if (e.key === "Enter") { e.preventDefault(); ask(); } };
+  input.onkeydown = e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); ask(); } };
   input.focus();
 }
 window.showAsk = showAsk;

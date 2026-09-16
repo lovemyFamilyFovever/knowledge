@@ -12,6 +12,22 @@
 .stats-body{display:flex;flex-direction:column;gap:16px;padding:6px 2px 10px;
   color:var(--c-ink);overflow:visible}
 
+/* ── 左右双列自适应布局：左列主图表(弹性大) + 右列KPI/排行(弹性小) ── */
+.st-cols{display:flex;gap:16px;align-items:flex-start}
+.st-col-main{flex:1 1 55%;min-width:0;display:flex;flex-direction:column;gap:16px}
+.st-col-side{flex:1 1 45%;min-width:0;display:flex;flex-direction:column;gap:16px}
+/* 右列 KPI 改 2×2 网格（窄列自适应） */
+.st-col-side .kpi-row{grid-template-columns:repeat(2,1fr)}
+/* 窄屏回退单列 */
+@media (max-width:1100px){
+  .st-cols{flex-direction:column}
+  .st-col-main,.st-col-side{width:100%;flex:none}
+  .st-col-side .kpi-row{grid-template-columns:repeat(4,1fr)}
+}
+@media (max-width:780px){
+  .st-col-side .kpi-row{grid-template-columns:repeat(2,1fr)}
+}
+
 /* ── 统一卡片：平面薄板 + 结界线 + 1px 硬边投影 ── */
 .kpi-card,.chart-card{position:relative;border-radius:var(--rd-card);border:1px solid var(--c-line);
   background:var(--c-panel);box-shadow:var(--elev-1);padding:16px 18px}

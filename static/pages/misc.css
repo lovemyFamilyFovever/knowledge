@@ -9,24 +9,33 @@
   color:var(--c-ink);margin:0 0 10px;letter-spacing:.01em}
 .sub-h .n{font:500 10.5px/1.4 var(--f-mono);color:var(--faint);letter-spacing:.04em;font-family:var(--f-mono)}
 
-/* [B] 标签云（第 08 屏：字号四档 + hot + 计数胶囊） */
-.tcloud{display:flex;flex-wrap:wrap;gap:8px;padding:16px;border:1px solid var(--c-line);border-radius:var(--rd-card);
-  background:color-mix(in oklab,var(--c-panel),transparent 45%);line-height:1;align-items:center}
-.tcloud .t{display:inline-flex;align-items:center;gap:7px;padding:6px 12px;border-radius:var(--rd-pill);
-  border:1px solid var(--c-line2);background:color-mix(in oklab,var(--c-panel),transparent 25%);
-  color:color-mix(in oklab,var(--c-ink),transparent 15%);white-space:nowrap;cursor:pointer;user-select:none;
+/* [B] 标签云（第 08 屏：字号四档 + hot + 计数胶囊）
+   v2 美化：错落基线 + 字重/透明度梯度 + hover 浮起光晕 + hot 色阶描边 */
+.tcloud{display:flex;flex-wrap:wrap;gap:9px 10px;padding:22px 20px;border:1px solid var(--c-line);border-radius:var(--rd-card);
+  background:linear-gradient(160deg,color-mix(in oklab,var(--c-panel),transparent 30%),color-mix(in oklab,var(--c-sunk),transparent 60%));
+  line-height:1;align-items:baseline}
+.tcloud .t{display:inline-flex;align-items:center;gap:7px;padding:6px 13px;border-radius:var(--rd-pill);
+  border:1px solid var(--c-line2);background:color-mix(in oklab,var(--c-panel),transparent 15%);
+  color:color-mix(in oklab,var(--c-ink),transparent 12%);white-space:nowrap;cursor:pointer;user-select:none;
+  box-shadow:0 1px 2px color-mix(in oklab,var(--c-ink),transparent 92%);
   transition:border-color .18s,background .18s,transform .18s,box-shadow .18s}
-.tcloud .t:hover{border-color:var(--acc-line);transform:translateY(-1px)}
+.tcloud .t:hover{border-color:var(--acc-line);transform:translateY(-2px) scale(1.04);
+  box-shadow:0 4px 14px color-mix(in oklab,var(--c-acc),transparent 78%);
+  background:color-mix(in oklab,var(--acc-soft),transparent 30%)}
 .tcloud .t .n{font:500 10.5px/1 var(--f-mono);color:var(--faint);padding:1px 6px;border-radius:var(--rd-pill);
   background:color-mix(in oklab,var(--c-ink),transparent 94%);font-variant-numeric:tabular-nums}
-.tcloud .t.big{font-size:16px;padding:8px 14px}
-.tcloud .t.md{font-size:14px}
-.tcloud .t.sm{font-size:12px;opacity:.92}
-.tcloud .t.xs{font-size:11px;opacity:.8;padding:5px 10px}
-.tcloud .t.hot{border-color:color-mix(in oklab,var(--c-acc),transparent 60%);background:color-mix(in oklab,var(--c-acc),transparent 90%);
-  color:var(--c-acc);font-weight:600}
-.tcloud .t.hot .n{color:var(--c-acc);background:color-mix(in oklab,var(--c-acc),transparent 86%)}
-.tcloud .t.sel{border-color:var(--c-acc);}
+/* 频次梯度：字号 × 字重 × 透明度 × 内边距 四维拉开 */
+.tcloud .t.big{font-size:17px;font-weight:700;padding:9px 16px;color:var(--c-ink)}
+.tcloud .t.md{font-size:14.5px;font-weight:600;padding:7px 14px}
+.tcloud .t.sm{font-size:12.5px;font-weight:500;opacity:.9;padding:6px 12px}
+.tcloud .t.xs{font-size:11px;font-weight:400;opacity:.72;padding:5px 10px}
+/* hot：主色描边 + 柔和底色 + 微光晕（前 3 高频） */
+.tcloud .t.hot{border-color:color-mix(in oklab,var(--c-acc),transparent 45%);
+  background:color-mix(in oklab,var(--c-acc),transparent 90%);
+  color:var(--c-acc);font-weight:700;
+  box-shadow:0 0 0 1px color-mix(in oklab,var(--c-acc),transparent 80%),0 2px 8px color-mix(in oklab,var(--c-acc),transparent 84%)}
+.tcloud .t.hot .n{color:var(--c-acc);background:color-mix(in oklab,var(--c-acc),transparent 84%)}
+.tcloud .t.sel{border-color:var(--c-acc)}
 .tcloud .t-check{accent-color:var(--c-acc);width:13px;height:13px;cursor:pointer;flex:none;margin:0}
 .tcloud .t-merge{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;flex:none;
   border-radius:50%;color:var(--faint);opacity:0;transition:.15s}

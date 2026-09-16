@@ -16,7 +16,49 @@
     <div class="page-body">
       {% if has_activity %}
       <div class="stats-body" data-ym="{{ ym }}">
-        {# ── KPI 卡片行 ─────────────────────────────── #}
+        {# ── 左右双列布局：左列=主图表区，右列=KPI+排行 ── #}
+        <div class="st-cols">
+        <div class="st-col-main">
+        {# ── 每日阅读柱状图（内联 SVG，横轴按日历 1..N 日定位） ── #}
+        <div class="chart-card">
+          <div class="chart-head">
+            <span class="chart-title">每日阅读时长 · {{ ym }}</span>
+            <div class="chart-hint">
+              <span class="legend"><span class="sw"></span>阅读分钟（左轴 · min）</span>
+              <span class="legend"><span class="sw a"></span>打开文档数（右轴 · 篇，虚线）</span>
+              <span class="st-src">数据源 reading.db · 截止 {{ ym }} 月末</span>
+            </div>
+          </div>
+          {% if has_chart %}
+          <div class="st-chart-wrap"><svg id="stDailyChart" viewBox="0 0 900 240" preserveAspectRatio="none"
+               style="width:100%;height:240px;display:block" role="img"
+               aria-label="{{ ym }} 每日阅读时长与文档数条形图（横轴为当月日期）">
+            <title>每日阅读时长（分钟）与打开文档数（篇）· {{ ym }}</title>
+          </svg>
+          <div class="st-note" id="stChartNote"></div>
+          </div>
+          {% else %}
+          <div class="st-nochart">
+            <svg class="i i-14" aria-hidden="true"><use href="#i-stats-chart"/></svg>
+            本月还没有累计到阅读时长 —— 打开任意文档并停留 60 秒就会开始记录。
+          </div>
+          {% endif %}
+        </div>
+
+        {# ── C3-B2：复习卡覆盖 · 阶段分布（learn 库只读派生，7 域骨架） ── #}
+        <section class="st-mastery" id="stMastery" aria-label="复习卡覆盖与阶段分布">
+          <div class="st-mastery-head">
+            <span class="chart-title">复习卡覆盖 · 阶段分布</span>
+            <span class="st-mastery-sum" id="stMasterySum"></span>
+          </div>
+          <div class="st-mastery-body" id="stMasteryBody">
+            <div class="kb-empty" style="padding:8px 2px">复习库加载中…</div>
+          </div>
+        </section>
+        </div>{# /st-col-main #}
+
+        <div class="st-col-side">
+        {# ── KPI 卡片（2×2 自适应网格） ── #}
         <div class="kpi-row">
           <div class="kpi-card">
             <div class="label"><svg class="i i-12"><use href="#i-calendar-day"/></svg>活跃天数</div>
@@ -46,44 +88,7 @@
           </div>
         </div>
 
-        {# ── C3-B2：复习卡覆盖 · 阶段分布（learn 库只读派生，7 域骨架） ── #}
-<section class="st-mastery" id="stMastery" aria-label="复习卡覆盖与阶段分布">
-  <div class="st-mastery-head">
-    <span class="chart-title">复习卡覆盖 · 阶段分布</span>
-    <span class="st-mastery-sum" id="stMasterySum"></span>
-  </div>
-  <div class="st-mastery-body" id="stMasteryBody">
-    <div class="kb-empty" style="padding:8px 2px">复习库加载中…</div>
-  </div>
-</section>
-
-{# ── 每日阅读柱状图（内联 SVG，横轴按日历 1..N 日定位） ── #}
-        <div class="chart-card">
-          <div class="chart-head">
-            <span class="chart-title">每日阅读时长 · {{ ym }}</span>
-            <div class="chart-hint">
-              <span class="legend"><span class="sw"></span>阅读分钟（左轴 · min）</span>
-              <span class="legend"><span class="sw a"></span>打开文档数（右轴 · 篇，虚线）</span>
-              <span class="st-src">数据源 reading.db · 截止 {{ ym }} 月末</span>
-            </div>
-          </div>
-          {% if has_chart %}
-          <div class="st-chart-wrap"><svg id="stDailyChart" viewBox="0 0 900 240" preserveAspectRatio="none"
-               style="width:100%;height:240px;display:block" role="img"
-               aria-label="{{ ym }} 每日阅读时长与文档数条形图（横轴为当月日期）">
-            <title>每日阅读时长（分钟）与打开文档数（篇）· {{ ym }}</title>
-          </svg>
-          <div class="st-note" id="stChartNote"></div>
-          </div>
-          {% else %}
-          <div class="st-nochart">
-            <svg class="i i-14" aria-hidden="true"><use href="#i-stats-chart"/></svg>
-            本月还没有累计到阅读时长 —— 打开任意文档并停留 60 秒就会开始记录。
-          </div>
-          {% endif %}
-        </div>
-
-        {# ── 文档榜 ───────────────────────────────────── #}
+        {# ── 文档榜 ── #}
         {% if kpi.docs %}
         {% set maxdoc = kpi.docs[0].minutes or 1 %}
         <div class="chart-card">
@@ -109,6 +114,8 @@
           </div>
         </div>
         {% endif %}
+        </div>{# /st-col-side #}
+        </div>{# /st-cols #}
       </div>
       {% else %}
       {# ── 空态 ─────────────────────────────────────── #}
