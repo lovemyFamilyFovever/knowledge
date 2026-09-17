@@ -5,15 +5,17 @@
 /api/track（落 indexes/reading.db）。依赖经 flask.current_app.config 注入。
 """
 import re
+import sqlite3
 import time
 from pathlib import Path
 
 from flask import Blueprint, abort, current_app, jsonify, request
 
 from app import store
-from app.fts import build_index, extract_wikilinks, open_db
-from app.store import (SKIP_DIRS, WRITABLE_EXTS, _tree_sig, domain_label,
-                       find_doc, inbox_count, load_taxonomy, parse_frontmatter)
+from app.fts import build_index, extract_wikilinks
+from app.store import (SKIP_DIRS, SQLITE_BUSY_TIMEOUT_S, WRITABLE_EXTS, _tree_sig, domain_label,
+                       find_doc, inbox_count, load_taxonomy, parse_frontmatter,
+                       stats_cjk_load, stats_cjk_save)
 
 stats_bp = Blueprint("stats", __name__)
 
@@ -48,7 +50,11 @@ def _corpus_agg() -> dict:
 
     旧实现里 /api/globalstats、/api/dir/tree、/api/substats 各自全库逐篇
     read_text + parse（2000+ 文件 IO，弹窗打开卡数秒；目录统计里每切一个
-    兄弟目录再来一轮）。字数只需在语料变化后重算：树签名一致时直接复用缓存，
+    兄弟目录再来一轮）。两层缓存：
+    1. 内存：树签名一致时直接复用上轮聚合结果（原语义不变）；
+    2. 磁盘：indexes/stats_cjk.json 按「rel 路径 + mtime_ns」持久化每篇字数，
+       冷启动/语料局部变更后只有新增或改动过的文档才重新读全文，
+       其余命中缓存值（mtime 未变即内容未变），不再整库扫盘。
     标签/收藏/未打标/mtime 全部取自内存中的分类树，不再读盘。"""
     content = _content()
     try:
@@ -57,6 +63,8 @@ def _corpus_agg() -> dict:
         sig = None
     if sig is not None and _AGG["sig"] == sig and _AGG["data"] is not None:
         return _AGG["data"]
+    cjk_cache = stats_cjk_load(_indexes())
+    new_cache: dict[str, list] = {}
     data: dict[tuple[str, str], dict] = {}
     for dom in _domains_cached():
         for sobj in dom["subs"]:
@@ -75,7 +83,17 @@ def _corpus_agg() -> dict:
                 if mt > newest[1]:
                     newest = (str(d.get("title") or ""), mt)
                 p = find_doc(content, dom["id"], sobj["id"], d["name"])
-                if p:
+                if not p or p.suffix != ".md":
+                    continue  # 原实现只对 md 的 parse 结果计数；html/书库格式本就贡献 0
+                try:
+                    st = p.stat()
+                except OSError:
+                    continue
+                rel = p.relative_to(content).as_posix()
+                ent = cjk_cache.get(rel) if cjk_cache is not None else None
+                if ent is not None and ent[0] == st.st_mtime_ns:
+                    n_cjk = int(ent[1])  # mtime 未变 → 复用持久化字数，不读全文
+                else:
                     try:
                         _, body = parse_frontmatter(p.read_text(encoding="utf-8", errors="replace"))
                     except OSError:
@@ -83,6 +101,8 @@ def _corpus_agg() -> dict:
                     cjk += len(re.findall(r"[\u4e00-\u9fff]", body))
             data[(dom["id"], sobj["id"])] = {"cjk": cjk, "untagged": untagged,
                                              "tags": tag_map, "newest": newest}
+    if new_cache != (cjk_cache or {}):
+        stats_cjk_save(_indexes(), new_cache)
     if sig is not None:
         _AGG["sig"], _AGG["data"] = sig, data
     return data
@@ -330,6 +350,104 @@ def api_track():
     finally:
         rs.close()
     return jsonify({"ok": True, "tracked": bool(tracked)})
+
+
+# ---------------- 治理驾驶舱（Story 5/6） ----------------
+# 三桶：断链（FTS links.resolved=0）/ 孤儿文档（无入链且非入口页）/ 近义标签
+# （store.find_similar_tags）。只读扫描；处置复用现有写入路径
+# （/api/tag/merge、/api/save），本模块不引入新的语料写入。
+
+def _governance_links(content: Path, indexes: Path) -> list[dict]:
+    """全库未解析双链（resolved=0），按源文档聚合，附 Top1 建议。
+    与 /api/wikilink_check 同源（同一张 links 表），保证两处数据一致。"""
+    from app.fts import open_db
+    try:
+        con = open_db(indexes)
+    except sqlite3.Error:
+        return []
+    try:
+        rows = con.execute(
+            "SELECT src, raw, src_title FROM links WHERE resolved=0 ORDER BY src"
+        ).fetchall()
+    except sqlite3.Error:
+        return []
+    finally:
+        con.close()
+    # 每条断链给一个 Top1 建议（复用 LearnStore 的候选池与打分，语义与编辑器内一致）
+    from app.learn import LearnStore, _top_suggestion
+    try:
+        ls = LearnStore(indexes, content)
+        try:
+            pool = ls._suggest_pool()
+        finally:
+            ls.close()
+    except Exception:
+        pool = []
+    cache: dict[str, str] = {}
+    out: list[dict] = []
+    for src, raw, src_title in rows:
+        if raw not in cache:
+            try:
+                name, _score = _top_suggestion(raw, pool)
+            except Exception:
+                name = ""
+            cache[raw] = name or ""
+        out.append({"src": src, "src_title": src_title or src,
+                    "raw": raw, "suggest": cache[raw]})
+    return out
+
+
+def _governance_orphans(content: Path, indexes: Path) -> list[dict]:
+    """孤儿文档：FTS 里无任何入链的 md。入口页（index/说明/README/总览 等）默认豁免，
+    否则每个域的入口页都会常驻报警，导致报警疲劳。"""
+    from app.fts import open_db
+    entry_names = {"index", "readme", "说明", "总览", "home", "about"}
+    try:
+        con = open_db(indexes)
+    except sqlite3.Error:
+        return []
+    try:
+        all_docs = con.execute("SELECT path, title FROM docs").fetchall()
+        linked = {r[0] for r in con.execute(
+            "SELECT DISTINCT dst FROM links WHERE resolved=1 AND dst IS NOT NULL"
+        ).fetchall()}
+    except sqlite3.Error:
+        return []
+    finally:
+        con.close()
+    out: list[dict] = []
+    for path, title in all_docs:
+        if path in linked:
+            continue
+        stem = Path(path).stem.lower()
+        if stem in entry_names:
+            continue  # 入口页豁免
+        out.append({"path": path, "title": title or path})
+    return out
+
+
+@stats_bp.get("/api/governance/scan")
+def api_governance_scan():
+    """治理驾驶舱扫描：三桶一次返回。只读，不写盘。
+    返回 {ok, dead_links, orphans, tag_pairs, counts}。"""
+    content = _content()
+    indexes = _indexes()
+    dead = _governance_links(content, indexes)
+    orphans = _governance_orphans(content, indexes)
+    try:
+        census = store.tag_census(content)
+        pairs = store.find_similar_tags(census)
+    except Exception:
+        census, pairs = {}, []
+    tag_pairs = [{"src": s, "dst": d, "score": round(float(sc), 2)} for s, d, sc in pairs]
+    return jsonify({
+        "ok": True,
+        "dead_links": dead,
+        "orphans": orphans,
+        "tag_pairs": tag_pairs,
+        "counts": {"dead_links": len(dead), "orphans": len(orphans),
+                   "tag_pairs": len(tag_pairs)},
+    })
 
 
 def register(app, hooks: dict):

@@ -287,6 +287,14 @@ def favorites():
     return render_template("favorites.html", items=items, **_chrome_counts())
 
 
+@pages_bp.route("/governance")
+def governance():
+    """治理驾驶舱（Story 5/6）：断链 / 孤儿文档 / 近义标签三桶。
+    首屏先给"点击扫描"空态 —— 全库扫描有成本（数百篇语料），
+    不做成进页面就自动跑；用户点按钮 → /api/governance/scan 取数。"""
+    return render_template("governance.html", **_chrome_counts())
+
+
 @pages_bp.route("/tags")
 def tags():
     domains = _domains_cached()
