@@ -316,6 +316,8 @@ main.single{display:flex;flex-direction:column}
 /* 二级子域可点击收起：收起态给一点视觉差异 */
 .sub.collapsed{color:var(--muted)}
 .sub.collapsed .sub-t{opacity:.85}
+/* 二级文档容器：默认展开，.collapsed 时隐藏（纯原地切换，无跳转） */
+.sub-docs.collapsed{display:none}
 .tree-subdir > .doc, .tree-subdir > .tree-subdir .doc{margin-left:0}
 /* 折叠指示：去掉三角箭头（用户要求），改用域头底色的展开态差异 + 图标区旋转微动。
    折叠交互改为点「域头整行」触发（点击面积更大、无需精确瞄准小箭头）。 */

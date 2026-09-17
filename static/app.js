@@ -854,12 +854,16 @@ function renderTocSpark() {
 /* 与 workbench.html 服务端模板保持一致：每个域带 .dom-caret 折叠箭头，且**默认全部收起**
    （不再强制当前域 open）。展开状态读/写 workbench.js 共用的 localStorage 钥匙 kb-tree-open，
    故客户端跳转（navigate）或 afterMutation 重渲染后，用户的折叠选择不会丢。 */
+/* 一级/二级/三级可见性状态：
+   - kb-tree-open        : 一级域展开集合
+   - kb-sub-collapsed    : 二级「手动收起」集合（键 dom/sub）—— 与「默认展开」语义配合
+   - kb-subdir-collapsed : 三级「手动收起」集合（键 dom/sub/dir）
+   二级/三级均为纯前端原地切换：所有子域的文档列表一次性预渲染（数据来自 /api/tree，
+   无额外请求），仅靠 .collapsed 类控制显隐，点击不跳转、不刷新文档列表（用户要求）。 */
 function treeOpenSet() {
   try { const raw = localStorage.getItem("kb-tree-open"); if (raw) return new Set(JSON.parse(raw)); } catch (e) {}
   return new Set();
 }
-/* 二级/三级「手动收起」集合：点击已展开的目录可原地收起（用户要求）。
-   键：二级 = "dom/sub"，三级 = "dom/sub/dir"，与 renderTree 的渲染路径一一对应。 */
 function subCollapsedSet() {
   try { const raw = localStorage.getItem("kb-sub-collapsed"); if (raw) return new Set(JSON.parse(raw)); } catch (e) {}
   return new Set();
@@ -868,11 +872,25 @@ function subdirCollapsedSet() {
   try { const raw = localStorage.getItem("kb-subdir-collapsed"); if (raw) return new Set(JSON.parse(raw)); } catch (e) {}
   return new Set();
 }
+/* 每个子域的文档列表是否展开：默认全部展开（点一下即收起），仅「手动收起」的收起。
+   （旧实现只在当前子域渲染文档列表，故无法原地展开；现在全量渲染 + 类控制。） */
+function subIsOpen(domId, subId) {
+  return !subCollapsedSet().has(`${domId}/${subId}`);
+}
+function setSubCollapsed(key, collapsed) {
+  const set = subCollapsedSet();
+  if (collapsed) set.add(key); else set.delete(key);
+  try { localStorage.setItem("kb-sub-collapsed", JSON.stringify(Array.from(set))); } catch (e) {}
+}
+function setDirCollapsed(key, collapsed) {
+  const set = subdirCollapsedSet();
+  if (collapsed) set.add(key); else set.delete(key);
+  try { localStorage.setItem("kb-subdir-collapsed", JSON.stringify(Array.from(set))); } catch (e) {}
+}
 function renderTree() {
   const nav = $("#tree"); if (!nav || !TREE) return;
-  const open = treeOpenSet();   // 默认空集合 → 全部收起
-  const subCollapsed = subCollapsedSet();   // 手动收起的二级（键 dom/sub）
-  const dirCollapsed = subdirCollapsedSet(); // 手动收起的三级（键 dom/sub/dir）
+  const open = treeOpenSet();                // 默认空集合 → 一级全部收起
+  const dirCollapsed = subdirCollapsedSet(); // 三级手动收起集合
   nav.innerHTML = TREE.map(d => {
     const isOpen = open.has(d.id);
     return `
@@ -885,8 +903,8 @@ function renderTree() {
       // 需求 #11：单列树 —— 文档内联在子域下（第二列列表列已移除）
       // 需求 #7：多层目录支持 —— name 含斜杠的深层文档按路径分组缩进
       const cur = CUR && CUR.domain === d.id && CUR.sub === s.id;
-      const collapsed = subCollapsed.has(`${d.id}/${s.id}`);
-      const expanded = cur && !collapsed;   // 当前子域默认展开，可手动收起
+      const subKey = `${d.id}/${s.id}`;
+      const subOpen = subIsOpen(d.id, s.id);   // 纯前端展开态（默认展开）
       const docsByDir = {};
       (s.docs || []).forEach(doc => {
         const slash = doc.name.lastIndexOf("/");
@@ -918,9 +936,10 @@ function renderTree() {
         ? docsByDir[""].map(doc => docLink(doc, "")).join("")
         : subdirHtml(dir)
       ).join("");
+      /* 全量渲染：文档列表始终在 DOM 中，靠 .collapsed 控制显隐 —— 支持纯原地展开/收起 */
       return `
-      <a class="sub ${cur && !collapsed ? "active" : ""}${collapsed ? " collapsed" : ""}" data-dom="${esc(d.id)}" data-sub="${esc(s.id)}" href="/browse/${d.id}/${s.id}" title="${esc(s.label)} · 点击展开/收起"><span class="sub-t">${esc(s.label)}</span><span class="n">${s.n}</span></a>
-      ${expanded ? groups : ""}`;
+      <a class="sub ${cur ? "active" : ""}${subOpen ? "" : " collapsed"}" data-dom="${esc(d.id)}" data-sub="${esc(s.id)}" data-sub-key="${esc(subKey)}" href="/browse/${d.id}/${s.id}" role="button" aria-expanded="${subOpen ? "true" : "false"}" title="${esc(s.label)} · 点击展开/收起"><span class="sub-t">${esc(s.label)}</span><span class="n">${s.n}</span></a>
+      <div class="sub-docs${subOpen ? "" : " collapsed"}">${groups}</div>`;
     }).join("")}
     </div>
    </div>`;
@@ -1281,10 +1300,43 @@ function restoreReadPos() {
   if (saved > 40) { art.scrollTop = saved; toast("已回到上次阅读位置"); }
 }
 
-/* 点击拦截：阅读页内站内文档/分类链接走客户端路由，不再整页刷新 */
+/* 点击拦截：阅读页内站内文档/分类链接走客户端路由，不再整页刷新。
+   注意：二级/三级目录的纯前端展开收起必须在本监听器内先处理并 return，
+   否则「先注册先执行」的导航拦截会把点击当成路由跳转（用户要求：不跳转）。 */
 document.addEventListener("click", e => {
   if (!WORKBENCH) return;
   if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+
+  /* ① 二级/三级目录：原地展开/收起（在导航拦截之前处理） */
+  const treeEl = document.getElementById("tree");
+  if (treeEl && treeEl.contains(e.target)) {
+    const sdHead = e.target.closest(".tree-subdir-h");
+    if (sdHead) {
+      e.preventDefault(); e.stopPropagation();
+      const box = sdHead.closest(".tree-subdir");
+      const key = box && box.dataset.dirKey;
+      if (key) {
+        const collapsed = box.classList.toggle("collapsed");
+        sdHead.setAttribute("aria-expanded", collapsed ? "false" : "true");
+        setDirCollapsed(key, collapsed);
+      }
+      return;
+    }
+    const subA = e.target.closest(".sub");
+    if (subA) {
+      const docsBox = subA.nextElementSibling;
+      if (docsBox && docsBox.classList.contains("sub-docs")) {
+        e.preventDefault(); e.stopPropagation();   // 只做展开/收起，绝不导航
+        const key = subA.dataset.subKey || `${subA.dataset.dom}/${subA.dataset.sub}`;
+        const collapsed = docsBox.classList.toggle("collapsed");
+        subA.classList.toggle("collapsed", collapsed);
+        subA.setAttribute("aria-expanded", collapsed ? "false" : "true");
+        setSubCollapsed(key, collapsed);
+        return;
+      }
+    }
+  }
+
   const a = e.target.closest("a");
   if (!a || a.target === "_blank" || a.hasAttribute("download")) return;
   const href = a.getAttribute("href");
@@ -1293,60 +1345,6 @@ document.addEventListener("click", e => {
   navigate(href, true);
 });
 
-/* ---------- 二级/三级目录「点击原地收起」（用户要求） ----------
-   修复「打开之后收不起，必须点其他目录才能收起」：
-   点击已展开的二级（当前子域）→ 就地收起文档列表，不跳转；
-   再次点击（此时已收起）→ 展开并正常导航到该子域；
-   三级目录头同理（纯前端展开/收起，不涉及导航）。
-   收起状态写入 localStorage，重渲染/刷新后保持。 */
-document.addEventListener("click", e => {
-  if (!WORKBENCH) return;
-  if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
-  const treeEl = document.getElementById("tree");
-  if (!treeEl || !treeEl.contains(e.target)) return;
-
-  /* ① 三级目录头：切换收起/展开（阻止冒泡，避免被下面的文档链接逻辑接管） */
-  const sdHead = e.target.closest(".tree-subdir-h");
-  if (sdHead) {
-    e.preventDefault(); e.stopPropagation();
-    const box = sdHead.closest(".tree-subdir");
-    const key = box && box.dataset.dirKey;
-    if (!key) return;
-    const collapsed = box.classList.toggle("collapsed");
-    sdHead.setAttribute("aria-expanded", collapsed ? "false" : "true");
-    const set = subdirCollapsedSet();
-    if (collapsed) set.add(key); else set.delete(key);
-    try { localStorage.setItem("kb-subdir-collapsed", JSON.stringify(Array.from(set))); } catch (err) {}
-    return;
-  }
-
-  /* ② 二级子域：已展开（active）时点击 → 就地收起 */
-  const subA = e.target.closest(".sub");
-  if (subA) {
-    const dom = subA.dataset.dom, sub = subA.dataset.sub;
-    const key = `${dom}/${sub}`;
-    const set = subCollapsedSet();
-    const isOpenHere = subA.classList.contains("active") && !set.has(key);
-    if (isOpenHere) {
-      // 就地收起：不跳转，仅折叠文档列表
-      e.preventDefault(); e.stopPropagation();
-      set.add(key);
-      try { localStorage.setItem("kb-sub-collapsed", JSON.stringify(Array.from(set))); } catch (err) {}
-      subA.classList.remove("active");
-      subA.classList.add("collapsed");
-      // 移除紧随其后的文档节点（.sub 之后的 .doc / .tree-subdir，直到下一个 .sub）
-      let n = subA.nextElementSibling;
-      while (n && !n.classList.contains("sub")) { const nx = n.nextElementSibling; n.remove(); n = nx; }
-    } else {
-      // 已收起 → 清除收起标记，走既有导航逻辑展开
-      if (set.has(key)) {
-        set.delete(key);
-        try { localStorage.setItem("kb-sub-collapsed", JSON.stringify(Array.from(set))); } catch (err) {}
-      }
-    }
-    return;
-  }
-});
 window.addEventListener("popstate", () => {
   if (!WORKBENCH) return;
   // #锚点点击也会触发 popstate：path+search 未变时不重渲染，只兑现滚动位置
