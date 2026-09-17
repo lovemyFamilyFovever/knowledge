@@ -109,6 +109,7 @@
 
 {% block scripts %}
 <script id="doc-data" type="application/json">{{ doc_json|safe }}</script>
+<script src="/static/vendor/chart.umd.js?v={{ av('vendor/chart.umd.js') }}" defer></script>
 <script src="/static/vendor/codemirror.bundle.js?v={{ av('vendor/codemirror.bundle.js') }}" defer></script>
 <script src="/static/pages/cm-editor.js?v={{ av('pages/cm-editor.js') }}" defer></script>
 <script src="/static/pages/workbench.js?v={{ av('pages/workbench.js') }}" defer></script>

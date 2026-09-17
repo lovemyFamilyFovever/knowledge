@@ -556,7 +556,8 @@ h1.a-title{font-family:var(--f-disp);font-weight:700;font-size:28px;line-height:
 .kb-toc-spark{position:sticky;bottom:0;margin-top:auto;padding:10px 11px 9px;z-index:5;
   background:var(--c-panel);}
 .kb-toc-spark-h{font-family:var(--f-mono);font-size:10.5px;letter-spacing:.14em;color:var(--faint);margin-bottom:6px}
-.kb-toc-spark-b svg{display:block;width:100%;height:auto}
+.kb-toc-spark-b{position:relative;height:56px}
+.kb-toc-spark-b canvas{display:block}
 .kb-toc-spark-meta{display:flex;justify-content:space-between;gap:8px;margin-top:5px;
   font-family:var(--f-mono);font-size:10.5px;color:var(--faint)}
 .kb-toc-spark-empty{padding:8px 0 6px;text-align:center;font-size:12px;color:var(--faint)}

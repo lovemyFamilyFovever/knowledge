@@ -804,53 +804,139 @@ function buildToc() {
   function tocOn(a) { $$("#pane-toc a").forEach(x => x.classList.remove("on")); a.classList.add("on"); }
 }
 
-/* ---------- C3-B1：TOC 下方近 7 日阅读篇数 sparkline（reading.db 只读供数） ---------- */
+/* ---------- C3-B1：TOC 下方近 7 日阅读篇数（本地 Chart.js，reading.db 只读供数） ---------- */
 let tocSparkSeq = 0;
+let tocSparkChart = null;
+let tocSparkHost = null;
+let tocSparkDays = null;          // 近 7 日序列与当前文档无关：缓存后主题切换免重取
+
+function sparkVar(name, fallback) {
+  const v = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+  return v || fallback || "";
+}
+function sparkAlpha(color, a) {   /* 只处理 #hex；其它色形式原样交给 canvas */
+  const m = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(color);
+  if (!m) return color;
+  let hex = m[1];
+  if (hex.length === 3) hex = hex.split("").map(c => c + c).join("");
+  const n = parseInt(hex, 16);
+  return `rgba(${[(n >> 16) & 255, (n >> 8) & 255, n & 255].join(",")},${a})`;
+}
+
+/* 把缓存里的 days 画进 host（幂等：先销毁旧实例） */
+function drawTocSpark(host) {
+  if (!host || !host.isConnected || !tocSparkDays) return;
+  const body = host.querySelector(".kb-toc-spark-b");
+  const meta = host.querySelector(".kb-toc-spark-meta");
+  if (!body) return;
+  if (tocSparkChart) { tocSparkChart.destroy(); tocSparkChart = null; }
+
+  const counts = tocSparkDays.map(x => x.count);
+  if (!counts.length || counts.every(c => c === 0)) {
+    body.innerHTML = `<div class="kb-toc-spark-empty">近 7 日暂无阅读</div>`;
+    if (meta) meta.innerHTML = "";
+    return;
+  }
+  const avg = counts.reduce((s, c) => s + c, 0) / counts.length;
+  const peak = Math.max(...counts);
+  if (meta) meta.innerHTML = `<span>峰值 ${peak} 篇</span><span>日均 ${avg.toFixed(1)} 篇</span>`;
+  if (!window.Chart) return;                       // 引擎缺失：留白，数值仍在 meta 里
+
+  const acc = sparkVar("--c-acc"), line = sparkVar("--c-line"), line2 = sparkVar("--c-line2"),
+    faint = sparkVar("--faint"), ink = sparkVar("--c-ink"), panel = sparkVar("--c-panel"),
+    mono = sparkVar("--f-mono", "monospace");
+  const canvas = document.createElement("canvas");
+  canvas.setAttribute("role", "img");
+  canvas.setAttribute("aria-label", "近 7 日阅读篇数柱状图");
+  body.textContent = "";
+  body.appendChild(canvas);
+
+  /* 日均参考线：Chart.js 无标注插件，直接按 y 轴像素画虚线（色盲兜底：虚线 + meta 数值） */
+  const avgLine = {
+    id: "kbTocAvg",
+    afterDatasetsDraw(chart) {
+      const y = chart.scales.y.getPixelForValue(avg);
+      const a = chart.chartArea;
+      const ctx = chart.ctx;
+      ctx.save();
+      ctx.strokeStyle = sparkAlpha(line, 0.9);
+      ctx.lineWidth = 1;
+      ctx.setLineDash([3, 3]);
+      ctx.beginPath(); ctx.moveTo(a.left, y); ctx.lineTo(a.right, y); ctx.stroke();
+      ctx.restore();
+    }
+  };
+
+  tocSparkChart = new window.Chart(canvas, {
+    type: "bar",
+    data: {
+      labels: tocSparkDays.map(d => String(d.date || "").slice(8, 10)),
+      datasets: [{
+        data: counts,
+        backgroundColor: c => (c.raw > 0 ? sparkAlpha(acc, 0.9) : sparkAlpha(line, 0.55)),
+        hoverBackgroundColor: c => (c.raw > 0 ? acc : sparkAlpha(line, 0.8)),
+        borderRadius: 2,
+        borderSkipped: false,
+        maxBarThickness: 14
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      animation: false,
+      layout: { padding: { top: 3 } },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: panel, titleColor: ink, bodyColor: ink,
+          borderColor: line2, borderWidth: 1, padding: 8, displayColors: false,
+          titleFont: { family: mono, size: 10.5 }, bodyFont: { family: mono, size: 11.5 },
+          callbacks: {
+            title: items => (tocSparkDays[items[0].dataIndex] || {}).date || "",
+            label: it => `阅读 ${it.formattedValue} 篇`
+          }
+        }
+      },
+      scales: {
+        x: {
+          grid: { display: false },
+          border: { color: line },                      // 原手绘基线
+          ticks: { color: faint, font: { family: mono, size: 9 }, maxRotation: 0, autoSkip: false }
+        },
+        y: { display: false, beginAtZero: true, suggestedMax: Math.max(peak, avg * 1.6) }
+      }
+    },
+    plugins: [avgLine]
+  });
+}
+
 function renderTocSpark() {
   const pane = $("#pane-toc"); if (!pane) return;
   const host = document.createElement("div");
   host.className = "kb-toc-spark";
   host.id = "kb-toc-spark";
-  host.innerHTML = `<div class="kb-toc-spark-h">近 7 日阅读</div><div class="kb-toc-spark-b">…</div>`;
+  host.innerHTML = `<div class="kb-toc-spark-h">近 7 日阅读</div>`
+    + `<div class="kb-toc-spark-b">…</div><div class="kb-toc-spark-meta"></div>`;
   pane.appendChild(host);
+  tocSparkHost = host;
   const seq = ++tocSparkSeq;
+  if (tocSparkDays) { drawTocSpark(host); return; }     // 已有真实数据：直接画，免重取
   fetch("/api/learn/recent_read")
     .then(r => r.json())
     .then(d => {
-      if (seq !== tocSparkSeq) return;           // 文档已切换，丢弃过期响应
-      const body = host.querySelector(".kb-toc-spark-b");
-      const days = (d && d.days) || [];
-      const counts = days.map(x => x.count);
-      if (!counts.length || counts.every(c => c === 0)) {
-        body.innerHTML = `<div class="kb-toc-spark-empty">近 7 日暂无阅读</div>`;
-        return;
-      }
-      const W = 210, H = 46, base = H - 14, top = 6;
-      const max = Math.max(...counts, 1);
-      const n = counts.length, slot = W / n, bw = Math.min(18, slot * 0.55);
-      const avg = counts.reduce((s, c) => s + c, 0) / n;
-      const peak = Math.max(...counts);
-      let bars = "";
-      counts.forEach((c, i) => {
-        const h = c > 0 ? Math.max(2, (c / max) * (base - top)) : 1.5;
-        const x = (i * slot + (slot - bw) / 2).toFixed(1);
-        const y = (base - h).toFixed(1);
-        const fill = c > 0 ? "var(--c-acc)" : "var(--c-line)";
-        const op = c > 0 ? "" : ` opacity=".55"`;
-        bars += `<rect x="${x}" y="${y}" width="${bw.toFixed(1)}" height="${h.toFixed(1)}" rx="2" fill="${fill}"${op}><title>${days[i].date}：${c} 篇</title></rect>`;
-      });
-      const avgY = (base - Math.max(2, (avg / max) * (base - top))).toFixed(1);
-      body.innerHTML = `<svg viewBox="0 0 ${W} ${H}" width="100%" height="${H}" role="img" aria-label="近 7 日阅读篇数柱状图">
-        <line x1="0" y1="${base + 1}" x2="${W}" y2="${base + 1}" stroke="var(--c-line)" stroke-width="1"/>
-        <line x1="0" y1="${avgY}" x2="${W}" y2="${avgY}" stroke="var(--c-line)" stroke-width="1" stroke-dasharray="3 3" opacity=".8"/>
-        ${bars}</svg>
-        <div class="kb-toc-spark-meta"><span>峰值 ${peak} 篇</span><span>日均 ${avg.toFixed(1)} 篇</span></div>`;
+      if (seq !== tocSparkSeq) return;                  // 文档已切换，丢弃过期响应
+      tocSparkDays = (d && d.days) || [];
+      drawTocSpark(host);
     })
     .catch(() => {
       const body = host.querySelector(".kb-toc-spark-b");
       if (body && seq === tocSparkSeq) body.innerHTML = `<div class="kb-toc-spark-empty">近 7 日暂无阅读</div>`;
     });
 }
+
+/* 主题切换后 canvas 里的取色不会自动跟着 CSS 变量走，用缓存数据整组重绘 */
+new MutationObserver(() => drawTocSpark(tocSparkHost))
+  .observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
 
 /* ---------- 分类树 / 文档列表（客户端渲染） ---------- */
 /* 与 workbench.html 服务端模板保持一致：每个域带 .dom-caret 折叠箭头，且**默认全部收起**
