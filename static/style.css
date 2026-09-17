@@ -293,8 +293,10 @@ main.single{display:flex;flex-direction:column}
 .tree-subdir{margin:2px 0 2px 8px;padding-left:8px;border-left:1px dashed var(--c-line)}
 .tree-subdir .tree-subdir{margin-left:10px}
 .tree-subdir-h{display:flex;align-items:center;gap:5px;padding:3px 6px;font:600 10.5px/1.4 var(--f-mono);letter-spacing:.06em;
-  color:var(--faint);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-transform:uppercase}
+  color:var(--faint);text-transform:uppercase;overflow:hidden}
 .tree-subdir-h svg{flex:none;color:var(--c-acc)}
+/* 目录名同样是 flex 里的匿名文本，需包 span 才能出省略号 */
+.tree-subdir-h .tsd-t{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .tree-subdir > .doc, .tree-subdir > .tree-subdir .doc{margin-left:0}
 /* 折叠箭头：加大点击热区与对比度，让「可收起」可见 */
 .dom-caret{flex:none;width:22px;height:22px;position:relative;cursor:pointer;border-radius:var(--rd-ctl);transition:background var(--dur-1)}
@@ -306,6 +308,9 @@ main.single{display:flex;flex-direction:column}
 .sub{display:flex;align-items:center;gap:7px;padding:5px 9px;border-radius:var(--rd-ctl);cursor:pointer;color:var(--c-ink);font-size:12.5px;font-weight:500;transition:color var(--dur-1),background var(--dur-1);user-select:none}
 .sub:hover{color:var(--c-ink);background:var(--c-sunk)}
 .sub.active{color:var(--c-acc);background:var(--acc-soft);font-weight:600}
+/* 子域文字：flex 容器里的匿名文本节点无法被 text-overflow 截断，
+   必须包一层 span 作为 flex item 才能真正出省略号（用户反馈） */
+.sub .sub-t{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .sub .n{margin-left:auto;flex:none;font-family:var(--f-mono);font-size:10.5px;color:var(--faint);font-variant-numeric:tabular-nums}
 .tree-foot{flex:none;border-top:1px solid var(--c-line);padding:8px 12px;display:flex;flex-direction:column;gap:6px}
 .tf-row{display:flex;align-items:center;gap:9px;font-size:13px;color:var(--muted);cursor:pointer;padding:4px;border-radius:var(--rd-ctl);transition:color var(--dur-1),background var(--dur-1)}

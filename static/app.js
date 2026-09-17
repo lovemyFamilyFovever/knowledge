@@ -894,10 +894,10 @@ function renderTree() {
       };
       const groups = dirKeys.map(dir => dir === ""
         ? docsByDir[""].map(doc => docLink(doc, "")).join("")
-        : `<div class="tree-subdir" style="--deep:${dir.split("/").length}"><div class="tree-subdir-h" title="${esc(dir)}">${icon("folder", 11)} ${esc(dir.split("/").pop())}</div>${docsByDir[dir].map(doc => docLink(doc, dir)).join("")}</div>`
+        : `<div class="tree-subdir" style="--deep:${dir.split("/").length}"><div class="tree-subdir-h" title="${esc(dir)}">${icon("folder", 11)}<span class="tsd-t">${esc(dir.split("/").pop())}</span></div>${docsByDir[dir].map(doc => docLink(doc, dir)).join("")}</div>`
       ).join("");
       return `
-      <a class="sub ${cur ? "active" : ""}" data-dom="${esc(d.id)}" data-sub="${esc(s.id)}" href="/browse/${d.id}/${s.id}" title="${esc(s.label)}">${esc(s.label)}<span class="n">${s.n}</span></a>
+      <a class="sub ${cur ? "active" : ""}" data-dom="${esc(d.id)}" data-sub="${esc(s.id)}" href="/browse/${d.id}/${s.id}" title="${esc(s.label)}"><span class="sub-t">${esc(s.label)}</span><span class="n">${s.n}</span></a>
       ${cur ? groups : ""}`;
     }).join("")}
     </div>
