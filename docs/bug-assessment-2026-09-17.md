@@ -154,3 +154,22 @@ ruff check app                        # F821 routes_stats.py:174 / F841 routes_s
 # 回归现状（全绿——这正说明测试网有洞）
 python tests\test_govern.py
 ```
+
+---
+
+## 修复记录（同日 13:30，均已验证）
+
+| # | 处置 | 验证结果 |
+|---|------|----------|
+| P0-1 | 恢复 `open_db` 模块级导入（治理函数内两处惰性导入同步删除）；`except Exception` 收窄为 `except (sqlite3.Error, OSError)` | `/api/globalstats` 实测返回 `links: {total: 4283, dead: 1, dead_docs: 1}`，与 FTS 实况一致 |
+| P0-2 | 命中分支补 `cjk += n_cjk`；两分支统一回填 `new_cache[rel]`（全量重建视图，树上消失文档自愈式掉出） | 首轮落盘 `stats_cjk.json`（685 条）；二轮全命中重算总字数分毫不差（1,210,873）、缓存不再被清空；改单文件 mtime 后仅该篇重算且条目刷新 |
+| P2-3 | `governance.js init()` 删除自动 `scan()`，与后端 docstring/模板空态口径归一（按钮唯一触发点） | 页面 200，空态正常 |
+| P2-4 | 新增 `escapeRe`/`linkRe`：匹配 `[[raw]]`/`[[raw#锚点]]`/`[[raw\|别名]]`/`![[raw\|别名]]`；tplain 转纯文本保留别名、remove 整体删除 | node 实测：四种变体全命中；`[[BX]]`/`[[A前缀]]` 不误匹配；raw 含正则元字符（`C++(x)`）正确转义 |
+| P3-1 | 移除未用导入 `SQLITE_BUSY_TIMEOUT_S` | ruff 全仓 `All checks passed` |
+| P3-2 | 补文件尾换行 | — |
+| P3-3 | pre-commit 钩子新增 `$PY -m ruff check .`（拦截在 smoke 之前） | 本次提交即经新钩子验证 |
+| P3-4 | `test_govern.py` 新增 `test_globalstats_links_and_cjk_cache`：临时语料夹具断言双链计数与 links 表一致 + 缓存落盘/命中无损 | 新增用例绿；reader 74 / learn 208 存量全绿；eslint --quiet 0 error（含顺手修的 app.js:669 `^(?:⚠\uFE0F?|❗)` 变体字符类） |
+| P3-8 | `.gitignore` 追加 `/image*.png`、`/output/`、`/.spark/`（保留原有条目，仅尾部合并） | 根目录截图不再出现在 git status |
+| 未动 | P3-7 `content/小说/` 目录迁移（涉及大批个人文件位置变动）与仓库根 8 张 png 的物理删除，留待用户决定 | — |
+
+修复后所有改动位于工作区未提交状态（与治理功能 WIP 同文件交叠，不适合拆单提交），待浏览器实测 /stats 弹窗与 /governance 页后一并入库。
