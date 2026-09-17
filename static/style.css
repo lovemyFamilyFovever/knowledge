@@ -292,6 +292,13 @@ main.single{display:flex;flex-direction:column}
 .tree .doc .doc-meta{margin-top:2px;gap:4px}
 .tree .doc .mini{padding:.5px 5px;font-size:9px}
 .tree .doc.in-subdir{margin-left:calc(10px * var(--deep, 1))}
+/* 三级 = 子域下内联的文档项：与二级（.sub）拉开层级 ——
+   文字缩进 + 左侧引导线，与 .subs 同款实线，形成 L2/L3 两级台阶 */
+.tree .subs > .doc, .tree .subs .doc{
+  margin-left:14px;padding-left:9px;
+  border-left:1px solid var(--c-line);border-radius:0 var(--rd-ctl) var(--rd-ctl) 0}
+.tree .subs .doc:hover{border-left-color:var(--acc-line)}
+.tree .subs .doc.active{border-left-color:var(--c-acc)}
 /* 三级（多层）目录：缩进与引导线与二级统一 —— padding-left 归零、缩进交给 margin、
    引导线同款实线（原先三级是 dashed 虚线 + 8px padding，与二级不一致） */
 .tree-subdir{margin:2px 0 2px 14px;padding-left:0;border-left:1px solid var(--c-line)}
