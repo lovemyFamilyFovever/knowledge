@@ -858,9 +858,21 @@ function treeOpenSet() {
   try { const raw = localStorage.getItem("kb-tree-open"); if (raw) return new Set(JSON.parse(raw)); } catch (e) {}
   return new Set();
 }
+/* 二级/三级「手动收起」集合：点击已展开的目录可原地收起（用户要求）。
+   键：二级 = "dom/sub"，三级 = "dom/sub/dir"，与 renderTree 的渲染路径一一对应。 */
+function subCollapsedSet() {
+  try { const raw = localStorage.getItem("kb-sub-collapsed"); if (raw) return new Set(JSON.parse(raw)); } catch (e) {}
+  return new Set();
+}
+function subdirCollapsedSet() {
+  try { const raw = localStorage.getItem("kb-subdir-collapsed"); if (raw) return new Set(JSON.parse(raw)); } catch (e) {}
+  return new Set();
+}
 function renderTree() {
   const nav = $("#tree"); if (!nav || !TREE) return;
   const open = treeOpenSet();   // 默认空集合 → 全部收起
+  const subCollapsed = subCollapsedSet();   // 手动收起的二级（键 dom/sub）
+  const dirCollapsed = subdirCollapsedSet(); // 手动收起的三级（键 dom/sub/dir）
   nav.innerHTML = TREE.map(d => {
     const isOpen = open.has(d.id);
     return `
@@ -873,6 +885,8 @@ function renderTree() {
       // 需求 #11：单列树 —— 文档内联在子域下（第二列列表列已移除）
       // 需求 #7：多层目录支持 —— name 含斜杠的深层文档按路径分组缩进
       const cur = CUR && CUR.domain === d.id && CUR.sub === s.id;
+      const collapsed = subCollapsed.has(`${d.id}/${s.id}`);
+      const expanded = cur && !collapsed;   // 当前子域默认展开，可手动收起
       const docsByDir = {};
       (s.docs || []).forEach(doc => {
         const slash = doc.name.lastIndexOf("/");
@@ -891,13 +905,22 @@ function renderTree() {
           ${doc.has_html ? `<span class="mini html">美化版</span>` : ""}${doc.is_html ? `<span class="mini html">HTML</span>` : ""}</div>
         </a>`;
       };
+      /* 三级（多层目录）：头部可点击收起/展开；收起状态持久化 */
+      const subdirHtml = (dir) => {
+        const key = `${d.id}/${s.id}/${dir}`;
+        const dirCollapsedNow = dirCollapsed.has(key);
+        return `<div class="tree-subdir${dirCollapsedNow ? " collapsed" : ""}" style="--deep:${dir.split("/").length}" data-dir-key="${esc(key)}">
+          <div class="tree-subdir-h" role="button" tabindex="0" aria-expanded="${dirCollapsedNow ? "false" : "true"}" title="${esc(dir)} · 点击展开/收起">${icon("folder", 11)}<span class="tsd-t">${esc(dir.split("/").pop())}</span></div>
+          <div class="tree-subdir-body">${docsByDir[dir].map(doc => docLink(doc, dir)).join("")}</div>
+        </div>`;
+      };
       const groups = dirKeys.map(dir => dir === ""
         ? docsByDir[""].map(doc => docLink(doc, "")).join("")
-        : `<div class="tree-subdir" style="--deep:${dir.split("/").length}"><div class="tree-subdir-h" title="${esc(dir)}">${icon("folder", 11)}<span class="tsd-t">${esc(dir.split("/").pop())}</span></div>${docsByDir[dir].map(doc => docLink(doc, dir)).join("")}</div>`
+        : subdirHtml(dir)
       ).join("");
       return `
-      <a class="sub ${cur ? "active" : ""}" data-dom="${esc(d.id)}" data-sub="${esc(s.id)}" href="/browse/${d.id}/${s.id}" title="${esc(s.label)}"><span class="sub-t">${esc(s.label)}</span><span class="n">${s.n}</span></a>
-      ${cur ? groups : ""}`;
+      <a class="sub ${cur && !collapsed ? "active" : ""}${collapsed ? " collapsed" : ""}" data-dom="${esc(d.id)}" data-sub="${esc(s.id)}" href="/browse/${d.id}/${s.id}" title="${esc(s.label)} · 点击展开/收起"><span class="sub-t">${esc(s.label)}</span><span class="n">${s.n}</span></a>
+      ${expanded ? groups : ""}`;
     }).join("")}
     </div>
    </div>`;
@@ -975,7 +998,7 @@ function renderInfo() {
       <div class="tag-edit-h">${icon("tag-outline", 13)} 标签${editable ? `<button type="button" class="tag-edit-addbtn" id="tag-add-btn" title="添加标签">+ 添加</button>` : ""}</div>
       <div class="tag-chips" id="tag-chips">${tagChips}</div>
       <div class="tag-inputrow" id="tag-inputrow" hidden>
-        <input id="tag-in" placeholder="输入标签，逗号可批量，回车确认" maxlength="64" list="kb-tag-datalist" autocomplete="off">
+        <input id="tag-in" placeholder="输入标签，逗号可批量，回车确认" maxlength="64" autocomplete="off">
       </div>
     </div>
     <div class="meta-row"><span class="k">版本</span><span class="v">git 全程可追溯</span></div>` + rows;
@@ -983,30 +1006,20 @@ function renderInfo() {
   const row = pane.querySelector("#tag-inputrow");
   const input = pane.querySelector("#tag-in");
   if (addBtn && row && input) {
-    addBtn.addEventListener("click", () => { row.hidden = !row.hidden; if (!row.hidden) { fillTagDatalist(); input.focus(); } });
+    addBtn.addEventListener("click", () => { row.hidden = !row.hidden; if (!row.hidden) { if (window.TagSuggest) TagSuggest.ensureIndex(); input.focus(); } });
+    if (window.TagSuggest) TagSuggest.bind(input); // 标签补全浮层（datalist 已弃用）
     input.onkeydown = e => {
+      if (window.TagSuggest && TagSuggest.handleKey(input, e)) { e.preventDefault(); return; } // 浮层已消费（↑↓/Enter填充/Esc关浮层）
       if (e.key === "Enter") { e.preventDefault(); const raw = input.value.trim(); if (raw) addTagsFromRaw(raw); input.value = ""; }
       else if (e.key === "Escape") { row.hidden = true; }
     };
   }
 }
 
-/* 快赢：标签智能补全 —— 全库 Top 标签入 datalist，从录入端杜绝「C#/C#C#」式分叉。
-   Story 4：datalist 提升为 body 级全局单例 —— 头部就地输入框与右栏 pane 输入框
-   共用同一份（renderInfo 每次重建 pane，datalist 放 pane 里会导致头部引用悬空）。 */
-function fillTagDatalist() {
-  let dl = document.getElementById("kb-tag-datalist");
-  if (!dl) {
-    dl = document.createElement("datalist");
-    dl.id = "kb-tag-datalist";
-    document.body.appendChild(dl);
-  }
-  if (dl.options.length) return;
-  fetch("/api/globalstats").then(r => r.json()).then(d => {
-    if (!d || !Array.isArray(d.top_tags)) return;
-    dl.innerHTML = d.top_tags.slice(0, 60).map(t => `<option value="${esc(t.tag)}">`).join("");
-  }).catch(() => {});
-}
+/* 标签补全：原 datalist 方案已弃用（原生下拉外观不可定制、与主题割裂），
+   改由 static/pages/tag-suggest.js 的自绘浮层承担（window.TagSuggest，
+   复用 [[ 双链补全 .wl-suggest 的视觉 token）。数据源不变：
+   /api/globalstats top_tags，从录入端杜绝「C#/C#C#」式分叉。 */
 
 /* ---------- 标签编辑（需求 #2）：走 /api/tags，服务端行级手术写回 ---------- */
 function addTagsFromRaw(raw) {
@@ -1075,23 +1088,25 @@ function renderChipsRow() {
   el.innerHTML = buildChipsRow();
 }
 
-/* Story 4：头部「+ 标签」→ 就地展开输入框（复用全局 datalist 补全），
-   回车批量添加走现有 addTagsFromRaw → /api/tags；Esc/空失焦收起。 */
+/* Story 4：头部「+ 标签」→ 就地展开输入框，标签补全走 TagSuggest 浮层
+   （datalist 已弃用），回车批量添加走现有 addTagsFromRaw → /api/tags；
+   浮层未消费的 Esc/空失焦收起。 */
 function chipsAddToggle() {
   const row = document.querySelector(".a-chips"); if (!row || !DOC) return;
   const existed = row.querySelector(".chips-in");
   if (existed) { existed.remove(); return; } // 再点 + 收起
-  fillTagDatalist();
+  if (window.TagSuggest) TagSuggest.ensureIndex();
   const input = document.createElement("input");
   input.className = "chips-in";
   input.maxLength = 64;
   input.placeholder = "标签，逗号分隔，回车添加";
-  input.setAttribute("list", "kb-tag-datalist");
   input.setAttribute("autocomplete", "off");
   input.setAttribute("aria-label", "添加标签");
   row.appendChild(input);
+  if (window.TagSuggest) TagSuggest.bind(input);
   input.focus();
   input.addEventListener("keydown", e => {
+    if (window.TagSuggest && TagSuggest.handleKey(input, e)) { e.preventDefault(); return; } // 浮层已消费
     if (e.key === "Enter") {
       e.preventDefault();
       const raw = input.value.trim();
@@ -1276,6 +1291,61 @@ document.addEventListener("click", e => {
   if (!href || !/^\/(doc|browse)\//.test(href)) return;
   e.preventDefault();
   navigate(href, true);
+});
+
+/* ---------- 二级/三级目录「点击原地收起」（用户要求） ----------
+   修复「打开之后收不起，必须点其他目录才能收起」：
+   点击已展开的二级（当前子域）→ 就地收起文档列表，不跳转；
+   再次点击（此时已收起）→ 展开并正常导航到该子域；
+   三级目录头同理（纯前端展开/收起，不涉及导航）。
+   收起状态写入 localStorage，重渲染/刷新后保持。 */
+document.addEventListener("click", e => {
+  if (!WORKBENCH) return;
+  if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+  const treeEl = document.getElementById("tree");
+  if (!treeEl || !treeEl.contains(e.target)) return;
+
+  /* ① 三级目录头：切换收起/展开（阻止冒泡，避免被下面的文档链接逻辑接管） */
+  const sdHead = e.target.closest(".tree-subdir-h");
+  if (sdHead) {
+    e.preventDefault(); e.stopPropagation();
+    const box = sdHead.closest(".tree-subdir");
+    const key = box && box.dataset.dirKey;
+    if (!key) return;
+    const collapsed = box.classList.toggle("collapsed");
+    sdHead.setAttribute("aria-expanded", collapsed ? "false" : "true");
+    const set = subdirCollapsedSet();
+    if (collapsed) set.add(key); else set.delete(key);
+    try { localStorage.setItem("kb-subdir-collapsed", JSON.stringify(Array.from(set))); } catch (err) {}
+    return;
+  }
+
+  /* ② 二级子域：已展开（active）时点击 → 就地收起 */
+  const subA = e.target.closest(".sub");
+  if (subA) {
+    const dom = subA.dataset.dom, sub = subA.dataset.sub;
+    const key = `${dom}/${sub}`;
+    const set = subCollapsedSet();
+    const isOpenHere = subA.classList.contains("active") && !set.has(key);
+    if (isOpenHere) {
+      // 就地收起：不跳转，仅折叠文档列表
+      e.preventDefault(); e.stopPropagation();
+      set.add(key);
+      try { localStorage.setItem("kb-sub-collapsed", JSON.stringify(Array.from(set))); } catch (err) {}
+      subA.classList.remove("active");
+      subA.classList.add("collapsed");
+      // 移除紧随其后的文档节点（.sub 之后的 .doc / .tree-subdir，直到下一个 .sub）
+      let n = subA.nextElementSibling;
+      while (n && !n.classList.contains("sub")) { const nx = n.nextElementSibling; n.remove(); n = nx; }
+    } else {
+      // 已收起 → 清除收起标记，走既有导航逻辑展开
+      if (set.has(key)) {
+        set.delete(key);
+        try { localStorage.setItem("kb-sub-collapsed", JSON.stringify(Array.from(set))); } catch (err) {}
+      }
+    }
+    return;
+  }
 });
 window.addEventListener("popstate", () => {
   if (!WORKBENCH) return;

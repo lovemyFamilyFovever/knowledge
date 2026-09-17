@@ -309,6 +309,13 @@ main.single{display:flex;flex-direction:column}
 .tree-subdir-h svg{flex:none;color:var(--c-acc)}
 /* 目录名同样是 flex 里的匿名文本，需包 span 才能出省略号 */
 .tree-subdir-h .tsd-t{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* 三级目录可点击收起（用户要求）：头部手型 + 收起态隐藏文档体 */
+.tree-subdir-h{cursor:pointer}
+.tree-subdir-h:hover{color:var(--c-ink)}
+.tree-subdir.collapsed > .tree-subdir-body{display:none}
+/* 二级子域可点击收起：收起态给一点视觉差异 */
+.sub.collapsed{color:var(--muted)}
+.sub.collapsed .sub-t{opacity:.85}
 .tree-subdir > .doc, .tree-subdir > .tree-subdir .doc{margin-left:0}
 /* 折叠指示：去掉三角箭头（用户要求），改用域头底色的展开态差异 + 图标区旋转微动。
    折叠交互改为点「域头整行」触发（点击面积更大、无需精确瞄准小箭头）。 */

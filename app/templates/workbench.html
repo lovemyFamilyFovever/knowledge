@@ -14,7 +14,7 @@
         </a>
         <div class="subs">
           {% for s in d.subs %}
-          <a class="sub {% if cur.domain == d.id and cur.sub == s.id %}active{% endif %}" href="/browse/{{ d.id }}/{{ s.id }}" title="{{ s.label }}"><span class="sub-t">{{ s.label }}</span><span class="n">{{ s.n }}</span></a>
+          <a class="sub {% if cur.domain == d.id and cur.sub == s.id %}active{% endif %}" href="/browse/{{ d.id }}/{{ s.id }}" title="{{ s.label }} · 点击展开/收起"><span class="sub-t">{{ s.label }}</span><span class="n">{{ s.n }}</span></a>
           {% endfor %}
         </div>
       </div>
@@ -112,5 +112,6 @@
 <script src="/static/vendor/codemirror.bundle.js?v={{ av('vendor/codemirror.bundle.js') }}" defer></script>
 <script src="/static/pages/cm-editor.js?v={{ av('pages/cm-editor.js') }}" defer></script>
 <script src="/static/pages/workbench.js?v={{ av('pages/workbench.js') }}" defer></script>
+<script src="/static/pages/tag-suggest.js?v={{ av('pages/tag-suggest.js') }}" defer></script>
 <script src="/static/pages/wikilink-suggest.js?v={{ av('pages/wikilink-suggest.js') }}" defer></script>
 {% endblock %}
