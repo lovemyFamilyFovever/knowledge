@@ -897,6 +897,38 @@ function setDirCollapsed(key, collapsed) {
   if (collapsed) set.add(key); else set.delete(key);
   try { localStorage.setItem("kb-subdir-collapsed", JSON.stringify(Array.from(set))); } catch (e) {}
 }
+/* ---------- 目录树「当前选中节点」状态 ----------
+   用户需求：点击选中某个目录节点后，用 ←/→ 展开收起该层级。
+   不能依赖 document.activeElement —— 点击 `.sub`/`.dom-head` 时我们
+   preventDefault() 阻止了导航，浏览器不会把焦点给该元素（实测落到 BODY），
+   故显式记录「最后点击的树节点」，供 kb-core.js 的方向键处理读取。
+   同时给它 .focus()，保证键盘用户可见焦点环。 */
+let TREE_SEL = null;
+/* 一级域点击会触发整树重渲染，旧节点引用失效 —— 用 key 记录意图，
+   renderTree 结束后 rebindTreeSel() 按 key 找回新节点。 */
+let TREE_SEL_KEY = null;
+function treeSelectNode(el) {
+  /* 清掉 DOM 里所有遗留标记（重渲染后旧引用失效，按类名清最可靠） */
+  document.querySelectorAll("#tree .tree-sel").forEach(n => { if (n !== el) n.classList.remove("tree-sel"); });
+  TREE_SEL = el || null;
+  if (TREE_SEL) {
+    TREE_SEL.classList.add("tree-sel");
+    try { TREE_SEL.focus({ preventScroll: true }); } catch (e) {}
+  }
+}
+/* 重渲染后按 key 重新定位选中节点（key 形如 "dom:articles"）。
+   重渲染会销毁旧节点，TREE_SEL 的引用失效 —— 先清掉 DOM 里所有遗留 .tree-sel，
+   再按 key 找新节点标记。 */
+function rebindTreeSel() {
+  if (!TREE_SEL_KEY || TREE_SEL_KEY.indexOf("dom:") !== 0) return;
+  const id = TREE_SEL_KEY.slice(4);
+  TREE_SEL = null;   // 旧引用已随重渲染失效
+  const head = document.querySelector(`#tree .dom[data-dom="${CSS.escape(id)}"] > .dom-head`);
+  if (head) treeSelectNode(head);
+}
+window.KB_treeSelected = () => TREE_SEL;
+window.KB_treeSelect = treeSelectNode;
+
 /* ---------- 文件类型 → 前缀图标（目录树 / 文档列表共用） ----------
    按扩展名映射到对应图标：md / txt / epub / pdf / xlsx / 图片 / html / zip。
    未知扩展名回落通用 i-file；目录/文件夹用 i-folder。 */
@@ -994,6 +1026,7 @@ function renderTree() {
     </div>
    </div>`;
   }).join("");
+  rebindTreeSel();   // 重渲染后按 key 找回选中节点（一级点击会走导航+重渲染）
 }
 
 /* ---------- 目录聚合树（移动弹窗 + 目录统计共用；1 分钟缓存） ---------- */
@@ -1373,6 +1406,7 @@ document.addEventListener("click", e => {
     const sdHead = e.target.closest(".tree-subdir-h");
     if (sdHead) {
       e.preventDefault(); e.stopPropagation();
+      treeSelectNode(sdHead);   // 记录选中，供 ←/→ 使用
       const box = sdHead.closest(".tree-subdir");
       const key = box && box.dataset.dirKey;
       if (key) {
@@ -1387,6 +1421,7 @@ document.addEventListener("click", e => {
       const docsBox = subA.nextElementSibling;
       if (docsBox && docsBox.classList.contains("sub-docs")) {
         e.preventDefault(); e.stopPropagation();   // 只做展开/收起，绝不导航
+        treeSelectNode(subA);   // 记录选中，供 ←/→ 使用
         const key = subA.dataset.subKey || `${subA.dataset.dom}/${subA.dataset.sub}`;
         const collapsed = docsBox.classList.toggle("collapsed");
         const nowOpen = !collapsed;
@@ -1396,6 +1431,13 @@ document.addEventListener("click", e => {
         return;
       }
     }
+    /* 一级域头：记录选中（←/→ 可收起/展开该域）。
+       注意：一级点击会走导航 → 整树重渲染，旧节点引用会失效；
+       故只记 key，由 renderTree 结束后的 rebindTreeSel() 重新定位新节点。 */
+    const domHeadEl = e.target.closest(".dom-head");
+    if (domHeadEl) { TREE_SEL_KEY = "dom:" + (domHeadEl.closest(".dom") || {}).dataset?.dom; }
+    /* 文档项：不参与 ←/→ 层级操作，清掉树选中态避免误操作 */
+    if (e.target.closest(".doc")) { TREE_SEL_KEY = null; treeSelectNode(null); }
   }
 
   const a = e.target.closest("a");

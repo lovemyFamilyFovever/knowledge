@@ -336,6 +336,11 @@ main.single{display:flex;flex-direction:column}
 /* 目录树键盘焦点可见（←/→ 展开收起需要先能 Tab 聚焦到节点） */
 .dom-head:focus-visible,.sub:focus-visible,.tree-subdir-h:focus-visible{
   outline:2px solid var(--c-acc);outline-offset:-2px;border-radius:var(--rd-ctl)}
+/* 目录树「点击选中」节点：←/→ 的操作锚点，需要明确的视觉反馈 */
+.sub.tree-sel,.dom-head.tree-sel,.tree-subdir-h.tree-sel{
+  outline:2px solid var(--acc-line);outline-offset:-2px;border-radius:var(--rd-ctl);
+  background:var(--acc-soft)}
+.sub.tree-sel .sub-ic,.dom-head.tree-sel .dom-glyph,.tree-subdir-h.tree-sel svg{color:var(--c-acc);opacity:1}
 .tree-subdir > .doc, .tree-subdir > .tree-subdir .doc{margin-left:0}
 /* 折叠指示：去掉三角箭头（用户要求），改用域头底色的展开态差异 + 图标区旋转微动。
    折叠交互改为点「域头整行」触发（点击面积更大、无需精确瞄准小箭头）。 */

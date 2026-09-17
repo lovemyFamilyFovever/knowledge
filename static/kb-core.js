@@ -759,12 +759,19 @@
   };
 
   /* 目录树 ←/→ 展开收起：返回 true 表示已消费该键。
+     定位目标节点优先序：
+       ① 点击选中的树节点（window.KB_treeSelected）—— 点击时 preventDefault
+          会阻止浏览器聚焦，document.activeElement 拿不到节点（实测落 BODY），
+          故必须用显式记录的选中态，这是主路径；
+       ② 退路：document.activeElement（Tab 键导航时生效）。
      - 域头 .dom-head      → 切换 .dom 的 open
      - 子域 .sub           → 切换其后 .sub-docs 的 collapsed
      - 三级 .tree-subdir-h → 切换所在 .tree-subdir 的 collapsed
      状态与点击路径共用 localStorage，避免两套真相。 */
   function treeLevelToggle(expand) {
-    var el = document.activeElement;
+    var el = null;
+    try { if (typeof window.KB_treeSelected === "function") el = window.KB_treeSelected(); } catch (e) {}
+    if (!el || !el.closest) el = document.activeElement;
     if (!el || !el.closest) return false;
     var tree = document.getElementById("tree");
     if (!tree || !tree.contains(el)) return false;
