@@ -101,7 +101,8 @@
     "ai-assets/_root": "总览",
     "_root": "总览",
     "articles/backend/C#": "C#C#",
-    "articles/backend/11": "11"
+    "articles/backend/11": "11",
+    "ai-assets/提示词": "prompt"
   },
   "sources": {
     "baike": "百科大全",
