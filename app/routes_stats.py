@@ -12,8 +12,8 @@ from pathlib import Path
 from flask import Blueprint, abort, current_app, jsonify, request
 
 from app import store
-from app.fts import build_index, extract_wikilinks
-from app.store import (SKIP_DIRS, SQLITE_BUSY_TIMEOUT_S, WRITABLE_EXTS, _tree_sig, domain_label,
+from app.fts import build_index, extract_wikilinks, open_db
+from app.store import (SKIP_DIRS, WRITABLE_EXTS, _tree_sig, domain_label,
                        find_doc, inbox_count, load_taxonomy, parse_frontmatter,
                        stats_cjk_load, stats_cjk_save)
 
@@ -98,7 +98,11 @@ def _corpus_agg() -> dict:
                         _, body = parse_frontmatter(p.read_text(encoding="utf-8", errors="replace"))
                     except OSError:
                         continue
-                    cjk += len(re.findall(r"[\u4e00-\u9fff]", body))
+                    n_cjk = len(re.findall(r"[\u4e00-\u9fff]", body))
+                cjk += n_cjk
+                # 无论命中与否都回填新缓存：new_cache 是全量重建视图，
+                # 树里消失的文档自然掉出缓存（自愈，无需显式清理）。
+                new_cache[rel] = [st.st_mtime_ns, n_cjk]
             data[(dom["id"], sobj["id"])] = {"cjk": cjk, "untagged": untagged,
                                              "tags": tag_map, "newest": newest}
     if new_cache != (cjk_cache or {}):
@@ -178,8 +182,9 @@ def api_globalstats():
             dead_docs, = con.execute("SELECT count(DISTINCT src) FROM links WHERE resolved=0").fetchone()
         finally:
             con.close()
-    except Exception:
-        pass  # FTS 索引缺失/损坏时双链健康度缺省为 0，不阻塞统计弹窗
+    except (sqlite3.Error, OSError):
+        # 只兜 IO/索引损坏；编程错误（如未定义名）必须炸出来，不许再被当作“索引缺失”吞掉
+        pass
     top_tags = [{"tag": t, "n": n} for t, n in sorted(tag_count.items(), key=lambda kv: -kv[1])[:10]]
     marks = {"read_done": 0, "mastered_docs": 0}
     ReadingStore = _hooks().get("ReadingStore")
@@ -360,7 +365,6 @@ def api_track():
 def _governance_links(content: Path, indexes: Path) -> list[dict]:
     """全库未解析双链（resolved=0），按源文档聚合，附 Top1 建议。
     与 /api/wikilink_check 同源（同一张 links 表），保证两处数据一致。"""
-    from app.fts import open_db
     try:
         con = open_db(indexes)
     except sqlite3.Error:
@@ -400,7 +404,6 @@ def _governance_links(content: Path, indexes: Path) -> list[dict]:
 def _governance_orphans(content: Path, indexes: Path) -> list[dict]:
     """孤儿文档：FTS 里无任何入链的 md。入口页（index/说明/README/总览 等）默认豁免，
     否则每个域的入口页都会常驻报警，导致报警疲劳。"""
-    from app.fts import open_db
     entry_names = {"index", "readme", "说明", "总览", "home", "about"}
     try:
         con = open_db(indexes)

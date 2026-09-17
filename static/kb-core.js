@@ -359,7 +359,8 @@
     sel: 0,
     open: false,
     loading: false,
-    mode: "palette"    // 'palette' | 'readpref'
+    mode: "palette",   // 'palette' | 'readpref'
+    viaSettings: false // readpref 模式的来源：齿轮入口 true（ESC 直接关），命令面板内进入 false（ESC 回列表）
   });
 
   function palRoot() { return document.getElementById("kb-palette"); }
@@ -497,6 +498,24 @@
     }
   }
 
+  /* ESC 统一收口。同一事件会被 document 捕获层（keys.handle）与 input 的 keydown 各吃一次：
+     不去重时行为随焦点位置漂移——齿轮→ESC 恰好“先换列表再关闭”看起来正常；
+     齿轮→点空白（焦点落到 BODY）→ESC 只剩第一半，面板原地变成命令列表（用户报“凭空多出弹窗”，2026-09-17）。
+     语义：齿轮打开的设置面板 ESC 直接关；从命令面板执行「阅读偏好」进来的 ESC 退回命令列表。 */
+  function palEscape(e) {
+    if (e && e.__kbPalEsc) return;
+    if (e) e.__kbPalEsc = true;
+    if (!palette.open) return;
+    if (palette.mode === "readpref" && !palette.viaSettings) {
+      palette.mode = "palette";
+      palRender();
+      var inp = document.querySelector("#kb-pal-input");
+      if (inp) inp.focus();
+      return;
+    }
+    palette.close();
+  }
+
   function palMove(delta) {
     var n = palette.flat.length;
     if (!n) return;
@@ -589,10 +608,13 @@
       if (e.key === "ArrowDown") { e.preventDefault(); palMove(1); }
       else if (e.key === "ArrowUp") { e.preventDefault(); palMove(-1); }
       else if (e.key === "Enter") { e.preventDefault(); palExec(); }
-      else if (e.key === "Escape") { e.preventDefault(); if (palette.mode === "readpref") { palette.mode = "palette"; palRender(); } else palette.close(); }
+      else if (e.key === "Escape") { e.preventDefault(); palEscape(e); }
       e.stopPropagation(); // 面板内输入不吃全局快捷键
     });
     root.addEventListener("click", function (e) {
+      // 遮罩 data-close="1" 此前无人消费：点空白处关不掉面板，只把焦点甩到 BODY，
+      // 正是后续 ESC 行为漂移的触发点（见 palEscape 注释）
+      if (e.target.closest && e.target.closest("[data-close]")) { palette.close(); return; }
       var item = e.target.closest ? e.target.closest(".kb-pal-item") : null;
       if (item) { palExec(Number(item.dataset.i)); }
     });
@@ -604,6 +626,7 @@
     if (!palette.data) palLoad();
     palette.open = true;
     palette.mode = "palette";
+    palette.viaSettings = false;
     palette.sel = 0;
     palRender();
     var input = document.querySelector("#kb-pal-input");
@@ -612,6 +635,7 @@
   palette.close = function () {
     palette.open = false;
     palette.mode = "palette";
+    palette.viaSettings = false;
     var root = palRoot();
     if (root) root.classList.remove("show");
     var input = document.querySelector("#kb-pal-input");
@@ -632,6 +656,7 @@
   KB.settings = {
     open: function () {
       palette.show();
+      palette.viaSettings = true;  // 齿轮入口：ESC 直接关闭，不退回命令列表
       palette.mode = "readpref";
       palRender();
       var input = document.querySelector("#kb-pal-input");
@@ -729,7 +754,7 @@
     if (e.key === "Escape") {
       if (KB.wl && KB.wl.suggestOpen && KB.wl.suggestOpen()) { KB.wl.hideSuggest(); e.preventDefault(); return true; }
       if (soOpenState) { soOv.classList.remove("show"); soOv.hidden = true; e.preventDefault(); return true; }
-      if (palette.isOpen()) { if (palette.mode === "readpref") { palette.mode = "palette"; palRender(); } else palette.close(); e.preventDefault(); return true; }
+      if (palette.isOpen()) { palEscape(e); e.preventDefault(); return true; }
       var helpEl = document.getElementById("kb-help");
       if (helpEl && helpEl.classList.contains("show")) { toggleHelp(false); e.preventDefault(); return true; }
       if (typeof window.tryCloseEditor === "function") window.tryCloseEditor();

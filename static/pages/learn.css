@@ -43,7 +43,7 @@
 .kb-learn-cta{margin-top:14px;display:flex;flex-wrap:wrap;gap:9px;align-items:center}
 .kb-learn-cta .kb-btn{border-radius:var(--rd-ctl);border-color:var(--c-line);background:var(--c-panel);box-shadow:none}
 .kb-learn-cta .kb-btn:hover{transform:translateY(-1px);border-color:var(--c-line2);background:var(--c-sunk);box-shadow:none}
-.kb-learn-cta .kb-btn.primary{background:var(--c-acc);color:var(--c-panel);border-color:color-mix(in oklab,var(--c-acc),black 22%)}
+.kb-learn-cta .kb-btn.primary{background:var(--c-acc);}
 .kb-learn-cta .kb-btn.primary:hover{background:color-mix(in oklab,var(--c-acc),black 10%);border-color:color-mix(in oklab,var(--c-acc),black 26%);color:var(--c-panel)}
 .kb-learn-cta .kb-btn.ghost{background:transparent;color:var(--muted);border-color:transparent}
 .kb-learn-cta .kb-btn.ghost:hover{color:var(--c-ink);background:var(--c-sunk)}

@@ -4,6 +4,7 @@
 覆盖：标签普查/合并（dry-run 与 apply）、疑似重叠降噪、阅读统计事件与月度聚合。
 运行：.python\\python.exe tests/test_govern.py
 """
+import json
 import sys
 import tempfile
 from pathlib import Path
@@ -113,9 +114,61 @@ def test_reading_stats():
     print("ok  reading stats：open 去重 + 分钟累计 + 月度聚合")
 
 
+def test_globalstats_links_and_cjk_cache():
+    """bug 评估报告 2026-09-17 的回归护栏：
+    1) /api/globalstats 的双链计数必须与 FTS links 表一致
+       （曾因重构删掉模块级 open_db 导入，NameError 被 except Exception
+       吞成“双链永远 0”的静默错数）；
+    2) _corpus_agg 的 stats_cjk.json 磁盘缓存：首轮必须落盘，
+       次轮全命中重算的总字数必须与首轮一致（曾因命中分支不累加丢数）。"""
+    from app.app import create_app
+    from app.fts import open_db
+    import app.routes_stats as rst
+
+    with tempfile.TemporaryDirectory() as td:
+        root = Path(td)
+        d = root / "content" / "baike" / "ai-and-llm"
+        d.mkdir(parents=True)
+        (d / "a.md").write_text(
+            "---\ntitle: \"A\"\n---\n# A\n这里引用了 [[B]] 和一个不存在的 [[缺页词条]]，共四十余个汉字。\n",
+            encoding="utf-8")
+        (d / "b.md").write_text(
+            "---\ntitle: \"B\"\n---\n# B\n被引用的中文正文若干部。\n", encoding="utf-8")
+        rst._AGG["sig"] = rst._AGG["data"] = None
+        app = create_app(root)
+        c = app.test_client()
+
+        body = c.get("/api/globalstats").get_json()
+        con = open_db(root / "indexes")
+        n_total = con.execute("SELECT count(*) FROM links").fetchone()[0]
+        n_dead = con.execute("SELECT count(*) FROM links WHERE resolved=0").fetchone()[0]
+        con.close()
+        assert (n_total, n_dead) == (2, 1), f"夹具应有 2 链/1 断：{n_total}/{n_dead}"
+        assert body["links"]["total"] == n_total, \
+            f"globalstats 双链数须与 links 表一致：{body['links']} vs {n_total}"
+        assert body["links"]["dead"] == n_dead and body["links"]["dead_docs"] == 1
+        assert body["total_cjk"] > 0
+
+        cache_file = root / "indexes" / "stats_cjk.json"
+        assert cache_file.is_file(), "首轮 _corpus_agg 应落盘 stats_cjk.json"
+        cached = json.loads(cache_file.read_text(encoding="utf-8"))
+        assert set(cached["files"]) == {"baike/ai-and-llm/a.md", "baike/ai-and-llm/b.md"}, \
+            f"缓存键应为全量 md 相对路径：{set(cached['files'])}"
+        first_total = body["total_cjk"]
+
+        # 清内存层→强制重算：此次全部命中磁盘缓存（不读全文），字数必须分毫不差
+        rst._AGG["sig"] = rst._AGG["data"] = None
+        body2 = c.get("/api/globalstats").get_json()
+        assert body2["total_cjk"] == first_total, \
+            f"缓存命中重算不得丢字数：{first_total} -> {body2['total_cjk']}"
+        rst._AGG["sig"] = rst._AGG["data"] = None
+    print("ok  globalstats 双链一致 + stats_cjk 缓存落盘/命中无损（报告 2026-09-17 护栏）")
+
+
 if __name__ == "__main__":
     test_tag_census_and_similar()
     test_merge_tag_dryrun_then_apply()
     test_merge_tag_crlf_bytes()
     test_reading_stats()
+    test_globalstats_links_and_cjk_cache()
     print("\nGOVERN+STATS TESTS OK")

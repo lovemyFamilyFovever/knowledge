@@ -790,3 +790,39 @@ def rename_sub(content: Path, domain: str, old_sub: str, new_sub: str,
     return {"domain": domain, "old_sub": old_sub, "new_sub": new_sub,
             "apply": apply, "n_docs": len(plan),
             "plan": [{"src": i["src"], "dst": i["dst"]} for i in plan]}
+
+
+# ---------------- 文档字数缓存（派生，indexes/stats_cjk.json；纯新增工具函数） ----------------
+# 用途：统计类接口（app/routes_stats.py::_corpus_agg）不再需要每次全库逐篇
+# read_text + 数 CJK。按「rel 路径 + mtime_ns」做键——内容一变（写入/移动/编辑
+# frontmatter 都会改 mtime）即视为未命中重算，未变则复用上次数值。
+# 该文件是纯派生缓存（同 indexes/ 其它产物），损坏/缺失时回退 None 全量重算，
+# 可随时删除重建，绝不进入分类树语义。
+_STATS_CJK_NAME = "stats_cjk.json"
+
+
+def stats_cjk_load(indexes: Path) -> dict | None:
+    """读派生字数缓存 {rel: [mtime_ns, cjk]}。缺失/损坏返回 None（调用方全量重算）。"""
+    p = Path(indexes) / _STATS_CJK_NAME
+    if not p.is_file():
+        return None
+    try:
+        data = json.loads(p.read_text(encoding="utf-8"))
+        if data.get("v") != 1 or not isinstance(data.get("files"), dict):
+            return None
+        return data["files"]
+    except (OSError, ValueError, AttributeError):
+        return None
+
+
+def stats_cjk_save(indexes: Path, files: dict) -> None:
+    """原子落盘字数缓存（tmp + replace）。写失败静默——缓存不可用只是回退慢路径。"""
+    try:
+        indexes = Path(indexes)
+        indexes.mkdir(parents=True, exist_ok=True)
+        tmp = indexes / (_STATS_CJK_NAME + ".tmp")
+        tmp.write_text(json.dumps({"v": 1, "files": files}, ensure_ascii=False),
+                       encoding="utf-8")
+        tmp.replace(indexes / _STATS_CJK_NAME)
+    except OSError:
+        pass

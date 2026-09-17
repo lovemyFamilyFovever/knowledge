@@ -81,7 +81,7 @@
   <section class="panel rail" id="p-rail" data-reveal data-reveal-y="14">
     <div class="rtabs" role="tablist" aria-label="文档信息面板">
       <button type="button" class="rtab{% if not doc.has_html %} active{% endif %}" data-pane="toc" role="tab" aria-selected="{% if doc.has_html %}false{% else %}true{% endif %}" tabindex="0" onclick="tab('toc',this)"><svg class="i i-12"><use href="#i-toc-list"/></svg>目录</button>
-      <button type="button" class="rtab{% if doc.has_html %} active{% endif %}" data-pane="info" role="tab" aria-selected="{% if doc.has_html %}true{% else %}false{% endif %}" tabindex="0" onclick="tab('info',this)"><svg class="i i-12"><use href="#i-info-circle"/></svg>信息·标签</button>
+      <button type="button" class="rtab{% if doc.has_html %} active{% endif %}" data-pane="info" role="tab" aria-selected="{% if doc.has_html %}true{% else %}false{% endif %}" tabindex="0" onclick="tab('info',this)"><svg class="i i-12"><use href="#i-info-circle"/></svg>标签</button>
       <button type="button" class="rtab" data-pane="notes" role="tab" aria-selected="false" tabindex="0" onclick="tab('notes',this)"><svg class="i i-12"><use href="#i-note-pen"/></svg>备注</button>
       <button type="button" class="rtab" data-pane="links" role="tab" aria-selected="false" tabindex="0" onclick="tab('links',this)"><svg class="i i-12"><use href="#i-backlink-graph"/></svg>双链</button>
     </div>

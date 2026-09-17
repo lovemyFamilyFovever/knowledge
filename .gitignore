@@ -35,3 +35,10 @@ qwenwork/
 /.workbuddy
 /node_modules
 scripts/codemirror-vendor/node_modules/
+
+# ---------- 仓库根临时产物（非语料，不跟踪；bug-assessment 2026-09-17 P3）----------
+# 会话随手丢在仓库根的截图（正常应落到 content/_assets/）
+/image*.png
+# Agent 工作流会话产物
+/output/
+/.spark/

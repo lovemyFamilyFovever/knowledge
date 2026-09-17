@@ -125,7 +125,7 @@
         if (!res.ok) continue;
         var text = toLF(await res.text()); // 归一 LF，避免回写时二次翻译成 \r\r\n
         var hits = bySrc[srcs[i]].filter(function (raw) {
-          return text.indexOf("[[" + raw + "]]") >= 0;
+          return linkRe(raw).test(text); // 含别名/锚点/嵌入变体，与 FTS 提取器同口径
         });
         if (hits.length) preview.push({ src: srcs[i], hits: hits, text: text });
       } catch (e) { /* 跳过读不到的文件 */ }
@@ -149,7 +149,14 @@
       var p = preview[j];
       var newText = p.text;
       p.hits.forEach(function (raw) {
-        newText = newText.split("[[" + raw + "]]").join(mode === "toplain" ? raw : "");
+        if (mode === "toplain") {
+          // 转纯文本：[[x]]→x，[[x|别名]]→别名，![[x]]→x（去掉嵌入标记）
+          newText = newText.replace(linkRe(raw), function (_m, alias) {
+            return alias != null ? alias : raw;
+          });
+        } else {
+          newText = newText.replace(linkRe(raw), ""); // 移除链接标记（含别名/锚点尾巴）
+        }
       });
       try {
         var w = await fetch("/api/save", {
@@ -286,6 +293,14 @@
      按平台翻译换行——直接回写会二次翻译成 \r\r\n 污染语料（Story 2 护栏同源约束）。 */
   function toLF(s) { return String(s == null ? "" : s).replace(/\r\n?/g, "\n"); }
 
+  function escapeRe(s) { return String(s).replace(/[.*+?^${}()|[\]\\]/g, "\\$&"); }
+  /* 匹配一个 raw（链接目标，不含 [[ 与 ]]）的全部字面写法，与 app.js FTS 提取器同族：
+     [[raw]] / [[raw#锚点]] / [[raw|别名]] / ![[raw|别名]] ……
+     结尾强制 ]]，故更长按链的目标前缀（如 raw="AI" vs [[AIX]]）不会被误匹配。 */
+  function linkRe(raw) {
+    return new RegExp("!?\\[\\[" + escapeRe(raw) + "(?:#[^\\[\\]|]*)?(?:\\|([^\\[\\]]*))?\\]\\]", "g");
+  }
+
   /* ---------- 桶切换 ---------- */
   function bindTabs() {
     $$(".gov-tab").forEach(function (t) {
@@ -307,7 +322,7 @@
     if (!btn) return;
     btn.onclick = scan;
     bindTabs();
-    scan(); // 进页面即扫一次（有缓存语义：每次点按钮重扫）
+    // 进页不自动扫描：全库扫描有成本，与后端 docstring / 模板空态的约定一致，按钮是唯一触发点
   }
 
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init);

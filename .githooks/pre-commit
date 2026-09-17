@@ -31,6 +31,12 @@ if [ -z "$PY" ]; then
 fi
 echo "[pre-commit] using interpreter: $PY"
 
+# 回归安全网（bug-assessment 2026-09-17 教训）：F821 未定义名这类笔误会被
+# except Exception 吞成静默错数，smoke 测试拦不住，必须静态拦。ruff.toml
+# 自述定位就是“回归安全网”，不跑等于没有。
+echo "[pre-commit] running ruff (regression net)..."
+$PY -m ruff check . || exit 1
+
 # 调用处一律用**不加引号**的 $PY：候选里 `py -3` 带参数，需要分词才能展开成
 # `py` + `-3`；加了引号会被当成一整个可执行文件名而找不到。
 # （候选清单里的路径都不含空格，分词是安全的。）
