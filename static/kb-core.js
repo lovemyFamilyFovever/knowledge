@@ -750,8 +750,79 @@
     if (e.key === "j" || e.key === "k") {
       if (docListMove(e.key === "j" ? 1 : -1)) { e.preventDefault(); return true; }
     }
+    /* ⑧ ← / →：目录树层级展开/收起（焦点在域头/子域/三级目录头上时生效）
+          ← 收起当前层级；→ 展开当前层级。与点击行为语义一致（纯前端、不导航）。 */
+    if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
+      if (treeLevelToggle(e.key === "ArrowRight")) { e.preventDefault(); return true; }
+    }
     return false;
   };
+
+  /* 目录树 ←/→ 展开收起：返回 true 表示已消费该键。
+     - 域头 .dom-head      → 切换 .dom 的 open
+     - 子域 .sub           → 切换其后 .sub-docs 的 collapsed
+     - 三级 .tree-subdir-h → 切换所在 .tree-subdir 的 collapsed
+     状态与点击路径共用 localStorage，避免两套真相。 */
+  function treeLevelToggle(expand) {
+    var el = document.activeElement;
+    if (!el || !el.closest) return false;
+    var tree = document.getElementById("tree");
+    if (!tree || !tree.contains(el)) return false;
+
+    /* 三级目录头 */
+    var sdHead = el.closest(".tree-subdir-h");
+    if (sdHead) {
+      var box = sdHead.closest(".tree-subdir");
+      var key = box && box.dataset.dirKey;
+      if (!key) return false;
+      setTreeCollapsed("kb-subdir-collapsed", key, box, expand);
+      sdHead.setAttribute("aria-expanded", expand ? "true" : "false");
+      return true;
+    }
+    /* 二级子域 */
+    var subA = el.closest(".sub");
+    if (subA) {
+      var docsBox = subA.nextElementSibling;
+      if (!docsBox || !docsBox.classList.contains("sub-docs")) return false;
+      var subKey = subA.dataset.subKey || (subA.dataset.dom + "/" + subA.dataset.sub);
+      setTreeCollapsed("kb-sub-open", subKey, docsBox, expand);
+      subA.setAttribute("aria-expanded", expand ? "true" : "false");
+      return true;
+    }
+    /* 一级域 */
+    var domHead = el.closest(".dom-head");
+    if (domHead) {
+      var dom = domHead.closest(".dom");
+      if (!dom) return false;
+      /* 一级域用 .open 类（在 = 展开），与二级/三级的 .collapsed 语义相反，单独处理 */
+      dom.classList.toggle("open", expand);
+      domHead.setAttribute("aria-expanded", expand ? "true" : "false");
+      try {
+        var raw0 = localStorage.getItem("kb-tree-open");
+        var set0 = new Set(raw0 ? JSON.parse(raw0) : []);
+        if (expand) set0.add(dom.dataset.dom); else set0.delete(dom.dataset.dom);
+        localStorage.setItem("kb-tree-open", JSON.stringify(Array.from(set0)));
+      } catch (err) {}
+      return true;
+    }
+    return false;
+  }
+  /* 二级/三级的可见性持久化：class .collapsed（在 = 收起）。
+     storageKey 为 "kb-sub-open" 时集合语义是「已展开」；
+     为 "kb-subdir-collapsed" 时语义是「已收起」。 */
+  function setTreeCollapsed(storageKey, key, node, expand) {
+    node.classList.toggle("collapsed", !expand);
+    try {
+      var raw = localStorage.getItem(storageKey);
+      var set = new Set(raw ? JSON.parse(raw) : []);
+      if (storageKey === "kb-subdir-collapsed") {
+        if (expand) set.delete(key); else set.add(key);
+      } else {
+        if (expand) set.add(key); else set.delete(key);
+      }
+      localStorage.setItem(storageKey, JSON.stringify(Array.from(set)));
+    } catch (err) {}
+  }
 
   /* ==================================================================
      [6] wl —— 需求6 双链补全 + 断链提示（编辑器 #ed-text）

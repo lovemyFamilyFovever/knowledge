@@ -864,23 +864,33 @@ function treeOpenSet() {
   try { const raw = localStorage.getItem("kb-tree-open"); if (raw) return new Set(JSON.parse(raw)); } catch (e) {}
   return new Set();
 }
-function subCollapsedSet() {
-  try { const raw = localStorage.getItem("kb-sub-collapsed"); if (raw) return new Set(JSON.parse(raw)); } catch (e) {}
+/* 二级/三级可见性状态（三个独立集合，均为「显式记录」语义，默认收起）：
+   - kb-tree-open        : 一级域「已展开」集合
+   - kb-sub-open         : 二级「已展开」集合（键 dom/sub）
+   - kb-subdir-collapsed : 三级「已收起」集合（键 dom/sub/dir，三级默认展开故用收起集合）
+   二级/三级均为纯前端原地切换：所有子域的文档列表一次性预渲染（数据来自 /api/tree，
+   无额外请求），仅靠 .collapsed 类控制显隐，点击不跳转、不刷新文档列表。 */
+function treeOpenSet() {
+  try { const raw = localStorage.getItem("kb-tree-open"); if (raw) return new Set(JSON.parse(raw)); } catch (e) {}
+  return new Set();
+}
+/* 二级「已展开」集合：默认空 → 全部收起（用户要求：打开一级不应默认展开二级）。 */
+function subOpenSet() {
+  try { const raw = localStorage.getItem("kb-sub-open"); if (raw) return new Set(JSON.parse(raw)); } catch (e) {}
   return new Set();
 }
 function subdirCollapsedSet() {
   try { const raw = localStorage.getItem("kb-subdir-collapsed"); if (raw) return new Set(JSON.parse(raw)); } catch (e) {}
   return new Set();
 }
-/* 每个子域的文档列表是否展开：默认全部展开（点一下即收起），仅「手动收起」的收起。
-   （旧实现只在当前子域渲染文档列表，故无法原地展开；现在全量渲染 + 类控制。） */
+/* 子域文档列表是否展开：默认收起，仅「显式展开过」的展开 */
 function subIsOpen(domId, subId) {
-  return !subCollapsedSet().has(`${domId}/${subId}`);
+  return subOpenSet().has(`${domId}/${subId}`);
 }
-function setSubCollapsed(key, collapsed) {
-  const set = subCollapsedSet();
-  if (collapsed) set.add(key); else set.delete(key);
-  try { localStorage.setItem("kb-sub-collapsed", JSON.stringify(Array.from(set))); } catch (e) {}
+function setSubOpen(key, open) {
+  const set = subOpenSet();
+  if (open) set.add(key); else set.delete(key);
+  try { localStorage.setItem("kb-sub-open", JSON.stringify(Array.from(set))); } catch (e) {}
 }
 function setDirCollapsed(key, collapsed) {
   const set = subdirCollapsedSet();
@@ -895,7 +905,7 @@ function renderTree() {
     const isOpen = open.has(d.id);
     return `
    <div class="dom ${isOpen ? "open" : ""}" style="--dh:${HUES[d.id] || 158}" data-dom="${esc(d.id)}">
-    <a class="dom-head ${CUR && CUR.domain === d.id ? "active" : ""}" href="/browse/${d.id}/${d.subs[0].id}" role="button" aria-expanded="${isOpen ? "true" : "false"}" title="${esc(d.label)} · 点击展开/收起">
+    <a class="dom-head ${CUR && CUR.domain === d.id ? "active" : ""}" href="/browse/${d.id}/${d.subs[0].id}" role="button" tabindex="0" aria-expanded="${isOpen ? "true" : "false"}" title="${esc(d.label)} · 点击展开/收起 · ←/→ 收起展开">
      <span class="dom-glyph" style="--dh:${HUES[d.id] || 158}"><svg><use href="#i-${d.id}"/></svg></span>
      <span class="dom-name" title="${esc(d.label)}">${esc(d.label)}</span><span class="dom-n">${d.n}</span>
     </a>
@@ -916,11 +926,13 @@ function renderTree() {
         const href = docUrl(`${d.id}/${s.id}/${doc.name}.md`);
         const leaf = dir ? doc.name.slice(dir.length + 1) : doc.name;
         const deep = dir ? dir.split("/").length : 0; // 多层缩进层级
+        /* 用户要求：目录中的文档项不再显示标签 chips（三级尤其拥挤）。
+           美化版/HTML 的标记改为 doc-t 内的图标，保留可辨识性但不再占一整行。 */
+        const badges = (doc.has_html || doc.is_html)
+          ? `<span class="doc-flag" title="${doc.is_html ? "HTML 文档" : "有美化版"}">${icon("external-link", 11)}</span>` : "";
         return `
         <a class="doc ${cur && CUR.name === doc.name ? "active" : ""} ${dir ? "in-subdir" : ""}" data-name="${esc(doc.name)}" data-dom="${esc(d.id)}" data-sub="${esc(s.id)}" draggable="true" style="--deep:${deep}" href="${href}" title="${esc(doc.name)}">
-          <div class="doc-t">${doc.has_html ? `<span class="star" title="有美化版">${icon("external-link", 12)}</span>` : ""}${esc(leaf)}</div>
-          <div class="doc-meta">${(doc.tags && doc.tags.length) ? doc.tags.map(t => `<span class="mini tag">${esc(t)}</span>`).join("") : ""}
-          ${doc.has_html ? `<span class="mini html">美化版</span>` : ""}${doc.is_html ? `<span class="mini html">HTML</span>` : ""}</div>
+          <div class="doc-t">${badges}${esc(leaf)}</div>
         </a>`;
       };
       /* 三级（多层目录）：头部可点击收起/展开；收起状态持久化 */
@@ -928,7 +940,7 @@ function renderTree() {
         const key = `${d.id}/${s.id}/${dir}`;
         const dirCollapsedNow = dirCollapsed.has(key);
         return `<div class="tree-subdir${dirCollapsedNow ? " collapsed" : ""}" style="--deep:${dir.split("/").length}" data-dir-key="${esc(key)}">
-          <div class="tree-subdir-h" role="button" tabindex="0" aria-expanded="${dirCollapsedNow ? "false" : "true"}" title="${esc(dir)} · 点击展开/收起">${icon("folder", 11)}<span class="tsd-t">${esc(dir.split("/").pop())}</span></div>
+          <div class="tree-subdir-h" role="button" tabindex="0" aria-expanded="${dirCollapsedNow ? "false" : "true"}" title="${esc(dir)} · 点击展开/收起 · ←/→ 收起展开">${icon("folder", 11)}<span class="tsd-t">${esc(dir.split("/").pop())}</span></div>
           <div class="tree-subdir-body">${docsByDir[dir].map(doc => docLink(doc, dir)).join("")}</div>
         </div>`;
       };
@@ -938,7 +950,7 @@ function renderTree() {
       ).join("");
       /* 全量渲染：文档列表始终在 DOM 中，靠 .collapsed 控制显隐 —— 支持纯原地展开/收起 */
       return `
-      <a class="sub ${cur ? "active" : ""}${subOpen ? "" : " collapsed"}" data-dom="${esc(d.id)}" data-sub="${esc(s.id)}" data-sub-key="${esc(subKey)}" href="/browse/${d.id}/${s.id}" role="button" aria-expanded="${subOpen ? "true" : "false"}" title="${esc(s.label)} · 点击展开/收起"><span class="sub-t">${esc(s.label)}</span><span class="n">${s.n}</span></a>
+      <a class="sub ${cur ? "active" : ""}${subOpen ? "" : " collapsed"}" data-dom="${esc(d.id)}" data-sub="${esc(s.id)}" data-sub-key="${esc(subKey)}" href="/browse/${d.id}/${s.id}" role="button" tabindex="0" aria-expanded="${subOpen ? "true" : "false"}" title="${esc(s.label)} · 点击展开/收起 · ←/→ 收起展开"><span class="sub-t">${esc(s.label)}</span><span class="n">${s.n}</span></a>
       <div class="sub-docs${subOpen ? "" : " collapsed"}">${groups}</div>`;
     }).join("")}
     </div>
@@ -1025,7 +1037,7 @@ function renderInfo() {
   const row = pane.querySelector("#tag-inputrow");
   const input = pane.querySelector("#tag-in");
   if (addBtn && row && input) {
-    addBtn.addEventListener("click", () => { row.hidden = !row.hidden; if (!row.hidden) { if (window.TagSuggest) TagSuggest.ensureIndex(); input.focus(); } });
+    addBtn.addEventListener("click", () => { row.hidden = !row.hidden; if (!row.hidden) { if (window.TagSuggest) TagSuggest.ensureIndex(); requestAnimationFrame(() => input.focus()); } });
     if (window.TagSuggest) TagSuggest.bind(input); // 标签补全浮层（datalist 已弃用）
     input.onkeydown = e => {
       if (window.TagSuggest && TagSuggest.handleKey(input, e)) { e.preventDefault(); return; } // 浮层已消费（↑↓/Enter填充/Esc关浮层）
@@ -1138,13 +1150,16 @@ function chipsAddToggle() {
   input.addEventListener("blur", () => { if (!input.value.trim()) input.remove(); });
 }
 
-/* 需求 #2 补充：编辑标签入口在右上角 crumb 按钮组（收藏旁），点开右栏「信息·标签」页 */
+/* 需求 #2 补充：编辑标签入口在右上角 crumb 按钮组（收藏旁），点开右栏「信息·标签」页。
+   focus 必须 rAF 延后一帧：pane 刚从 display:none 切可见时同帧 focus() 会被
+   Chrome 静默忽略（布局未完成）——原 datalist 时代无感，浮层化后 focus 失败
+   = 补全不弹，显性化了。 */
 function jumpToTagEdit() {
   const infoTab = document.querySelector('.rtab[data-pane="info"]');
   if (infoTab) tab("info", infoTab);
   const row = $("#tag-inputrow");
   if (row && row.hidden) { const b = $("#tag-add-btn"); if (b) b.click(); }
-  else { const input = $("#tag-in"); if (input) input.focus(); }
+  else { const input = $("#tag-in"); if (input) requestAnimationFrame(() => input.focus()); }
 }
 window.jumpToTagEdit = jumpToTagEdit;
 
@@ -1329,9 +1344,10 @@ document.addEventListener("click", e => {
         e.preventDefault(); e.stopPropagation();   // 只做展开/收起，绝不导航
         const key = subA.dataset.subKey || `${subA.dataset.dom}/${subA.dataset.sub}`;
         const collapsed = docsBox.classList.toggle("collapsed");
+        const nowOpen = !collapsed;
         subA.classList.toggle("collapsed", collapsed);
-        subA.setAttribute("aria-expanded", collapsed ? "false" : "true");
-        setSubCollapsed(key, collapsed);
+        subA.setAttribute("aria-expanded", nowOpen ? "true" : "false");
+        setSubOpen(key, nowOpen);
         return;
       }
     }

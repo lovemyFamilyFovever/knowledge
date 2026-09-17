@@ -318,6 +318,12 @@ main.single{display:flex;flex-direction:column}
 .sub.collapsed .sub-t{opacity:.85}
 /* 二级文档容器：默认展开，.collapsed 时隐藏（纯原地切换，无跳转） */
 .sub-docs.collapsed{display:none}
+/* 目录中的文档项：不再渲染标签 chips（用户要求），美化版标记降为行内小图标 */
+.doc-t .doc-flag{flex:none;display:inline-flex;color:var(--c-info);opacity:.85}
+.doc-t .doc-flag svg{width:11px;height:11px}
+/* 目录树键盘焦点可见（←/→ 展开收起需要先能 Tab 聚焦到节点） */
+.dom-head:focus-visible,.sub:focus-visible,.tree-subdir-h:focus-visible{
+  outline:2px solid var(--c-acc);outline-offset:-2px;border-radius:var(--rd-ctl)}
 .tree-subdir > .doc, .tree-subdir > .tree-subdir .doc{margin-left:0}
 /* 折叠指示：去掉三角箭头（用户要求），改用域头底色的展开态差异 + 图标区旋转微动。
    折叠交互改为点「域头整行」触发（点击面积更大、无需精确瞄准小箭头）。 */
