@@ -42,6 +42,8 @@ export default [
         // KBCM = vendor/codemirror.bundle.js 暴露；KBED = pages/cm-editor.js 暴露
         KBCM: "readonly",
         KBED: "readonly",
+        // Story 4：标签补全浮层（pages/tag-suggest.js 暴露）
+        TagSuggest: "readonly",
         // base.html / vendor 库暴露：
         DOMPurify: "readonly",
         marked: "readonly",
