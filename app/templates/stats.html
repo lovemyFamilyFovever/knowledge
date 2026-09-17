@@ -20,17 +20,17 @@
            cN = 卡片身份，跟着卡片本身走，挪位置编号不变：
              c1 活跃天数 · c2 月度阅读时长 · c3 访问文档数 · c4 读完文档
              c5 文档榜 Top50 · c6 每日阅读时长 · c7 复习卡覆盖·阶段分布
-           S 号 = 版面槽位，跟着位置走：
-             S1~S4 = 左列 KPI 2×2 四格（依次放 c1 c2 c3 c4）
-             S5 = 左列下半长卡位（现 c5）
-             S6 = 右列主图位（现 c6）
-             S7 = 右列下方位（现 c7）
-           表达挪动请说「把 cN 挪到 Sx」；新增卡片顺延 c8、c9…，不复用旧号。
+           S 号 = 版面槽位，跟着位置走（当前版面：左右各占全屏一半）：
+             L1~L6 = 左列自上而下六个行位，一行一张，当前依次放 c1 c2 c3 c4 c6 c7
+             R1    = 右列整列，当前只放 c5
+           版面只在 static/pages/stats.css 的 .st-cols grid-template-areas 一处定义，
+           挪动请说「把 cN 挪到 Lx / R1」；新增卡片顺延 c8、c9…，不复用旧号。
         ──────────────────────────────────────────────────────────────── #}
-        {# ── 左右双列布局：左列=KPI 概览+文档榜，右列=主图表区 ── #}
+        {# ── 两个包装 div 已被 stats.css 拆成 display:contents，只承担分组职责；
+             实际版面（左右各半、左列一行一张、右列只放 c5）看 .st-cols 的 grid-template-areas ── #}
         <div class="st-cols">
         <div class="st-col-kpi">
-        {# ── KPI 卡片（2×2 自适应网格） ── #}
+        {# ── KPI 四卡（c1~c4，版面里各占左列一行） ── #}
         <div class="kpi-row">
           <div class="kpi-card" data-st-card="c1">
             <div class="label"><svg class="i i-12"><use href="#i-calendar-day"/></svg>活跃天数</div>
