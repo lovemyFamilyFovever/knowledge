@@ -10,6 +10,7 @@
 | `ScrollTrigger.min.js` | 44 KB | `https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/ScrollTrigger.min.js` | 3.13.0 | 同上（GSAP 官方插件自 3.13 起并入标准许可） |
 | `space-grotesk-var.woff2` | 22 KB | `https://cdn.jsdelivr.net/npm/@fontsource-variable/space-grotesk@5.1.1/files/space-grotesk-latin-wght-normal.woff2` | 5.1.1 (variable) | SIL Open Font License 1.1 |
 | `codemirror.bundle.js` | 508 KB | **本地构建**：`scripts/codemirror-vendor/`（npm + esbuild 打包，无单文件 CDN） | CodeMirror 6（6.0.x 系列） | MIT |
+| `chart.umd.js` | 208 KB | `https://cdn.jsdelivr.net/npm/chart.js@4.5.0/dist/chart.umd.js` | Chart.js 4.5.0 | MIT（消费方：`static/pages/stats.js` 的月度图表） |
 
 ## 重下载
 
@@ -24,6 +25,9 @@ curl -sSfLo static/vendor/ScrollTrigger.min.js \
 
 curl -sSfLo static/vendor/space-grotesk-var.woff2 \
   https://cdn.jsdelivr.net/npm/@fontsource-variable/space-grotesk@5.1.1/files/space-grotesk-latin-wght-normal.woff2
+
+curl -sSfLo static/vendor/chart.umd.js \
+  https://cdn.jsdelivr.net/npm/chart.js@4.5.0/dist/chart.umd.js
 ```
 
 ### codemirror.bundle.js（构建型依赖，不能 curl）

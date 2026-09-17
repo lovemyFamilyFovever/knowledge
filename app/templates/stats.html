@@ -81,13 +81,11 @@
             </div>
           </div>
           {% if has_chart %}
-          <div class="st-chart-wrap"><svg id="stDailyChart" viewBox="0 0 900 240" preserveAspectRatio="none"
-               style="width:100%;height:240px;display:block" role="img"
-               aria-label="{{ ym }} 每日阅读时长与文档数条形图（横轴为当月日期）">
-            <title>每日阅读时长（分钟）与打开文档数（篇）· {{ ym }}</title>
-          </svg>
-          <div class="st-note" id="stChartNote"></div>
+          <div class="st-chart-wrap">
+            <canvas id="stDailyChart" role="img"
+              aria-label="{{ ym }} 每日阅读时长与文档数条形图（横轴为当月日期）">每日阅读时长与打开文档数图表（Canvas 渲染，需启用 JavaScript）。</canvas>
           </div>
+          <div class="st-note" id="stChartNote"></div>
           {% else %}
           <div class="st-nochart">
             <svg class="i i-14" aria-hidden="true"><use href="#i-stats-chart"/></svg>
@@ -161,6 +159,7 @@
 </main>
 {% endblock %}
 {% block scripts %}
+<script defer src="/static/vendor/chart.umd.js?v={{ av('vendor/chart.umd.js') }}"></script>
 <script defer src="/static/pages/stats.js?v={{ av('pages/stats.js') }}"></script>
 <script type="application/json" id="st-daily-data">{{ kpi.daily | tojson }}</script>
 {% endblock %}

@@ -1,45 +1,55 @@
-/* 知库 stats.js · 月度统计页（问题13 重构）
+/* 知库 stats.js · 月度统计页
    数据来源：仅模板内嵌的真实统计数据（#st-daily-data，来自 ReadingStore.monthly）。
    设计要点：
-   1. 横轴按**日历**定位（1..当月天数），缺失日 0 高但保留刻度；
-      不再用 plotW/len 那种「按数组下标均分」的畸形柱位。
-   2. 只有真正有数据时才画图：无序列直接返回，不写 "NO SERIES"、不留空白图卡。
-   3. 图表全部内联 SVG（零外链），配色只用已有 CSS 变量（--acc/--acc2/--edge）。
-   4. 揭示动画兜底：任何 [data-reveal] 若被卡成隐形，超时后强制可见。
-   依赖 T0：window.Motion（可选，缺失即静态呈现）。 */
+   1. 横轴按**日历**定位（1..当月天数），缺失日 0 值仍保留刻度；
+   2. 只有真正有数据时才画图：无序列直接返回，不留空白图卡、不编数；
+   3. 图表引擎用本地 Chart.js（static/vendor/chart.umd.js，零 CDN、零外链）；
+      取色一律从 CSS 变量读，主题切换后整组销毁重建，保证深浅色都跟手；
+   4. 峰值等真实数值用自定义 plugin 直接标在图上，不让高度独自表意；
+   5. 揭示动画兜底：任何 [data-reveal] 若被卡成隐形，超时后强制可见。
+   依赖：window.Chart（缺失时图表留白，页面其余部分照常工作）、
+        window.Motion（可选，缺失即静态呈现）。 */
 (function () {
   "use strict";
 
-  var SVGNS = "http://www.w3.org/2000/svg";
-  var H = 240;                                   // svg 逻辑高度（与模板一致）
-  var PAD = { l: 44, r: 18, t: 20, b: 34 };
   var reduced = !!(window.Motion && window.Motion.reduced);
+  var ANIM = reduced ? false : { duration: 600, easing: "easeOutQuart" };
 
-  function el(tag, attrs) {
-    var n = document.createElementNS(SVGNS, tag);
-    if (attrs) for (var k in attrs) if (attrs[k] !== null && attrs[k] !== undefined) n.setAttribute(k, attrs[k]);
-    return n;
+  /* ---------- 令牌取色（CSS 变量 → canvas 可用色） ---------- */
+  function cssVar(name, fallback) {
+    var v = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+    return v || fallback || "";
   }
-  function say(node, s) { node.textContent = s; return node; }
-  function niceCeil(v) {
-    if (!(v > 0)) return 1;
-    var pow = Math.pow(10, Math.floor(Math.log(v) / Math.LN10));
-    var f = v / pow;
-    var n = f <= 1 ? 1 : f <= 2 ? 2 : f <= 5 ? 5 : 10;
-    return n * pow;
+  /* #rgb / #rrggbb → rgba(...)；其它色形式（函数式/关键字）原样返回，不做透明度处理 */
+  function withAlpha(color, alpha) {
+    var m = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(color);
+    if (!m) return color;
+    var hex = m[1];
+    if (hex.length === 3) hex = hex.split("").map(function (c) { return c + c; }).join("");
+    var n = parseInt(hex, 16);
+    return "rgba(" + [(n >> 16) & 255, (n >> 8) & 255, n & 255].join(",") + "," + alpha + ")";
   }
+  /* 自上而下的淡出渐变（面积填充用），拿不到绘图区时退回纯色 */
+  function fade(color, ctx, area, alpha) {
+    if (!area) return withAlpha(color, alpha);
+    var g = ctx.createLinearGradient(0, area.top, 0, area.bottom);
+    g.addColorStop(0, withAlpha(color, alpha));
+    g.addColorStop(1, withAlpha(color, 0));
+    return g;
+  }
+
+  /* ---------- 读原始序列 ---------- */
+  var daily = (function () {
+    var raw = document.getElementById("st-daily-data");
+    try { return JSON.parse((raw && raw.textContent) || "[]") || []; } catch { return []; }
+  })();
+
   function dayNum(s) {
     var m = /(\d{4})-(\d{2})-(\d{2})/.exec(String(s == null ? "" : s));
     if (m) return +m[3];
     var n = parseInt(s, 10);
     return isFinite(n) ? n : NaN;
   }
-
-  /* ---------- 读原始序列 ---------- */
-  var daily = (function () {
-    var raw = document.getElementById("st-daily-data");
-    try { return JSON.parse((raw && raw.textContent) || "[]") || []; } catch (e) { return []; }
-  })();
 
   /* ---------- 月份信息（当月天数，来自模板 [data-ym]） ---------- */
   function monthInfo() {
@@ -69,25 +79,49 @@
 
   var SERIES = buildSeries();
 
-  /* ---------- KPI 迷你 sparkline（无数据不画、不写占位） ---------- */
-  function sparkline(container, values, stroke) {
+  /* ---------- 实例登记：主题切换时统一销毁重建 ---------- */
+  var charts = [];
+  function mount(canvas, cfg) {
+    var c = new window.Chart(canvas, cfg);
+    charts.push(c);
+    return c;
+  }
+
+  /* ---------- KPI 迷你 sparkline（无坐标轴；无数据不画、不写占位） ---------- */
+  function sparkline(container, values, token) {
     var max = Math.max.apply(null, values.concat([0]));
     if (values.length < 2 || !(max > 0)) return false;
-    var w = 100, h = 24, pad = 3;
-    var pts = values.map(function (v, i) {
-      var x = i * w / (values.length - 1);
-      var y = h - pad - (v / max) * (h - pad * 2);
-      return [x.toFixed(1), y.toFixed(1)];
+    var color = cssVar(token);
+    var cv = document.createElement("canvas");
+    container.appendChild(cv);
+    mount(cv, {
+      type: "line",
+      data: {
+        labels: values.map(function (_, i) { return i + 1; }),
+        datasets: [{
+          data: values,
+          borderColor: color,
+          borderWidth: 1.6,
+          tension: 0.35,
+          fill: true,
+          backgroundColor: function (c) {
+            return fade(color, c.chart.ctx, c.chart.chartArea, 0.16);
+          },
+          pointRadius: values.map(function (v, i) {
+            return i === values.length - 1 && v > 0 ? 2.4 : 0;
+          }),
+          pointBackgroundColor: color,
+          pointBorderWidth: 0
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        animation: ANIM,
+        plugins: { legend: { display: false }, tooltip: { enabled: false } },
+        scales: { x: { display: false }, y: { display: false, beginAtZero: true } }
+      }
     });
-    var svg = el("svg", { viewBox: "0 0 " + w + " " + h, preserveAspectRatio: "none" });
-    var poly = pts.map(function (p) { return p.join(","); }).join(" ");
-    svg.appendChild(el("polygon", { class: "spark-fill", fill: stroke, stroke: "none",
-      points: "0," + h + " " + poly + " " + w + "," + h }));
-    svg.appendChild(el("polyline", { fill: "none", stroke: stroke, "stroke-width": "1.6",
-      "stroke-linecap": "round", "stroke-linejoin": "round", points: poly }));
-    var last = pts[pts.length - 1];
-    svg.appendChild(el("circle", { class: "spark-dot", fill: stroke, cx: last[0], cy: last[1] }));
-    container.appendChild(svg);
     return true;
   }
 
@@ -95,116 +129,154 @@
     var minutes = SERIES.rows.map(function (r) { return r.minutes; });
     var docs = SERIES.rows.map(function (r) { return r.docs; });
     var presence = SERIES.rows.map(function (r) { return r.minutes > 0 ? 1 : 0; });
-    var map = { minutes: [minutes, "var(--c-acc)"], docs: [docs, "var(--c-info)"], presence: [presence, "var(--c-acc)"] };
+    var map = { minutes: [minutes, "--c-acc"], docs: [docs, "--c-info"], presence: [presence, "--c-acc"] };
     Array.prototype.forEach.call(document.querySelectorAll("[data-spark]"), function (c) {
+      c.textContent = "";                                   // 幂等：重绘前先清空容器
       var cfg = map[c.getAttribute("data-spark")];
-      c.textContent = "";
-      if (!cfg) return;
+      if (!cfg || !window.Chart) return;
       sparkline(c, cfg[0], cfg[1]);
     });
   }
 
-  /* ---------- 每日柱状图：柱=阅读分钟（左轴），折线=打开文档数（右轴） ---------- */
+  /* ---------- 每日图：柱=阅读分钟（左轴），虚线折线=打开文档数（右轴） ---------- */
   function drawDaily() {
-    var svg = document.getElementById("stDailyChart");
-    if (!svg) return false;
+    var cv = document.getElementById("stDailyChart");
+    var note = document.getElementById("stChartNote");
     var rows = SERIES.rows, N = SERIES.N;
     var sumMin = rows.reduce(function (s, r) { return s + r.minutes; }, 0);
     var sumDoc = rows.reduce(function (s, r) { return s + r.docs; }, 0);
-    while (svg.firstChild) svg.removeChild(svg.firstChild);     // 幂等重绘
-    if (!(sumMin > 0) && !(sumDoc > 0)) return false;           // 无数据 → 不渲染
+    if (!cv || !window.Chart) return false;
+    if (!(sumMin > 0) && !(sumDoc > 0)) return false;        // 无数据 → 不渲染
 
-    var W = Math.max(320, Math.round(svg.clientWidth || (svg.parentNode && svg.parentNode.clientWidth) || 900));
-    svg.setAttribute("viewBox", "0 0 " + W + " " + H);
-    svg.setAttribute("preserveAspectRatio", "none");
+    var acc = cssVar("--c-acc"), info = cssVar("--c-info"), warn = cssVar("--c-warn"),
+      line = cssVar("--c-line"), line2 = cssVar("--c-line2"),
+      faint = cssVar("--faint"), ink = cssVar("--c-ink"), panel = cssVar("--c-panel"),
+      mono = cssVar("--f-mono", "monospace");
+    var font = { family: mono };
 
-    var plotW = W - PAD.l - PAD.r;
-    var base = H - PAD.b, top = PAD.t;
-    var slot = plotW / N;
+    var peakIdx = 0;
+    rows.forEach(function (r, i) { if (r.minutes > rows[peakIdx].minutes) peakIdx = i; });
 
-    var maxMin = niceCeil(Math.max.apply(null, rows.map(function (r) { return r.minutes; }).concat([0])));
-    var maxDoc = niceCeil(Math.max.apply(null, rows.map(function (r) { return r.docs; }).concat([0])));
-    var yTicks = 4, t, y;
-
-    /* 纵轴网格 + 分钟刻度（左） */
-    var grid = el("g");
-    var ylbl = el("g");
-    for (t = 0; t <= yTicks; t++) {
-      y = base - t * (base - top) / yTicks;
-      if (t > 0) grid.appendChild(el("line", { class: "st-grid", x1: PAD.l, y1: y.toFixed(1), x2: W - PAD.r, y2: y.toFixed(1) }));
-      ylbl.appendChild(say(el("text", { class: "st-lbl", x: PAD.l - 8, y: (y + 3).toFixed(1), "text-anchor": "end" }),
-        String(Math.round(maxMin * t / yTicks))));
-    }
-    /* 右轴：文档数刻度（淡） */
-    var ylblDoc = el("g");
-    if (maxDoc > 0) {
-      for (t = 0; t <= yTicks; t++) {
-        y = base - t * (base - top) / yTicks;
-        ylblDoc.appendChild(say(el("text", { class: "st-lbl-doc", x: W - PAD.r + 6, y: (y + 3).toFixed(1), "text-anchor": "start" }),
-          String(Math.round(maxDoc * t / yTicks))));
+    /* 峰值真实数值直接标在柱顶（色盲兜底：数值 + 高度双重编码） */
+    var peakLabel = {
+      id: "kbPeakLabel",
+      afterDatasetsDraw: function (chart) {
+        var el = chart.getDatasetMeta(0).data[peakIdx];
+        if (!el || !(rows[peakIdx].minutes > 0)) return;
+        var ctx = chart.ctx;
+        ctx.save();
+        ctx.font = "600 10px " + mono;
+        ctx.fillStyle = warn;
+        ctx.textAlign = "center";
+        ctx.fillText(rows[peakIdx].minutes + "\u2032", el.x, el.y - 6);
+        ctx.restore();
       }
-    }
-    grid.appendChild(el("line", { class: "st-axis", x1: PAD.l, y1: base, x2: W - PAD.r, y2: base }));
-    svg.appendChild(grid); svg.appendChild(ylbl); svg.appendChild(ylblDoc);
+    };
 
-    /* 柱 + 折线 */
-    var barW = Math.max(3, Math.min(18, slot * 0.56));
-    var bars = el("g");
-    var docPts = [];
-    var peak = rows.reduce(function (a, b) { return b.minutes > a.minutes ? b : a; }, rows[0]);
-    rows.forEach(function (r) {
-      var cx = PAD.l + (r.day - 1) * slot + slot / 2;
-      var g = el("g", { class: "st-bar" + (r === peak && r.minutes > 0 ? " st-bar-hot" : "") });
-      g.appendChild(say(el("title"), "第 " + r.day + " 天：" + r.minutes + " 分钟 / " + r.docs + " 篇"));
-      if (r.minutes > 0) {
-        var hMin = Math.max(2, (r.minutes / maxMin) * (base - top));
-        g.appendChild(el("rect", { x: (cx - barW / 2).toFixed(1), y: (base - hMin).toFixed(1),
-          width: barW.toFixed(1), height: hMin.toFixed(1), rx: 2, fill: "var(--c-acc)" }));
-      } else {
-        /* 缺失/零数据日：留一条极细基线刻度，保证日历连续可读 */
-        g.appendChild(el("rect", { x: (cx - barW / 2).toFixed(1), y: (base - 1.5).toFixed(1),
-          width: barW.toFixed(1), height: 1.5, rx: 0.6, fill: "var(--c-line)" }));
-      }
-      bars.appendChild(g);
-      docPts.push([cx, base - (maxDoc > 0 ? (r.docs / maxDoc) * (base - top) : 0), r.docs]);
+    mount(cv, {
+      type: "bar",
+      data: {
+        labels: rows.map(function (r) { return r.day; }),
+        datasets: [
+          {
+            label: "阅读分钟",
+            yAxisID: "y",
+            data: rows.map(function (r) { return r.minutes; }),
+            backgroundColor: function (c) {
+              var hot = c.dataIndex === peakIdx;
+              return fade(hot ? warn : acc, c.chart.ctx, c.chart.chartArea, hot ? 0.95 : 0.88);
+            },
+            borderRadius: 3,
+            borderSkipped: false,
+            maxBarThickness: 18,
+            order: 2
+          },
+          {
+            type: "line",
+            label: "打开文档数",
+            yAxisID: "y1",
+            data: rows.map(function (r) { return r.docs; }),
+            borderColor: info,
+            borderWidth: 1.6,
+            borderDash: [4, 4],                              // 色盲兜底：线型 + 色双重编码
+            tension: 0.3,
+            fill: false,
+            pointRadius: function (c) { return c.raw > 0 ? 2.4 : 0; },
+            pointBackgroundColor: info,
+            pointBorderWidth: 0,
+            order: 1
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        animation: ANIM,
+        interaction: { mode: "index", intersect: false },
+        layout: { padding: { top: 16 } },
+        plugins: {
+          legend: { display: false },                        // 图例走卡头 HTML（可点选的那套留给后续）
+          tooltip: {
+            backgroundColor: panel,
+            titleColor: ink,
+            bodyColor: ink,
+            borderColor: line2,
+            borderWidth: 1,
+            padding: 10,
+            cornerRadius: 6,
+            titleFont: font,
+            bodyFont: font,
+            usePointStyle: true,
+            callbacks: {
+              title: function (items) { return "第 " + items[0].label + " 天"; },
+              label: function (it) {
+                return it.dataset.yAxisID === "y"
+                  ? " 阅读 " + it.formattedValue + " 分钟"
+                  : " 打开 " + it.formattedValue + " 篇";
+              }
+            }
+          }
+        },
+        scales: {
+          x: {
+            grid: { display: false },
+            border: { color: line2 },
+            ticks: {
+              color: faint,
+              font: font,
+              autoSkip: false,
+              maxRotation: 0,
+              callback: function (_v, i) {
+                var d = i + 1;
+                return (d === 1 || d % 5 === 0 || d === N) ? d : "";
+              }
+            }
+          },
+          y: {
+            beginAtZero: true,
+            position: "left",
+            grid: { color: withAlpha(line, 0.7), tickLength: 0 },
+            border: { display: false },
+            ticks: { color: faint, font: font, maxTicksLimit: 5, padding: 6 }
+          },
+          y1: {
+            beginAtZero: true,
+            position: "right",
+            grid: { drawOnChartArea: false },
+            border: { display: false },
+            ticks: { color: info, font: font, maxTicksLimit: 5, precision: 0, padding: 6 }
+          }
+        }
+      },
+      plugins: [peakLabel]
     });
-    svg.appendChild(bars);
 
-    if (maxDoc > 0) {
-      svg.appendChild(el("polyline", { class: "st-doc-line",
-        points: docPts.map(function (p) { return p[0].toFixed(1) + "," + p[1].toFixed(1); }).join(" ") }));
-      docPts.forEach(function (p) {
-        if (p[2] > 0) svg.appendChild(el("circle", { class: "st-doc-dot", cx: p[0].toFixed(1), cy: p[1].toFixed(1), r: 2 }));
-      });
-    }
-
-    /* 横轴刻度：1、每 5 天一个、末尾补最后一天 */
-    var xlbl = el("g");
-    var marks = [1];
-    for (var d = 5; d <= N; d += 5) marks.push(d);
-    if (N - marks[marks.length - 1] >= 2) marks.push(N);
-    marks.forEach(function (d) {
-      var cx = PAD.l + (d - 1) * slot + slot / 2;
-      xlbl.appendChild(say(el("text", { class: "st-lbl", x: cx.toFixed(1), y: base + 15, "text-anchor": "middle" }), String(d)));
-    });
-    xlbl.appendChild(say(el("text", { class: "st-lbl", x: W - PAD.r, y: base + 29, "text-anchor": "end" }), "日"));
-    svg.appendChild(xlbl);
-
-    /* 峰值标注（真实数值，不让高度独自表意） */
-    if (peak.minutes > 0) {
-      var pcx = PAD.l + (peak.day - 1) * slot + slot / 2;
-      var pcy = base - Math.max(2, (peak.minutes / maxMin) * (base - top));
-      svg.appendChild(say(el("text", { class: "st-peak-lbl", x: pcx.toFixed(1), y: (pcy - 6).toFixed(1), "text-anchor": "middle" }),
-        peak.minutes + "\u2032"));
-    }
-
-    /* 底部文案 */
-    var note = document.getElementById("stChartNote");
     if (note) {
       var activeDays = rows.filter(function (r) { return r.minutes > 0; }).length;
+      var peak = rows[peakIdx];
       note.innerHTML = "峰值 <b>第 " + peak.day + " 天 · " + peak.minutes + " 分钟</b>"
         + " · 有记录 " + activeDays + " 天 · 日均 " + (sumMin / N).toFixed(1) + " 分钟"
-        + " · 悬停柱体看每日明细";
+        + " · 悬停查看每日明细";
     }
     return true;
   }
@@ -218,12 +290,6 @@
         n.style.transform = "";
       }
     });
-  }
-
-  var resizeTimer = null;
-  function onResize() {
-    clearTimeout(resizeTimer);
-    resizeTimer = setTimeout(function () { drawDaily(); }, 180);
   }
 
   /* ---------- C3-B2：复习卡覆盖 · 阶段分布（7 域骨架，三段计数堆叠条） ---------- */
@@ -264,13 +330,22 @@
     });
   }
 
-  function init() {
+  /* ---------- 渲染 / 重渲染（主题切换后取色必须重来一遍） ---------- */
+  function renderCharts() {
+    charts.forEach(function (c) { c.destroy(); });
+    charts = [];
     initSparks();
     drawDaily();
+  }
+
+  function init() {
+    renderCharts();
     initMastery();
     if (!(window.gsap && window.Motion && !reduced)) ensureRevealed();   // GSAP 未就绪 → 立即显示
     setTimeout(ensureRevealed, 1200);                                   // 失败安全：超时仍隐形就强制显示
-    window.addEventListener("resize", onResize);
+    /* 主题永远走 applyTheme() + html[data-theme]，这里只观察属性变化，不碰写入 */
+    new MutationObserver(function () { renderCharts(); })
+      .observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
     if (window.Motion && typeof window.Motion.refresh === "function") window.Motion.refresh();
   }
 

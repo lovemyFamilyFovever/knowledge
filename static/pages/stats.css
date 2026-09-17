@@ -1,11 +1,11 @@
-/* 知库 stats.css v1.0-INSTRUMENT（阶段4 · 月度统计页）
-   分工：stats.js 生成的类名 .st-axis/.st-grid/.st-lbl/.st-lbl-doc/.st-bar/
-   .st-bar-hot/.st-doc-line/.st-doc-dot/.st-peak-lbl/.spark-fill/.spark-dot 与
-   模板类 .kpi-card/.chart-card/.delta/.mini-spark/.st-ratio/.sbar/.st-leaderboard/
-   .lb-row[data-hue]、.st-note、.st-nochart、.mascot 全部保留为消费契约。
+/* 知库 stats.css v1.1-INSTRUMENT（阶段4 · 月度统计页）
+   分工：图表由本地 Chart.js（static/vendor/chart.umd.js）渲染在 canvas 上，取色在
+   stats.js 里读 CSS 令牌完成；本文件只负责卡片外观、容器尺寸与图例/说明等 DOM 细节。
+   消费的模板类：.kpi-card/.chart-card/.delta/.mini-spark/.st-ratio/.sbar/
+   .st-leaderboard/.lb-row[data-hue]、.st-note、.st-nochart、.mascot。
    INSTRUMENT 化：KPI tile 平面薄板 + --f-disp 大字、图表卡结界线、
-   第二序列（文档数折线）改虚线 dash（色盲兜底：线型+色双重编码）、
-   图例色块方点化。取色全走 var()/color-mix，JS 侧已用 var(--c-acc)/var(--c-info)。
+   第二序列（文档数折线）虚线 + 圆点（色盲兜底：线型+色双重编码）、图例色块方点化。
+   取色全走 var()/color-mix，零硬编码 hex。 */
 
 /* ── 页面骨架 ─────────────────────────────────────── */
 /* 覆盖 style.css 里给「全库统计弹窗」复用的 .stats-body（页面级不自带滚动） */
@@ -47,10 +47,9 @@
 .kpi-card .delta.down{color:var(--c-danger);background:var(--danger-soft);border:1px solid color-mix(in oklab,var(--c-danger),transparent 55%)}
 .kpi-card .delta.flat{color:var(--faint);border:1px solid var(--c-line)}
 
-.kpi-card .mini-spark{height:26px;margin-top:10px}
-.kpi-card .mini-spark svg{display:block;width:100%;height:26px}
-.kpi-card .mini-spark .spark-fill{opacity:.12}
-.kpi-card .mini-spark .spark-dot{r:2}
+/* KPI 迷你图：Chart.js 画在 canvas 上，maintainAspectRatio:false → 高度由容器给 */
+.kpi-card .mini-spark{height:28px;margin-top:10px}
+.kpi-card .mini-spark canvas{display:block}
 
 /* 读完文档占比条（平面 + 结界线） */
 .kpi-card .st-ratio{display:flex;align-items:center;gap:8px;margin-top:10px}
@@ -93,9 +92,8 @@ svg.mascot .bubble{fill:var(--ill-bubble);stroke:var(--ill-line);stroke-width:1.
 .st-src{font:500 10px/1 var(--f-mono);color:var(--faint);letter-spacing:.04em}
 
 /* 条形图区 */
-.st-chart-wrap{position:relative;padding-right:0}
-.st-chart-wrap svg{display:block}
-.st-chart-wrap .st-bar{cursor:default}
+.st-chart-wrap{position:relative;height:240px;padding-right:0}
+.st-chart-wrap canvas{display:block}
 .st-note{margin-top:10px;font:500 10.5px/1.75 var(--f-mono);color:var(--faint);font-variant-numeric:tabular-nums}
 .st-note b{color:var(--muted);font-weight:600}
 
@@ -103,18 +101,10 @@ svg.mascot .bubble{fill:var(--ill-bubble);stroke:var(--ill-line);stroke-width:1.
 .st-nochart{display:flex;align-items:center;gap:9px;padding:20px 4px;font-size:12.5px;color:var(--faint)}
 .st-nochart svg{color:var(--faint);flex:none}
 
-/* 图表内联元素（stats.js 生成；取色全令牌）
-   色盲兜底：第二序列（文档数）= info 色 + 4-3 虚线 dash + 圆点，
-   与第一序列（主色实柱）在任一灰度下均可区分 */
-#stDailyChart .st-axis{stroke:var(--c-line2);stroke-width:1}
-#stDailyChart .st-grid{stroke:var(--c-line);stroke-dasharray:2 4;opacity:.5}
-#stDailyChart .st-lbl{font-family:var(--f-mono);font-size:9px;fill:var(--faint)}
-#stDailyChart .st-lbl-doc{font-family:var(--f-mono);font-size:9px;fill:var(--c-info)}
-#stDailyChart .st-doc-line{fill:none;stroke:var(--c-info);stroke-width:1.6;
-  stroke-dasharray:5 3;stroke-linejoin:round;stroke-linecap:round}
-#stDailyChart .st-doc-dot{fill:var(--c-info)}
-#stDailyChart .st-bar-hot rect{stroke:var(--c-warn);stroke-width:1.5}
-#stDailyChart .st-peak-lbl{font-family:var(--f-mono);font-size:10px;font-weight:600;fill:var(--c-warn)}
+/* 图表取色与线型：由 stats.js 读 CSS 令牌（--c-acc/--c-info/--c-warn/--c-line/--faint）
+   后交给本地 Chart.js 渲染，主题切换时整组销毁重建。
+   色盲兜底保留：第二序列（文档数）= --c-info 色 + 虚线 + 圆点，
+   与第一序列（主色实柱）在任一灰度下均可区分。 */
 
 /* ── 文档榜（名次 + hue glyph + title + path + pct/分钟） ── */
 .st-leaderboard{display:flex;flex-direction:column}
