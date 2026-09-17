@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+{% block title %}治理驾驶舱 · 知库{% endblock %}
+{% block head %}<link rel="stylesheet" href="/static/pages/misc.css?v={{ av('pages/misc.css') }}"><link rel="stylesheet" href="/static/pages/governance.css?v={{ av('pages/governance.css') }}">{% endblock %}
+{% block body %}
+<main class="single">
+  <section class="panel page-panel">
+    <div class="crumb">
+      <b>治理驾驶舱</b><span class="sep">·</span><span id="gov-summary">尚未扫描</span>
+      <span class="spacer"></span>
+      <button class="iconbtn primary" id="gov-scan-btn"><svg class="i i-12"><use href="#i-search-magnifier"/></svg> 重新扫描</button>
+    </div>
+    <div class="page-body" id="gov-body">
+      {# 空态：进页面不自动扫描（全库扫描有成本），点按钮才跑 #}
+      <div class="empty" id="gov-idle">
+        <svg class="mascot" viewBox="0 0 160 120" aria-hidden="true">
+          <ellipse class="halo" cx="80" cy="70" rx="70" ry="40" style="fill:color-mix(in oklab,var(--c-acc),transparent 88%)"/>
+          <ellipse class="shadow" cx="80" cy="108" rx="40" ry="4"/>
+          <ellipse class="head" cx="80" cy="46" rx="20" ry="22"/>
+          <ellipse class="ear" cx="58" cy="46" rx="3" ry="4.5"/><ellipse class="ear" cx="102" cy="46" rx="3" ry="4.5"/>
+          <path class="hair" d="M60 40 Q62 22 80 22 Q98 22 100 40 Q96 32 80 32 Q64 32 60 40 Z"/>
+          <circle class="eye" cx="73" cy="45" r="1.8"/><circle class="eye" cx="87" cy="45" r="1.8"/>
+          <path class="mouth" d="M74 54 Q80 60 86 54"/>
+          <ellipse class="blush" cx="63" cy="52" rx="4.5" ry="2.2"/><ellipse class="blush" cx="97" cy="52" rx="4.5" ry="2.2"/>
+          <path class="body" d="M58 78 Q80 68 102 78 L98 104 H62 Z"/>
+          <path class="body-line" d="M58 78 Q80 68 102 78 L98 104 H62 Z"/>
+          <path class="shirt" d="M70 70 Q80 76 90 70 L88 82 H72 Z"/>
+          <path class="arm" d="M58 82 Q46 74 48 62"/>
+        </svg>
+        <div class="e-title">点「重新扫描」开始体检</div>
+        <div class="e-desc">扫描全库语料，找出<b>断链</b>（指向不存在文档的双链）、<b>孤儿文档</b>（无人引用）、<b>近义标签</b>（该合并的重复标签）。只读扫描，不会改动任何文件。</div>
+      </div>
+
+      {# 扫描结果三桶 #}
+      <div id="gov-result" hidden>
+        <div class="gov-tabs" role="tablist">
+          <button class="gov-tab on" data-bucket="dead_links" role="tab" aria-selected="true">断链 <span class="cnt" id="cnt-dead">0</span></button>
+          <button class="gov-tab" data-bucket="orphans" role="tab" aria-selected="false">孤儿文档 <span class="cnt" id="cnt-orphan">0</span></button>
+          <button class="gov-tab" data-bucket="tag_pairs" role="tab" aria-selected="false">近义标签 <span class="cnt" id="cnt-tag">0</span></button>
+        </div>
+
+        {# 桶一：断链 #}
+        <div class="gov-pane on" id="pane-dead_links">
+          <div class="gov-hint">指向不存在文档的 <code>[[双链]]</code>。可批量转为纯文本（保留可读性）或直接移除链接标记。</div>
+          <div class="gov-actions">
+            <label class="gov-check"><input type="checkbox" id="dead-all"> 全选</label>
+            <button class="iconbtn" id="dead-toplain" disabled>转为纯文本</button>
+            <button class="iconbtn danger" id="dead-remove" disabled>移除链接标记</button>
+          </div>
+          <div class="results" id="list-dead_links"></div>
+        </div>
+
+        {# 桶二：孤儿文档 #}
+        <div class="gov-pane" id="pane-orphans">
+          <div class="gov-hint">没有任何文档链向它们的「孤岛」。多为尚未建立双链、或被遗忘的语料。可加入白名单豁免（入口页/索引页常驻此列会淹没真问题）。</div>
+          <div class="gov-actions">
+            <button class="iconbtn" id="orphan-expand">展开全部</button>
+          </div>
+          <div class="results" id="list-orphans"></div>
+        </div>
+
+        {# 桶三：近义标签 #}
+        <div class="gov-pane" id="pane-tag_pairs">
+          <div class="gov-hint">疑似重复的标签对（含大小写、包含关系、编辑距离判定）。合并前先看预览——会列出受影响的全部文档。</div>
+          <div class="results" id="list-tag_pairs"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/pages/governance.js?v={{ av('pages/governance.js') }}" defer></script>
+{% endblock %}
