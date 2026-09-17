@@ -12,24 +12,18 @@
 .stats-body{display:flex;flex-direction:column;gap:16px;padding:6px 2px 10px;
   color:var(--c-ink);overflow:visible}
 
-/* ── 卡片版面：位置只由 data-st-card 的 grid-area 决定（挪卡片只改这一处）
-   左右各占全屏一半；左列 c1 c2 c3 c4 c6 c7 一行一张竖排、撑满左列宽；右列只放 c5，纵向跨满。 ── */
+/* ── 卡片版面：左右两列各占全屏一半，两列各自独立堆叠（行高互不牵制）
+   左列 .st-col-kpi：c1 c2 c3 c4（一行一张）→ c6 → c7
+   右列 .st-col-charts：只放 c5 文档榜
+   跨列挪卡片＝在 stats.html 里搬 DOM 块；同列内换序＝改块顺序；data-st-card 是编号锚点。 ── */
 .st-cols{display:grid;gap:16px;align-items:start;
-  grid-template-columns:minmax(0,1fr) minmax(0,1fr);
-  grid-template-areas:"c1 c5" "c2 c5" "c3 c5" "c4 c5" "c6 c5" "c7 c5"}
-/* 两层包装 div 与 .kpi-row 拆成 display:contents，让七张卡直接成为上面网格的项 */
-.st-col-kpi,.st-col-charts,.kpi-row{display:contents}
-[data-st-card="c1"]{grid-area:c1}
-[data-st-card="c2"]{grid-area:c2}
-[data-st-card="c3"]{grid-area:c3}
-[data-st-card="c4"]{grid-area:c4}
-[data-st-card="c5"]{grid-area:c5}
-[data-st-card="c6"]{grid-area:c6}
-[data-st-card="c7"]{grid-area:c7}
-/* 窄屏回退：单列，按编号顺序排 */
+  grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+.st-col-kpi,.st-col-charts{min-width:0;display:flex;flex-direction:column;gap:16px}
+/* 左列 KPI：一行一张，撑满左列宽（= 全屏一半） */
+.kpi-row{display:grid;grid-template-columns:minmax(0,1fr);gap:16px}
+/* 窄屏回退：收成单列，文档榜自然落到最后 */
 @media (max-width:1100px){
-  .st-cols{grid-template-columns:minmax(0,1fr);
-    grid-template-areas:"c1" "c2" "c3" "c4" "c5" "c6" "c7"}
+  .st-cols{grid-template-columns:minmax(0,1fr)}
 }
 
 /* ── 统一卡片：平面薄板 + 结界线 + 1px 硬边投影 ── */

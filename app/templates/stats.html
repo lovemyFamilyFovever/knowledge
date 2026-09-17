@@ -20,14 +20,15 @@
            cN = 卡片身份，跟着卡片本身走，挪位置编号不变：
              c1 活跃天数 · c2 月度阅读时长 · c3 访问文档数 · c4 读完文档
              c5 文档榜 Top50 · c6 每日阅读时长 · c7 复习卡覆盖·阶段分布
-           S 号 = 版面槽位，跟着位置走（当前版面：左右各占全屏一半）：
+           S 号 = 版面槽位，跟着位置走（当前版面：左右两列各占全屏一半）：
              L1~L6 = 左列自上而下六个行位，一行一张，当前依次放 c1 c2 c3 c4 c6 c7
              R1    = 右列整列，当前只放 c5
-           版面只在 static/pages/stats.css 的 .st-cols grid-template-areas 一处定义，
+           左右各半由 stats.css 的 .st-cols 决定；卡片落在哪一列、排第几行由本模板的
+           块顺序决定 —— 跨列挪动就搬 DOM 块，同列换序就改块顺序。
            挪动请说「把 cN 挪到 Lx / R1」；新增卡片顺延 c8、c9…，不复用旧号。
         ──────────────────────────────────────────────────────────────── #}
-        {# ── 两个包装 div 已被 stats.css 拆成 display:contents，只承担分组职责；
-             实际版面（左右各半、左列一行一张、右列只放 c5）看 .st-cols 的 grid-template-areas ── #}
+        {# ── 两列分工：.st-col-kpi=左列（c1~c4 一行一张 + c6 + c7），
+             .st-col-charts=右列（只放 c5 文档榜）；两列各自独立堆叠，行高互不牵制 ── #}
         <div class="st-cols">
         <div class="st-col-kpi">
         {# ── KPI 四卡（c1~c4，版面里各占左列一行） ── #}
@@ -69,35 +70,6 @@
           </div>
         </div>
 
-        {# ── 文档榜 ── #}
-        {% if kpi.docs %}
-        {% set maxdoc = kpi.docs[0].minutes or 1 %}
-        <div class="chart-card" data-st-card="c5">
-          <div class="chart-head">
-            <span class="chart-title">文档榜 · Top {{ kpi.docs | length }}</span>
-            <div class="chart-hint">按阅读时长排序 · 单位 分钟</div>
-          </div>
-          <div class="st-leaderboard">
-            {% for d in kpi.docs %}
-            {% set dom = d.path.split('/')[0] %}
-            {% set segs = d.path[:-3].split('/') %}
-            {% set href = ('/doc/' ~ segs[0] ~ '/_root/' ~ segs[1]) if segs | length == 2 else ('/doc/' ~ d.path[:-3]) %}
-            <a class="lb-row" data-hue="{{ dom }}" href="{{ href }}">
-              <span class="lb-rank">{{ loop.index }}</span>
-              <span class="lb-icw"><svg class="lb-ic" aria-hidden="true"><use href="#i-{{ dom if dom in ['baike','articles','interview','projects','handbook','ai','career'] else 'stats-chart' }}"/></svg></span>
-              <span class="lb-main">
-                <span class="lb-t">{{ d.title }}</span><span class="lb-p">{{ d.path }}</span>
-                <span class="lb-bar"><i style="width:{{ (100 * d.minutes / maxdoc) | round(0) }}%"></i></span>
-              </span>
-              <span class="lb-min">{{ '%g'|format(d.minutes) }} min<span class="lb-opens">· 开 {{ d.opens }} 次</span></span>
-            </a>
-            {% endfor %}
-          </div>
-        </div>
-        {% endif %}
-        </div>{# /st-col-kpi #}
-
-        <div class="st-col-charts">
         {# ── 每日阅读柱状图（内联 SVG，横轴按日历 1..N 日定位） ── #}
         <div class="chart-card" data-st-card="c6">
           <div class="chart-head">
@@ -134,6 +106,35 @@
             <div class="kb-empty" style="padding:8px 2px">复习库加载中…</div>
           </div>
         </section>
+        </div>{# /st-col-kpi #}
+
+        <div class="st-col-charts">
+        {# ── 文档榜（右列整列，随自身长度自然伸展，与左列行高互不牵制） ── #}
+        {% if kpi.docs %}
+        {% set maxdoc = kpi.docs[0].minutes or 1 %}
+        <div class="chart-card" data-st-card="c5">
+          <div class="chart-head">
+            <span class="chart-title">文档榜 · Top {{ kpi.docs | length }}</span>
+            <div class="chart-hint">按阅读时长排序 · 单位 分钟</div>
+          </div>
+          <div class="st-leaderboard">
+            {% for d in kpi.docs %}
+            {% set dom = d.path.split('/')[0] %}
+            {% set segs = d.path[:-3].split('/') %}
+            {% set href = ('/doc/' ~ segs[0] ~ '/_root/' ~ segs[1]) if segs | length == 2 else ('/doc/' ~ d.path[:-3]) %}
+            <a class="lb-row" data-hue="{{ dom }}" href="{{ href }}">
+              <span class="lb-rank">{{ loop.index }}</span>
+              <span class="lb-icw"><svg class="lb-ic" aria-hidden="true"><use href="#i-{{ dom if dom in ['baike','articles','interview','projects','handbook','ai','career'] else 'stats-chart' }}"/></svg></span>
+              <span class="lb-main">
+                <span class="lb-t">{{ d.title }}</span><span class="lb-p">{{ d.path }}</span>
+                <span class="lb-bar"><i style="width:{{ (100 * d.minutes / maxdoc) | round(0) }}%"></i></span>
+              </span>
+              <span class="lb-min">{{ '%g'|format(d.minutes) }} min<span class="lb-opens">· 开 {{ d.opens }} 次</span></span>
+            </a>
+            {% endfor %}
+          </div>
+        </div>
+        {% endif %}
         </div>{# /st-col-charts #}
         </div>{# /st-cols #}
       </div>
