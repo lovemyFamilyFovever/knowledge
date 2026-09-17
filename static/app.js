@@ -535,16 +535,8 @@ function renderArticle(forceMd) {
         <button type="button" class="kb-btn" id="mark-mastered-btn" onclick="toggleDocMark('mastered')" title="标记已掌握 —— 术语门户会显示为已掌握">已掌握</button>
       </div>`;
   } else {
-    const chips = [
-      `<span class="chip acc">${esc(DOC.source_label)}</span>`,
-      DOC.fm.source_path ? `<span class="chip">${esc(DOC.fm.source_path)}</span>` : "",
-      DOC.fm.collected ? `<span class="chip">${esc(DOC.fm.collected)} 收录</span>` : "",
-      (DOC.fm.tags && DOC.fm.tags.length)
-        ? DOC.fm.tags.map(t => `<span class="chip acc">${esc(t)}</span>`).join("")
-        : `<span class="chip warn">tags 未打标</span>`,
-    ].join("");
     el.innerHTML = `<h1 class="a-title">${esc(DOC.title)}</h1>
-      <div class="a-chips">${chips}</div>
+      <div class="a-chips">${buildChipsRow()}</div>
       <div class="a-rule"></div>
       <div class="a-body">${DOMPurify.sanitize(renderMarkdownSafe(DOC.md), { FORBID_TAGS: ['style', 'iframe', 'form', 'script'], ADD_ATTR: ['target'] })}</div>
       <div class="kb-finish-bar" id="kb-finish-bar">
@@ -985,7 +977,6 @@ function renderInfo() {
       <div class="tag-chips" id="tag-chips">${tagChips}</div>
       <div class="tag-inputrow" id="tag-inputrow" hidden>
         <input id="tag-in" placeholder="输入标签，逗号可批量，回车确认" maxlength="64" list="kb-tag-datalist" autocomplete="off">
-        <datalist id="kb-tag-datalist"></datalist>
       </div>
     </div>
     <div class="meta-row"><span class="k">版本</span><span class="v">git 全程可追溯</span></div>` + rows;
@@ -1001,10 +992,17 @@ function renderInfo() {
   }
 }
 
-/* 快赢：标签智能补全 —— 全库 Top 标签入 datalist，从录入端杜绝「C#/C#C#」式分叉 */
+/* 快赢：标签智能补全 —— 全库 Top 标签入 datalist，从录入端杜绝「C#/C#C#」式分叉。
+   Story 4：datalist 提升为 body 级全局单例 —— 头部就地输入框与右栏 pane 输入框
+   共用同一份（renderInfo 每次重建 pane，datalist 放 pane 里会导致头部引用悬空）。 */
 function fillTagDatalist() {
-  const dl = document.getElementById("kb-tag-datalist");
-  if (!dl || dl.options.length) return;
+  let dl = document.getElementById("kb-tag-datalist");
+  if (!dl) {
+    dl = document.createElement("datalist");
+    dl.id = "kb-tag-datalist";
+    document.body.appendChild(dl);
+  }
+  if (dl.options.length) return;
   fetch("/api/globalstats").then(r => r.json()).then(d => {
     if (!d || !Array.isArray(d.top_tags)) return;
     dl.innerHTML = d.top_tags.slice(0, 60).map(t => `<option value="${esc(t.tag)}">`).join("");
@@ -1052,17 +1050,59 @@ async function apiTags(payload) {
   }
 }
 
-function renderChipsRow() {
-  const el = document.querySelector(".a-chips"); if (!el || !DOC) return;
-  const chips = [
+/* Story 4：头部 chips 行构造 —— renderArticle 初始渲染与 renderChipsRow 刷新共用
+   一份模板（此前两处手写重复，改一处漏一处）。标签 chip 就地可编辑：× 删除
+   复用现有 removeTag（按钮自带 data-tag），+ 展开就地输入框回车添加；
+   html 美化版语料不可写，保持只读。 */
+function buildChipsRow() {
+  const editable = !DOC.is_html;
+  const tags = (DOC.fm && Array.isArray(DOC.fm.tags)) ? DOC.fm.tags : [];
+  const tagChips = tags.length
+    ? tags.map(t => `<span class="chip acc tag-chip">${esc(t)}${editable
+        ? `<button type="button" class="chip-x" data-tag="${esc(t)}" title="移除标签「${esc(t)}」" aria-label="移除标签 ${esc(t)}" onclick="removeTag(this)">${icon("cancel-x", 9)}</button>`
+        : ""}</span>`).join("")
+    : `<span class="chip warn">tags 未打标</span>`;
+  return [
     `<span class="chip acc">${esc(DOC.source_label)}</span>`,
     DOC.fm.source_path ? `<span class="chip">${esc(DOC.fm.source_path)}</span>` : "",
     DOC.fm.collected ? `<span class="chip">${esc(DOC.fm.collected)} 收录</span>` : "",
-    (DOC.fm.tags && DOC.fm.tags.length)
-      ? DOC.fm.tags.map(t => `<span class="chip acc">${esc(t)}</span>`).join("")
-      : `<span class="chip warn">tags 未打标</span>`,
-  ].join("");
-  el.innerHTML = chips;
+    tagChips,
+    editable ? `<button type="button" class="chip chip-btn chips-add" onclick="chipsAddToggle()" title="添加标签">+ 标签</button>` : "",
+  ].filter(Boolean).join("");
+}
+
+function renderChipsRow() {
+  const el = document.querySelector(".a-chips"); if (!el || !DOC) return;
+  el.innerHTML = buildChipsRow();
+}
+
+/* Story 4：头部「+ 标签」→ 就地展开输入框（复用全局 datalist 补全），
+   回车批量添加走现有 addTagsFromRaw → /api/tags；Esc/空失焦收起。 */
+function chipsAddToggle() {
+  const row = document.querySelector(".a-chips"); if (!row || !DOC) return;
+  const existed = row.querySelector(".chips-in");
+  if (existed) { existed.remove(); return; } // 再点 + 收起
+  fillTagDatalist();
+  const input = document.createElement("input");
+  input.className = "chips-in";
+  input.maxLength = 64;
+  input.placeholder = "标签，逗号分隔，回车添加";
+  input.setAttribute("list", "kb-tag-datalist");
+  input.setAttribute("autocomplete", "off");
+  input.setAttribute("aria-label", "添加标签");
+  row.appendChild(input);
+  input.focus();
+  input.addEventListener("keydown", e => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      const raw = input.value.trim();
+      input.remove();
+      if (raw) addTagsFromRaw(raw); // 成功后 apiTags 会调 renderChipsRow 重建整行
+    } else if (e.key === "Escape") {
+      input.remove();
+    }
+  });
+  input.addEventListener("blur", () => { if (!input.value.trim()) input.remove(); });
 }
 
 /* 需求 #2 补充：编辑标签入口在右上角 crumb 按钮组（收藏旁），点开右栏「信息·标签」页 */
