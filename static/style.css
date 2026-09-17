@@ -287,7 +287,11 @@ main.single{display:flex;flex-direction:column}
 .subs{display:none;padding:2px 0 6px 0;margin:1px 0 4px 21px;border-left:1px solid var(--c-line)}
 .dom.open .subs{display:block}
 .tree .doc{padding:4px 8px;margin:1px 0;border-radius:var(--rd-ctl)}
-.tree .doc .doc-t{font-size:12px;font-weight:400;line-height:1.5;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:block;color:var(--muted)}
+/* 目录文档项标题：flex 容器承载「类型图标 + 文字」，文字用内层 span 出省略号
+   （block + ellipsis 无法与前置图标共存：图标会被并入文本流导致截断异常） */
+.tree .doc .doc-t{font-size:12px;font-weight:400;line-height:1.5;color:var(--muted);
+  display:flex;align-items:center;gap:5px;min-width:0}
+.tree .doc .doc-t > .doc-t-txt{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .tree .doc.active .doc-t{color:var(--c-acc);font-weight:600}
 .tree .doc .doc-meta{margin-top:2px;gap:4px}
 .tree .doc .mini{padding:.5px 5px;font-size:9px}
@@ -318,7 +322,15 @@ main.single{display:flex;flex-direction:column}
 .sub.collapsed .sub-t{opacity:.85}
 /* 二级文档容器：默认展开，.collapsed 时隐藏（纯原地切换，无跳转） */
 .sub-docs.collapsed{display:none}
-/* 目录中的文档项：不再渲染标签 chips（用户要求），美化版标记降为行内小图标 */
+/* 目录中的文档项：不再渲染标签 chips（用户要求），改为「文件类型前缀图标」 */
+.doc-t .doc-ic{flex:none;display:inline-flex;align-items:center;justify-content:center;
+  width:14px;height:14px;color:var(--faint);opacity:.9}
+.doc-t .doc-ic svg{width:11px;height:11px}
+.doc.active .doc-ic,.doc:hover .doc-ic{color:var(--c-acc);opacity:1}
+/* 按类型着色：电子书/压缩包/图片 给一点区分度（其余走 faint 中性） */
+.doc-t .doc-ic[title*="EPUB"],.doc-t .doc-ic[title*="电子书"]{color:var(--c-info)}
+.doc-t .doc-ic[title*="图片"]{color:var(--c-ok)}
+.doc-t .doc-ic[title*="纯文本"]{color:var(--muted)}
 .doc-t .doc-flag{flex:none;display:inline-flex;color:var(--c-info);opacity:.85}
 .doc-t .doc-flag svg{width:11px;height:11px}
 /* 目录树键盘焦点可见（←/→ 展开收起需要先能 Tab 聚焦到节点） */
