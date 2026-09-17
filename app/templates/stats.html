@@ -16,9 +16,77 @@
     <div class="page-body">
       {% if has_activity %}
       <div class="stats-body" data-ym="{{ ym }}">
-        {# ── 左右双列布局：左列=主图表区，右列=KPI+排行 ── #}
+        {# ── 左右双列布局：左列=KPI 概览+文档榜，右列=主图表区 ── #}
         <div class="st-cols">
-        <div class="st-col-main">
+        <div class="st-col-kpi">
+        {# ── KPI 卡片（2×2 自适应网格） ── #}
+        <div class="kpi-row">
+          <div class="kpi-card">
+            <div class="label"><svg class="i i-12"><use href="#i-calendar-day"/></svg>活跃天数</div>
+            <div class="num"><span data-counter data-count="{{ kpi.active_days }}">{{ kpi.active_days }}</span><span class="unit">/ {{ kpi.days_in_month }} 天</span></div>
+            <div class="mini-spark" data-spark="presence" aria-hidden="true"></div>
+          </div>
+          <div class="kpi-card">
+            <div class="label"><svg class="i i-12"><use href="#i-clock-heartbeat"/></svg>月度阅读时长</div>
+            <div class="num"><span data-counter data-count="{{ '%g'|format(kpi.total_minutes) }}">{{ '%g'|format(kpi.total_minutes) }}</span><span class="unit">分钟</span></div>
+            {% if kpi.delta_minutes is defined %}
+              {% if kpi.delta_minutes > 0 %}<span class="delta up"><svg class="i i-10"><use href="#i-trend-up"/></svg>+{{ '%g'|format(kpi.delta_minutes) }} 分钟 vs 上月</span>
+              {% elif kpi.delta_minutes < 0 %}<span class="delta down"><svg class="i i-10"><use href="#i-trend-down"/></svg>-{{ '%g'|format(-kpi.delta_minutes) }} 分钟 vs 上月</span>
+              {% else %}<span class="delta flat">— 持平</span>{% endif %}
+            {% endif %}
+            <div class="mini-spark" data-spark="minutes" aria-hidden="true"></div>
+          </div>
+          <div class="kpi-card">
+            <div class="label"><svg class="i i-12"><use href="#i-file"/></svg>访问文档数</div>
+            <div class="num"><span data-counter data-count="{{ kpi.opened_docs }}">{{ kpi.opened_docs }}</span><span class="unit">篇</span></div>
+            <div class="mini-spark" data-spark="docs" aria-hidden="true"></div>
+          </div>
+          <div class="kpi-card st-mascot-card">
+            <div class="label"><svg class="i i-12"><use href="#i-check-circle"/></svg>读完文档</div>
+            <div class="num"><span data-counter data-count="{{ kpi.finished_docs }}">{{ kpi.finished_docs }}</span><span class="unit">篇</span></div>
+            {% if kpi.opened_docs %}<div class="st-ratio"><span class="sbar"><i style="width:{{ (100 * kpi.finished_docs / kpi.opened_docs) | round(0) }}%"></i></span><span class="st-ratio-n">{{ ((100 * kpi.finished_docs / kpi.opened_docs) | round(0)) }}%</span></div>{% endif %}
+            <svg class="mascot mascot-corner" viewBox="0 0 48 48" aria-hidden="true">
+              <path class="m-book" d="M11 35.5 L24 31.5 L37 35.5 L37 40 L24 36 L11 40 Z"/>
+              <path class="m-book-page" d="M11 35.5 L24 31.5 L24 36 L11 40 Z"/>
+              <circle class="m-head" cx="24" cy="18.5" r="9.2"/>
+              <path class="m-hair" d="M14.8 16.6 Q15.8 7.4 24 7.4 Q32.2 7.4 33.2 16.6 Q29.8 12.2 24 12.2 Q18.2 12.2 14.8 16.6 Z"/>
+              <circle class="m-glass" cx="20.2" cy="19.6" r="3.3"/>
+              <circle class="m-glass" cx="27.8" cy="19.6" r="3.3"/>
+              <path class="m-glass-bridge" d="M23.5 19.6 H24.5 M16.9 19.6 H15.4 M31.1 19.6 H32.6"/>
+              <path class="m-smile" d="M21.8 24.6 Q24 26.2 26.2 24.6"/>
+            </svg>
+          </div>
+        </div>
+
+        {# ── 文档榜 ── #}
+        {% if kpi.docs %}
+        {% set maxdoc = kpi.docs[0].minutes or 1 %}
+        <div class="chart-card">
+          <div class="chart-head">
+            <span class="chart-title">文档榜 · Top {{ kpi.docs | length }}</span>
+            <div class="chart-hint">按阅读时长排序 · 单位 分钟</div>
+          </div>
+          <div class="st-leaderboard">
+            {% for d in kpi.docs %}
+            {% set dom = d.path.split('/')[0] %}
+            {% set segs = d.path[:-3].split('/') %}
+            {% set href = ('/doc/' ~ segs[0] ~ '/_root/' ~ segs[1]) if segs | length == 2 else ('/doc/' ~ d.path[:-3]) %}
+            <a class="lb-row" data-hue="{{ dom }}" href="{{ href }}">
+              <span class="lb-rank">{{ loop.index }}</span>
+              <span class="lb-icw"><svg class="lb-ic" aria-hidden="true"><use href="#i-{{ dom if dom in ['baike','articles','interview','projects','handbook','ai','career'] else 'stats-chart' }}"/></svg></span>
+              <span class="lb-main">
+                <span class="lb-t">{{ d.title }}</span><span class="lb-p">{{ d.path }}</span>
+                <span class="lb-bar"><i style="width:{{ (100 * d.minutes / maxdoc) | round(0) }}%"></i></span>
+              </span>
+              <span class="lb-min">{{ '%g'|format(d.minutes) }} min<span class="lb-opens">· 开 {{ d.opens }} 次</span></span>
+            </a>
+            {% endfor %}
+          </div>
+        </div>
+        {% endif %}
+        </div>{# /st-col-kpi #}
+
+        <div class="st-col-charts">
         {# ── 每日阅读柱状图（内联 SVG，横轴按日历 1..N 日定位） ── #}
         <div class="chart-card">
           <div class="chart-head">
@@ -55,66 +123,7 @@
             <div class="kb-empty" style="padding:8px 2px">复习库加载中…</div>
           </div>
         </section>
-        </div>{# /st-col-main #}
-
-        <div class="st-col-side">
-        {# ── KPI 卡片（2×2 自适应网格） ── #}
-        <div class="kpi-row">
-          <div class="kpi-card">
-            <div class="label"><svg class="i i-12"><use href="#i-calendar-day"/></svg>活跃天数</div>
-            <div class="num"><span data-counter data-count="{{ kpi.active_days }}">{{ kpi.active_days }}</span><span class="unit">/ {{ kpi.days_in_month }} 天</span></div>
-            <div class="mini-spark" data-spark="presence" aria-hidden="true"></div>
-          </div>
-          <div class="kpi-card">
-            <div class="label"><svg class="i i-12"><use href="#i-clock-heartbeat"/></svg>月度阅读时长</div>
-            <div class="num"><span data-counter data-count="{{ '%g'|format(kpi.total_minutes) }}">{{ '%g'|format(kpi.total_minutes) }}</span><span class="unit">分钟</span></div>
-            {% if kpi.delta_minutes is defined %}
-              {% if kpi.delta_minutes > 0 %}<span class="delta up"><svg class="i i-10"><use href="#i-trend-up"/></svg>+{{ '%g'|format(kpi.delta_minutes) }} 分钟 vs 上月</span>
-              {% elif kpi.delta_minutes < 0 %}<span class="delta down"><svg class="i i-10"><use href="#i-trend-down"/></svg>-{{ '%g'|format(-kpi.delta_minutes) }} 分钟 vs 上月</span>
-              {% else %}<span class="delta flat">— 持平</span>{% endif %}
-            {% endif %}
-            <div class="mini-spark" data-spark="minutes" aria-hidden="true"></div>
-          </div>
-          <div class="kpi-card">
-            <div class="label"><svg class="i i-12"><use href="#i-file"/></svg>访问文档数</div>
-            <div class="num"><span data-counter data-count="{{ kpi.opened_docs }}">{{ kpi.opened_docs }}</span><span class="unit">篇</span></div>
-            <div class="mini-spark" data-spark="docs" aria-hidden="true"></div>
-          </div>
-          <div class="kpi-card st-mascot-card">
-            <div class="label"><svg class="i i-12"><use href="#i-check-circle"/></svg>读完文档</div>
-            <div class="num"><span data-counter data-count="{{ kpi.finished_docs }}">{{ kpi.finished_docs }}</span><span class="unit">篇</span></div>
-            {% if kpi.opened_docs %}<div class="st-ratio"><span class="sbar"><i style="width:{{ (100 * kpi.finished_docs / kpi.opened_docs) | round(0) }}%"></i></span><span class="st-ratio-n">{{ ((100 * kpi.finished_docs / kpi.opened_docs) | round(0)) }}%</span></div>{% endif %}
-            <svg class="mascot mascot-corner" viewBox="0 0 40 40" aria-hidden="true"><ellipse class="head" cx="20" cy="16" rx="8" ry="9"/><path class="hair" d="M13 14 Q14 8 20 8 Q26 8 27 14 Q25 11 20 11 Q15 11 13 14 Z"/><path class="body-line" d="M10 26 Q20 22 30 26 L28 36 H12 Z" style="fill:url(#uniformGrad)"/><circle cx="30" cy="18" r="4" stroke="var(--c-acc)" stroke-width="1.2" fill="none"/><path d="M32 20 L36 24" stroke="var(--c-acc)" stroke-width="1.5" stroke-linecap="round"/></svg>
-          </div>
-        </div>
-
-        {# ── 文档榜 ── #}
-        {% if kpi.docs %}
-        {% set maxdoc = kpi.docs[0].minutes or 1 %}
-        <div class="chart-card">
-          <div class="chart-head">
-            <span class="chart-title">文档榜 · Top {{ kpi.docs | length }}</span>
-            <div class="chart-hint">按阅读时长排序 · 单位 分钟</div>
-          </div>
-          <div class="st-leaderboard">
-            {% for d in kpi.docs %}
-            {% set dom = d.path.split('/')[0] %}
-            {% set segs = d.path[:-3].split('/') %}
-            {% set href = ('/doc/' ~ segs[0] ~ '/_root/' ~ segs[1]) if segs | length == 2 else ('/doc/' ~ d.path[:-3]) %}
-            <a class="lb-row" data-hue="{{ dom }}" href="{{ href }}">
-              <span class="lb-rank">{{ loop.index }}</span>
-              <span class="lb-icw"><svg class="lb-ic" aria-hidden="true"><use href="#i-{{ dom if dom in ['baike','articles','interview','projects','handbook','ai','career'] else 'stats-chart' }}"/></svg></span>
-              <span class="lb-main">
-                <span class="lb-t">{{ d.title }}</span><span class="lb-p">{{ d.path }}</span>
-                <span class="lb-bar"><i style="width:{{ (100 * d.minutes / maxdoc) | round(0) }}%"></i></span>
-              </span>
-              <span class="lb-min">{{ '%g'|format(d.minutes) }} min<span class="lb-opens">· 开 {{ d.opens }} 次</span></span>
-            </a>
-            {% endfor %}
-          </div>
-        </div>
-        {% endif %}
-        </div>{# /st-col-side #}
+        </div>{# /st-col-charts #}
         </div>{# /st-cols #}
       </div>
       {% else %}

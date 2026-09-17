@@ -247,32 +247,56 @@ window.promptNewDocInDir = promptNewDocInDir;
    .pdf  → 浏览器原生 PDF 查看器（iframe 直通 /raw/）
    .xlsx → SheetJS 渲染工作表前 200 行
    .epub → 暂不支持在线渲染，给下载与打开方式 */
+/* ---------- 书库文档顶栏 chrome 同步（用户要求） ----------
+   顶部 crumb 已显示完整标题 → 正文不重复标题；
+   格式/体积/下载统一并入「crumb 按钮组」与「readhead 状态栏」同一行，不单独起行。 */
+function syncLibraryChrome(ext, sizeMiB) {
+  const readhead = document.querySelector(".readhead");
+  if (!readhead) return;
+  /* 格式 · 体积 chip → readhead 状态栏同一行（下载按钮由 renderCrumb 统一渲染，避免被重建冲掉） */
+  const chipId = "kb-lib-fmt";
+  let fmt = document.getElementById(chipId);
+  if (!fmt) {
+    fmt = document.createElement("span");
+    fmt.id = chipId;
+    fmt.className = "rh-chip rh-mono";
+    readhead.appendChild(fmt);
+  }
+  fmt.textContent = ext.toUpperCase() + " · " + sizeMiB + " MB";
+}
+
+/* 切换到非书库文档时清掉上一个文档挂上的 chrome（防串场） */
+function clearLibraryChrome() {
+  const fmt = document.getElementById("kb-lib-fmt");
+  if (fmt && fmt.parentNode) fmt.parentNode.removeChild(fmt);
+}
+
 function renderLibraryDoc(el, ext) {
   el.classList.remove("pretty-mode");
   const rawHref = rawUrl(DOC.rel);
   const sizeMiB = (parseFloat(DOC.size) / 1024).toFixed(1); // DOC.size 是 KB 字符串
-  const head = `<h1 class="a-title">${esc(DOC.title)}</h1>
-    <div class="a-chips"><span class="chip acc">${ext.toUpperCase()} · ${sizeMiB} MB</span>
-      <a class="chip chip-btn" href="${rawHref}" download="${esc((DOC.name || "文件"))}" title="下载原文件">${icon("download", 11)} 下载</a>
-    </div><div class="a-rule"></div>`;
+  /* 用户要求：顶部 crumb 已显示完整标题 → 正文不再重复标题；
+     格式/体积/下载统一并入「顶栏 crumb 按钮组」与「readhead 状态栏」，不再单独起行。
+     syncLibraryChrome() 负责把这套 chrome 挂到正确位置（幂等）。 */
+  syncLibraryChrome(ext, sizeMiB);
   if (ext === "pdf") {
-    el.innerHTML = head + `<div class="lib-frame-wrap"><iframe class="lib-frame" src="${rawHref}" title="${esc(DOC.title)}"></iframe></div>`;
+    el.innerHTML = `<div class="a-body"><div class="lib-frame-wrap"><iframe class="lib-frame" src="${rawHref}" title="${esc(DOC.title)}"></iframe></div></div>`;
     buildToc(); // 清空残留目录
     return;
   }
   if (ext === "epub") {
-    el.innerHTML = head + `<div class="a-body" id="lib-epub"><div class="kb-skeleton" aria-busy="true"><i style="width:65%"></i><i style="width:88%"></i><i style="width:76%"></i></div><p style="color:var(--faint);font-size:12.5px">EPUB 解析中…</p></div>`;
+    el.innerHTML = `<div class="a-body" id="lib-epub"><div class="kb-skeleton" aria-busy="true"><i style="width:65%"></i><i style="width:88%"></i><i style="width:76%"></i></div><p style="color:var(--faint);font-size:12.5px">EPUB 解析中…</p></div>`;
     renderEpub(rawHref);
     return;
   }
   if (ext === "xlsx") {
-    el.innerHTML = head + `<div class="a-body" id="lib-xlsx"><div class="kb-skeleton" aria-busy="true"><i style="width:60%"></i><i style="width:90%"></i></div></div>`;
+    el.innerHTML = `<div class="a-body" id="lib-xlsx"><div class="kb-skeleton" aria-busy="true"><i style="width:60%"></i><i style="width:90%"></i></div></div>`;
     renderXlsx(rawHref);
     buildToc();
     return;
   }
   // txt：>2MB 只展示前 512KB 预览，完整阅读走下载
-  el.innerHTML = head + `<div class="a-body lib-txt" id="lib-txt"><div class="kb-skeleton" aria-busy="true"><i style="width:70%"></i><i style="width:92%"></i><i style="width:84%"></i></div></div>`;
+  el.innerHTML = `<div class="a-body lib-txt" id="lib-txt"><div class="kb-skeleton" aria-busy="true"><i style="width:70%"></i><i style="width:92%"></i><i style="width:84%"></i></div></div>`;
   fetch(rawHref).then(r => {
     if (!r.ok) throw new Error("HTTP " + r.status);
     return r.text();
@@ -474,6 +498,7 @@ function renderArticle(forceMd) {
      .xlsx 用 SheetJS 渲染前 N 行、.epub 给下载/打开方式；不进 markdown 管线 */
   const libExt = (DOC.name || "").match(/\.(txt|pdf|xlsx|epub)$/i);
   if (libExt && !forceMd) { renderLibraryDoc(el, libExt[1].toLowerCase()); return; }
+  clearLibraryChrome(); // 非书库文档：清掉上一个书库文档挂的下载钮/格式 chip
   /* 空目录占位（新建目录未放文档时不再 404，正文区给引导） */
   if (DOC.empty) {
     el.classList.remove("pretty-mode");
@@ -933,13 +958,16 @@ function renderCrumb() {
   /* 面包屑不再显示 content/<路径>（用户要求）；interview 域美化版文档的
      「Markdown 源 / 新标签页」按钮与 workbench.html 服务端渲染保持同一套结构 */
   const isInterviewPretty = DOC.has_html && DOC.domain === "interview" && !DOC.is_html;
+  /* 书库格式（txt/pdf/xlsx/epub）：下载按钮统一并入本行最右（用户要求） */
+  const libExt = (DOC.name || "").match(/\.(txt|pdf|xlsx|epub)$/i);
   crumb.innerHTML = `<b>${esc(DOC.title)}</b><span class="spacer"></span>
     ${isInterviewPretty ? `<button class="iconbtn" id="kb-md-src-btn" onclick="renderArticle(true)" title="切回 Markdown 渲染视图">${icon("file-md", 13)} Markdown 源</button>` : ""}
     ${DOC.has_html ? `<a class="iconbtn" href="${rawUrl(DOC.is_html ? DOC.rel : DOC.html_rel)}" target="_blank" title="新标签页打开美化版">${icon("external-link", 13)} 新标签页</a>` : ""}
     ${!DOC.is_html ? `<button class="iconbtn" onclick="openEditor()">${icon("edit",13)} 编辑</button>
     <button class="iconbtn" onclick="deleteDoc()" title="移入 content/_trash/">${icon("trash",13)} 删除</button>
     <button class="iconbtn" onclick="jumpToTagEdit()" title="编辑本篇标签（右栏信息·标签页）">${icon("tag-outline",13)} 标签</button>` : ""}
-    <button class="iconbtn primary ${DOC.favorite ? "faved" : ""}" id="fav-btn" onclick="toggleFav()">${icon("star",13)} ${DOC.favorite ? "已收藏" : "收藏"}</button>`;
+    <button class="iconbtn primary ${DOC.favorite ? "faved" : ""}" id="fav-btn" onclick="toggleFav()">${icon("star",13)} ${DOC.favorite ? "已收藏" : "收藏"}</button>
+    ${libExt ? `<a class="iconbtn" id="kb-lib-dl" href="${rawUrl(DOC.rel)}" download="${esc(DOC.name || "文件")}" title="下载原文件">${icon("download", 13)} 下载</a>` : ""}`;
 }
 
 function renderInfo() {
@@ -1835,7 +1863,9 @@ function openCtxStats(dom, sub) {
    与目录统计共用 .ss-* 视觉；数据来自 /api/globalstats。 */
 let GS_OV = null; // 当前全库统计层实例（重开时 close 旧的）
 /* ---------- 中期功能：AI 问吧（RAG 对话）—— /api/ask 检索增强问答 ----------
-   v2 美化：快捷提问 chips / 打字动效 / 时间戳 / 来源卡片 / 复制 / 清空对话 */
+   v3 重构：内容区在上、输入区固定在底部（标准问答布局）；
+   推荐问题作为空态卡片放进内容区（不再堆在输入框上方）；
+   顶部说明文字移除，副标题一句话交代「问吧 = 生成答案，搜索 = 找文档」的区别。 */
 let ASK_OV = null;
 const ASK_SUGGESTIONS = [
   { icon: "i-file-md", q: "我最近收录了哪些笔记？" },
@@ -1844,30 +1874,36 @@ const ASK_SUGGESTIONS = [
   { icon: "i-hint-bulb", q: "有哪些值得复习的知识点？" },
 ];
 function askTime() { const d = new Date(); return String(d.getHours()).padStart(2,"0") + ":" + String(d.getMinutes()).padStart(2,"0"); }
+function askEsc(s) { return String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c])); }
+function askEmptyState() {
+  return `<div class="ask-empty" id="ask-empty">
+    <div class="ask-empty-h">${icon("hint-bulb", 15)} 直接提问，我读完你的语料再回答</div>
+    <div class="ask-cards">
+      ${ASK_SUGGESTIONS.map(s => `<button class="ask-card" data-q="${askEsc(s.q)}">${icon(s.icon, 13)}<span>${askEsc(s.q)}</span></button>`).join("")}
+    </div>
+  </div>`;
+}
 async function showAsk() {
   if (ASK_OV) ASK_OV.close("re-open");
   const ov = KB.overlay.open({
     html: `<div class="kbm kbm-ask" role="document">
       <div class="kbm-title ask-head">
         <span class="ask-logo">${icon("hint-bulb", 16)}</span>
-        <span class="ask-title-txt">问知库</span>
-        <span class="ask-sub">RAG · 语义检索 Top6 + AI 生成</span>
+        <span class="ask-title-txt">问吧</span>
+        <span class="ask-sub">生成答案 · 附引用</span>
         <span class="spacer" style="flex:1"></span>
         <button class="iconbtn ask-clear" title="清空对话" aria-label="清空对话">${icon("trash-outline", 13)}</button>
         <button class="iconbtn ask-close" title="关闭（Esc）" aria-label="关闭">${icon("cancel-x", 14)}</button>
       </div>
-      <div class="ask-suggests" id="ask-suggests">
-        ${ASK_SUGGESTIONS.map(s => `<button class="ask-chip" data-q="${s.q.replace(/"/g,"&quot;")}">${icon(s.icon, 12)} ${s.q}</button>`).join("")}
-      </div>
-      <div class="kbm-body ask-body" id="ask-body">
-        <div class="ask-msg ask-ai ask-welcome">
-          <div class="ask-msg-text">问点什么都行 —— 回答基于你的语料（语义检索 Top6 + AI 生成），末尾附引用来源。</div>
-          <div class="ask-msg-time">${askTime()}</div>
-        </div>
-      </div>
+      <div class="kbm-body ask-body" id="ask-body">${askEmptyState()}</div>
       <div class="ask-inputrow">
-        <input id="ask-in" placeholder="输入问题，Enter 发送 · Shift+Enter 换行…" autocomplete="off">
-        <button class="iconbtn primary ask-go" id="ask-go">${icon("move-arrow", 13)} 提问</button>
+        <input id="ask-in" placeholder="问一个需要综合多篇文档的问题…" autocomplete="off" aria-label="提问">
+        <button class="iconbtn primary ask-go" id="ask-go" title="发送（Enter）">${icon("move-arrow", 13)} 提问</button>
+      </div>
+      <div class="ask-foot">
+        <span><kbd>Enter</kbd> 发送</span>
+        <span><kbd>Shift</kbd>+<kbd>Enter</kbd> 换行</span>
+        <span class="ask-foot-hint">只想找文档？用顶栏搜索框（<kbd>/</kbd>）</span>
       </div></div>`,
   });
   ASK_OV = ov;
@@ -1876,37 +1912,24 @@ async function showAsk() {
   const bodyEl = ov.root.querySelector("#ask-body");
   const input = ov.root.querySelector("#ask-in");
   const go = ov.root.querySelector("#ask-go");
-  const suggests = ov.root.querySelector("#ask-suggests");
-  const esc2 = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c]));
+  const esc2 = askEsc;
   const scrollB = () => { bodyEl.scrollTop = bodyEl.scrollHeight; };
-  const hideSuggests = () => { if (suggests) suggests.style.display = "none"; };
-
-  /* 快捷提问 chips */
-  if (suggests) suggests.addEventListener("click", e => {
-    const chip = e.target.closest(".ask-chip");
-    if (!chip) return;
-    input.value = chip.dataset.q;
-    input.focus();
-    ask();
-  });
 
   /* 清空对话 */
   ov.root.querySelector(".ask-clear").onclick = () => {
-    bodyEl.innerHTML = `<div class="ask-msg ask-ai ask-welcome"><div class="ask-msg-text">对话已清空。问点什么都行 —— 回答基于你的语料，末尾附引用来源。</div><div class="ask-msg-time">${askTime()}</div></div>`;
-    if (suggests) suggests.style.display = "";
+    bodyEl.innerHTML = askEmptyState();
     input.focus();
   };
 
-  /* 打字机式加载动效 */
+  /* 打字动效 */
   const showPending = () => {
     bodyEl.insertAdjacentHTML("beforeend",
-      `<div class="ask-msg ask-ai ask-pending" id="ask-pending"><div class="ask-typing"><i></i><i></i><i></i></div><div class="ask-msg-text ask-pending-txt">检索语料并生成中…</div></div>`);
+      `<div class="ask-msg ask-ai ask-pending" id="ask-pending"><div class="ask-typing"><i></i><i></i><i></i></div><span class="ask-pending-txt">检索语料并生成中…</span></div>`);
     scrollB();
   };
 
-  /* 追加一条消息（含时间戳 + AI 消息复制按钮） */
   const addMsg = (cls, html, isAI) => {
-    const id = "ask-m" + Date.now() + Math.random().toString(36).slice(2,6);
+    const id = "ask-m" + Date.now() + Math.random().toString(36).slice(2, 6);
     bodyEl.insertAdjacentHTML("beforeend",
       `<div class="ask-msg ${cls}" id="${id}">
         <div class="ask-msg-text">${html}</div>
@@ -1920,7 +1943,8 @@ async function showAsk() {
     const qv = input.value.trim();
     if (!qv || go.disabled) return;
     go.disabled = true; input.disabled = true;
-    hideSuggests();
+    const empty = ov.root.querySelector("#ask-empty");
+    if (empty) empty.remove();
     addMsg("ask-me", esc2(qv), false);
     input.value = "";
     showPending();
@@ -1949,12 +1973,15 @@ async function showAsk() {
     }
   };
 
-  /* 复制回答（事件委托） */
+  /* 空态推荐卡片（事件委托，清空后重建仍可用） */
   bodyEl.addEventListener("click", e => {
+    const card = e.target.closest(".ask-card");
+    if (card) { input.value = card.dataset.q; input.focus(); ask(); return; }
     const cp = e.target.closest(".ask-copy");
-    if (!cp) return;
-    const txt = cp.closest(".ask-msg").querySelector(".ask-msg-text").innerText;
-    copyText(txt, "已复制到剪贴板");
+    if (cp) {
+      const txt = cp.closest(".ask-msg").querySelector(".ask-msg-text").innerText;
+      copyText(txt, "已复制到剪贴板");
+    }
   });
 
   go.onclick = ask;

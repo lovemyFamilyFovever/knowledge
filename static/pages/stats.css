@@ -12,20 +12,19 @@
 .stats-body{display:flex;flex-direction:column;gap:16px;padding:6px 2px 10px;
   color:var(--c-ink);overflow:visible}
 
-/* ── 左右双列自适应布局：左列主图表(弹性大) + 右列KPI/排行(弹性小) ── */
+/* ── 左右双列自适应布局：左列=KPI 概览+文档榜，右列=主图表区 ── */
 .st-cols{display:flex;gap:16px;align-items:flex-start}
-.st-col-main{flex:1 1 55%;min-width:0;display:flex;flex-direction:column;gap:16px}
-.st-col-side{flex:1 1 45%;min-width:0;display:flex;flex-direction:column;gap:16px}
-/* 右列 KPI 改 2×2 网格（窄列自适应） */
-.st-col-side .kpi-row{grid-template-columns:repeat(2,1fr)}
+.st-col-kpi{flex:1 1 42%;min-width:0;display:flex;flex-direction:column;gap:16px}
+.st-col-charts{flex:1 1 58%;min-width:0;display:flex;flex-direction:column;gap:16px}
+/* 左列 KPI 2×2 网格 */
+.st-col-kpi .kpi-row{grid-template-columns:repeat(2,1fr)}
 /* 窄屏回退单列 */
 @media (max-width:1100px){
   .st-cols{flex-direction:column}
-  .st-col-main,.st-col-side{width:100%;flex:none}
-  .st-col-side .kpi-row{grid-template-columns:repeat(4,1fr)}
+  .st-col-kpi,.st-col-charts{width:100%;flex:none}
 }
 @media (max-width:780px){
-  .st-col-side .kpi-row{grid-template-columns:repeat(2,1fr)}
+  .st-col-kpi .kpi-row{grid-template-columns:1fr}
 }
 
 /* ── 统一卡片：平面薄板 + 结界线 + 1px 硬边投影 ── */
@@ -63,8 +62,17 @@
 .kpi-card .sbar i{display:block;height:100%;background:var(--c-acc)}
 
 /* 第 4 张卡的角落 mascot：给 label 让位，避免遮挡 */
-.kpi-card.st-mascot-card .label{padding-right:44px}
-.kpi-card .mascot-corner{position:absolute;right:8px;top:8px;width:34px;height:34px;opacity:.9}
+.kpi-card.st-mascot-card .label{padding-right:56px}
+.kpi-card .mascot-corner{position:absolute;right:10px;top:10px;width:48px;height:48px;opacity:1}
+
+/* mascot 角落插图：干净线条 + 主题 token 着色（重画版，替代旧 uniformGrad 草图） */
+.mascot-corner .m-head{fill:var(--ill-skin)}
+.mascot-corner .m-hair{fill:var(--ill-hair)}
+.mascot-corner .m-glass{fill:none;stroke:var(--c-acc);stroke-width:1.5;opacity:.9}
+.mascot-corner .m-glass-bridge{fill:none;stroke:var(--c-acc);stroke-width:1.5;stroke-linecap:round;opacity:.9}
+.mascot-corner .m-smile{fill:none;stroke:var(--ill-line);stroke-width:1.4;stroke-linecap:round}
+.mascot-corner .m-book{fill:var(--c-acc);opacity:.18}
+.mascot-corner .m-book-page{fill:var(--c-acc);opacity:.42}
 
 /* mascot 部位（页面级；色相全走 --ill-* token） */
 svg.mascot .head{fill:var(--ill-skin)}

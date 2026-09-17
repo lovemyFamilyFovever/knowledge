@@ -50,6 +50,7 @@
       <button class="iconbtn danger" onclick="deleteDoc()" title="移入 content/_trash/"><svg class="i i-12"><use href="#i-trash-outline"/></svg> 删除</button>
       <button class="iconbtn" onclick="jumpToTagEdit()" title="编辑本篇标签（右栏信息·标签页）"><svg class="i i-12"><use href="#i-tag-outline"/></svg> 标签</button>{% endif %}
       <button class="iconbtn primary{% if doc.favorite %} faved{% endif %}" id="fav-btn" onclick="toggleFav()"><svg class="i i-12"><use href="#i-star"/></svg> {% if doc.favorite %}已收藏{% else %}收藏{% endif %}</button>
+      {% if doc.name.endswith(('.txt', '.pdf', '.xlsx', '.epub')) %}<a class="iconbtn" id="kb-lib-dl" href="/raw/{{ doc.rel }}" download="{{ doc.name }}" title="下载原文件"><svg class="i i-12"><use href="#i-download"/></svg> 下载</a>{% endif %}
     </div>
     {# 读数元信息条：域/子域 与状态由模板静态注入（doc-data JSON 仍为 JS 唯一事实源） #}
     <div class="readhead" aria-hidden="false">
