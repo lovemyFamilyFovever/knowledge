@@ -12,27 +12,35 @@
 .stats-body{display:flex;flex-direction:column;gap:16px;padding:6px 2px 10px;
   color:var(--c-ink);overflow:visible}
 
-/* ── 左右双列自适应布局：左列=KPI 概览+文档榜，右列=主图表区 ── */
-.st-cols{display:flex;gap:16px;align-items:flex-start}
-.st-col-kpi{flex:1 1 42%;min-width:0;display:flex;flex-direction:column;gap:16px}
-.st-col-charts{flex:1 1 58%;min-width:0;display:flex;flex-direction:column;gap:16px}
-/* 左列 KPI 2×2 网格 */
-.st-col-kpi .kpi-row{grid-template-columns:repeat(2,1fr)}
-/* 窄屏回退单列 */
+/* ── 卡片版面：位置只由 data-st-card 的 grid-area 决定（挪卡片只改这一处）
+   左列 c1~c4 依次竖排、每张占左列一半宽，c6/c7 接在下面一行；右列只放 c5，纵向跨满。 ── */
+.st-cols{display:grid;gap:16px;align-items:start;
+  grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(0,1.35fr);
+  grid-template-areas:"c1 c2 c5" "c3 c4 c5" "c6 c7 c5"}
+/* 两层包装 div 与 .kpi-row 拆成 display:contents，让七张卡直接成为上面网格的项 */
+.st-col-kpi,.st-col-charts,.kpi-row{display:contents}
+[data-st-card="c1"]{grid-area:c1}
+[data-st-card="c2"]{grid-area:c2}
+[data-st-card="c3"]{grid-area:c3}
+[data-st-card="c4"]{grid-area:c4}
+[data-st-card="c5"]{grid-area:c5}
+[data-st-card="c6"]{grid-area:c6}
+[data-st-card="c7"]{grid-area:c7}
+/* 窄屏回退：先两列（c5 独占一行），再按编号单列 */
 @media (max-width:1100px){
-  .st-cols{flex-direction:column}
-  .st-col-kpi,.st-col-charts{width:100%;flex:none}
+  .st-cols{grid-template-columns:minmax(0,1fr) minmax(0,1fr);
+    grid-template-areas:"c1 c2" "c3 c4" "c6 c7" "c5 c5"}
 }
 @media (max-width:780px){
-  .st-col-kpi .kpi-row{grid-template-columns:1fr}
+  .st-cols{grid-template-columns:minmax(0,1fr);
+    grid-template-areas:"c1" "c2" "c3" "c4" "c6" "c7" "c5"}
 }
 
 /* ── 统一卡片：平面薄板 + 结界线 + 1px 硬边投影 ── */
 .kpi-card,.chart-card{position:relative;border-radius:var(--rd-card);border:1px solid var(--c-line);
   background:var(--c-panel);box-shadow:var(--elev-1);padding:16px 18px}
 
-/* ── KPI 行：--f-disp 大字 + 环比语义色 + sparkline ── */
-.kpi-row{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+/* ── KPI 卡：--f-disp 大字 + 环比语义色 + sparkline（版面见上面 grid-area） ── */
 .kpi-card .label{display:flex;align-items:center;gap:7px;font:600 var(--fs-11)/1 var(--f-mono);
   letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
 .kpi-card .label svg{color:var(--faint)}
@@ -151,11 +159,8 @@ svg.mascot .bubble{fill:var(--ill-bubble);stroke:var(--ill-line);stroke-width:1.
 .empty .mascot ellipse.head{fill:var(--ill-skin)}
 
 /* ── 响应式 ─────────────────────────────────────── */
-@media (max-width:1024px){
-  .kpi-row{grid-template-columns:repeat(2,1fr)}
-}
+/* KPI 与卡片版面统一由上面 .st-cols 的 grid-template-areas 回退，这里只管卡内细节 */
 @media (max-width:780px){
-  .kpi-row{grid-template-columns:1fr}
   .chart-card .chart-hint{margin-left:0;width:100%}
   .lb-row{grid-template-columns:22px 14px 1fr 74px;gap:8px}
   .lb-row .lb-opens{display:none}
@@ -165,7 +170,7 @@ svg.mascot .bubble{fill:var(--ill-bubble);stroke:var(--ill-line);stroke-width:1.
 }
 
 /* [C3-B2] 复习卡覆盖 · 阶段分布（7 域骨架，三段计数） ===== */
-.st-mastery{margin-top:14px;border:1px solid var(--c-line);border-radius:var(--rd-card);
+.st-mastery{margin-top:0;border:1px solid var(--c-line);border-radius:var(--rd-card);
   background:var(--c-panel);box-shadow:var(--elev-1);padding:14px 16px}
 .st-mastery-head{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:10px}
 .st-mastery-sum{font-family:var(--f-mono);font-size:10.5px;color:var(--faint);letter-spacing:.04em}
