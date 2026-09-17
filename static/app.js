@@ -668,7 +668,7 @@ function enhanceArticleDOM(el) {
     const t = (bq.textContent || "").trim();
     // 引用变体（排版 v2）：首行 💡 → 蓝色提示；⚠️/❗ → 琥珀警告。纯前端约定，语料不用改。
     if (/^💡/.test(t)) bq.classList.add("tip");
-    else if (/^[⚠️❗]/.test(t)) bq.classList.add("warn");
+    else if (/^(?:⚠\uFE0F?|❗)/.test(t)) bq.classList.add("warn");
   });
   el.querySelectorAll(".a-body table").forEach(tb => {
     if (tb.closest(".tbl-wrap")) return; // 幂等：已包壳跳过
@@ -1380,27 +1380,34 @@ function wireReadPos() {
   }, { passive: true });
 }
 wireReadPos();
-/* ---------- C1：阅读进度条接线（--kb-read-pct，阶段3 埋的 .article::before） ----------
-   passive + rAF 节流（不每帧强制重排）；reset 与 navigate 的 scrollTop=0 同帧。 */
+/* ---------- C1：阅读进度条接线（--kb-read-pct，进度条伪元素在 .article-wrap 顶部边框） ----------
+   passive + rAF 节流（不每帧强制重排）；reset 与 navigate 的 scrollTop=0 同帧。
+   变量写在外壳 .article-wrap 上：进度条伪元素挂在外壳顶部边框（不随滚动），
+   而 custom property 只沿 DOM 向下继承，写在滚动容器 .article 上外壳拿不到。 */
 let readPctRaf = 0;
+function readPctHost() {
+  const art = document.querySelector(".article");
+  return art ? (art.closest(".article-wrap") || art.parentElement || art) : null;
+}
 function wireReadProgress() {
   const art = document.querySelector(".article");
-  if (!art || art.dataset.kbReadPct === "1") return;
-  art.dataset.kbReadPct = "1";
+  const host = readPctHost();
+  if (!art || !host || host.dataset.kbReadPct === "1") return;
+  host.dataset.kbReadPct = "1";
   art.addEventListener("scroll", () => {
     if (readPctRaf) return;
     readPctRaf = requestAnimationFrame(() => {
       readPctRaf = 0;
       const max = art.scrollHeight - art.clientHeight;
       const pct = max > 40 ? Math.min(100, Math.max(0, (art.scrollTop / max) * 100)) : 0;
-      art.style.setProperty("--kb-read-pct", pct.toFixed(2) + "%");
+      host.style.setProperty("--kb-read-pct", pct.toFixed(2) + "%");
     });
   }, { passive: true });
 }
 wireReadProgress();
 function resetReadProgress() {
-  const art = document.querySelector(".article");
-  if (art) art.style.setProperty("--kb-read-pct", "0%");
+  const host = readPctHost();
+  if (host) host.style.setProperty("--kb-read-pct", "0%");
 }
 function restoreReadPos() {
   const art = document.querySelector(".article");

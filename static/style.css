@@ -408,14 +408,14 @@ main.single{display:flex;flex-direction:column}
 #article.pretty-mode{max-width:none}
 #article.pretty-mode .html-frame{height:calc(100vh - 175px);min-height:560px}
 .pretty-foot{display:flex;gap:12px;justify-content:center;margin-top:8px}
-.kb-finish-bar{display:flex;align-items:center;gap:10px;margin:28px;padding:12px 16px;
+.kb-finish-bar{display:flex;align-items:center;gap:10px;margin:0 28px;padding:12px 16px;
   border:1px solid var(--c-line);border-radius:var(--rd-card);background:var(--c-sunk)}
 .kb-finish-q{font-size:13px;color:var(--muted)}
 .kb-finish-bar .kb-btn{min-height:32px;padding:0 14px;font-size:12.5px}
 
 /* [8] 阅读排版与编辑器（排印骨架保留；视觉件平面化，阅读排印深改属阶段3） ===== */
 @keyframes rise{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
-.article{flex:1;overflow-y:auto;padding:30px 44px 60px}
+.article{flex:1;overflow-y:auto;padding:30px 15px 0px}
 .article-inner{max-width:760px;margin:0 auto;animation:rise var(--dur-3) var(--ease-out)}
 .a-kicker{font-family:var(--f-mono);font-size:10px;letter-spacing:.22em;color:var(--c-acc);text-transform:uppercase;margin-bottom:10px}
 h1.a-title{font-family:var(--f-disp);font-weight:700;font-size:28px;line-height:1.4;letter-spacing:.01em;margin-bottom:14px;color:var(--c-ink)}
@@ -506,10 +506,14 @@ h1.a-title{font-family:var(--f-disp);font-weight:700;font-size:28px;line-height:
 .rh-chip::before{content:"";display:inline-block;width:5px;height:5px;margin-right:5px;border-radius:1px;
   background:var(--c-line2);vertical-align:middle}
 .rh-chip.rh-acc::before{background:var(--c-acc)}
-/* 正文阅读进度条（.article 顶部粘性 2px；--kb-read-pct 由 JS/内联供给，缺省 0） */
-.article{position:relative}
-.article::before{content:"";position:sticky;top:0;left:0;z-index:3;display:block;height:2px;width:var(--kb-read-pct,0%);
-  background:var(--c-acc);transition:width var(--dur-2) var(--ease-out);margin-bottom:calc(-1 * var(--kb-read-pct-h, 0px))}
+/* 正文阅读进度条（用户要求：置于文章面板顶部的上边框位置，固定不随滚动）。
+   挂在不滚动的外壳 .article-wrap 上（position:relative，workbench.css 提供），
+   绝对定位 top:0 —— 旧实现是 .article 滚动容器内的 sticky 伪元素，被其 30px
+   padding 顶到内容区里，静止时不在面板顶边，且随内容流；已废弃。
+   --kb-read-pct 由 app.js 滚动监听写入 .article-wrap（custom prop 沿 DOM 树继承）。 */
+.article-wrap::before{content:"";position:absolute;top:0;left:0;height:2px;width:var(--kb-read-pct,0%);
+  background:var(--c-acc);z-index:5;pointer-events:none;
+  transition:width var(--dur-2) var(--ease-out);border-radius:0 2px 2px 0}
 /* 正文内 wikilink 断链：warn 色虚线（JS 渲染 .wikilink.dead） */
 .a-body .wikilink{color:var(--c-acc);border-bottom:1px dashed color-mix(in oklab,var(--c-acc),transparent 55%);padding-bottom:1px;cursor:pointer}
 .a-body .wikilink:hover{border-bottom-style:solid}
