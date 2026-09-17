@@ -515,9 +515,11 @@ function renderArticle(forceMd) {
     document.dispatchEvent(new CustomEvent("kb:article-rendered"));
     return;
   }
-  /* interview 域的题库类文档以美化版 HTML 为主（用户指定）：
-     有旁挂 .html 且未强制 Markdown 视图时，直接内嵌美化版（forceMd=true 可切回） */
-  const pretty = DOC.is_html || (DOC.has_html && DOC.domain === "interview" && !forceMd);
+  /* 统一分流逻辑（用户要求）：文档有美化版 HTML 就用 iframe 内嵌，
+     不再按域特殊化（原先只对 interview 域启用）。
+     - `.html` 文件本身 → 直载自己
+     - `.md` 且有旁挂 .html 美化版 → 载美化版（forceMd=true 可切回 Markdown 视图） */
+  const pretty = DOC.is_html || (DOC.has_html && !forceMd);
   el.classList.toggle("pretty-mode", pretty); // 美化版：去标题区、iframe 撑满父宽
   if (pretty) {
     // 整页 HTML：iframe 沙箱内嵌直通 /raw/（保留自带样式/脚本），
@@ -1064,6 +1066,18 @@ function updateStatusBarPath() {
   el.textContent = DOC ? `${DOC.domain_label || ""} / ${DOC.sub_label || ""} · ${DOC.name || ""}`.replace(/^\s*\/\s*/, "") : "";
 }
 
+/* 美化版 ↔ Markdown 源 双向切换（统一分流后所有有美化版的文档都可用）。
+   MD_SRC_ON 记录当前是否强制 Markdown 视图；切换后重渲染正文 + 刷新 crumb
+   （按钮文案随之变化），不改动语料。 */
+let MD_SRC_ON = false;
+function toggleMdSource() {
+  MD_SRC_ON = !MD_SRC_ON;
+  renderArticle(MD_SRC_ON);
+  renderCrumb();
+  toast(MD_SRC_ON ? "已切到 Markdown 源视图" : "已切回美化版视图");
+}
+window.toggleMdSource = toggleMdSource;
+
 function renderCrumb() {
   const crumb = $("#crumb"); if (!crumb) return;
   if (!DOC) {
@@ -1071,13 +1085,14 @@ function renderCrumb() {
     crumb.innerHTML = `<b>未选择文档</b><span class="spacer"></span>`;
     return;
   }
-  /* 面包屑不再显示 content/<路径>（用户要求）；interview 域美化版文档的
-     「Markdown 源 / 新标签页」按钮与 workbench.html 服务端渲染保持同一套结构 */
-  const isInterviewPretty = DOC.has_html && DOC.domain === "interview" && !DOC.is_html;
+  /* 面包屑不再显示 content/<路径>（用户要求）。
+     统一分流后：所有「有美化版」的 .md 文档都显示「Markdown 源」切换按钮
+     （原先只对 interview 域显示）；服务端渲染保持同一套结构。 */
+  const canSwitchToMd = DOC.has_html && !DOC.is_html;
   /* 书库格式（txt/pdf/xlsx/epub）：下载按钮统一并入本行最右（用户要求） */
   const libExt = (DOC.name || "").match(/\.(txt|pdf|xlsx|epub)$/i);
   crumb.innerHTML = `<b>${esc(DOC.title)}</b><span class="spacer"></span>
-    ${isInterviewPretty ? `<button class="iconbtn" id="kb-md-src-btn" onclick="renderArticle(true)" title="切回 Markdown 渲染视图">${icon("file-md", 13)} Markdown 源</button>` : ""}
+    ${canSwitchToMd ? `<button class="iconbtn" id="kb-md-src-btn" onclick="toggleMdSource()" title="在美化版 / Markdown 源之间切换">${MD_SRC_ON ? icon("preview-eye", 13) + " 美化版" : icon("file-md", 13) + " Markdown 源"}</button>` : ""}
     ${DOC.has_html ? `<a class="iconbtn" href="${rawUrl(DOC.is_html ? DOC.rel : DOC.html_rel)}" target="_blank" title="新标签页打开美化版">${icon("external-link", 13)} 新标签页</a>` : ""}
     ${!DOC.is_html ? `<button class="iconbtn" onclick="openEditor()">${icon("edit",13)} 编辑</button>
     <button class="iconbtn" onclick="deleteDoc()" title="移入 content/_trash/">${icon("trash",13)} 删除</button>
@@ -1320,6 +1335,7 @@ async function openDoc(domain, sub, name) {
   }
   const data = await r.json();
   DOC = data.doc;
+  MD_SRC_ON = false;   // 换文档重置视图偏好（避免上一篇的 Markdown 源状态带过来）
   updateStatusBarPath();
   // 编辑态残留防护：openDoc 必须从干净阅读态开始（删除文档后再开新文档时，
   // 编辑器/class 残留会让新文档的 crumb 按钮“消失”或编辑态错乱）
