@@ -865,8 +865,7 @@ function renderTree() {
     const isOpen = open.has(d.id);
     return `
    <div class="dom ${isOpen ? "open" : ""}" style="--dh:${HUES[d.id] || 158}" data-dom="${esc(d.id)}">
-    <a class="dom-head ${CUR && CUR.domain === d.id ? "active" : ""}" href="/browse/${d.id}/${d.subs[0].id}">
-     <span class="dom-caret" role="button" tabindex="0" aria-label="折叠或展开 ${esc(d.label)}" aria-expanded="${isOpen ? "true" : "false"}" title="折叠/展开"></span>
+    <a class="dom-head ${CUR && CUR.domain === d.id ? "active" : ""}" href="/browse/${d.id}/${d.subs[0].id}" role="button" aria-expanded="${isOpen ? "true" : "false"}" title="${esc(d.label)} · 点击展开/收起">
      <span class="dom-glyph" style="--dh:${HUES[d.id] || 158}"><svg><use href="#i-${d.id}"/></svg></span>
      <span class="dom-name" title="${esc(d.label)}">${esc(d.label)}</span><span class="dom-n">${d.n}</span>
     </a>

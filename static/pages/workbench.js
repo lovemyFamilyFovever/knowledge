@@ -110,8 +110,8 @@
     $$("#tree .dom").forEach(function (dom) {
       var open = set.has(dom.dataset.dom);
       dom.classList.toggle("open", open);
-      var c = dom.querySelector(".dom-caret");
-      if (c) c.setAttribute("aria-expanded", open ? "true" : "false");
+      var h = dom.querySelector(".dom-head");
+      if (h) h.setAttribute("aria-expanded", open ? "true" : "false");
     });
   }
   function initTreeCollapse() {
@@ -120,23 +120,25 @@
     var set = treeOpenSet();
     treePersist(set);   // 固化首次默认（当前域展开），保证后续行为确定
     treeApply(set);
+    /* 无三角箭头版：折叠交互落在「域头整行」——点击域头切换展开/收起，
+       不跳转（阻止 <a> 默认行为）；点击域头内的其它热区（如拖拽）不受影响。 */
     tree.addEventListener("click", function (e) {
-      var caret = e.target.closest && e.target.closest(".dom-caret");
-      if (!caret) return;
+      var head = e.target.closest && e.target.closest(".dom-head");
+      if (!head) return;
       e.preventDefault(); e.stopPropagation();   // 阻止 <a> 跳转，仅切换折叠
-      var dom = caret.closest(".dom");
+      var dom = head.closest(".dom");
       if (!dom) return;
       var open = dom.classList.toggle("open");
-      caret.setAttribute("aria-expanded", open ? "true" : "false");
+      head.setAttribute("aria-expanded", open ? "true" : "false");
       if (open) set.add(dom.dataset.dom); else set.delete(dom.dataset.dom);
       treePersist(set);
     });
     tree.addEventListener("keydown", function (e) {
-      var caret = e.target.closest && e.target.closest(".dom-caret");
-      if (!caret) return;
+      var head = e.target.closest && e.target.closest(".dom-head");
+      if (!head) return;
       if (e.key === "Enter" || e.key === " " || e.key === "Spacebar") {
         e.preventDefault(); e.stopPropagation();
-        caret.click();
+        head.click();
       }
     });
   }

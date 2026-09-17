@@ -8,8 +8,7 @@
     <nav class="tree" id="tree" aria-label="分类目录">
       {% for d in domains %}
       <div class="dom" style="--dh:{{ HUES[d.id] }}" data-dom="{{ d.id }}">
-        <a class="dom-head {% if cur.domain == d.id %}active{% endif %}" href="/browse/{{ d.id }}/{{ d.subs[0].id }}">
-          <span class="dom-caret" role="button" tabindex="0" aria-label="折叠或展开 {{ d.label }}" aria-expanded="false" title="折叠/展开"></span>
+        <a class="dom-head {% if cur.domain == d.id %}active{% endif %}" href="/browse/{{ d.id }}/{{ d.subs[0].id }}" role="button" aria-expanded="false" title="{{ d.label }} · 点击展开/收起">
           <span class="dom-glyph"><svg><use href="#i-{{ d.id }}"/></svg></span>
           <span class="dom-name" title="{{ d.label }}">{{ d.label }}</span><span class="dom-n">{{ d.n }}</span>
         </a>

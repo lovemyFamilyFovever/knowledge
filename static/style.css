@@ -273,7 +273,9 @@ main.single{display:flex;flex-direction:column}
 .dom{margin-bottom:4px;position:relative}
 .dom-head{display:flex;align-items:center;gap:8px;padding:8px 9px;border-radius:var(--rd-ctl);cursor:pointer;transition:background var(--dur-1);user-select:none;position:relative}
 .dom-head:hover{background:var(--c-sunk)}
-.dom-head.active{background:var(--acc-soft);box-shadow:inset 2px 0 0 var(--c-acc)}
+/* 选中态：仅靠底色+文字色区分，去掉左侧内嵌竖线（用户要求） */
+.dom-head.active{background:var(--acc-soft)}
+.dom-head.active .dom-name{color:var(--c-acc)}
 .dom-glyph{width:26px;height:26px;flex:none;display:grid;place-items:center;border-radius:var(--rd-ctl);
   color:hsl(var(--dh,158) 58% 46%);background:hsl(var(--dh,158) 58% 46% / .12);border:1px solid hsl(var(--dh,158) 58% 46% / .30)}
 .dom-glyph svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
@@ -298,12 +300,13 @@ main.single{display:flex;flex-direction:column}
 /* 目录名同样是 flex 里的匿名文本，需包 span 才能出省略号 */
 .tree-subdir-h .tsd-t{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .tree-subdir > .doc, .tree-subdir > .tree-subdir .doc{margin-left:0}
-/* 折叠箭头：加大点击热区与对比度，让「可收起」可见 */
-.dom-caret{flex:none;width:22px;height:22px;position:relative;cursor:pointer;border-radius:var(--rd-ctl);transition:background var(--dur-1)}
-.dom-caret:hover{background:var(--acc-soft)}
-.dom-caret:focus-visible{outline:2px solid var(--c-acc);outline-offset:1px}
-.dom-caret::after{content:"";position:absolute;left:7px;top:5px;width:0;height:0;border-top:6px solid transparent;border-bottom:6px solid transparent;border-left:8px solid var(--c-ink);transition:transform var(--dur-1) ease,border-left-color var(--dur-1)}
-.dom.open .dom-caret::after{transform:rotate(90deg);border-left-color:var(--c-acc)}
+/* 折叠指示：去掉三角箭头（用户要求），改用域头底色的展开态差异 + 图标区旋转微动。
+   折叠交互改为点「域头整行」触发（点击面积更大、无需精确瞄准小箭头）。 */
+.dom-caret{display:none}
+/* 展开态：域头底色加深一档，收起态无底色，二者肉眼可辨 */
+.dom.open .dom-head{background:color-mix(in oklab,var(--c-sunk),var(--c-acc) 6%)}
+.dom.open .dom-head .dom-glyph{transform:scale(1.04)}
+.dom-glyph{transition:transform var(--dur-1) var(--ease-out)}
 /* 子域链接：去掉 └ 前缀（层级已由缩进+引导线表达），文字超长省略号 */
 .sub{display:flex;align-items:center;gap:7px;padding:5px 9px;border-radius:var(--rd-ctl);cursor:pointer;color:var(--c-ink);font-size:12.5px;font-weight:500;transition:color var(--dur-1),background var(--dur-1);user-select:none}
 .sub:hover{color:var(--c-ink);background:var(--c-sunk)}
@@ -323,7 +326,6 @@ main.single{display:flex;flex-direction:column}
 .doc{display:block;padding:9px 11px;border-radius:var(--rd-ctl);cursor:pointer;border:1px solid transparent;transition:background var(--dur-1),border-color var(--dur-1);margin-bottom:3px;position:relative}
 .doc:hover{background:var(--c-sunk);border-color:var(--c-line)}
 .doc.active{background:var(--acc-soft);border-color:var(--acc-line)}
-.doc.active::before{content:"";position:absolute;left:-1px;top:8px;bottom:8px;width:2px;background:var(--c-acc)}
 .doc-t{font-size:13.5px;font-weight:600;line-height:1.5;display:flex;align-items:center;gap:6px;color:var(--c-ink)}
 .doc-t .star{color:var(--c-info);font-size:11px}
 .doc-meta{display:flex;align-items:center;gap:6px;margin-top:6px;flex-wrap:wrap}

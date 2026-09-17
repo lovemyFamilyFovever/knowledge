@@ -9,9 +9,8 @@
    用户反馈黑色竖线无章法；active 态保留底座 style.css 的 inset 绿条） ---- */
 /* 域 glyph 走 --dh（模板已注入数字色相，底座 .dom-glyph 以 hsl(var(--dh)) 消费） */
 
-/* ---- [2] 文档列表：active 左 3px 条带呼吸 + 卡片精修 ---- */
+/* ---- [2] 文档列表：active 态靠底色+边框区分（左侧竖条已按用户要求移除） ---- */
 .doc{border-radius:var(--rd-ctl)}
-.doc.active::before{width:2px;background:var(--c-acc)}
 .doc:hover{transform:translateX(2px)}
 .doc-t .star{display:inline-flex;color:var(--c-info)}
 .doc-t .star svg{width:12px;height:12px}
