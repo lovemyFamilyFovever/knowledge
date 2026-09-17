@@ -283,8 +283,8 @@ main.single{display:flex;flex-direction:column}
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
 .dom-n{margin-left:auto;flex:none;font-family:var(--f-mono);font-size:11px;font-weight:500;color:var(--muted);font-variant-numeric:tabular-nums}
 .dom-head.active .dom-n{color:var(--c-acc)}
-/* 子域块：左侧引导线 + 缩进，与域头形成清晰父子层级 */
-.subs{display:none;padding:2px 0 6px 16px;margin:1px 0 4px 21px;border-left:1px solid var(--c-line)}
+/* 子域块：左侧引导线 + 缩进（padding-left 置 0，缩进交给 margin，用户要求） */
+.subs{display:none;padding:2px 0 6px 0;margin:1px 0 4px 21px;border-left:1px solid var(--c-line)}
 .dom.open .subs{display:block}
 .tree .doc{padding:4px 8px;margin:1px 0;border-radius:var(--rd-ctl)}
 .tree .doc .doc-t{font-size:12px;font-weight:400;line-height:1.5;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:block;color:var(--muted)}
