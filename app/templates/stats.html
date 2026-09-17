@@ -16,17 +16,28 @@
     <div class="page-body">
       {% if has_activity %}
       <div class="stats-body" data-ym="{{ ym }}">
+        {# ── 卡片编号约定（讨论布局用，勿改）─────────────────────────────
+           cN = 卡片身份，跟着卡片本身走，挪位置编号不变：
+             c1 活跃天数 · c2 月度阅读时长 · c3 访问文档数 · c4 读完文档
+             c5 文档榜 Top50 · c6 每日阅读时长 · c7 复习卡覆盖·阶段分布
+           S 号 = 版面槽位，跟着位置走：
+             S1~S4 = 左列 KPI 2×2 四格（依次放 c1 c2 c3 c4）
+             S5 = 左列下半长卡位（现 c5）
+             S6 = 右列主图位（现 c6）
+             S7 = 右列下方位（现 c7）
+           表达挪动请说「把 cN 挪到 Sx」；新增卡片顺延 c8、c9…，不复用旧号。
+        ──────────────────────────────────────────────────────────────── #}
         {# ── 左右双列布局：左列=KPI 概览+文档榜，右列=主图表区 ── #}
         <div class="st-cols">
         <div class="st-col-kpi">
         {# ── KPI 卡片（2×2 自适应网格） ── #}
         <div class="kpi-row">
-          <div class="kpi-card">
+          <div class="kpi-card" data-st-card="c1">
             <div class="label"><svg class="i i-12"><use href="#i-calendar-day"/></svg>活跃天数</div>
             <div class="num"><span data-counter data-count="{{ kpi.active_days }}">{{ kpi.active_days }}</span><span class="unit">/ {{ kpi.days_in_month }} 天</span></div>
             <div class="mini-spark" data-spark="presence" aria-hidden="true"></div>
           </div>
-          <div class="kpi-card">
+          <div class="kpi-card" data-st-card="c2">
             <div class="label"><svg class="i i-12"><use href="#i-clock-heartbeat"/></svg>月度阅读时长</div>
             <div class="num"><span data-counter data-count="{{ '%g'|format(kpi.total_minutes) }}">{{ '%g'|format(kpi.total_minutes) }}</span><span class="unit">分钟</span></div>
             {% if kpi.delta_minutes is defined %}
@@ -36,12 +47,12 @@
             {% endif %}
             <div class="mini-spark" data-spark="minutes" aria-hidden="true"></div>
           </div>
-          <div class="kpi-card">
+          <div class="kpi-card" data-st-card="c3">
             <div class="label"><svg class="i i-12"><use href="#i-file"/></svg>访问文档数</div>
             <div class="num"><span data-counter data-count="{{ kpi.opened_docs }}">{{ kpi.opened_docs }}</span><span class="unit">篇</span></div>
             <div class="mini-spark" data-spark="docs" aria-hidden="true"></div>
           </div>
-          <div class="kpi-card st-mascot-card">
+          <div class="kpi-card st-mascot-card" data-st-card="c4">
             <div class="label"><svg class="i i-12"><use href="#i-check-circle"/></svg>读完文档</div>
             <div class="num"><span data-counter data-count="{{ kpi.finished_docs }}">{{ kpi.finished_docs }}</span><span class="unit">篇</span></div>
             {% if kpi.opened_docs %}<div class="st-ratio"><span class="sbar"><i style="width:{{ (100 * kpi.finished_docs / kpi.opened_docs) | round(0) }}%"></i></span><span class="st-ratio-n">{{ ((100 * kpi.finished_docs / kpi.opened_docs) | round(0)) }}%</span></div>{% endif %}
@@ -61,7 +72,7 @@
         {# ── 文档榜 ── #}
         {% if kpi.docs %}
         {% set maxdoc = kpi.docs[0].minutes or 1 %}
-        <div class="chart-card">
+        <div class="chart-card" data-st-card="c5">
           <div class="chart-head">
             <span class="chart-title">文档榜 · Top {{ kpi.docs | length }}</span>
             <div class="chart-hint">按阅读时长排序 · 单位 分钟</div>
@@ -88,7 +99,7 @@
 
         <div class="st-col-charts">
         {# ── 每日阅读柱状图（内联 SVG，横轴按日历 1..N 日定位） ── #}
-        <div class="chart-card">
+        <div class="chart-card" data-st-card="c6">
           <div class="chart-head">
             <span class="chart-title">每日阅读时长 · {{ ym }}</span>
             <div class="chart-hint">
@@ -114,7 +125,7 @@
         </div>
 
         {# ── C3-B2：复习卡覆盖 · 阶段分布（learn 库只读派生，7 域骨架） ── #}
-        <section class="st-mastery" id="stMastery" aria-label="复习卡覆盖与阶段分布">
+        <section class="st-mastery" id="stMastery" data-st-card="c7" aria-label="复习卡覆盖与阶段分布">
           <div class="st-mastery-head">
             <span class="chart-title">复习卡覆盖 · 阶段分布</span>
             <span class="st-mastery-sum" id="stMasterySum"></span>
