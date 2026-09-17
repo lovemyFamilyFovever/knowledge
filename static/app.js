@@ -897,6 +897,42 @@ function setDirCollapsed(key, collapsed) {
   if (collapsed) set.add(key); else set.delete(key);
   try { localStorage.setItem("kb-subdir-collapsed", JSON.stringify(Array.from(set))); } catch (e) {}
 }
+/* ---------- 文件类型 → 前缀图标（目录树 / 文档列表共用） ----------
+   按扩展名映射到对应图标：md / txt / epub / pdf / xlsx / 图片 / html / zip。
+   未知扩展名回落通用 i-file；目录/文件夹用 i-folder。 */
+const FILE_ICON_MAP = {
+  md: "file-md", markdown: "file-md",
+  txt: "file-txt", text: "file-txt", log: "file-txt",
+  epub: "file-epub", mobi: "file-epub", azw3: "file-epub",
+  pdf: "file-pdf",
+  xlsx: "file-xlsx", xls: "file-xlsx", csv: "file-xlsx",
+  png: "file-image", jpg: "file-image", jpeg: "file-image",
+  gif: "file-image", webp: "file-image", svg: "file-image",
+  bmp: "file-image", ico: "file-image", avif: "file-image",
+  html: "file-html", htm: "file-html",
+  zip: "file-zip", gz: "file-zip", tar: "file-zip", "7z": "file-zip", rar: "file-zip",
+  js: "file-code", ts: "file-code", py: "file-code", json: "file-code",
+  css: "file-code", sh: "file-code", bat: "file-code", ps1: "file-code",
+};
+/* 取文件扩展名对应的图标 id；无扩展名时按文档默认类型（md）处理。
+   注意：返回值不含 "i-" 前缀——icon() 内部会拼 "#i-<name>"，多写会失配（曾踩）。 */
+function fileIconId(name) {
+  const m = String(name || "").match(/\.([a-z0-9]+)$/i);
+  if (!m) return FILE_ICON_MAP.md;
+  return FILE_ICON_MAP[m[1].toLowerCase()] || "file";
+}
+/* 图标语义标题（title 属性用） */
+function fileIconTitle(name) {
+  const m = String(name || "").match(/\.([a-z0-9]+)$/i);
+  const ext = m ? m[1].toLowerCase() : "md";
+  const label = { txt: "纯文本", epub: "EPUB 电子书", mobi: "电子书", azw3: "电子书",
+    pdf: "PDF", xlsx: "表格", xls: "表格", csv: "表格",
+    png: "图片", jpg: "图片", jpeg: "图片", gif: "图片", webp: "图片", svg: "图片",
+    html: "HTML", htm: "HTML", zip: "压缩包", gz: "压缩包", tar: "压缩包",
+    "7z": "压缩包", rar: "压缩包", md: "Markdown", markdown: "Markdown" }[ext];
+  return label || ext.toUpperCase() + " 文件";
+}
+
 function renderTree() {
   const nav = $("#tree"); if (!nav || !TREE) return;
   const open = treeOpenSet();                // 默认空集合 → 一级全部收起
@@ -927,12 +963,14 @@ function renderTree() {
         const leaf = dir ? doc.name.slice(dir.length + 1) : doc.name;
         const deep = dir ? dir.split("/").length : 0; // 多层缩进层级
         /* 用户要求：目录中的文档项不再显示标签 chips（三级尤其拥挤）。
-           美化版/HTML 的标记改为 doc-t 内的图标，保留可辨识性但不再占一整行。 */
+           改为「文件类型前缀图标」（md/txt/epub/pdf/图片…），一图标顶一行信息。 */
+        const ic = fileIconId(doc.name);
+        /* 美化版/HTML 仍给一个角标（不影响类型图标语义） */
         const badges = (doc.has_html || doc.is_html)
           ? `<span class="doc-flag" title="${doc.is_html ? "HTML 文档" : "有美化版"}">${icon("external-link", 11)}</span>` : "";
         return `
         <a class="doc ${cur && CUR.name === doc.name ? "active" : ""} ${dir ? "in-subdir" : ""}" data-name="${esc(doc.name)}" data-dom="${esc(d.id)}" data-sub="${esc(s.id)}" draggable="true" style="--deep:${deep}" href="${href}" title="${esc(doc.name)}">
-          <div class="doc-t">${badges}${esc(leaf)}</div>
+          <div class="doc-t"><span class="doc-ic" title="${esc(fileIconTitle(doc.name))}">${icon(ic, 11)}</span>${badges}<span class="doc-t-txt">${esc(leaf)}</span></div>
         </a>`;
       };
       /* 三级（多层目录）：头部可点击收起/展开；收起状态持久化 */
@@ -1038,7 +1076,14 @@ function renderInfo() {
   const input = pane.querySelector("#tag-in");
   if (addBtn && row && input) {
     addBtn.addEventListener("click", () => { row.hidden = !row.hidden; if (!row.hidden) { if (window.TagSuggest) TagSuggest.ensureIndex(); requestAnimationFrame(() => input.focus()); } });
-    if (window.TagSuggest) TagSuggest.bind(input); // 标签补全浮层（datalist 已弃用）
+    /* 懒绑定（不在此处直接 bind）：renderInfo 由 app.js 启动块同步调用，
+       那一刻 tag-suggest.js（defer 顺序在 app.js 之后）尚未执行，
+       window.TagSuggest 还是 undefined，直接 bind 会被静默跳过，
+       导致右栏输入框永远弹不出补全（实测坑）。改为首次 focus 时绑定。 */
+    input.addEventListener("focus", function bindOnce() {
+      input.removeEventListener("focus", bindOnce);
+      if (window.TagSuggest) { TagSuggest.ensureIndex(); TagSuggest.bind(input); }
+    });
     input.onkeydown = e => {
       if (window.TagSuggest && TagSuggest.handleKey(input, e)) { e.preventDefault(); return; } // 浮层已消费（↑↓/Enter填充/Esc关浮层）
       if (e.key === "Enter") { e.preventDefault(); const raw = input.value.trim(); if (raw) addTagsFromRaw(raw); input.value = ""; }

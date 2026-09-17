@@ -141,6 +141,16 @@ html.motion-ready .wb-panel{will-change:transform}
 .wl-sub{flex:none;margin-left:auto;font-size:10.5px;color:var(--faint)}
 .wl-empty{padding:7px 10px;font-size:11.5px;color:var(--faint)}
 
+/* ---- [14] 标签补全浮层（tag-suggest.js）：与 .wl-suggest 同一套克制视觉，
+   仅定位逻辑不同（锚输入框底边而非 caret）。position:fixed 与
+   getBoundingClientRect 的视口坐标配套（absolute 在页面滚动后会错位）。 ---- */
+.tag-suggest{
+  position:fixed;z-index:9000;max-height:264px;overflow-y:auto;
+  background:var(--c-panel);border:1px solid var(--c-line2);border-radius:var(--rd-ctl);
+  box-shadow:0 3px 14px color-mix(in oklab,var(--c-ink),transparent 76%);
+  padding:2px 0;font:400 12px/1 var(--f-mono);
+}
+
 /* ---- [9] 窄屏（<1280；整体断点归 T6） ---- */
 @media (max-width:1280px){
   .article{padding:24px 26px 50px}
