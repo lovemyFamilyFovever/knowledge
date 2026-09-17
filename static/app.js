@@ -1,5 +1,5 @@
 /* 知库 reader 前端：主题、面板折叠、客户端路由、正文渲染、编辑/备注/收藏/删除、双链、快捷键 */
-window.APP_JS_VERSION = 33;
+window.APP_JS_VERSION = 34;
 
 const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
@@ -978,7 +978,7 @@ function renderTree() {
         const key = `${d.id}/${s.id}/${dir}`;
         const dirCollapsedNow = dirCollapsed.has(key);
         return `<div class="tree-subdir${dirCollapsedNow ? " collapsed" : ""}" style="--deep:${dir.split("/").length}" data-dir-key="${esc(key)}">
-          <div class="tree-subdir-h" role="button" tabindex="0" aria-expanded="${dirCollapsedNow ? "false" : "true"}" title="${esc(dir)} · 点击展开/收起 · ←/→ 收起展开">${icon("folder", 11)}<span class="tsd-t">${esc(dir.split("/").pop())}</span></div>
+          <div class="tree-subdir-h" role="button" tabindex="0" aria-expanded="${dirCollapsedNow ? "false" : "true"}" title="${esc(dir)} · 点击展开/收起 · ←/→ 收起展开">${icon("archive-box", 11)}<span class="tsd-t">${esc(dir.split("/").pop())}</span></div>
           <div class="tree-subdir-body">${docsByDir[dir].map(doc => docLink(doc, dir)).join("")}</div>
         </div>`;
       };
@@ -988,7 +988,7 @@ function renderTree() {
       ).join("");
       /* 全量渲染：文档列表始终在 DOM 中，靠 .collapsed 控制显隐 —— 支持纯原地展开/收起 */
       return `
-      <a class="sub ${cur ? "active" : ""}${subOpen ? "" : " collapsed"}" data-dom="${esc(d.id)}" data-sub="${esc(s.id)}" data-sub-key="${esc(subKey)}" href="/browse/${d.id}/${s.id}" role="button" tabindex="0" aria-expanded="${subOpen ? "true" : "false"}" title="${esc(s.label)} · 点击展开/收起 · ←/→ 收起展开"><span class="sub-t">${esc(s.label)}</span><span class="n">${s.n}</span></a>
+      <a class="sub ${cur ? "active" : ""}${subOpen ? "" : " collapsed"}" data-dom="${esc(d.id)}" data-sub="${esc(s.id)}" data-sub-key="${esc(subKey)}" href="/browse/${d.id}/${s.id}" role="button" tabindex="0" aria-expanded="${subOpen ? "true" : "false"}" title="${esc(s.label)} · 点击展开/收起 · ←/→ 收起展开"><span class="sub-ic" title="子目录">${icon("folder", 13)}</span><span class="sub-t">${esc(s.label)}</span><span class="n">${s.n}</span></a>
       <div class="sub-docs${subOpen ? "" : " collapsed"}">${groups}</div>`;
     }).join("")}
     </div>
@@ -2222,9 +2222,9 @@ async function showGlobalStats() {
     ${L.dead ? `<div class="kbm-li" style="color:var(--rose)">${L.dead} 条死链分布在 ${L.dead_docs} 篇文档中</div>` : ""}`;
 }
 
-/* ---------- 移动 / 重命名：目录树选择器 ----------
-   树节点 = 真实目录（域可展开为子目录）；目标目录点击选择，
-   文件名可改，路径实时预览；同名冲突/越界/空名前端拦截，后端 /api/move 兜底。 */
+/* ---------- 移动：目录树选择器（仅换目录，文件名不变） ----------
+   树节点 = 真实目录（域可展开为子目录）；目标目录点击选择，路径实时预览；
+   同名冲突/越界/未选目录前端拦截，后端 /api/move 兜底。只改文件名走 renameDocPrompt。 */
 async function moveDocPrompt(rel) {
   const dirTree = await loadDirTree(true);
   if (!dirTree || !dirTree.length) { toast("目录树为空，无法移动"); return; }
@@ -2238,7 +2238,7 @@ async function moveDocPrompt(rel) {
   ov.className = "kbm-ov";
   ov.id = "mv-ov";
   ov.innerHTML = `<div class="kbm kbm-mv" role="dialog" aria-modal="true">
-    <div class="kbm-title">${icon("swap", 16)} 移动 / 重命名<span class="spacer" style="flex:1"></span><button class="iconbtn mv-x" title="关闭（Esc）" aria-label="关闭">${icon("cancel-x", 14)}</button></div>
+    <div class="kbm-title">${icon("move-arrow", 16)} 移动到<span class="spacer" style="flex:1"></span><button class="iconbtn mv-x" title="关闭（Esc）" aria-label="关闭">${icon("cancel-x", 14)}</button></div>
     <div class="mv-src mono">${esc(rel)}</div>
     <div class="mv-cols">
       <div class="mv-treebox">
@@ -2246,11 +2246,9 @@ async function moveDocPrompt(rel) {
         <div class="mv-tree" tabindex="0"></div>
       </div>
       <div class="mv-side">
-        <label class="kbm-label">文件名（不含 .md）
-          <input class="kbm-input mv-name" value="${esc(fileName)}" spellcheck="false"></label>
-        <div class="mv-dst-label">目标路径</div>
+        <div class="mv-dst-label">目标路径（文件名不变）</div>
         <div class="mv-dst mono"></div>
-        <div class="mv-hint">同名冲突、越界与未选目录会被拦截；移动后 FTS / 双链 / 向量索引自动级联更新，git 可追溯。</div>
+        <div class="mv-hint">同名冲突、越界与未选目录会被拦截；移动后 FTS / 双链 / 向量索引自动级联更新，git 可追溯。只想改文件名请用右键菜单「重命名…」。</div>
       </div>
     </div>
     <div class="kbm-btns">
@@ -2260,7 +2258,6 @@ async function moveDocPrompt(rel) {
   document.body.appendChild(ov);
 
   const treeEl = ov.querySelector(".mv-tree");
-  const nameEl = ov.querySelector(".mv-name");
   const dstEl = ov.querySelector(".mv-dst");
   const okBtn = ov.querySelector(".mv-ok");
   const filterEl = ov.querySelector(".mv-filter");
@@ -2270,18 +2267,15 @@ async function moveDocPrompt(rel) {
   function refresh() {
     const dom = dirTree.find(d => d.id === state.dom);
     const sub = dom && dom.subs.find(s => s.id === state.sub);
-    const nm = nameEl.value.trim();
-    const invalidName = !nm || /[\\/:*?"<>|]/.test(nm);
-    const same = !!(sub && `${subDirOf(dom, state.sub)}/${nm}.md` === rel);
+    const same = !!(sub && subDirOf(dom, state.sub) === srcDir);
     if (!sub) {
       dstEl.innerHTML = `<span class="mv-dst-empty">← 先在左侧选择目标目录</span>`;
     } else {
-      const dir = subDirOf(dom, state.sub);
-      dstEl.innerHTML = `<span class="mv-dst-dir">${esc(dir)}/</span><span class="mv-dst-file">${esc(nm || "（未命名）")}</span><span class="mv-dst-dir">.md</span>`;
+      dstEl.innerHTML = `<span class="mv-dst-dir">${esc(subDirOf(dom, state.sub))}/</span><span class="mv-dst-file">${esc(fileName)}</span><span class="mv-dst-dir">.md</span>`;
     }
     dstEl.classList.toggle("mv-dst-same", same);
-    okBtn.disabled = !sub || invalidName || same;
-    okBtn.innerHTML = same ? "未变化" : `${icon("check", 13)} 移动`;
+    okBtn.disabled = !sub || same;
+    okBtn.innerHTML = same ? "已在该目录" : `${icon("check", 13)} 移动`;
   }
   function renderTreeNodes() {
     const kw = filterEl.value.trim().toLowerCase();
@@ -2353,8 +2347,6 @@ async function moveDocPrompt(rel) {
     }
   });
   filterEl.addEventListener("input", renderTreeNodes);
-  nameEl.addEventListener("input", refresh);
-  nameEl.addEventListener("keydown", e => { if (e.key === "Enter" && !okBtn.disabled) okBtn.click(); });
 
   const close = () => { ov.remove(); document.removeEventListener("keydown", onEsc); };
   const onEsc = e => { if (e.key === "Escape") close(); };
@@ -2363,11 +2355,10 @@ async function moveDocPrompt(rel) {
     ov.querySelector(".mv-x").onclick = close;
   
   renderTreeNodes();
-  nameEl.focus(); nameEl.select();
+  filterEl.focus();
 
   okBtn.onclick = async () => {
-    const nm = nameEl.value.trim();
-    const dst = `${subDirOf(dirTree.find(d => d.id === state.dom), state.sub)}/${nm}.md`;
+    const dst = `${subDirOf(dirTree.find(d => d.id === state.dom), state.sub)}/${fileName}.md`;
     okBtn.disabled = true; okBtn.textContent = "移动中…";
     const r = await fetch("/api/move", { method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ src: rel, dst }) });
@@ -2377,6 +2368,70 @@ async function moveDocPrompt(rel) {
     toast(`已移动至 <span class='mono'>${esc(d.dst)}</span> · 索引已级联更新`);
     // 问题9：不再 location.href 整页跳转。局部重渲染树/列表；
     // 当前正看的文档被移动时走客户端路由打开新位置。
+    const movedCur = !!(DOC && DOC.rel === rel);
+    await afterMutation();
+    if (movedCur) await navigate(docUrl(d.dst), true);
+  };
+}
+
+/* ---------- 重命名：仅改文件名，目录不变 ----------
+   与移动共用 /api/move：dst = 原目录 + 新文件名。空名/非法字符/未变化前端拦截，
+   同名冲突与越界由后端兜底报错。旁挂备注 / 美化版随行，索引自动级联。 */
+async function renameDocPrompt(rel) {
+  const parts = rel.split("/");
+  const fileName = parts.pop().replace(/\.md$/, "");
+  const srcDir = parts.join("/");
+
+  const ov = document.createElement("div");
+  ov.className = "kbm-ov";
+  ov.innerHTML = `<div class="kbm" role="dialog" aria-modal="true">
+    <div class="kbm-title">${icon("edit-pencil", 16)} 重命名<span class="spacer" style="flex:1"></span><button class="iconbtn mv-x" title="关闭（Esc）" aria-label="关闭">${icon("cancel-x", 14)}</button></div>
+    <div class="mv-src mono">${esc(rel)}</div>
+    <label class="kbm-label">文件名（不含 .md）
+      <input class="kbm-input mv-name" value="${esc(fileName)}" spellcheck="false"></label>
+    <div class="mv-dst-label">新路径（目录不变）</div>
+    <div class="mv-dst mono"></div>
+    <div class="mv-hint">空名与非法字符（\\ / : * ? " &lt; &gt; |）被拦截；同名冲突由服务端拒绝。改完 FTS / 双链 / 向量索引自动级联更新，git 可追溯。</div>
+    <div class="kbm-btns">
+      <button class="iconbtn mv-cancel">取消</button>
+      <button class="iconbtn primary mv-ok">重命名</button>
+    </div></div>`;
+  document.body.appendChild(ov);
+
+  const nameEl = ov.querySelector(".mv-name");
+  const dstEl = ov.querySelector(".mv-dst");
+  const okBtn = ov.querySelector(".mv-ok");
+  const cleanNm = s => s.trim().replace(/\.md$/i, "");
+  function refresh() {
+    const nm = cleanNm(nameEl.value);
+    const invalid = !nm || /[\\/:*?"<>|]/.test(nm);
+    const same = `${srcDir}/${nm}.md` === rel;
+    dstEl.innerHTML = `<span class="mv-dst-dir">${esc(srcDir)}/</span><span class="mv-dst-file">${esc(nm || "（未命名）")}</span><span class="mv-dst-dir">.md</span>`;
+    dstEl.classList.toggle("mv-dst-same", same);
+    okBtn.disabled = invalid || same;
+    okBtn.textContent = same ? "未变化" : "重命名";
+  }
+  nameEl.addEventListener("input", refresh);
+  nameEl.addEventListener("keydown", e => { if (e.key === "Enter" && !okBtn.disabled) okBtn.click(); });
+
+  const close = () => { ov.remove(); document.removeEventListener("keydown", onEsc); };
+  const onEsc = e => { if (e.key === "Escape") close(); };
+  document.addEventListener("keydown", onEsc);
+  ov.querySelector(".mv-cancel").onclick = close;
+  ov.querySelector(".mv-x").onclick = close;
+
+  refresh();
+  nameEl.focus(); nameEl.select();
+
+  okBtn.onclick = async () => {
+    const dst = `${srcDir}/${cleanNm(nameEl.value)}.md`;
+    okBtn.disabled = true; okBtn.textContent = "重命名中…";
+    const r = await fetch("/api/move", { method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ src: rel, dst }) });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok || !d.ok) { okBtn.disabled = false; okBtn.textContent = "重命名"; toast("重命名失败：" + (d.error || r.status)); return; }
+    close();
+    toast(`已重命名为 <span class='mono'>${esc(d.dst)}</span> · 索引已级联更新`);
     const movedCur = !!(DOC && DOC.rel === rel);
     await afterMutation();
     if (movedCur) await navigate(docUrl(d.dst), true);
@@ -2459,7 +2514,8 @@ function ctxDocItems(docA) {
     { icon: icon("copy-link"), label: "复制站内链接", fn: () => copyText(location.origin + docUrl(rel.replace(/\.md$/, "")), "已复制站内链接") },
     { icon: icon("copy-path"), label: "复制相对路径", fn: () => copyText(rel, "已复制路径") },
     "-",
-    { icon: icon("swap"), label: "移动 / 重命名…", fn: () => moveDocPrompt(rel) },
+    { icon: icon("move-arrow"), label: "移动到…", fn: () => moveDocPrompt(rel) },
+    { icon: icon("edit-pencil"), label: "重命名…", fn: () => renameDocPrompt(rel) },
     { icon: icon("trash"), label: "删除…", danger: true, fn: async () => {
         const s = findSub(CUR.domain, CUR.sub);
         const d = s && s.docs.find(x => x.name === name);
@@ -2672,7 +2728,8 @@ document.addEventListener("contextmenu", e => {
           if (!r.ok) { toast("读取原文失败：" + r.status); return; }
           copyText(await r.text(), "已复制 Markdown 原文");
         } },
-      { icon: icon("swap"), label: "移动 / 重命名…", fn: () => moveDocPrompt(rel) },
+      { icon: icon("move-arrow"), label: "移动到…", fn: () => moveDocPrompt(rel) },
+      { icon: icon("edit-pencil"), label: "重命名…", fn: () => renameDocPrompt(rel) },
     ]);
   }
 });

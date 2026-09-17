@@ -290,7 +290,7 @@ main.single{display:flex;flex-direction:column}
 /* 目录文档项标题：flex 容器承载「类型图标 + 文字」，文字用内层 span 出省略号
    （block + ellipsis 无法与前置图标共存：图标会被并入文本流导致截断异常） */
 .tree .doc .doc-t{font-size:12px;font-weight:400;line-height:1.5;color:var(--muted);
-  display:flex;align-items:center;gap:5px;min-width:0}
+  display:flex;align-items:center;gap:6px;min-width:0}
 .tree .doc .doc-t > .doc-t-txt{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .tree .doc.active .doc-t{color:var(--c-acc);font-weight:600}
 .tree .doc .doc-meta{margin-top:2px;gap:4px}
@@ -308,7 +308,7 @@ main.single{display:flex;flex-direction:column}
 .tree-subdir{margin:2px 0 2px 14px;padding-left:0;border-left:1px solid var(--c-line)}
 .tree-subdir .tree-subdir{margin-left:12px}
 /* 三级标题内边距与二级 .sub 对齐（5px 9px），保证文字距引导线的距离二三级一致 */
-.tree-subdir-h{display:flex;align-items:center;gap:5px;padding:5px 9px;font:600 10.5px/1.4 var(--f-mono);letter-spacing:.06em;
+.tree-subdir-h{display:flex;align-items:center;gap:6px;padding:5px 9px;font:600 10.5px/1.4 var(--f-mono);letter-spacing:.06em;
   color:var(--faint);text-transform:uppercase;overflow:hidden}
 .tree-subdir-h svg{flex:none;color:var(--c-acc)}
 /* 目录名同样是 flex 里的匿名文本，需包 span 才能出省略号 */
@@ -324,8 +324,8 @@ main.single{display:flex;flex-direction:column}
 .sub-docs.collapsed{display:none}
 /* 目录中的文档项：不再渲染标签 chips（用户要求），改为「文件类型前缀图标」 */
 .doc-t .doc-ic{flex:none;display:inline-flex;align-items:center;justify-content:center;
-  width:14px;height:14px;color:var(--faint);opacity:.9}
-.doc-t .doc-ic svg{width:11px;height:11px}
+  width:16px;height:16px;color:var(--muted);opacity:.92}
+.doc-t .doc-ic svg{width:13px;height:13px}
 .doc.active .doc-ic,.doc:hover .doc-ic{color:var(--c-acc);opacity:1}
 /* 按类型着色：电子书/压缩包/图片 给一点区分度（其余走 faint 中性） */
 .doc-t .doc-ic[title*="EPUB"],.doc-t .doc-ic[title*="电子书"]{color:var(--c-info)}
@@ -345,12 +345,17 @@ main.single{display:flex;flex-direction:column}
 .dom.open .dom-head .dom-glyph{transform:scale(1.04)}
 .dom-glyph{transition:transform var(--dur-1) var(--ease-out)}
 /* 子域链接：去掉 └ 前缀（层级已由缩进+引导线表达），文字超长省略号 */
-.sub{display:flex;align-items:center;gap:7px;padding:5px 9px;border-radius:var(--rd-ctl);cursor:pointer;color:var(--c-ink);font-size:12.5px;font-weight:500;transition:color var(--dur-1),background var(--dur-1);user-select:none}
+.sub{display:flex;align-items:center;gap:6px;padding:5px 9px;border-radius:var(--rd-ctl);cursor:pointer;color:var(--c-ink);font-size:12.5px;font-weight:500;transition:color var(--dur-1),background var(--dur-1);user-select:none}
 .sub:hover{color:var(--c-ink);background:var(--c-sunk)}
 .sub.active{color:var(--c-acc);background:var(--acc-soft);font-weight:600}
 /* 子域文字：flex 容器里的匿名文本节点无法被 text-overflow 截断，
    必须包一层 span 作为 flex item 才能真正出省略号（用户反馈） */
 .sub .sub-t{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* 二级子域前缀图标（文件夹语义）——尺寸/密度与三级、文档图标对齐 */
+.sub .sub-ic{flex:none;display:inline-flex;align-items:center;justify-content:center;
+  width:15px;height:15px;color:var(--muted);opacity:.9}
+.sub:hover .sub-ic{color:var(--c-ink)}
+.sub.active .sub-ic{color:var(--c-acc);opacity:1}
 .sub .n{margin-left:auto;flex:none;font-family:var(--f-mono);font-size:10.5px;color:var(--faint);font-variant-numeric:tabular-nums}
 .tree-foot{flex:none;border-top:1px solid var(--c-line);padding:8px 12px;display:flex;flex-direction:column;gap:6px}
 .tf-row{display:flex;align-items:center;gap:9px;font-size:13px;color:var(--muted);cursor:pointer;padding:4px;border-radius:var(--rd-ctl);transition:color var(--dur-1),background var(--dur-1)}
