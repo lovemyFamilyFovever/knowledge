@@ -67,12 +67,16 @@
     daily.forEach(function (d) { var k = dayNum(d.day); if (isFinite(k) && k > maxDay) maxDay = k; });
     var N = (info && info.days) || maxDay || daily.length || 1;
     var rows = [];
-    for (var i = 0; i < N; i++) rows.push({ day: i + 1, minutes: 0, docs: 0 });
+    for (var i = 0; i < N; i++) rows.push({ day: i + 1, minutes: 0, docs: 0, finished: 0 });
     daily.forEach(function (d, i) {
       var k = dayNum(d.day);
       if (!isFinite(k) || k < 1 || k > N) k = i + 1;   // 无日期字段时退回下标
       var r = rows[k - 1];
-      if (r) { r.minutes += (+d.minutes || 0); r.docs += (+d.docs || 0); }
+      if (r) {
+        r.minutes += (+d.minutes || 0);
+        r.docs += (+d.docs || 0);
+        r.finished += (+d.finished || 0);
+      }
     });
     return { N: N, rows: rows };
   }
@@ -87,54 +91,97 @@
     return c;
   }
 
-  /* ---------- KPI 迷你 sparkline（无坐标轴；无数据不画、不写占位） ---------- */
-  function sparkline(container, values, token) {
-    var max = Math.max.apply(null, values.concat([0]));
-    if (values.length < 2 || !(max > 0)) return false;
+  /* ---------- KPI 迷你柱图（带横轴纵轴 + 逐根生长动效；无序列不画、不写占位） ---------- */
+  function sparkline(container, values, token, series) {
+    if (values.length < 2) return false;
     var color = cssVar(token);
+    var line = cssVar("--c-line"), line2 = cssVar("--c-line2"),
+      faint = cssVar("--faint"), ink = cssVar("--c-ink"), panel = cssVar("--c-panel"),
+      mono = cssVar("--f-mono", "monospace");
+    var presence = !!series.presence;
     var cv = document.createElement("canvas");
     container.appendChild(cv);
     mount(cv, {
-      type: "line",
+      type: "bar",
       data: {
         labels: values.map(function (_, i) { return i + 1; }),
         datasets: [{
           data: values,
-          borderColor: color,
-          borderWidth: 1.6,
-          tension: 0.35,
-          fill: true,
           backgroundColor: function (c) {
-            return fade(color, c.chart.ctx, c.chart.chartArea, 0.16);
+            var v = c.raw;
+            var a = presence ? (v > 0 ? 0.85 : 0.18) : (v > 0 ? 0.85 : 0.3);
+            return withAlpha(color, a);
           },
-          pointRadius: values.map(function (v, i) {
-            return i === values.length - 1 && v > 0 ? 2.4 : 0;
-          }),
-          pointBackgroundColor: color,
-          pointBorderWidth: 0
+          borderRadius: 2,
+          borderSkipped: false,
+          maxBarThickness: 10
         }]
       },
       options: {
         responsive: true,
         maintainAspectRatio: false,
-        animation: ANIM,
-        plugins: { legend: { display: false }, tooltip: { enabled: false } },
-        scales: { x: { display: false }, y: { display: false, beginAtZero: true } }
+        animation: reduced ? false : { duration: 450, easing: "easeOutQuart",
+          delay: function (c) { return c.type === "data" ? c.dataIndex * 12 : 0; } },
+        interaction: { mode: "index", intersect: false },
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            backgroundColor: panel, titleColor: ink, bodyColor: ink,
+            borderColor: line2, borderWidth: 1, padding: 8, displayColors: false,
+            titleFont: { family: mono, size: 10 }, bodyFont: { family: mono, size: 11 },
+            callbacks: {
+              title: function (items) { return "第 " + items[0].label + " 天"; },
+              label: function (it) {
+                if (presence) return it.raw > 0 ? "活跃" : "没读";
+                return series.label(it.raw);
+              }
+            }
+          }
+        },
+        scales: {
+          x: {
+            grid: { display: false },
+            border: { color: line2 },
+            ticks: {
+              color: faint, font: { family: mono, size: 8 }, maxRotation: 0, autoSkip: false,
+              callback: function (_v, i) {
+                var d = i + 1, N = values.length;
+                return (d === 1 || d % 10 === 0 || d === N) ? d : "";
+              }
+            }
+          },
+          y: {
+            beginAtZero: true,
+            grid: { color: withAlpha(line, 0.6), drawTicks: false },
+            border: { display: false },
+            ticks: {
+              color: faint, font: { family: mono, size: 8 }, maxTicksLimit: 3, padding: 4,
+              callback: function (v) { return presence ? (Number(v) >= 1 ? "活跃" : "") : v; }
+            }
+          }
+        }
       }
     });
     return true;
   }
 
   function initSparks() {
-    var minutes = SERIES.rows.map(function (r) { return r.minutes; });
-    var docs = SERIES.rows.map(function (r) { return r.docs; });
-    var presence = SERIES.rows.map(function (r) { return r.minutes > 0 ? 1 : 0; });
-    var map = { minutes: [minutes, "--c-acc"], docs: [docs, "--c-info"], presence: [presence, "--c-acc"] };
+    var rows = SERIES.rows;
+    var minutes = rows.map(function (r) { return r.minutes; });
+    var docs = rows.map(function (r) { return r.docs; });
+    var finished = rows.map(function (r) { return r.finished; });
+    var presence = rows.map(function (r) { return r.minutes > 0 ? 1 : 0; });
+    var map = {
+      minutes: [minutes, "--c-acc", { label: function (v) { return v + " 分钟"; } }],
+      docs: [docs, "--c-info", { label: function (v) { return "打开 " + v + " 篇"; } }],
+      finished: [finished, "--c-ok", { label: function (v) { return "读完 " + v + " 篇"; } }],
+      presence: [presence, "--c-acc", { presence: true }]
+    };
     Array.prototype.forEach.call(document.querySelectorAll("[data-spark]"), function (c) {
       c.textContent = "";                                   // 幂等：重绘前先清空容器
       var cfg = map[c.getAttribute("data-spark")];
       if (!cfg || !window.Chart) return;
-      sparkline(c, cfg[0], cfg[1]);
+      sparkline(c, cfg[0], cfg[1], cfg[2]);
     });
   }
 

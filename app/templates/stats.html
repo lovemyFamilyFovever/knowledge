@@ -57,6 +57,7 @@
             <div class="label"><svg class="i i-12"><use href="#i-check-circle"/></svg>读完文档</div>
             <div class="num"><span data-counter data-count="{{ kpi.finished_docs }}">{{ kpi.finished_docs }}</span><span class="unit">篇</span></div>
             {% if kpi.opened_docs %}<div class="st-ratio"><span class="sbar"><i style="width:{{ (100 * kpi.finished_docs / kpi.opened_docs) | round(0) }}%"></i></span><span class="st-ratio-n">{{ ((100 * kpi.finished_docs / kpi.opened_docs) | round(0)) }}%</span></div>{% endif %}
+            <div class="mini-spark" data-spark="finished" aria-hidden="true"></div>
             <svg class="mascot mascot-corner" viewBox="0 0 48 48" aria-hidden="true">
               <path class="m-book" d="M11 35.5 L24 31.5 L37 35.5 L37 40 L24 36 L11 40 Z"/>
               <path class="m-book-page" d="M11 35.5 L24 31.5 L24 36 L11 40 Z"/>

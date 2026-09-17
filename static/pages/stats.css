@@ -47,8 +47,9 @@
 .kpi-card .delta.down{color:var(--c-danger);background:var(--danger-soft);border:1px solid color-mix(in oklab,var(--c-danger),transparent 55%)}
 .kpi-card .delta.flat{color:var(--faint);border:1px solid var(--c-line)}
 
-/* KPI 迷你图：Chart.js 画在 canvas 上，maintainAspectRatio:false → 高度由容器给 */
-.kpi-card .mini-spark{height:28px;margin-top:10px}
+/* KPI 迷你柱图：Chart.js 画在 canvas 上，maintainAspectRatio:false → 高度由容器给
+   （轴与刻度文字占约 14px，绘图区约 60px） */
+.kpi-card .mini-spark{height:76px;margin-top:12px}
 .kpi-card .mini-spark canvas{display:block}
 
 /* 读完文档占比条（平面 + 结界线） */

@@ -82,7 +82,8 @@ class ReadingStore:
                FROM reading_events WHERE ym=? GROUP BY path
                ORDER BY 4 DESC LIMIT ?""", (ym, limit)).fetchall()
         daily = self.con.execute(
-            """SELECT day, SUM(seconds)/60.0, COUNT(DISTINCT path)
+            """SELECT day, SUM(seconds)/60.0, COUNT(DISTINCT path),
+                      COUNT(DISTINCT CASE WHEN event='finish' THEN path END)
                FROM reading_events WHERE ym=? GROUP BY day ORDER BY day""", (ym,)).fetchall()
         return {
             "ym": ym,
@@ -93,7 +94,7 @@ class ReadingStore:
             "docs": [{"path": d[0], "title": d[1], "opens": int(d[2]),
                       "minutes": round(float(d[3] or 0), 1)} for d in docs],
             "daily": [{"day": d[0], "minutes": round(float(d[1] or 0), 1),
-                       "docs": int(d[2])} for d in daily],
+                       "docs": int(d[2]), "finished": int(d[3])} for d in daily],
         }
 
     def recent_days(self, n: int = 7) -> list[dict]:
