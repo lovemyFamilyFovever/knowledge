@@ -1549,7 +1549,20 @@ async function saveDoc() {
   }
   const r = await fetch("/api/save", { method: "POST", headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ path: DOC.rel, content: text }) });
-  if (!r.ok) { toast("保存失败：" + (await r.text()).slice(0, 120)); return false; }
+  /* Story 3：失败路径取人话错误。后端正常时回 JSON {error}；若被反代/框架拦成
+     非 JSON（如 502 HTML），回退到截断纯文本，不让用户看到一坨标签。 */
+  if (!r.ok) {
+    let msg = "";
+    try {
+      const j = await r.json();
+      msg = (j && (j.error || j.detail)) || "";
+    } catch (e) {
+      msg = (await r.text().catch(() => "")).replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim().slice(0, 120);
+    }
+    toast(`保存失败：${msg || ("HTTP " + r.status)}`);
+    return false;
+  }
+  const saveRes = await r.json().catch(() => ({}));
   /* 注意：JS 正则不支持 \A（那会被当成字面字母 A，导致永远匹配失败）——
      曾因这里写成 \A，保存后本地 DOC.md 被错误地存成「含 frontmatter 的全文」，
      下次打开编辑器就拼出双 frontmatter 落盘。JS 里文本开头用 ^（无 m 标志时）。 */
@@ -1586,7 +1599,14 @@ async function saveDoc() {
     setTimeout(() => location.reload(), 600);
     return true;
   }
-  toast(`已写回 <span class="mono">${esc(DOC.rel)}</span> · 索引已更新 · git 可 diff`);
+  /* Story 3：成功反馈明确区分「frontmatter 如何处理」，让用户不必再开 git diff
+     确认身世元数据没被改坏。三种状态由 /api/save 的 fm_status 回报。 */
+  const fmNote = {
+    preserved: "frontmatter 完好",
+    recovered: "frontmatter 已找回",
+    stamped: "已补 frontmatter",
+  }[saveRes.fm_status] || "frontmatter 完好";
+  toast(`已写回 <span class="mono">${esc(DOC.rel)}</span> · ${fmNote} · 索引已更新`);
   return true;
 }const edText = $("#ed-text");
 if (edText) edText.onkeydown = e => {

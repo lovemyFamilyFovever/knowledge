@@ -47,29 +47,43 @@ def api_save():
         body += "\n"
     # 目录不存在时先创建（API 直写新路径不再 500 FileNotFoundError；
     # mkdir 仅允许落在 content/ 内，_safe_rel 已保证路径合法）
-    p.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        p.parent.mkdir(parents=True, exist_ok=True)
+    except OSError as e:
+        return jsonify({"ok": False, "error": f"目录创建失败：{e.strerror or e}"}), 500
     # 新文档（如 Obsidian 里直接创建）没有 frontmatter：首次保存时补齐身世信息；
     # 已有 frontmatter 的原文照写，不做任何改写。
     # B6 修复：编辑器里全选删除正文再保存，body 不含 fm —— 旧逻辑直接落 stamp，
     # 把原文档的 title/tags/source/collected 全部抹掉。现在先尝试从磁盘原文件
     # 找回 frontmatter 块补回头部；找不回（新文件/原文件本就无 fm）才补 stamp。
+    # Story 3：把「fm 如何处理」作为 fm_status 回报前端，让保存反馈能明确告知
+    # 用户身世元数据是否完好（而非笼统说“已保存”）。
     fm, _ = parse_frontmatter(body)
-    if not fm:
+    if fm:
+        fm_status = "preserved"       # 正文自带 fm，原样落盘
+    else:
         merged = store.prepend_original_fm(p, body)
         if merged is not None:
             body = merged
             fm, _ = parse_frontmatter(body)
+            fm_status = "recovered"   # B6：从磁盘原文件找回被清空的 fm
         else:
             stamp = {
                 "title": p.stem, "tags": [], "source": "reader-edit",
                 "collected": time.strftime("%Y-%m-%d"), "status": "stable",
             }
             body = store.dump_frontmatter(stamp, body)
-    p.write_text(body, encoding="utf-8")
+            fm_status = "stamped"     # 全新文档，补一份身世信息
+    # Story 3：写盘失败给人话 JSON 错误（旧逻辑裸抛 OSError → Flask 默认 500 HTML
+    # 页，前端 toast 只能截到一段 HTML 标签）。
+    try:
+        p.write_text(body, encoding="utf-8")
+    except OSError as e:
+        return jsonify({"ok": False, "error": f"写入失败：{e.strerror or e}（文件可能被占用或只读）"}), 500
     # 外科手术式索引更新：仅替换本文档的正文与双链行（毫秒级，避免全量重建的等待）
     rel_posix = p.relative_to(content.resolve()).as_posix()
     upsert_doc_in_index(indexes, rel_posix, p, body)
-    return jsonify({"ok": True, "path": rel_posix})
+    return jsonify({"ok": True, "path": rel_posix, "fm_status": fm_status})
 
 
 @edit_bp.post("/api/note")
