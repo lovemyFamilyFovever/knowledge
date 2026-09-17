@@ -292,9 +292,12 @@ main.single{display:flex;flex-direction:column}
 .tree .doc .doc-meta{margin-top:2px;gap:4px}
 .tree .doc .mini{padding:.5px 5px;font-size:9px}
 .tree .doc.in-subdir{margin-left:calc(10px * var(--deep, 1))}
-.tree-subdir{margin:2px 0 2px 8px;padding-left:8px;border-left:1px dashed var(--c-line)}
-.tree-subdir .tree-subdir{margin-left:10px}
-.tree-subdir-h{display:flex;align-items:center;gap:5px;padding:3px 6px;font:600 10.5px/1.4 var(--f-mono);letter-spacing:.06em;
+/* 三级（多层）目录：缩进与引导线与二级统一 —— padding-left 归零、缩进交给 margin、
+   引导线同款实线（原先三级是 dashed 虚线 + 8px padding，与二级不一致） */
+.tree-subdir{margin:2px 0 2px 14px;padding-left:0;border-left:1px solid var(--c-line)}
+.tree-subdir .tree-subdir{margin-left:12px}
+/* 三级标题内边距与二级 .sub 对齐（5px 9px），保证文字距引导线的距离二三级一致 */
+.tree-subdir-h{display:flex;align-items:center;gap:5px;padding:5px 9px;font:600 10.5px/1.4 var(--f-mono);letter-spacing:.06em;
   color:var(--faint);text-transform:uppercase;overflow:hidden}
 .tree-subdir-h svg{flex:none;color:var(--c-acc)}
 /* 目录名同样是 flex 里的匿名文本，需包 span 才能出省略号 */
