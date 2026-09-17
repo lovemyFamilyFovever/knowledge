@@ -26,7 +26,7 @@
   需压缩/镜像到另一块盘。
 - [ ] **本机开发护栏启用**（2026-09-09 审读新增，用户指示放最后）：
   `git config core.hooksPath .githooks`（恢复 pre-commit 测试护栏）；
-  如需语义检索再补装 `requirements-rag.txt` 并首跑拉取模型。
+  如需语义检索再补装 `requirements/requirements-rag.txt` 并首跑拉取模型。
 
 ## 已完成
 

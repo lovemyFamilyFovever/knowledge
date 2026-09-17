@@ -2,7 +2,7 @@
 """知库语义检索（RAG）smoke tests — 临时语料 + 微型模型桩，不碰真实 content/。
 
 运行：.python\\python.exe tests/test_rag.py
-（需要 .python 运行时与 requirements-rag.txt 依赖；缺失时打印 SKIP 并通过）
+（需要 .python 运行时与 requirements/requirements-rag.txt 依赖；缺失时打印 SKIP 并通过）
 
 断言一个用户可见行为：语义检索按「意思」而非「字面」找到正确文档。
 """

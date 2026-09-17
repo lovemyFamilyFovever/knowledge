@@ -30,9 +30,9 @@ rem ---- first-run convenience: install core deps only when flask is missing ---
 %PY% -c "import flask" >nul 2>&1
 if errorlevel 1 (
     echo Installing dependencies ...
-    %PY% -m pip install -r requirements.txt -q
+    %PY% -m pip install -r requirements\requirements.txt -q
     if errorlevel 1 (
-        echo [!] Dependency install failed. Check your network, or run: %PY% -m pip install -r requirements.txt
+        echo [!] Dependency install failed. Check your network, or run: %PY% -m pip install -r requirements\requirements.txt
         pause
         exit /b 1
     )
@@ -53,7 +53,7 @@ rem ---- semantic search probe (non-blocking) ----
 %PY% -c "import onnxruntime" >nul 2>&1
 if errorlevel 1 (
     echo [i] Semantic search deps missing - reader works, "?" semantic search disabled.
-    echo     Enable it later:  %PY% -m pip install -r requirements-rag.txt
+    echo     Enable it later:  %PY% -m pip install -r requirements\requirements-rag.txt
 ) else (
     echo [i] Semantic search ready.
 )

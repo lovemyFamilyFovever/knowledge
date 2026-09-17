@@ -96,7 +96,7 @@ start.bat --dev     # 开发模式（py / 模板改动自动热重载）
 
 - 搜索框输入 `? 如何排查 CSRF 403` —— `?` 前缀走语义模式（按意思找，不挑字面）
 - 命令行 / Agent 入口：`python scripts/rag_search.py "查询" --json -k 8`
-- 运行时：`pip install -r requirements-rag.txt`
+- 运行时：`pip install -r requirements/requirements-rag.txt`
   （依赖 `numpy` + `onnxruntime` + `sqlite-vec`，合计约 52 MB 下载 / 约 130 MB 磁盘；
   首次运行自动从 hf-mirror 下载 `bge-small-zh-v1.5` 模型约 24MB 至 `app/rag_models/`，之后完全离线）
 - 依赖缺失时阅读器自动降级纯 FTS，其余功能不受影响
