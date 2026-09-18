@@ -79,7 +79,7 @@ RAG 的能力随范式分三级演进：
 
 ## 面试速答
 
-> 🎯 RAG 有三级演进：Naive（索引 + 检索 + 拼 Prompt 生成，易落地但受检索牵制）→ Advanced（HyDE / Multi-Query 改写、Re-ranking、Sentence Window、Parent-Child 系统性提质）→ Graph RAG（并入知识图谱做多跳实体关系）。评估分两侧：检索看 Recall@K / NDCG，生成看 Context Precision/Recall、Faithfulness（忠于上下文防幻觉）、Answer Relevancy。与微调取舍：更新知识、要溯源选 RAG，改风格格式选微调。
+> 🎯 RAG 有三级演进：Naive（索引 + 检索 + 拼 Prompt 生成，易落地但受检索牵制）→ Advanced（HyDE/Multi-Query 改写、Re-ranking、Parent-Child 提质）→ Graph RAG（并入知识图谱做多跳）。更新知识要溯源选 RAG，改风格格式选微调。
 > 🔍 追问：Faithfulness 和 Context Precision 有何不同？（前者查"回答是否忠于给定上下文"，后者查"检回文档的相关比例"）
 > 🔍 追问：什么时候该上 Graph RAG？（需要多跳 / 实体关系推理时，如"A 创始人的母校"，纯向量难以召回）
 

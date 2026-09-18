@@ -72,7 +72,7 @@ Server 侧用装饰器把函数注册为工具、把文件/文档注册为资源
 
 ## 面试速答
 
-> 🎯 MCP 是 Anthropic 提出的开放协议（基于 JSON-RPC 2.0，可走 stdio/SSE/HTTP）：把 LLM 应用当 Client、工具与数据提供方当 Server，Server 一次性暴露 Tools / Resources / Prompts，Client 运行时 list_tools 发现、call_tool 调用、read_resource 读取。相比各家 Function Calling，它主打标准化、可发现与跨平台互操作，正成为工具连接的事实标准；代价是较新、需治理接入信任与权限。
+> 🎯 MCP 是 Anthropic 提出的开放协议（基于 JSON-RPC 2.0，可走 stdio/HTTP）：把 LLM 应用当 Client、工具与数据方当 Server，Server 一次性暴露 Tools/Resources/Prompts，Client 运行时 list_tools 发现、call_tool 调用。
 > 🔍 追问：MCP 和 Function Calling 什么关系？（互补：FC 是模型选函数的能力，MCP 是工具如何标准化暴露 / 发现的协议层）
 > 🔍 追问：MCP 除了工具还提供什么原语？（Resources 可读资源、Prompts 模板，且支持运行时订阅）
 

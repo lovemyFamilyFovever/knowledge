@@ -72,7 +72,7 @@ RNN 串行、长程依赖弱、难并行。Transformer 让任意两个 token 通
 
 ## 面试速答
 
-> 🎯 Transformer（2017《Attention Is All You Need》）用自注意力取代循环：`Attention(Q,K,V)=softmax(QK^T/√d_k)·V`，让任意 token 一步交互、整层并行，再叠多头（不同子空间）、位置编码（正弦 / 可学习 / RoPE / ALiBi）、FFN（中间 4×d_model）与 Add&Norm 残差堆成 encoder-decoder；现代 LLM 多用 decoder-only。强在长程与 scaling，代价是自注意力 O(n²·d) 对长序列昂贵。
+> 🎯 Transformer（2017 起）用自注意力取代循环：Attention(Q,K,V)=softmax(QK^T/√d_k)·V，任意 token 一步交互、整层并行，再叠多头、位置编码、FFN 与 Add&Norm 残差堆成 encoder-decoder。强在长程与 scaling，代价是 O(n²·d)。
 > 🔍 追问：为什么要点积除以 √d_k？（QK 点积随维度方差变大，缩放把 softmax 拉回梯度友好区间）
 > 🔍 追问：多头相比单头的好处？（在不同表示子空间并行关注不同关系，拼接后表达更丰富）
 

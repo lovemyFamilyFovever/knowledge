@@ -81,7 +81,7 @@ Task 用 description 与 expected_output 定义工作单并指派 agent；Crew �
 
 ## 面试速答
 
-> 🎯 CrewAI 用"角色扮演"把多 Agent 协作组件化：Agent 靠 role/goal/backstory 定人设并挂工具，Task 是带预期输出的工作单，Crew 按 Sequential 或 Hierarchical 把角色与任务编排起来 kickoff。适合天然能拆成专家流水线的任务；代价是抽象较深、精细图级控制不如 LangGraph。
+> 🎯 CrewAI 用"角色扮演"把多 Agent 协作组件化：Agent 靠 role/goal/backstory 定人设并挂工具，Task 是带预期输出的工作单，Crew 按 Sequential 或 Hierarchical 编排后 kickoff。代价是抽象较深、图级控制不如 LangGraph。
 > 🔍 追问：Sequential 与 Hierarchical 有何区别？（前者按序执行任务，后者由 Manager Agent 动态分派协调）
 > 🔍 追问：Agent 的 backstory 起什么作用？（提供角色背景与风格，影响其决策口吻与专业视角）
 

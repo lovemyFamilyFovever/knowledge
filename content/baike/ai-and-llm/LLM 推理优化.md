@@ -78,7 +78,7 @@ status: "imported"
 
 ## 面试速答
 
-> 🎯 LLM 推理优化压延迟与显存：KV Cache 让自回归从 O(n^2)→O(n)，FlashAttention 分块减 HBM 访问（约 2-4x、省显存 5-20x），量化（GPTQ/AWQ/FP8）降位宽省显存提速，投机解码用小模型草拟、大模型并行验证（无损 2-3x），vLLM 的 PagedAttention 分页管 KV Cache 提并发（2-4x）。多数近无损、可叠加。
+> 🎯 LLM 推理优化压延迟与显存：KV Cache 让自回归从 O(n^2) 降到 O(n)，FlashAttention 分块减 HBM 访问，量化（GPTQ/AWQ/FP8）降位宽省显存提速，投机解码用小模型草拟、大模型并行验证，vLLM 的 PagedAttention 分页管 KV Cache 提并发。多数近无损且可叠加。
 > 🔍 追问：投机解码为什么不掉质量？（大模型对草稿 token 做拒绝采样式验证，接受的分布与纯大模型一致）
 > 🔍 追问：量化主要省什么、有何代价？（省显存与访存带宽、提吞吐；过低比特会掉精度）
 

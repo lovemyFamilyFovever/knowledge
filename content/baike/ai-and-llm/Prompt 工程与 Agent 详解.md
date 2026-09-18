@@ -77,7 +77,7 @@ flowchart LR
 
 ## 面试速答
 
-> 🎯 这张地图分两半：提示工程管"怎么问"——用 RCIEF（角色/上下文/指令/示例/格式）、System Prompt、模板与 JSON Mode，配合 Few-shot、CoT、ToT 把措辞调到位；Agent 管"怎么干"——规划、ReAct、工具调用、记忆、多智能体协作。写好 prompt 只是第一步，Agent 还引入自主控制流与外部工具，两者互补构成大模型应用全貌。
+> 🎯 这张地图分两半：提示工程管"怎么问"——用 RCIEF（角色/上下文/指令/示例/格式）、System Prompt 与 JSON Mode，配合 Few-shot、CoT、ToT 把措辞调到位；写好 prompt 只是第一步，Agent 还引入自主控制流与外部工具，两者互补。
 > 🔍 追问：Few-shot 与微调的本质区别？（Few-shot 临时给例、不改权重、随会话失效；微调把能力内化进权重）
 > 🔍 追问：提示工程与 Agent 的分界在哪？（前者优化单条输入输出，后者加入规划 / 工具 / 记忆形成自主控制流）
 

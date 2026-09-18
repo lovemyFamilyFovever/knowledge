@@ -79,7 +79,7 @@ status: "imported"
 
 ## 面试速答
 
-> 🎯 Function Calling 让模型从"会说"到"会调"：你给工具清单（name/description + JSON Schema 参数），模型判断需要时不直接答、而返回 tool_calls（函数名 + JSON 参数），应用侧执行后以 role=tool 回填结果，模型再生成最终答复。关键是模型只决定"调什么 + 传什么"，真正执行与权限在应用侧；OpenAI 与 Anthropic 字段名不同但流程一致。
+> 🎯 Function Calling 让模型从"会说"到"会调"：给工具清单（name/description + JSON Schema），模型判断需要时不直接答、而返回 tool_calls，应用侧执行后以 role=tool 回填，模型再生成最终答复。关键是模型只决定调什么、传什么，真正执行与权限在应用侧。
 > 🔍 追问：为什么执行不放进模型里？（模型不真跑代码/请求，执行与鉴权由应用侧掌控，安全可控）
 > 🔍 追问：工具描述为什么重要？（模型靠 description / 参数 Schema 来选函数、填参数，含糊就会选错或漏必填）
 

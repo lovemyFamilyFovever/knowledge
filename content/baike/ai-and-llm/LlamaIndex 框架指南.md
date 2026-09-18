@@ -76,7 +76,7 @@ status: "imported"
 
 ## 面试速答
 
-> 🎯 LlamaIndex 把 RAG 整条链路标准化：SimpleDirectoryReader 连数据 → Document/Node 切块 → VectorStoreIndex 等索引 → Retriever 检索 → Query / Chat Engine 问答（可设 similarity_top_k、response_mode=tree_summarize、chat_mode=context）。它是"把私有数据接进大模型"的首选，RAG 强、通用 Agent 编排弱于 LangChain，二者常搭配。
+> 🎯 LlamaIndex 把 RAG 整条链路标准化：SimpleDirectoryReader 连数据 → Document/Node 切块 → VectorStoreIndex 建索引 → Retriever 检索 → Query/Chat Engine 问答。
 > 🔍 追问：四种索引各适合什么？（向量做语义搜索、Summary 做全文摘要、Tree 做多级摘要、Keyword 做精确匹配）
 > 🔍 追问：query engine 与 chat engine 区别？（前者单轮问答，后者用 chat_mode 保持多轮上下文）
 

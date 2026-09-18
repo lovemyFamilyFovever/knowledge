@@ -81,7 +81,7 @@ result = chain.invoke({'concept': '向量数据库'})
 
 ## 面试速答
 
-> 🎯 LangChain 把 LLM 应用拆成可组合模块：Models / Prompts / Chains / Agents / Tools / Memory / Retrievers / Parsers。核心是 LCEL——用 `prompt | llm | parser` 管道统一 invoke/stream/batch，换供应商只改一处。Agent 靠 AgentExecutor（设 max_iterations 防死循环、handle_parsing_errors 兜底），RAG 走 loader→splitter→向量库→RetrievalQA。优点是生态大、可插拔；代价是抽象厚、版本迭代快。
+> 🎯 LangChain 把 LLM 应用拆成可组合模块：Models/Prompts/Chains/Agents/Tools/Memory/Retrievers。核心是 LCEL——用 prompt | llm | parser 管道统一 invoke/stream/batch，换供应商只改一处。代价是抽象厚、版本迭代快。
 > 🔍 追问：LCEL 相比旧 Chain 类的好处？（统一调用/流式/批处理/并行接口，组合与复用更一致）
 > 🔍 追问：为什么 Agent 要设 max_iterations？（LLM 可能反复调工具不收敛，需上限兜底防死循环）
 

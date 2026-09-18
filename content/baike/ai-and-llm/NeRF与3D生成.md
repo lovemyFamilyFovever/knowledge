@@ -63,7 +63,7 @@ status: "imported"
 
 ## 面试速答
 
-> 🎯 神经 3D 有两条主线：NeRF 用隐式神经辐射场把 `(x,y,z,θ,φ)`→`(r,g,b,σ)`、以体渲染从多视角照片重建可自由转视角的连续场景（质量高但慢）；3D Gaussian Splatting 用显式高斯基元 + 可微光栅化，快约 100 倍、可 >30FPS 实时但吃显存。文生 3D（DreamFusion 的 SDS、Point-E / Shap-E / Instant3D）则借 2D 扩散先验蒸馏出 3D 资产。
+> 🎯 神经 3D 有两条主线：NeRF 用隐式神经辐射场把 (x,y,z,θ,φ)→(r,g,b,σ)、以体渲染从多视角照片重建可自由转视角的连续场景（质量高但慢）；文生 3D（DreamFusion 的 SDS）则借 2D 扩散先验蒸馏出 3D。
 > 🔍 追问：NeRF 慢在哪、3DGS 为何快？（NeRF 每条射线都要网络采样 + 体积分；3DGS 用高斯泼溅 + 光栅化，渲染近实时）
 > 🔍 追问：DreamFusion 没有 3D 标注怎么学 3D？（用 2D 扩散先验构造分数蒸馏损失 SDS 反向优化一个 NeRF）
 

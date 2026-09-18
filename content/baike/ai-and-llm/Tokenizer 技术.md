@@ -72,7 +72,7 @@ status: "imported"
 
 ## 面试速答
 
-> 🎯 Tokenizer 把文本切成词表里的 token 再映射成 ID，是模型"看"文本的第一步。主流是子词法：BPE（GPT）从字符起反复合并最高频相邻对，WordPiece（BERT）按最大似然选子词，SentencePiece / Unigram（Llama / T5）语言无关、利于多语。中文没空格、歧义切分、新词多，英文为主的小词表会 token 爆炸、成本高，故 Qwen（152K）等对中文更省。选 tokenizer 要在覆盖（词表大）与成本（embedding / 序列长）间权衡，且它是 Embedding 的上游。
+> 🎯 Tokenizer 把文本切成词表里的 token 再映射成 ID，是模型"看"文本的第一步。主流子词法：BPE（GPT）反复合并最高频相邻对，WordPiece（BERT）按似然选子词，SentencePiece 语言无关。中文无空格，英文为主的小词表会 token 爆炸，故 Qwen 等大词表对中文更省。
 > 🔍 追问：为什么中文常比英文更耗 token？（很多词表以英文为主，中文被切成单字甚至字节，序列更长）
 > 🔍 追问：词表变大有什么代价？（embedding 与输出层参数随之增加，显存 / 计算上升，并非越大越优）
 
