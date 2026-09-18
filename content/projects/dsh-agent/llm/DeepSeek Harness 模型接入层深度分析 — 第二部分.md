@@ -26,8 +26,8 @@ SDK 客户端分为两层：
 
 `NotificationSubscriptionImpl` 实现了生产者-消费者模式：
 - `push(notification)` — 过滤匹配后推送给等待者或入队
-- `next()` — 从队列取或注册等待者
-- `tryNext()` — 非阻塞出队
+- `next()` — 从队列取或注册等待者（异步）
+- `tryNext()` — 非阻塞出队，无则返回 `undefined`
 - `close()` — 断开并丢弃队列
 - `fail(error)` — 终端失败，拒绝待处理的等待者
 
@@ -63,9 +63,9 @@ console.log(result.finalResponse)
 **SDK 客户端层的错误处理**：
 
 三种错误类型：
-- `TransportClosedError` — 子进程死亡或不可用，消息包含退出码和 stderr 尾部
-- `RequestTimeoutError` — 请求超时，超时后放弃（abandon）而非取消
-- `SdkProtocolError` — 运行时返回协议外的响应
+- `TransportClosedError` — 子进程死亡或不可用（退出码 + stderr 尾部）
+- `RequestTimeoutError` — 请求超时（方法名 + 超时时间），超时后放弃（abandon）而非取消
+- `SdkProtocolError` — 运行时返回协议外的响应（协议违规描述）
 
 **请求超时机制**：
 - 可配置的 `requestTimeoutMs`
@@ -76,10 +76,20 @@ console.log(result.finalResponse)
 
 `llm-retry` 插件安装在 `agent/request-error` waterfall 上，实现 provider 路由的请求恢复。两种重试模式：
 
-- **normal** — 仅重试配置的瞬态失败码，默认最多 5 次
-- **always** — 重试所有失败，直到成功、取消或处置
+- **normal** — 仅重试配置的瞬态失败码，默认最多 5 次（可重试 `EMPTY_RESPONSE` / `RATE_LIMIT` / `SERVER` / `TIMEOUT` / `TRANSPORT`）
+- **always** — 重试所有失败，直到成功、取消或处置，无次数限制
 
-重试延迟采用**有界指数退避 + 对称抖动**。默认可重试错误码：`EMPTY_RESPONSE`、`RATE_LIMIT`、`SERVER`、`TIMEOUT`、`TRANSPORT`。
+重试延迟采用**有界指数退避 + 对称抖动**：
+
+```typescript
+function localDelay(config, retry, random) {
+  const exponential = Math.min(initialDelayMs * 2^(retry-1), maxDelayMs)
+  const jitter = 1 - jitterRatio + 2 * jitterRatio * random()
+  return Math.min(exponential * jitter, maxDelayMs)
+}
+```
+
+默认可重试错误码：`EMPTY_RESPONSE`、`RATE_LIMIT`、`SERVER`、`TIMEOUT`、`TRANSPORT`。
 
 关键设计决策：
 - 重试前先持久化 `llm/retry` 事件，再等待延迟，确保可恢复性
@@ -98,20 +108,20 @@ const upstream = options.signal === undefined
 using watchdog = idleWatchdog(upstream, timeoutMs, 'LLM_STREAM_IDLE_TIMEOUT')
 ```
 
-三层信号：
-1. `options.signal` — 调用者取消
-2. `consumer.signal` — 消费者停止消费
-3. `watchdog.signal` — 空闲超时
+三层信号（信号层 / 来源 / 语义）：
+1. `options.signal` — 调用者 — 外部取消请求
+2. `consumer.signal` — 消费者 — 消费停止
+3. `watchdog.signal` — 空闲看门狗 — 流空闲超时
 
 **子进程处置梯子**（`sdk/client/src/dispose.ts`）：
 
 ```
-stdin EOF（合作式退出，等待 disposeEofGraceMs）
-  → SIGTERM（POSIX 优雅终止，等待 disposeGraceMs）
-    → SIGKILL（强制终止，等待 disposeGraceMs）
+stdin EOF（合作式退出，等待 disposeEofGraceMs，默认 6s）
+  → SIGTERM（POSIX 优雅终止，等待 disposeGraceMs，默认 3s）
+    → SIGKILL（强制终止，等待 disposeGraceMs，默认 3s）
 ```
 
-Windows 平台跳过 SIGTERM，直接使用强制终止。
+Windows 平台跳过 SIGTERM（Node 将其映射为 TerminateProcess），直接使用强制终止。每个阶段都有定时器和退出监听器的清理，避免监听器累积。
 
 ---
 
@@ -144,7 +154,7 @@ Windows 平台跳过 SIGTERM，直接使用强制终止。
 - DeepSeek 适配器：通过 `ctx.credentials` 解析 `CredentialRef`，或从 launch environment 获取
 - Pi-AI 适配器：支持三种认证路径——harbor credentials seam、环境变量、pi-ai 自身的 ambient discovery
 
-**凭据引用机制**（`CredentialRef`）：配置中只存储引用名称（如 `DEEPSEEK_API_KEY`），实际密钥在每次请求时解析。
+**凭据引用机制**（`CredentialRef`）：配置中只存储引用名称（如 `DEEPSEEK_API_KEY`），实际密钥在每次请求时解析。这确保了密钥不会暴露在配置文件中、密钥变更立即生效、一个请求的端点和密钥来自同一代配置。
 
 ### 5.3 请求验证
 
@@ -165,6 +175,9 @@ Windows 平台跳过 SIGTERM，直接使用强制终止。
 Error
   └── HarnessError — 稳定的机器路由 code + cause 链
         └── LlmError — LLM 相关失败，携带 LlmFailure 序列化数据
+              ├── status?: number (100-599)
+              ├── providerRetryAfterMs?: number
+              └── requestId?: ProviderRequestId
 
 Error
   └── TransportClosedError — 子进程死亡
@@ -176,25 +189,25 @@ Error
 
 ### 6.2 错误码定义
 
-| 错误码 | 含义 | 可重试 |
-|--------|------|--------|
-| `AUTH` | 认证失败 (401/403) | 否 |
-| `RATE_LIMIT` | 速率限制 (429) | 是 |
-| `SERVER` | 服务端错误 (5xx) | 是 |
-| `TIMEOUT` | 超时 | 是 |
-| `TRANSPORT` | 传输层失败 | 是 |
-| `INVALID_REQUEST` | 请求无效 (400/413) | 否 |
-| `CONTEXT_WINDOW_EXCEEDED` | 上下文窗口超限 | 否 |
-| `QUOTA` | 配额/余额耗尽 | 否 |
-| `EMPTY_RESPONSE` | 空响应 | 是 |
-| `INVALID_CREDENTIAL` | 凭据格式错误 | 否 |
-| `MISSING_CREDENTIAL` | 缺少凭据 | 否 |
-| `ABORTED` | 调用者取消 | 否 |
-| `STREAM_CLOSED` | 流未正常终止 | 是 |
-| `NO_ADAPTER` | 无适配器注册 | 否 |
-| `DUPLICATE_ADAPTER` | 路由冲突 | 否 |
-| `UNSUPPORTED_REASONING_EFFORT` | 不支持的推理级别 | 否 |
-| `UNSUPPORTED_CONTENT` | 不支持的内容类型 | 否 |
+| 错误码 | 含义 | 可重试 | 来源 |
+|--------|------|--------|------|
+| `AUTH` | 认证失败 (401/403) | 否 | HTTP 状态码 |
+| `RATE_LIMIT` | 速率限制 (429) | 是 | HTTP 状态码 |
+| `SERVER` | 服务端错误 (5xx) | 是 | HTTP 状态码 |
+| `TIMEOUT` | 超时 | 是 | 空闲看门狗 |
+| `TRANSPORT` | 传输层失败 | 是 | fetch / 网络错误 |
+| `INVALID_REQUEST` | 请求无效 (400/413) | 否 | HTTP 状态码 |
+| `CONTEXT_WINDOW_EXCEEDED` | 上下文窗口超限 | 否 | 正则匹配 provider 错误 |
+| `QUOTA` | 配额/余额耗尽 | 否 | 正则匹配 provider 错误 |
+| `EMPTY_RESPONSE` | 空响应 | 是 | 翻译层检测 |
+| `INVALID_CREDENTIAL` | 凭据格式错误 | 否 | API key 验证 |
+| `MISSING_CREDENTIAL` | 缺少凭据 | 否 | 凭据解析 |
+| `ABORTED` | 调用者取消 | 否 | `AbortSignal` |
+| `STREAM_CLOSED` | 流未正常终止 | 是 | SSE EOF 无 [DONE] |
+| `NO_ADAPTER` | 无适配器注册 | 否 | 注册表查询 |
+| `DUPLICATE_ADAPTER` | 路由冲突 | 否 | 注册时检测 |
+| `UNSUPPORTED_REASONING_EFFORT` | 不支持的推理级别 | 否 | 能力验证 |
+| `UNSUPPORTED_CONTENT` | 不支持的内容类型 | 否 | 模态检查 |
 
 ### 6.3 错误恢复策略
 
@@ -206,10 +219,13 @@ Error
 3. 验证 failure 结构的完整性
 4. 只信任 Harness 拥有的 code，第三方 SDK code 不进入分类
 
-**上下文窗口检测**（`error.ts`）：`isContextWindowExceededError` 通过正则匹配多种 provider 错误措辞，包括结构化上下文溢出、请求过大措辞、超限措辞等。
+**上下文窗口检测**（`error.ts`）：`isContextWindowExceededError` 通过正则匹配多种 provider 错误措辞：
+- 结构化上下文溢出（`context_length_exceeded`、`context_window_overflow`）
+- 请求过大措辞（`request too large for context window`）
+- 超限措辞（`input exceeds model context`）
 
 **配额检测**（`error.ts`）：`isQuotaExceededError` 匹配 `insufficient_quota`、`quota_exceeded`、`balance_depleted`、`out_of_credits` 等。
 
-**文件 ID 过期恢复**（DeepSeek adapter）：当 provider 拒绝一个文件 ID 时，adapter 使失效的文件映射，最多重试一次（重新上传后重发）。
+**文件 ID 过期恢复**（DeepSeek adapter）：当 provider 拒绝一个文件 ID（过期/删除/无效）时，adapter 使失效的文件映射，最多重试一次（重新上传后重发）。如果再次失败或 provider 拒绝规范化图片，产生详细诊断。
 
 **Pi-AI 错误分类**（`stream.ts`）：由于 pi-ai 扁平化了原始 Error，适配器通过模式匹配分类，涵盖 AUTH、QUOTA、RATE_LIMIT、INVALID_REQUEST、SERVER、TIMEOUT、TRANSPORT 等。

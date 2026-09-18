@@ -27,17 +27,26 @@ DeepSeek 适配器直接实现了 OpenAI Chat Completions API 的有线格式（
 - `thinking: { type: 'enabled' | 'disabled' }` — 思维模式开关（顶层，非 extra_body）
 - `reasoning_effort: 'low' | 'high' | 'max'` — 推理努力级别
 - `reasoning_content` — assistant 历史消息中的 CoT 回传
-- `file` 类型内容部分 — Files API 引用
+- `file` 类型内容部分（user content part）— Files API 引用（`file_id`）
 
 **SSE 格式**：
 - 标准 OpenAI SSE 格式（`data: {...}\n\n`）
 - `[DONE]` 终止符
-- finish_reason 映射：`stop` → stop、`tool_calls` → tool-calls、`length` → max-tokens
 
-**Token 使用量**：
-- `prompt_tokens` 包含缓存命中（需减去 `prompt_cache_hit_tokens`）
-- `prompt_tokens_details.cached_tokens` — OpenAI 兼容拼写
-- `completion_tokens_details.reasoning_tokens` — 推理 token
+**SSE 格式映射**（Wire finish_reason → Harness FinishReason）：
+
+| Wire finish_reason | Harness FinishReason | 说明 |
+| --- | --- | --- |
+| `stop` | `{ kind: 'stop' }` | 正常完成 |
+| `tool_calls` | `{ kind: 'tool-calls' }` | 请求工具调用 |
+| `length` | `{ kind: 'max-tokens' }` | 达到输出上限 |
+| 其他（content_filter 等） | `{ kind: 'error', ... }` | 上大写值作为错误码 |
+
+**Token 使用量转换**：DeepSeek 的 `prompt_tokens` 包含缓存命中，Harness 在 `translate.ts` 的 `mapUsage` 中做减法：
+
+```
+inputTokens = prompt_tokens - (prompt_cache_hit_tokens ?? 0)
+```
 
 ### 7.2 Anthropic API 兼容性
 
@@ -49,7 +58,7 @@ Anthropic 支持通过 pi-ai 适配器实现，pi-ai 库内部处理 Anthropic M
 
 ### 7.3 自定义 Provider 的扩展方式
 
-**方式一：通过 pi-ai 手动声明路由**
+**方式一：pi-ai 手动声明路由**
 
 ```yaml
 providers:
@@ -121,13 +130,24 @@ DeepSeek 的 `prompt_tokens` 包含缓存命中，Harness 在 `translate.ts` 的
 
 **文件上传复用**（DeepSeek）：`DeepSeekFileStore` 维护已上传文件的索引，在 `fileRefreshMarginSeconds`（默认 1 小时）内复用。配额耗尽时清理最旧的 harness 拥有文件（默认 100 个一批）。
 
+**配置解析缓存**（Pi-AI）：provider 配置解析结果通过 `current()` 的 profiles 引用身份缓存，profiles 变更时失效。
+
+缓存机制汇总：
+
+| 缓存类型 | 机制 | 默认有效期 |
+| --- | --- | --- |
+| Token 缓存跟踪 | `TokenUsage` 的 cacheRead/cacheWrite 字段 | per-request |
+| 配置缓存 | `lastRaw` / `lastGood` 引用身份模式 | 配置变更时失效 |
+| 文件上传复用 | `DeepSeekFileStore` 索引 | 7 天（`fileExpiresAfterSeconds`） |
+| 配置解析缓存 | Pi-AI 的 `current()` profiles 引用身份 | profiles 变更时失效 |
+
 ### 8.2 Token 计量
 
 **`TokenMeter` 服务** 提供：
 
 1. **请求压力测量** — `measure(session, requestHeader)` 返回当前的 token 消耗估算
 2. **Provider 使用量锚点** — 当最后一次成功调用的 provider 使用量 ≥ 启发式估算时，使用 provider 报告的精确值
-3. **表面增量跟踪** — `surfaceDeltaTokens` 跟踪锚点之后的表面变化
+3. **表面增量跟踪** — `surfaceDeltaTokens` 跟踪锚点之后的表面变化（每个 session 的状态通过 `WeakMap` 存储，避免内存泄漏）
 4. **启发式估价** — `estimateMessage` / `estimateHeader` 对消息和请求头进行 token 估价
 
 Token 计量采用**回放式同步**：通过 `_sync(session)` 逐事件回放，维护 header、surface、stepStart、anchor 状态。
