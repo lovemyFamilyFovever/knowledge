@@ -27,9 +27,19 @@ python tests\test_new_project.py               # 脚手架 smoke（9 断言）
 python tests\test_learn.py                     # 学习系统 smoke（203 断言）
 python tests\test_rag.py                       # RAG smoke（缺依赖自动 SKIP）
 python scripts\rag_search.py "查询" --json     # 语义检索 CLI / Agent 入口
+python scripts\govern_tags.py census|similar|merge|rename-sub   # 标签治理（merge/rename-sub 先预览后 --apply；详见 --help）
 ```
 
 > 历史脚本 `start-rag.bat` / `start-dev.bat` 已于 2026-09-13 并入 `start.bat`
+
+## 正文排版约定（markdown 渲染层消费 · 2026-09-18 定稿）
+
+`.a-body` 渲染由 CSS + `app.js::enhanceArticleDOM` 后处理，作者侧零负担约定：
+
+- 大节写 `## 小节名`（自动包成 .sec-card 卡片，标题 hash 定渐变色）；题干写 `### N. 题干｜初级|中级|高级`（尾部难度自动转徽章）。
+- 提示框用引用首行标记：`> 💡` 提示、`> ⚠️/❗` 警告、`> 🎯`/`关键要点` 关键点、`> 🔍`/`追问` 追问。
+- 代码用围栏（hljs 克制单色高亮、随明暗主题翻转）；对比内容用表格。
+- 设计基准与决策：渐变条按标题 hash 稳定取色、代码浅底+单色高亮、`##` 分组（原 docs 渲染重构落地方案已执行完毕并删除，决策记录在本节与 git 历史）。
 > （RAG 依赖装进哪个解释器，哪个解释器启动就带语义检索；开发模式走 `--dev` 参数）。
 
 ## 工具与临时产物（`scripts/agent/` 进 git；`.workbuddy/` 不进 git）
