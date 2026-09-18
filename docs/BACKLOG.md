@@ -2,13 +2,11 @@
 
 > 规则：事项完成即删除条目；本文件是 docs/ 唯一保留的"活文档"（另有 ADR 架构决策记录）。
 
-## 工具愿望清单（待审查：装/不装见对话记录）
+## 工具审查定案（2026-09-18 用户拍板）
 
-- [ ] ffmpeg——音视频处理（当前环境未装，HyperFrames 视频链路也因此不可用）。
-- [ ] ImageMagick（`winget install ImageMagick`）——改动前后截图像素 diff，视觉回归。
-- [ ] resvg / rsvg-convert——SVG 图标单独光栅化成 PNG 自检。
-- [ ] jq / pandoc——API JSON 查看 / 文档互转。
-- [ ] Skill: superpowers-writing-plans——"设计→计划→实现"闭环（曾试调未装）。
+- [ ] ffmpeg——仅存保留项：音视频处理（当前环境未装，HyperFrames 视频链路也因此不可用；有视频需求时再装）。
+- ✅ writing-plans skill：2026-09-18 已装（obra/superpowers，MIT，落到 `~/.box-agent/skills/writing-plans/`）。
+- ❌ ImageMagick / resvg / jq / pandoc：审查否决，不再考虑（理由见对话记录：Python/沙箱与 shot.mjs 已覆盖；pandoc 等导出需求出现时再议）。
 
 ## 已完成（留档一次，下轮清理删除）
 
