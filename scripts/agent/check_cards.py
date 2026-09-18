@@ -1,5 +1,5 @@
 # scripts/agent/check_cards.py
-# 用法: python scripts/agent/check_cards.py content/baike/数据科学与大数据/推荐系统.md [...]
+# 用法: python scripts/agent/check_cards.py content/baike/data-science/推荐系统.md [...]
 # -- coding: utf-8 --
 """抽卡自检：输出语料文件可被解析出的卡片（kind/卡面/卡背摘），重写后验收用。"""
 import pathlib
