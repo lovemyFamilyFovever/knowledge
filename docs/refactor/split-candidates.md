@@ -12,12 +12,13 @@
 
 ## 重叠去重队列
 
-拆分或新建词条前**必须先处理这 5 对跨子域重叠**，否则会造出重复词条（同一概念两处定义、双链指向分裂）。
-本轮只登记预案、**不执行**——执行属二期串行拆分动作。四种预案动词的含义见 `docs/writing-spec-v1.1.md` §8 备注前缀约定。
+拆分或新建词条前**必须先处理这 6 对跨子域重叠**，否则会造出重复词条（同一概念两处定义、双链指向分裂）。
+第 1 对已随二期首篇打样执行完毕（见其 ✅ 行）；其余 5 对仍只登记预案、**未执行**，留待各自片轮到拆分时落地。四种预案动词的含义见 `docs/writing-spec-v1.1.md` §8 备注前缀约定。
 
 **1. `programming-languages/软件测试完全指南.md` ↔ `testing/` 子域**（预案：改双链，不新建）
 - 冲突：测试金字塔 / TDD·BDD·ATDD / 单元 / 集成 / 性能 六大块，`content/baike/testing/单元测试.md`、`集成测试.md`、`性能测试.md`、`测试驱动开发.md` 已有专文。
 - 预案：长文里对应段落**删除并改双链**指向 testing 子域已有专文，不新建同名词条；只有 `E2E 与 Playwright·Cypress` 在 testing 子域无归口，允许独立成篇。
+- ✅ 已执行（2026-09-19，二期首篇打样）：父文档原地改写为枢纽页（`s4.md` 登记 `done-hub`，正文 2829/3400），新建 `testing/E2E 测试.md`、`testing/Playwright 与 Cypress.md`，六大块全部改双链未新建。
 
 **2. `software-engineering/03-代码质量.md` ↔ `重构.md` / `技术债务.md` / `代码评审.md`**（预案：改双链，不新建）
 - 冲突：重构 / 技术债 / CodeReview 三个子概念，`content/baike/software-engineering/` 同子域已有专文。
@@ -34,6 +35,10 @@
 **5. `os/Shell 脚本详解.md` ↔ `os/Shell脚本编程.md`**（预案：合并 + 软删除）
 - 冲突：同一子域两篇 Shell 教程，变量 / 条件 / 循环 / 函数 / grep·sed·awk 全面重叠；`Shell脚本编程.md` 已重写 PASS，`Shell 脚本详解.md` 是 8061 字手册式汇编。
 - 预案：**合并**——保留 `content/baike/os/Shell脚本编程.md` 为唯一 Shell 词条，把 `Shell 脚本详解.md` 独有的语法示例（数组、字符串操作、管道与重定向组合）补进去；随后 `Shell 脚本详解.md` 走软删除进 `content/_trash/`（`/api/delete`，禁直接 rm），并在 `docs/refactor/status/s2.md` 该行备注登记 `merged-into: os/Shell脚本编程.md`。
+
+**6. `testing/01 - 测试基础.md` / `testing/02 - 测试工具.md` ↔ 新建的 `E2E 测试.md` / `Playwright 与 Cypress.md`**（预案：改双链，不新建）
+- 冲突：拆第 1 对时才暴露——`01 - 测试基础.md` 有 `## 端到端测试（E2E）` 节，`02 - 测试工具.md` 有 `## Cypress`、`## Playwright`、`## Selenium WebDriver` 三节及一张 E2E 工具对比表，而这两篇汇编本身仍是 `split` 状态、未收敛。
+- 预案：拆 `01 - 测试基础.md` 时**删除**其 E2E 节、改双链指向 `[[E2E 测试]]`；拆 `02 - 测试工具.md` 时把 Cypress/Playwright 两节合并改双链指向 `[[Playwright 与 Cypress]]`，Selenium 归入该页对比表，E2E 工具对比表（已作为素材并入新词条那张 7 行表）删除。**这两篇汇编拆完前，E2E 主题在库内有两处归口**，双链体检时按新词条为准。
 
 ## 待拆清单
 
@@ -126,7 +131,7 @@
 | content/baike/programming-languages/编程语言通用概念.md | 11 | s4 | 7301 | 变量、常量、基本类型、引用值类型、运算符、控制流、循环、函数、递归、作用域、命名 | 变量/常量/基本类型/引用值类型/运算符/控制流/循环/函数/递归/作用域/命名 11 词条（11 def 卡）；多定义汇编不符单词条契约，30 围栏 ≫ 2/20 → 按概念各拆词条 | pending |
 | content/baike/programming-languages/编译原理与解释器实现.md | 10 | s4 | 16339 | 编译器架构、词法、语法、语义、IR、优化、代码生成、GC、实战构建语言、LLVM | 编译器架构/词法/语法/语义/IR/优化/代码生成/GC/实战构建语言/LLVM 十部分；正文 16339、501 代码行 → 按阶段拆词条 | pending |
 | content/baike/programming-languages/计算机科学完整知识图谱.md | 5 | s4 | 14109 | 数据结构算法、操作系统、计算机网络、数据库、编译原理 | 数据结构算法/操作系统/计算机网络/数据库/编译原理 多子系统图谱（枢纽①对比表8行②子概念20）；正文 14109、30 围栏 ≫ 3400/20 → 按子系统拆词条+枢纽 | pending |
-| content/baike/programming-languages/软件测试完全指南.md | 6 | s4 | 20441 | 测试金字塔、TDD·BDD·ATDD、单元、集成、E2E·Playwright·Cypress、性能 | 测试金字塔/TDD·BDD·ATDD/单元/集成/E2E·Playwright·Cypress/性能 各独立体系；正文 20441、20 围栏 937 行 → 拆词条（与 testing 子域去重） | pending |
+| content/baike/programming-languages/软件测试完全指南.md | 6 | s4 | 20441 | 测试金字塔、TDD·BDD·ATDD、单元、集成、E2E·Playwright·Cypress、性能 | 测试金字塔/TDD·BDD·ATDD/单元/集成/E2E·Playwright·Cypress/性能 各独立体系；正文 20441、20 围栏 937 行 → 拆词条（与 testing 子域去重） | done（2026-09-19 枢纽页 + 2 子词条，见去重队列第 1 对） |
 | content/baike/programming-languages/面向对象编程（OOP）概念.md | 13 | s4 | 10181 | 类、对象、封装、继承、多态、抽象、接口、抽象类、构造析构、重载重写、访问修饰符、组合vs继承、LSP | 类/对象/封装/继承/多态/抽象/接口/抽象类/构造析构/重载重写/访问修饰符/组合vs继承/LSP 13 词条（13 def）；32 围栏 ≫ 2/20 → 按概念各拆词条 | pending |
 | content/baike/security/加密技术篇.md | 14 | s5 | ~3000+ | 3DES、RSA、ElGamal、国密SM2·SM3·SM4、密钥交换、混合加密、数字信封 | 14种加密技术独立话题 | pending |
 | content/baike/security/哈希算法篇.md | 12 | s5 | ~2500+ | MD5、SHA-256、SHA-512、哈希表原理、布隆过滤器、一致性哈希、校验和、加盐哈希 | 12种哈希算法独立对比 | pending |
