@@ -18,7 +18,7 @@
 **1. `programming-languages/软件测试完全指南.md` ↔ `testing/` 子域**（预案：改双链，不新建）
 - 冲突：测试金字塔 / TDD·BDD·ATDD / 单元 / 集成 / 性能 六大块，`content/baike/testing/单元测试.md`、`集成测试.md`、`性能测试.md`、`测试驱动开发.md` 已有专文。
 - 预案：长文里对应段落**删除并改双链**指向 testing 子域已有专文，不新建同名词条；只有 `E2E 与 Playwright·Cypress` 在 testing 子域无归口，允许独立成篇。
-- ✅ 已执行（2026-09-19，二期首篇打样）：父文档原地改写为枢纽页（`s4.md` 登记 `done-hub`，正文 2829/3400），新建 `testing/E2E 测试.md`、`testing/Playwright 与 Cypress.md`，六大块全部改双链未新建。
+- ✅ 已执行（2026-09-19，二期首篇打样）：父文档原地改写为枢纽页（`s4.md` 登记 `done-hub`，正文 2825/3400），新建 `testing/E2E 测试.md`、`testing/Playwright 与 Cypress.md`，六大块全部改双链未新建。
 
 **2. `software-engineering/03-代码质量.md` ↔ `重构.md` / `技术债务.md` / `代码评审.md`**（预案：改双链，不新建）
 - 冲突：重构 / 技术债 / CodeReview 三个子概念，`content/baike/software-engineering/` 同子域已有专文。
