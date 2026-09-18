@@ -490,6 +490,41 @@ async function renderEpub(url) {
 }
 window.renderArticle = renderArticle;
 
+/* 美化版 HTML 挂载：作用域片段 → 正文直接内联渲染（非 iframe）；
+   完整文档 / 抓取失败 → 回退同源 iframe（保留自带样式脚本与撑满注入）。
+   迁移期两态并存，改一个 inline 一个，老页不会被撑花。 */
+async function mountHtmlDoc(box, rawHref, title) {
+  if (!box) return;
+  let txt = "";
+  try {
+    const r = await fetch(rawHref, { cache: "no-store" });
+    txt = await r.text();
+  } catch (e) {
+    txt = "";
+  }
+  const fullDoc = !!txt && (/<html[\s>]/i.test(txt) || /<!doctype\s+html/i.test(txt));
+  if (!txt || fullDoc) {
+    box.outerHTML = `<iframe class="html-frame" src="${rawHref}" sandbox="allow-same-origin allow-popups" title="${esc(title || "")}"
+        onload="try{const d=this.contentDocument;d.head.insertAdjacentHTML('beforeend','<style>.container,body>main,body>div{max-width:100%!important;padding-left:1.4rem!important;padding-right:1.4rem!important}</style>')}catch(e){}"></iframe>`;
+    return;
+  }
+  // 作用域片段 → Shadow DOM 隔离渲染：单独抽 <style> 绕过净化，正文走 DOMPurify，
+  // 既保住片段自带样式，又不被阅读器 #article 的 h1/p 等 ID 级规则污染（这些页无脚本，Shadow 无副作用）
+  const host = document.createElement("div");
+  host.className = "html-inline";
+  box.replaceWith(host);
+  const root = host.attachShadow({ mode: "open" });
+  const sm = txt.match(/<style[^>]*>([\s\S]*?)<\/style>/i);
+  const css = sm ? sm[1] : "";
+  const bodyHtml = sm ? txt.replace(sm[0], "") : txt;
+  const clean = DOMPurify.sanitize(bodyHtml, {
+    FORBID_TAGS: ["script", "iframe", "object", "embed", "link", "meta", "base", "form"],
+    ADD_ATTR: ["target", "colspan", "rowspan", "start", "type"],
+    ALLOW_DATA_ATTR: true,
+  });
+  root.innerHTML = `<style>:host{display:block;}\n${css}</style>${clean}`;
+}
+
 function renderArticle(forceMd) {
   const el = $("#article");
   if (!el || !DOC) return;
@@ -522,20 +557,19 @@ function renderArticle(forceMd) {
   const pretty = DOC.is_html || (DOC.has_html && !forceMd);
   el.classList.toggle("pretty-mode", pretty); // 美化版：去标题区、iframe 撑满父宽
   if (pretty) {
-    // 整页 HTML：iframe 沙箱内嵌直通 /raw/（保留自带样式/脚本），
-    // 绝不走 marked+DOMPurify 管线——大 HTML 过 markdown 解析会把源码平铺成数万节点 DOM，卡且不可读
+    // 美化版 HTML：片段直接内联、完整文档回退 iframe（判定与注入见 mountHtmlDoc）；
+    // 绝不走 marked+DOMPurify 的 markdown 管线——大 HTML 过 markdown 解析会平铺成数万节点 DOM，卡且不可读
     const srcRel = DOC.is_html ? DOC.rel : DOC.html_rel;
     const rawHref = rawUrl(srcRel);
-    /* 用户要求：finish-bar 在最底部；美化版内部 .container 的 1200px 行宽注入覆盖为撑满
-       （iframe 同源，onload 后向外层文档注入一条样式即可；不同美化版结构不一，用宽谱选择器） */
-    el.innerHTML = `<div class="html-frame-wrap"><iframe class="html-frame" src="${rawHref}"
-        sandbox="allow-same-origin allow-popups" title="${esc(DOC.title)}"
-        onload="try{const d=this.contentDocument;d.head.insertAdjacentHTML('beforeend','<style>.container,body>main,body>div{max-width:100%!important;padding-left:1.4rem!important;padding-right:1.4rem!important}</style>')}catch(e){}"></iframe></div>
+    el.innerHTML = `<div class="html-render" id="html-render">
+        <div class="kb-skeleton" aria-busy="true"><i style="width:65%"></i><i style="width:88%"></i><i style="width:76%"></i></div>
+      </div>
       <div class="kb-finish-bar" id="kb-finish-bar">
         <span class="kb-finish-q">读完这篇了？</span>
         <button type="button" class="kb-btn" id="mark-read-btn" onclick="toggleDocMark('read')" title="标记已读完（存本地复习库，不写语料）">已读完</button>
         <button type="button" class="kb-btn" id="mark-mastered-btn" onclick="toggleDocMark('mastered')" title="标记已掌握 —— 术语门户会显示为已掌握">已掌握</button>
       </div>`;
+    mountHtmlDoc(el.querySelector("#html-render"), rawHref, DOC.title).then(() => buildToc());
   } else {
     el.innerHTML = `<h1 class="a-title">${esc(DOC.title)}</h1>
       <div class="a-chips">${buildChipsRow()}</div>
@@ -644,9 +678,58 @@ async function decorateWikilinks() {
 }
 
 /* ---------- 正文后处理（阶段1·问题8，自 workbench.js observer 层迁入） ----------
-   codeblock 顶栏（语言标签 + 复制）、mermaid 角标、H2 scrub 下划线属性。
+   标题 id（须最先：slug 基于原始标题文本，不受分组/徽章后处理影响）→
+   H2 分组卡片 → 稳定随机主题条 → 难度徽章 → 提示框分类 →
+   codeblock 顶栏（语言标签 + 复制）、mermaid 角标。
    与 renderArticle 同帧执行：渲染方输出即最终形态，杜绝「半成品 + 赌时序清洗」的隐性契约。 */
 function enhanceArticleDOM(el) {
+  el.querySelectorAll(".a-body h1, .a-body h2, .a-body h3, .a-body h4").forEach(h => {
+    if (h.id) return;
+    // B5：标题 id = 文本去空白后空格→连字符，与 learn.js anchorHash 同一规则 ——
+    // 闪卡「跳转原文」的 #锚点 第一次真正可定位（marked 不生成 heading id，
+    // buildToc 的 sec-N 与卡片 anchor 永远接不上）。重名标题保留首个。
+    const slug = (h.textContent || "").trim().replace(/\s+/g, "-");
+    if (slug && !document.getElementById(slug)) h.id = slug;
+  });
+  // markdown 渲染重构 · 步骤1：按 ## 分组成 .sec-card 小节卡（幂等：整 body 只包一次）；
+  // H1（文章大标题）之后的游离内容留在卡外，与实验页行为一致
+  const body = el.querySelector(".a-body");
+  if (body && !body.dataset.secGrouped) {
+    body.dataset.secGrouped = "1";
+    let cur = null;
+    [...body.children].forEach(n => {
+      const tag = n.tagName;
+      if (tag === "H2") {
+        cur = document.createElement("div"); cur.className = "sec-card";
+        body.insertBefore(cur, n); cur.appendChild(n); // 标题 id 留在标题元素上
+      } else if (tag === "H1") {
+        cur = null;
+      } else if (cur) {
+        cur.appendChild(n);
+      }
+    });
+  }
+  // 步骤2：稳定随机主题条 —— 标题文字 hash 得色相，同一标题恒定、不同标题各异；
+  // --gh/--gh2 由 h2 渐变背景消费（明/暗明度差走 --bar-l）
+  el.querySelectorAll(".a-body h2").forEach(h => {
+    const s = h.textContent || "";
+    let g = 0;
+    for (let i = 0; i < s.length; i++) g = (g * 31 + s.charCodeAt(i)) >>> 0;
+    g %= 360;
+    h.style.setProperty("--gh", g);
+    h.style.setProperty("--gh2", (g + 42) % 360);
+  });
+  // 步骤3：难度徽章 —— 题干尾部「｜初级/中级/高级」剥离成 .badge.b/.m/.a（CSS 消费语义色）
+  el.querySelectorAll(".a-body h3").forEach(h => {
+    if (h.querySelector(".badge")) return; // 幂等
+    const m = (h.textContent || "").match(/[｜|]\s*(初级|中级|高级)\s*$/);
+    if (!m) return;
+    h.textContent = (h.textContent || "").replace(/[｜|]\s*(初级|中级|高级)\s*$/, "").trim();
+    const b = document.createElement("span");
+    b.className = "badge " + (m[1] === "初级" ? "b" : m[1] === "中级" ? "m" : "a");
+    b.textContent = m[1];
+    h.appendChild(b);
+  });
   el.querySelectorAll(".a-body pre").forEach(pre => {
     if (pre.closest(".codeblock")) return; // 幂等：已包壳跳过
     if (pre.querySelector("code.language-mermaid")) return; // mermaid 源稍后整体替换为 div，不包壳
@@ -664,11 +747,14 @@ function enhanceArticleDOM(el) {
       copyText(code.textContent || "", "代码已复制到剪贴板"));
   });
   el.querySelectorAll(".a-body blockquote").forEach(bq => {
-    if (bq.classList.contains("tip") || bq.classList.contains("warn")) return;
+    if (bq.classList.contains("tip") || bq.classList.contains("warn") ||
+        bq.classList.contains("kp") || bq.classList.contains("fu")) return; // 幂等
     const t = (bq.textContent || "").trim();
-    // 引用变体（排版 v2）：首行 💡 → 蓝色提示；⚠️/❗ → 琥珀警告。纯前端约定，语料不用改。
+    // 引用变体（渲染重构 v2）：💡→提示 ⚠️/❗→警告 🎯/关键要点(知识)→kp 🔍/追问→fu。纯前端约定，语料不用改。
     if (/^💡/.test(t)) bq.classList.add("tip");
     else if (/^(?:⚠\uFE0F?|❗)/.test(t)) bq.classList.add("warn");
+    else if (/^🎯|^关键要点|^关键知识点/.test(t)) bq.classList.add("kp");
+    else if (/^🔍|^追问/.test(t)) bq.classList.add("fu");
   });
   el.querySelectorAll(".a-body table").forEach(tb => {
     if (tb.closest(".tbl-wrap")) return; // 幂等：已包壳跳过
@@ -687,17 +773,8 @@ function enhanceArticleDOM(el) {
     cap.innerHTML = `${icon("md-code", 12)}<span>mermaid</span>`;
     div.appendChild(cap);
   });
-  el.querySelectorAll(".a-body h1, .a-body h2, .a-body h3, .a-body h4").forEach(h => {
-    if (h.id) return;
-    // B5：标题 id = 文本去空白后空格→连字符，与 learn.js anchorHash 同一规则 ——
-    // 闪卡「跳转原文」的 #锚点 第一次真正可定位（marked 不生成 heading id，
-    // buildToc 的 sec-N 与卡片 anchor 永远接不上）。重名标题保留首个。
-    const slug = (h.textContent || "").trim().replace(/\s+/g, "-");
-    if (slug && !document.getElementById(slug)) h.id = slug;
-  });
-  el.querySelectorAll(".a-body h2").forEach(h => {
-    if (!h.hasAttribute("data-scrub-underline")) h.setAttribute("data-scrub-underline", "");
-  });
+  // （原尾部「标题 id 生成」「H2 scrub 下划线」已移除：id 生成前置到函数头，
+  //  scrub hairline 被渲染重构的 h2 渐变主题条取代，不再挂 data-scrub-underline）
 }
 
 /* B5：URL fragment 定位（初始带 #锚点 进入 / 异步渲染完成后再滚一次） */
@@ -775,8 +852,45 @@ function openImageZoom(img) {
   }, { passive: false });
 }
 
+let _tocScrollSpy = null; // Shadow 片段目录的滚动高亮监听，重渲染前清理
+
 function buildToc() {
   const pane = $("#pane-toc"); if (!pane) return;
+  if (_tocScrollSpy) { _tocScrollSpy(); _tocScrollSpy = null; }
+  function tocOn(a) { $$("#pane-toc a").forEach(x => x.classList.remove("on")); if (a) a.classList.add("on"); }
+
+  // 内联 HTML 片段走 Shadow DOM：标题在 shadowRoot 内，普通 querySelectorAll 够不到
+  const host = $("#article .html-inline");
+  const sroot = host && host.shadowRoot ? host.shadowRoot : null;
+
+  if (sroot) {
+    const heads = [...sroot.querySelectorAll("h2.iv-h2, h3.iv-q-title")];
+    if (!heads.length) { pane.innerHTML = `<div style="font-size:12.5px;color:var(--faint);padding:6px 2px">本文无小节标题。</div>`; renderTocSpark(); return; }
+    pane.innerHTML = "";
+    const pairs = [];
+    heads.forEach(h => {
+      const a = document.createElement("a");
+      a.textContent = h.textContent;
+      a.className = h.tagName === "H3" ? "lv3" : "";
+      a.onclick = () => { h.scrollIntoView({ behavior: "smooth", block: "start" }); tocOn(a); };
+      pane.appendChild(a);
+      pairs.push([h, a]);
+    });
+    const scroller = document.querySelector(".article");
+    const spy = () => {
+      let cur = pairs[0];
+      for (const p of pairs) {
+        const r = p[0].getBoundingClientRect();
+        if (r.top <= 96) cur = p; else break;
+      }
+      tocOn(cur[1]);
+    };
+    if (scroller) { scroller.addEventListener("scroll", spy, { passive: true }); _tocScrollSpy = () => scroller.removeEventListener("scroll", spy); }
+    tocOn(pairs[0][1]);
+    renderTocSpark();
+    return;
+  }
+
   const heads = $$("#article .a-body h1, #article .a-body h2, #article .a-body h3");
   if (!heads.length) { pane.innerHTML = `<div style="font-size:12.5px;color:var(--faint);padding:6px 2px">本文无小节标题。</div>`; return; }
   pane.innerHTML = "";
@@ -801,7 +915,6 @@ function buildToc() {
   heads.forEach(h => spy.observe(h));
   tocOn(pairs[0][1]);
   renderTocSpark();
-  function tocOn(a) { $$("#pane-toc a").forEach(x => x.classList.remove("on")); a.classList.add("on"); }
 }
 
 /* ---------- C3-B1：TOC 下方近 7 日阅读篇数（本地 Chart.js，reading.db 只读供数） ---------- */

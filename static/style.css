@@ -57,7 +57,12 @@
   --hex-plate-light-a:#122028; --hex-plate-light-b:#0c151d;
   --hex-plate-dark-a:#0f1c25; --hex-plate-dark-b:#0a131b;
   --hex-paper-dark:#22312c;
-  --code-fg:#cfe0da; --code-com:#5c716c;
+  --hex-plate-fg:#cfe0da; --hex-plate-com:#5c716c; /* LCD 板专用（原 --code-fg/-com，避开正文代码 token） */
+  --hex-acc2:#6366f1; --hex-acc2-d:#a78bfa; /* 次强调（追问框 fu 左条/底） */
+  /* 正文代码块随主题翻转 + h2 渐变条饱和/明度（Prompt-R 渲染层） */
+  --code-bg:#f6f8fa; --code-fg:#24292f; --code-com:#6a737d;
+  --code-key:#0b6e4f; --code-str:#0a5c46; --code-num:#8a4b00;
+  --bar-s:62%; --bar-l:44%; --bar-fg:#ffffff;
   /* mascot --ill-* 族（Light 种子，Dark patch 在 [3] 尾部） */
   --hex-skin-light:#e8cba9; --hex-skin-shadow-light:#c9a482; --hex-hair-light:#2a3833;
   --hex-glasses-light:#3d4b47; --hex-shirt-light:#f7f7f2; --hex-shirt-shadow-light:#dcded6; --hex-device-light:#4a5d58;
@@ -78,7 +83,7 @@
   /* ===== 派生层（全 color-mix，零硬编码）===== */
   --c-bg:var(--hex-bg); --c-panel:var(--hex-panel); --c-sunk:var(--hex-sunk);
   --c-ink:var(--hex-ink); --c-line:var(--hex-line); --c-line2:var(--hex-line2);
-  --c-acc:var(--hex-primary); --c-info:var(--hex-info); --c-warn:var(--hex-warn);
+  --c-acc:var(--hex-primary); --c-acc2:var(--hex-acc2); --c-info:var(--hex-info); --c-warn:var(--hex-warn);
   --c-danger:var(--hex-danger); --c-ok:var(--hex-ok); --c-mark:var(--hex-mark);
   --muted:color-mix(in oklab,var(--c-ink),var(--c-bg) 40%);
   --ink:var(--c-ink); /* 批6 误删恢复（home.css 引用） */
@@ -101,7 +106,7 @@
   --wash-hero:color-mix(in oklab,var(--c-acc),var(--c-bg) 90%);
   /* LCD 代码板（固定暗色，不随主题翻转） */
   --plate:linear-gradient(165deg,var(--hex-plate-light-a),var(--hex-plate-light-b));
-  --plate-text:var(--code-fg); --plate-faint:var(--code-com);
+  --plate-text:var(--hex-plate-fg); --plate-faint:var(--hex-plate-com);
   /* 纹理（点阵，皮肤可覆写形状/开关） */
   --texture-on:1;
   --texture:radial-gradient(color-mix(in oklab,var(--c-ink),transparent 88%) 1px,transparent 1px);
@@ -117,8 +122,12 @@
 html[data-theme="dark"]{
   --c-bg:var(--hex-bg-d); --c-panel:var(--hex-panel-d); --c-sunk:var(--hex-sunk-d);
   --c-ink:var(--hex-ink-d); --c-line:var(--hex-line-d); --c-line2:var(--hex-line2-d);
-  --c-acc:var(--hex-primary-d); --c-info:var(--hex-info-d); --c-warn:var(--hex-warn-d);
+  --c-acc:var(--hex-primary-d); --c-acc2:var(--hex-acc2-d); --c-info:var(--hex-info-d); --c-warn:var(--hex-warn-d);
   --c-danger:var(--hex-danger-d); --c-ok:var(--hex-ok-d); --c-mark:var(--hex-mark-d);
+  /* 正文代码块（暗色）+ h2 渐变条（暗色压明度防刺眼） */
+  --code-bg:#161b22; --code-fg:#c9d1d9; --code-com:#8b949e;
+  --code-key:#7ee787; --code-str:#a5d6ff; --code-num:#f2cc60;
+  --bar-s:52%; --bar-l:40%;
   --plate:linear-gradient(165deg,var(--hex-plate-dark-a),var(--hex-plate-dark-b));
   /* mascot --ill-*（Dark） */
   --ill-skin:var(--hex-skin-dark); --ill-skin-shadow:var(--hex-skin-shadow-dark); --ill-hair:var(--hex-hair-dark);
@@ -428,28 +437,58 @@ h1.a-title{font-family:var(--f-disp);font-weight:700;font-size:28px;line-height:
 .chip.danger{color:var(--c-danger);border-color:color-mix(in oklab,var(--c-danger),transparent 55%);background:color-mix(in oklab,var(--c-danger),transparent 91%)}
 .chip.warn{color:var(--c-warn);border-color:var(--warn-edge);border-style:dashed}
 .a-rule{height:1px;margin:18px 0 26px;background:var(--c-line)}
-.a-body{font-size:16px;line-height:1.95;color:var(--c-ink)}
-.a-body h1,.a-body h2{font-family:var(--f-disp);font-size:var(--fs-h2);color:var(--c-ink);margin:30px 0 12px;padding-bottom:6px;position:relative;letter-spacing:.01em;border-bottom:1px solid var(--c-line)}
-.a-body h1{padding-left:14px;border-left:4px solid var(--c-acc)}
+.a-body{font-size:16px;line-height:1.95;color:var(--c-ink);font-family:Consolas,"梦源黑体 CN","Microsoft YaHei",sans-serif}
+/* 标题：h1 居中主题色下划线；h2 整条渐变主题条（--gh/--gh2 由 JS 按标题 hash 注入）；h3 主题色+左竖条 */
+.a-body h1{font-size:1.55rem;font-weight:700;text-align:center;line-height:1.4;padding:.9rem 0;margin:0 0 1.4rem;border-bottom:3px solid var(--c-acc)}
 .a-body h1:first-child{margin-top:0}
-.a-body h3{font-size:16.5px;color:var(--c-ink);margin:22px 0 8px;letter-spacing:.01em}
-.a-body h3::before{content:"§ ";color:var(--c-acc);font-weight:700}
+.a-body h2{font-size:1.3rem;font-weight:700;margin:.2rem 0 1.2rem;padding:.7rem 1.1rem;letter-spacing:.01em;border-bottom:none;
+  color:var(--bar-fg);border-radius:9px;
+  background:linear-gradient(135deg,hsl(var(--gh,160) var(--bar-s) var(--bar-l)),hsl(var(--gh2,200) var(--bar-s) var(--bar-l)))}
+.a-body h3{font-size:1.12rem;font-weight:700;margin:1.6rem 0 .8rem;letter-spacing:.01em;
+  display:flex;justify-content:space-between;align-items:center;gap:.6rem;flex-wrap:wrap;
+  color:var(--c-acc);border-left:4px solid var(--c-acc);padding-left:.8rem}
 .a-body h4{font-size:15px;margin:20px 0 8px;color:var(--muted);letter-spacing:.02em}
+/* H2 分组小节卡片（DOM 由 enhanceArticleDOM 生成） */
+.a-body .sec-card{background:var(--c-panel);border:1px solid var(--c-line);border-radius:12px;padding:1.4rem 1.6rem;margin-bottom:1.6rem}
+/* 难度徽章（h3 尾部 ｜初级/中级/高级 由 JS 转成 .badge.b/.m/.a；语义色派生自 --c-ok/--c-warn/--c-danger，明暗自动跟随） */
+.a-body .badge{margin-left:auto;font-family:Consolas,"梦源黑体 CN",sans-serif;font-size:.72rem;font-weight:700;border:none;border-radius:20px;padding:.18rem .7rem;white-space:nowrap;font-variant-numeric:tabular-nums}
+.a-body .badge.b{color:var(--c-ok);background:color-mix(in oklab,var(--c-ok),transparent 85%)}
+.a-body .badge.m{color:var(--c-warn);background:color-mix(in oklab,var(--c-warn),transparent 85%)}
+.a-body .badge.a{color:var(--c-danger);background:color-mix(in oklab,var(--c-danger),transparent 85%)}
 .a-body p{margin:12px 0;color:var(--c-ink)}
 .a-body a{color:var(--c-acc);border-bottom:1px solid var(--acc-line);transition:border-color var(--dur-1),background var(--dur-1)}
 .a-body a:hover{border-bottom-color:var(--c-acc);background:var(--acc-soft)}
 .a-body strong{color:var(--c-acc);font-weight:700}
 .a-body em{color:var(--c-warn);font-weight:600;font-style:normal}
 .a-body del{color:var(--faint)}
-.a-body blockquote{margin:16px 0;padding:13px 18px;border-left:3px solid var(--c-acc);border-radius:0 var(--rd-ctl) var(--rd-ctl) 0;
-  background:var(--acc-soft);color:var(--muted)}
+.a-body blockquote{margin:16px 0;padding:13px 18px;border-left:4px solid var(--c-acc);border-radius:0 9px 9px 0;
+  background:var(--acc-soft);color:var(--c-ink)}
 .a-body blockquote:hover{color:var(--c-ink)}
-.a-body blockquote.tip{border-left-color:var(--c-info);background:var(--info-soft)}
-.a-body blockquote.warn{border-left-color:var(--c-warn);background:var(--warn-soft)}
-.a-body code{font-family:var(--f-mono);font-size:.85em;color:var(--c-acc);background:var(--acc-soft);border:1px solid var(--acc-line);border-radius:var(--rd-ctl);padding:1px 5px}
-.a-body pre{background:var(--plate);border:1px solid var(--c-line2);border-radius:var(--rd-card);padding:16px 18px;margin:16px 0;overflow-x:auto}
-.a-body pre code{background:none;border:none;color:var(--plate-text);font-family:var(--f-mono);font-size:13px;line-height:1.75}
+.a-body blockquote p{margin:.3rem 0}
+/* 四类提示框（tip 提示 / warn 警告 / kp 关键要点 / fu 追问），底色由对应主题色派生 */
+.a-body blockquote.tip{border-left-color:var(--c-info);background:color-mix(in oklab,var(--c-info),transparent 90%)}
+.a-body blockquote.warn{border-left-color:var(--c-warn);background:color-mix(in oklab,var(--c-warn),transparent 90%)}
+.a-body blockquote.kp{border-left-color:var(--c-acc);background:color-mix(in oklab,var(--c-acc),transparent 90%)}
+.a-body blockquote.fu{border-left-color:var(--c-acc2);background:color-mix(in oklab,var(--c-acc2),transparent 90%)}
+.a-body code{font-family:Consolas,"梦源黑体 CN","Microsoft YaHei",monospace;font-size:.85em;color:var(--c-acc);background:var(--acc-soft);border:1px solid var(--acc-line);border-radius:var(--rd-ctl);padding:1px 5px}
+/* 代码块随主题：浅色浅底、暗色深底（token 见 [2]/[3]）；克制单色高亮压过 hljs-github-dark */
+.a-body pre{background:var(--code-bg);border:1px solid var(--c-line);border-radius:var(--rd-card);padding:16px 18px;margin:16px 0;overflow-x:auto}
+.a-body pre code{background:none;border:none;color:var(--code-fg);font-family:Consolas,monospace;font-size:13px;line-height:1.75}
 .a-body pre code.hljs{background:transparent;padding:0}
+.a-body pre code span[class]{color:inherit;font-style:normal;font-weight:inherit}
+.a-body pre code span[class].hljs-comment,.a-body pre code span[class].hljs-quote,.a-body pre code span[class].hljs-doctag{color:var(--code-com);font-style:italic}
+.a-body pre code span[class].hljs-keyword,.a-body pre code span[class].hljs-built_in,.a-body pre code span[class].hljs-literal,.a-body pre code span[class].hljs-type,.a-body pre code span[class].hljs-symbol,.a-body pre code span[class].hljs-params{color:var(--code-key);font-weight:600}
+.a-body pre code span[class].hljs-string,.a-body pre code span[class].hljs-regexp{color:var(--code-str)}
+.a-body pre code span[class].hljs-number,.a-body pre code span[class].hljs-boolean{color:var(--code-num)}
+/* codeblock 包壳（reader.css [R3] 固定暗色 LCD 板）随主题翻转到代码 token：
+   reader.css 后载且同特异性会赢，故用 .a-body 前缀提高特异性收编 */
+.a-body .codeblock{background:var(--code-bg);border-color:var(--c-line)}
+.a-body .codeblock pre code{color:var(--code-fg)}
+.a-body .codeblock .cb-head{background:color-mix(in oklab,var(--code-fg),transparent 93%);
+  border-bottom-color:color-mix(in oklab,var(--code-fg),transparent 85%)}
+.a-body .codeblock .cb-copy:hover{background:color-mix(in oklab,var(--code-fg),transparent 88%);
+  border-color:color-mix(in oklab,var(--code-fg),transparent 80%)}
+.a-body pre:not(.codeblock pre){background:var(--code-bg);border-color:var(--c-line)}
 .mermaid{background:var(--plate);border:1px solid var(--c-line2);border-radius:var(--rd-card);padding:18px;margin:16px 0;display:flex;justify-content:center;overflow-x:auto}
 .mermaid svg{max-width:100%;height:auto}
 .a-body .tbl-wrap{margin:18px 0;overflow-x:auto;border:1px solid var(--c-line);border-radius:var(--rd-card)}
@@ -539,7 +578,7 @@ h1.a-title{font-family:var(--f-disp);font-weight:700;font-size:28px;line-height:
 .rtab:hover{color:var(--muted)}
 .rtab.active{color:var(--c-acc);border-bottom-color:var(--c-acc);background:var(--c-panel)}
 .rtab:focus-visible{outline:2px solid var(--acc-line);outline-offset:-2px}
-.rpane{flex:1;overflow-y:auto;padding:14px;display:none}
+.rpane{flex:1;overflow-y:auto;padding-top:10px;display:none}
 .rpane.active{display:block;animation:rise var(--dur-2) var(--ease-out)}
 /* 目录面板走纵向 flex：让底部 sparkline 卡片可用 margin-top:auto 贴底 */
 #pane-toc.active{display:flex;flex-direction:column}
