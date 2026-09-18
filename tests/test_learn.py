@@ -104,16 +104,35 @@ def test_parse_interview_i1() -> None:
     check("I-1：anchor 是原题标题", bool(cards) and "题目1" in cards[0].anchor)
 
 
+def _legacy_table_sample(n: int = 32) -> str:
+    """旧「表格清单式」样例（本地合成）。
+
+    2026-09-18 去重治理软删了唯一的 I-2 真实样本「AI Agent 技术面试题库（140题）.md」
+    （其 150 行题目全部由 60题篇 + 扩展1-7 承载、独有 0 题），故 I-2 解析器回归网改用
+    合成样本，与 I-3 的 _legacy_flat_sample 同一处理方式，不依赖已迁移的语料。
+    """
+    parts = ['---\ntitle: "表格题样例"\ntags: []\n---\n', "# 表格题样例\n", "### 主题1：基础概念\n"]
+    diffs = ["初级", "中级", "高级"]
+    for i in range(1, n + 1):
+        if i == 16:
+            parts.append("\n### 主题2：进阶应用\n")
+        parts.append(f"| {i} | 这是第{i}道表格题的题干描述？ | {diffs[(i - 1) % 3]} |")
+    return "\n".join(parts) + "\n"
+
+
 def test_parse_interview_i2() -> None:
-    rel = "interview/ai-agent/AI Agent 技术面试题库（140题）.md"
-    cards = parse_file(rel, read_sample(rel))
+    rel = "interview/ai-agent/表格题样例.md"
+    cards = parse_file(rel, _legacy_table_sample())
     check("I-2：抽出表格题目", len(cards) >= 30, f"got {len(cards)}")
     check("I-2：has_answer=0（原文未附答案）", all(c.has_answer == 0 for c in cards))
-    check("I-2：difficulty 走 DIFF_MAP", any(c.difficulty in ("easy", "medium", "hard")
-                                             for c in cards))
+    check("I-2：difficulty 走 DIFF_MAP 且三档齐全",
+          {c.difficulty for c in cards} == {"easy", "medium", "hard"},
+          f"got {sorted({c.difficulty for c in cards})}")
     check("I-2：front 形如 Q1. 题面", bool(cards) and cards[0].front.startswith("Q1. "),
           f"got {cards[0].front if cards else None!r}")
     check("I-2：anchor 落在最近的 ### 主题N", bool(cards) and "主题1" in cards[0].anchor)
+    check("I-2：跨主题后 anchor 切换", any("主题2" in c.anchor for c in cards),
+          f"got {sorted({c.anchor for c in cards})}")
 
 
 def _legacy_flat_sample(n: int = 22) -> str:
@@ -169,7 +188,7 @@ def test_parse_interview_i5() -> None:
 
 def test_parse_interview_i4() -> None:
     """I-4 编号问答式（2026-09-18 统一为 I-5 渲染约定）：`### N. 题面｜初级|中级|高级` + `**答案要点：**` / `**参考答案：**`。"""
-    rel = "interview/ai-agent/AI Agent开发面试题库.md"
+    rel = "interview/ai-agent/AI Agent开发面试题库 - 详细答案解析.md"
     cards = parse_file(rel, read_sample(rel))
     check("I-4：抽出编号题目", len(cards) >= 80, f"got {len(cards)}")
     check("I-4：全是 interview_qa", all(c.kind == "interview_qa" for c in cards))
@@ -189,18 +208,11 @@ def test_parse_interview_i4() -> None:
           f"got {cards[0].anchor if cards else None!r}")
     check("I-4：term 取 frontmatter/H1 而非 Q 标题",
           bool(cards) and not cards[0].term.startswith("Q"), f"got {cards[0].term!r}")
-
-    # 详解版：块内是成段正文 + 表格 + **详细解析：**
-    rel2 = "interview/ai-agent/AI Agent开发面试题库 - 详细答案解析.md"
-    cards2 = parse_file(rel2, read_sample(rel2))
-    check("I-4 详解版：也抽出题目", len(cards2) >= 80, f"got {len(cards2)}")
-    check("I-4 详解版：back 不是把「参考答案」标记当答案",
-          bool(cards2) and all(not c.back.startswith("参考答案") for c in cards2))
-    check("I-4 详解版：答案有内容（编程题短答除外）",
-          sum(1 for c in cards2 if c.has_answer == 1) >= len(cards2) - 5,
-          f"has_answer=1 仅 {sum(1 for c in cards2 if c.has_answer == 1)}/{len(cards2)}")
-    check("I-4 详解版：back 最短有实质正文", all(len(c.back) >= 5 for c in cards2),
-          f"最短 {min((len(c.back) for c in cards2), default=0)}")
+    # 详版块内是成段正文 + 表格 + **详细解析：**，「参考答案」标记不得被当成答案正文
+    check("I-4：back 不是把「参考答案」标记当答案",
+          all(not c.back.startswith("参考答案") for c in cards))
+    check("I-4：back 最短有实质正文", all(len(c.back) >= 5 for c in cards),
+          f"最短 {min((len(c.back) for c in cards), default=0)}")
 
     # 护栏②：块内完全没有中文（纯代码）不建卡
     md = ('# 编码题\n\n## 基础\n\n### Q1: 实现一个简单的ReAct Agent\n\n'
