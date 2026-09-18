@@ -10,9 +10,20 @@ if (!a || !b) { console.error('usage: node imgdiff.mjs <a.png> <b.png> [fuzz%]')
 for (const f of [a, b]) if (!fs.existsSync(f)) { console.error(`missing file: ${f}`); process.exit(2); }
 const fuzz = fuzzArg || '2%';
 
+// magick 解析：优先 PATH；PATH 未刷新（旧终端）时回退 winget 默认安装路径
+function magickRun(args, { allowFail = false } = {}) {
+  const tryOnce = (cmd) => spawnSync(cmd, args, { encoding: 'utf8' });
+  let r = tryOnce('magick');
+  if ((r.error || !fs.existsSync('magick') && r.status === null) && process.platform === 'win32') {
+    const fallback = 'C:/Program Files/ImageMagick-7.1.2-Q16-HDRI/magick.exe';
+    if (fs.existsSync(fallback)) r = tryOnce(fallback);
+  }
+  return r;
+}
+
 function identify(f) {
-  const r = spawnSync('magick', ['identify', '-format', '%w %h', f], { encoding: 'utf8' });
-  if (r.status !== 0) { console.error(`identify failed for ${f}: ${r.stderr}`); process.exit(3); }
+  const r = magickRun(['identify', '-format', '%w %h', f]);
+  if (r.status !== 0) { console.error(`identify failed for ${f}: ${r.stderr || r.error}`); process.exit(3); }
   const [w, h] = r.stdout.trim().split(/\s+/).map(Number);
   return { w, h, n: w * h };
 }
@@ -22,10 +33,11 @@ if (ia.w !== ib.w || ia.h !== ib.h) {
   process.exit(1);
 }
 const diffPath = b.replace(/\.png$/i, '') + '.diff.png';
-const r = spawnSync('magick', ['compare', '-metric', 'AE', '-fuzz', fuzz, a, b, diffPath], { encoding: 'utf8' });
-const ae = parseInt((r.stderr || '').trim(), 10);
+const r = magickRun(['compare', '-metric', 'AE', '-fuzz', fuzz, a, b, diffPath]);
+// 注意：magick 对大数值输出科学计数法（如 4.997e+06），必须 parseFloat；parseInt 会截成 4 造成漏报
+const ae = parseFloat((r.stderr || '').trim());
 if (Number.isNaN(ae)) { console.error(`compare failed: ${r.stderr || r.error}`); process.exit(3); }
 const pct = (ae / ia.n * 100).toFixed(4);
-console.log(`AE=${ae} (${pct}% of ${ia.n}px) fuzz=${fuzz}`);
+console.log(`AE=${Math.round(ae)} (${pct}% of ${ia.n}px) fuzz=${fuzz}`);
 console.log(pct < 0.01 ? `PASS：两图一致（<0.01%，diff 图 ${diffPath}）` : `DIFF：差异 ${pct}%，热图 ${diffPath}（红=变化区）`);
 process.exit(r.status === 0 ? 0 : 1);
