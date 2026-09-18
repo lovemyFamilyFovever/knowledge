@@ -25,3 +25,30 @@
 | content/baike/developer-skills/开发者效率工具大全.md | 4 | s4 | 16942 | 目录型枢纽：终端工具/编辑器与IDE/Git高级用法/命令行工具 4 个可独立命名工具族，逐工具展开；正文 16942 字 ≫ 3400、围栏 28 块 880 行 ≫ 2/20，压缩会毁掉逐工具细节 → 建议按工具族拆词条 | pending |
 | content/baike/developer-skills/敏捷项目管理实战.md | 10 | s4 | 13106 | 全书式枢纽：敏捷宣言/Scrum/看板/用户故事/估算/迭代管理/需求管理/技术实践/规模化敏捷/远程敏捷 10 个独立子话题，各带流程与示例；正文 13106 字 ≫ 3400、围栏 28 块 567 行 ≫ 2/20 → 建议按方法论拆词条+1 枢纽 | pending |
 | database/NoSQL 数据库术语.md | 10 | s3 | 8568 | 全景文件实为 10 个独立词条（各库自带 def 卡、11 围栏、8568 字），无法并入单条 3400 上限。Redis/MongoDB/ES 已有专文应删除本文重复段；Memcached/HBase/Neo4j/InfluxDB/Cassandra/PynamoDB 各自拆为独立词条，NoSQL-vs-SQL 保留为选型枢纽并索引各子文档 | pending |
+| content/baike/distributed/分布式ID与缓存术语百科.md | 8 | s2 | 12066 | 8 个可独立命名子概念（ID方案/穿透/雪崩/击穿/缓存一致性/多级缓存/热点数据/冷热分离），各带 Java 代码与对比表；正文 12066 字 ≫ 3400、围栏 11 块 ≫ 2/20，且为 baike B 多定义结构（8 张 def 卡）不符单词条契约 → 建议按子概念拆词条，穿透/击穿/雪崩/缓存一致性等宜各自成篇 | pending |
+| content/baike/frontend-concepts/HTML & CSS 核心概念.md | 14 | s5 | ~3000+ | 14个独立HTML/CSS概念各带代码，压缩毁面试细节 | pending |
+| content/baike/frontend-concepts/JavaScript 基础核心概念.md | 17 | s5 | ~4000+ | 17个独立JS概念各带示例 | pending |
+| content/baike/frontend-concepts/前端工程化核心概念.md | 14 | s5 | ~4000+ | 14个独立工程化概念 | pending |
+| content/baike/frontend-concepts/前端框架核心概念.md | 12 | s5 | ~3500+ | 12个独立框架概念 | pending |
+| content/baike/frontend-frameworks/GraphQL从入门到精通.md | 10+ | s5 | ~5000+ | Schema/查询/变更/订阅/解析器/缓存/安全等独立话题 | pending |
+| content/baike/frontend-frameworks/Next.js全栈开发实战.md | 10+ | s5 | ~5000+ | 路由/SSR/SSG/API Routes/Middleware/部署等独立话题 | pending |
+| content/baike/frontend-frameworks/WebAssembly完全指南.md | 8+ | s5 | ~4000+ | 编译/内存模型/JS互操作/SIMD/线程等独立话题 | pending |
+| content/baike/frontend-frameworks/现代前端工程化完全指南.md | 10+ | s5 | ~5000+ | 构建工具/模块/包管理/CI-CD/测试等独立话题 | pending |
+| content/baike/security/哈希算法篇.md | 12 | s5 | ~2500+ | 12种哈希算法独立对比 | pending |
+| content/baike/security/密码学基础篇.md | 14 | s5 | ~3500+ | 14个密码学基础概念 | pending |
+| content/baike/security/加密技术篇.md | 14 | s5 | ~3000+ | 14种加密技术独立话题 | pending |
+| content/baike/security/网络安全篇.md | 16 | s5 | ~3500+ | 16个网络安全独立话题 | pending |
+| content/baike/security/认证与授权篇.md | 14 | s5 | ~3000+ | 14个认证授权独立话题 | pending |
+| database/Redis深度解析与实战指南.md | 8 | s3 | 13550 | 书级实战指南：数据结构/底层实现/内存管理/持久化/主从/Sentinel/Cluster/分布式锁 8 大独立主题、56 个代码块、0 卡片，远超 3400 上限；速览已由 Redis深入 承载，本文件应按 8 主题各拆独立词条（含 Redlock、淘汰策略等面试必备细节，压缩必毁） | pending |
+| database/SQL 基础术语.md | 12 | s3 | 8536 | 术语汇编实为 12 个独立词条(各带 def+示例、12 围栏、0 trap)：DDL/DML/DCL/DQL/TCL 可合并为一篇"SQL 语言分类"，SELECT 执行顺序/JOIN/子查询/UNION/GROUP BY-HAVING/窗口函数/CTE 各自独立且面试必备，压到 3400 必毁；窗口/CTE 与 PostgreSQL 篇重叠需去重 | pending |
+| database/事务与并发控制术语.md | 12 | s3 | 9037 | 术语汇编实为 12 个独立词条(各带 def+示例、12 围栏、0 trap)：事务/ACID/隔离级别/脏读/不可重复读/幻读/MVCC/乐观锁/悲观锁/死锁/Redo Log/Undo Log。隔离级别·MVCC·死锁 已有专文应去重；ACID、三类并发读异常、乐观/悲观锁、Redo/Undo 各为面试必备独立词条，压入 3400 必毁 | pending |
+| content/baike/distributed/分布式存储术语百科.md | 8 | s2 | 4308 | baike B 多定义（分片/副本/Raft/Paxos/ZAB/Gossip/一致性模型谱系/Quorum）；正文 4308 字 ≫ 3400、围栏 4 块 ≫ 2/20。Raft/Paxos/ZAB 已由 [[一致性算法]] 承载可删，但数据分片/副本/一致性模型谱系(线性·顺序·因果)/Quorum(NWR)/Gossip 是面试必需且无对应子词条，压缩至合规会毁掉这些表与追问级细节 → 建议拆为分片/副本/一致性模型/Quorum/Gossip 等词条 | pending |
+| content/baike/distributed/微服务治理术语百科.md | 10 | s2 | 7925 | baike B 多定义（注册发现/负载均衡/熔断/限流/降级/链路追踪/配置中心/API网关/服务网格/灰度发布）；正文 7925 字 ≫ 3400、围栏 12 块 ≫ 2/20。负载均衡/服务网格/熔断与降级/限流/服务发现已有专文，但链路追踪/配置中心/API网关/灰度发布含 @FeignClient·Resilience4j·Gateway·Nacos·金丝雀等唯一代码与对比表，压缩必毁 → 建议按治理主题各拆词条 | pending |
+| content/baike/devops/API设计最佳实践.md | 5 | s4 | 14388 | RESTful原则/版本管理/认证授权(OAuth四步)/错误处理/分页过滤排序 各独立话题带示例；正文 14388 ≫ 3400、围栏 35 块 647 行 ≫ 2/20 → 建议按话题拆词条 | pending |
+| content/baike/devops/Docker容器化完全指南.md | 8 | s4 | 16568 | 容器vsVM/镜像构建/网络/数据/Compose/安全/Harbor/日志 8 独立话题；正文 16568、围栏 48 块 957 行 ≫ 上限 → 建议拆词条+1 枢纽 | pending |
+| content/baike/devops/Kubernetes云原生实战指南.md | 3 | s4 | 6644 | 容器基础/K8s核心概念/网络模型 3 大独立块，正文 6644 字、代码 416 行 ≫ 3400/20；与 Kubernetes深入 有重叠 → 拆块并按需与深入去重 | pending |
+| content/baike/devops/Linux系统管理高级指南.md | 10 | s4 | 12784 | 内核/进程/内存/文件系统/网络/性能/Shell/systemd/安全/容器运行时 10 独立话题；围栏 36 块 → 建议按主题拆词条 | pending |
+| content/baike/devops/Web安全攻防实战指南.md | 13 | s4 | 13296 | OWASP Top10 各项 + 经典攻防详解共 13 个独立话题（枢纽信号①对比表10行②子概念26）；正文 13296 ≫ 3400 → 建议按漏洞/攻防各拆词条 | pending |
+| content/baike/devops/操作系统内核原理.md | 9 | s4 | 13534 | 进程/线程/内存/文件系统/IO/系统调用与中断/设备驱动/容器隔离(Namespace+Cgroups)/安全 9 独立子系统；围栏 14 → 建议按子系统拆词条 | pending |
+| content/baike/devops/网络安全与渗透测试.md | 5 | s4 | 17171 | 网络协议安全/Web渗透方法论/常见漏洞实战/内网渗透/安全工具链 5 大部分各成体系；正文 17171、围栏 29 块 752 行 ≫ 上限 → 建议按部分拆词条 | pending |
+| database/数据库内核原理深度解析.md | 8 | s3 | 11136 | 内核原理全书：存储引擎/索引/查询优化器/事务/并发控制/日志恢复/分布式/实战对比 8 大主题、35 节、0 def 卡。含 CBO、ARIES、列存、TSO/OCC/2PC、InnoDB·PG·TiDB 对比等本文独有的深度子题，多数无对应专文，压到 3400 必毁面试级内核细节；应按主题拆分，末尾对比表可留作内核枢纽 | pending |
