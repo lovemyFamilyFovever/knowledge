@@ -9,95 +9,38 @@ status: "imported"
 
 # 版本控制与Git深入
 
-
 > 📌 **导航**：本文是 **版本控制与Git深入** 词条，属于 tools 术语集。相关枢纽：[[包管理器与构建工具]]、[[容器化与Docker]]、[[版本控制与Git深入]]、[[调试与性能分析]]。
 
-## Git核心概念
+## 定义
 
-**一句话定义：** Git是分布式版本控制系统，记录文件的每一次变更，支持多人协作。
+**一句话定义：** Git 是分布式版本控制系统，每个克隆都持有完整历史，以快照方式记录文件的每次变更，支持廉价分支与多人并行协作。
 
-**通俗类比：** Git就像一个"时光机+平行宇宙"——你可以随时回到过去（历史版本），也可以创建平行世界（分支）来实验。
+**通俗类比：** Git 像"时光机 + 平行宇宙"——随时回到过去（历史版本），也能开平行世界（分支）做实验，成熟了再合并回主线。
 
-### 三个区域
+## 为什么需要它
 
-```
-工作区(Working Directory)
-    ↓ git add
-暂存区(Staging Area / Index)
-    ↓ git commit
-Git仓库(.git目录)
-```
+集中式系统（SVN）把历史锁在一台服务器，离线不可用、服务器一挂全停。Git 是分布式的：每个人本地都有全量历史，可离线提交、抗单点、任意节点互为备份。加上基于内容寻址的快照存储与极廉价的分支，团队能放心地并行开发、随时回滚与追溯。
 
-### 分支策略
+## 核心能力
 
-**Git Flow：**
-```
-main ← 生产环境
- └── develop ← 开发主线
-      ├── feature/login ← 功能分支
-      ├── feature/payment ← 功能分支
-      └── hotfix/bug ← 紧急修复
-```
+- **三区模型**：工作区 →（`git add`）→ 暂存区 / Index →（`git commit`）→ .git 仓库；暂存区让你把一次提交的粒度精确挑出来。
+- **分支与合并**：分支是指向提交的指针，切换 / 合并成本极低；用 merge 保留分叉、用 rebase 改写出线性历史。
+- **分布式**：clone 拿到完整仓库，push/pull 与远端同步，人人有全量历史。
+- **忽略规则**：`.gitignore` 分类排除依赖（node_modules/）、产物（dist/）、IDE（.idea/）、环境变量（.env）等不该入库的内容。
 
-**GitHub Flow（更简洁）：**
-```
-main ← 始终可部署
- └── feature-xxx ← PR合并回main
-```
+## 具体示例
 
-### 常用命令深入
+高频的"改历史"操作各有分工——软回退不动工作区、cherry-pick 只摘一个提交：
 
 ```bash
-# 变基：把提交"搬"到另一个分支上
-git rebase main
-
-# 交互式变基：整理提交历史
-git rebase -i HEAD~3
-
-# 暂存当前工作
-git stash
-git stash pop
-
-# 查看提交图
-git log --oneline --graph --all
-
-# 回退到某个版本（保留修改）
-git reset --soft HEAD~1
-
-# 回退到某个版本（丢弃修改）
-git reset --hard HEAD~1
-
-# Cherry-pick：只取某个提交
-git cherry-pick abc123
+git log --oneline --graph     # 图形化查看提交历史
+git rebase -i HEAD~3          # 交互式整理最近 3 个提交
+git reset --soft HEAD~1       # 撤销这次 commit，改动仍留在暂存区
+git cherry-pick abc123        # 只把某个提交摘到当前分支
+git stash; git stash pop      # 临时挂起、稍后恢复工作区改动
 ```
 
-### .gitignore最佳实践
-
-```
-# 依赖
-node_modules/
-vendor/
-
-# 编译产物
-*.pyc
-dist/
-build/
-
-# IDE
-.idea/
-.vscode/
-*.swp
-
-# 系统文件
-.DS_Store
-Thumbs.db
-
-# 环境变量
-.env
-.env.local
-```
-
-### 解决冲突
+合并冲突时，Git 会在文件里插入标记，人工裁决后删标记再提交：
 
 ```
 <<<<<<< HEAD
@@ -107,7 +50,36 @@ Thumbs.db
 >>>>>>> feature-branch
 ```
 
-策略：沟通协商 → 手动合并 → 测试验证 → 提交
+## 何时用与何时不用
+
+- **用**：几乎所有代码项目的版本管理与协作。
+- **慎用**：频繁变更的大二进制资产会让仓库膨胀——配合 Git LFS 或改用其他方案；公共分支上慎用 rebase（会改写他人依赖的历史）。
+
+## 优劣与代价
+
+✅ 分布式抗单点、离线可用、分支廉价、历史可完整追溯与回滚。
+✅ 内容寻址 + 快照存储，数据完整性好。
+⚠️ 命令语义多、心智模型有门槛（reset/rebase 易误用）。
+⚠️ 大仓库 / 大文件性能下降，需 LFS 等补充。
+
+## 与相关概念的区别
+
+- **分布式（Git）vs 集中式（SVN）**：Git 人人全量历史、可离线；SVN 历史集中在服务器。
+- **merge vs rebase**：merge 保留真实分叉、生成合并提交；rebase 把提交搬到新基上、历史线性但会改写。
+- **reset --soft / --mixed / --hard**：依次"只动 HEAD" / "连暂存区一起退" / "再丢弃工作区改动"——危险度递增。
+- **Git Flow vs GitHub Flow**：前者多长期分支（main/develop/hotfix），后者以常可部署的 main + 短生命周期特性分支为主。
+
+## 常见误区
+
+- git reset --hard 只是撤销一次 commit，工作区的改动还会保留。
+- 把已提交的 .env 加进 .gitignore，就能把密钥从仓库历史里抹掉。
+- rebase 和 merge 完全等价，只是命令写法不同。
+
+## 面试速答
+
+> 🎯 Git 是分布式版本控制系统：工作区→暂存区→.git 仓库三区模型，人人持完整历史；分支廉价，靠 merge / rebase 整合，reset / cherry-pick / stash 管理历史与工作。
+> 🔍 追问：merge 和 rebase 有何区别，各自何时用？
+> 🔍 追问：reset 的 --soft / --mixed / --hard 分别动了什么？
 
 ## 相关术语
 
@@ -115,4 +87,4 @@ Thumbs.db
 
 ## 参考资料
 
-建议人工核验：本词条内容建议对照相关技术官方文档、权威教材与论文做准确性复核；未编造文献编号、标准号或 URL，如需引用请补充具体出处。
+建议人工核验：本词条内容建议对照 Pro Git 等官方资料做准确性复核；未编造文献编号、标准号或 URL。
