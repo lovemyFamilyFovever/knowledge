@@ -19,18 +19,18 @@ from app.cards import parse_file  # noqa: E402
 CORE_VARIANTS = {"核心机制", "核心流程", "做法", "计算逻辑", "核心能力"}
 # 规范 §2 骨架中必须存在的节（已归一化）
 REQUIRED_H2 = {
-    "定义", "为什么需要它", "具体示例", "何时用与何时不用",
-    "优劣与代价", "常见误区", "面试速答", "相关术语",
+    "定义", "为什么需要它", "具体示例", "何时用与何时不用", "优劣与代价",
+    "与相关概念的区别", "常见误区", "面试速答", "相关术语",
 }
-# §2 把它写进固定节序，但金样《字体优化》无此节 → 降为 warning（详见交付报告）
-SOFT_H2 = {"与相关概念的区别"}
+# 骨架节名全集：枢纽型判定时排除，避免任何词条凭骨架节数冒充枢纽
+SKELETON = REQUIRED_H2 | CORE_VARIANTS | {"参考资料"}
 
 CURLY = "“”‘’"
 RE_DEF = re.compile(r"^\*\*一句话定义：\*\*[ \t]*(\S.*)$", re.M)
 RE_ARXIV = re.compile(r"arXiv[:：\s]\s*(\d{4}\.\d{4,5})")
 RE_DOI = re.compile(r"\b(10\.\d{4,9}/[^\s)>\]，。；]+)")
 RE_WIKI = re.compile(r"\[\[([^\]|#]+)")
-RE_MD_TOKEN = re.compile(r"[#*>`|~_=\-\\]")
+RE_NUM_BOLD = re.compile(r"^\s*\d+\.\s+\*\*[^*]+\*\*", re.M)
 
 
 def norm_title(t: str) -> str:
@@ -84,25 +84,84 @@ def fence_stats(body: str) -> tuple[int, int]:
     return blocks, inner
 
 
-def strip_fence_content(body: str) -> str:
-    out, keep = [], True
+def narrative_body(body: str) -> str:
+    """规范 §4 字径：剔除 `> 📌` 导航行与 `## 相关术语`/`## 参考资料` 整节。
+
+    出处与双链不占叙述预算——否则越规范的引用列表会挤掉正文配额，
+    反向激励 harness 删引用。
+    """
+    out, skip = [], False
     for ln in body.splitlines():
-        if ln.lstrip().startswith("```"):
-            keep = not keep
+        if re.match(r"^## (?!#)", ln):
+            skip = norm_title(ln[3:]) in {"相关术语", "参考资料"}
+        if skip or ln.lstrip().startswith("> 📌"):
             continue
-        if keep:
-            out.append(ln)
+        out.append(ln)
     return "\n".join(out)
 
 
 def prose_len(body: str) -> int:
-    """正文字数（口径 B）：去围栏内容与 markdown 结构标记后再去空白计数。
+    """正文字数：叙述体去空白后的字符数。"""
+    return len(re.sub(r"\s", "", narrative_body(body)))
 
-    不按规范 §4 字面的"仅去空白"计，否则表格与 **加粗** 的语法字符会占用篇幅
-    预算，让信息密度高的对比型词条被误判超长。
-    """
-    stripped = RE_MD_TOKEN.sub("", strip_fence_content(body))
-    return len(re.sub(r"\s", "", stripped))
+
+def has_mermaid(body: str) -> bool:
+    return bool(re.search(r"^\s*```\s*mermaid\s*$", body, re.I | re.M))
+
+
+def table_data_rows(body: str) -> int:
+    """正文中最长一张表的"数据行"数：表头与 |---| 分隔行不计。"""
+    best, group = 0, []
+
+    def flush(g: list[str]) -> int:
+        sep = next(
+            (i for i, x in enumerate(g) if re.match(r"^\s*\|[\s:|-]+\|?\s*$", x)), None
+        )
+        return 0 if sep is None else len(g) - sep - 1
+
+    for ln in list(body.splitlines()) + [""]:
+        if ln.lstrip().startswith("|"):
+            group.append(ln)
+            continue
+        if group:
+            best = max(best, flush(group))
+            group = []
+    return best
+
+
+def subconcept_count(body: str) -> int:
+    """枢纽信号②：H2/H3 或编号粗体领起、且其后叙述 ≥100 字的具名子概念数。"""
+    lines = body.splitlines()
+    marks: list[tuple[int, bool, str]] = []
+    for i, ln in enumerate(lines):
+        m = re.match(r"^#{2,3} (.+)$", ln)
+        if m:
+            marks.append((i, norm_title(m.group(1)) not in SKELETON, ""))
+        elif RE_NUM_BOLD.match(ln):
+            # 编号粗体领起的叙述常与标记同行，需把本行残余计入
+            marks.append((i, True, re.sub(r"^\s*\d+\.\s+\*\*[^*]+\*\*[：:]?", "", ln)))
+    bounds = [i for i, _, _ in marks] + [len(lines)]
+    n = 0
+    for k, (i, cand, inline) in enumerate(marks):
+        if not cand:
+            continue
+        seg = inline + "\n".join(lines[i + 1 : bounds[k + 1]])
+        if len(re.sub(r"\s", "", seg)) >= 100:
+            n += 1
+    return n
+
+
+def length_limit(body: str, nchars: int) -> tuple[int, str]:
+    """规范 §4：超 2200 时按枢纽信号①②决定放行到 3400 还是维持原判。"""
+    if nchars <= 2200:
+        return 2200, ""
+    mer, rows, subs = has_mermaid(body), table_data_rows(body), subconcept_count(body)
+    s1 = mer or rows >= 4
+    s2 = subs >= 3
+    if s1 and s2:
+        sig = "mermaid" if mer else f"对比表 {rows} 数据行"
+        return 3400, f"枢纽型（①{sig} ②具名子概念 {subs}）"
+    return 2200, f"未获枢纽豁免（①{'满足' if s1 else '不满足：无 mermaid 且对比表 <4 数据行'} ②具名子概念 {subs} <3）"
 
 
 def content_rel(p: pathlib.Path) -> str:
@@ -156,11 +215,8 @@ def check(path_arg: str) -> tuple[int, int]:
     m = RE_DEF.search(body)
     if not m:
         fails.append("② 未找到与 `**一句话定义：**` 同行且非空的值")
-        def_val = ""
-    else:
-        def_val = m.group(1).strip()
-        if len(def_val) < 8:
-            fails.append(f"② 一句话定义仅 {len(def_val)} 字（需 ≥8）")
+    elif len(m.group(1).strip()) < 8:
+        fails.append(f"② 一句话定义仅 {len(m.group(1).strip())} 字（需 ≥8）")
 
     # ③ 必备 H2
     titles = set(h2_titles(body))
@@ -169,9 +225,6 @@ def check(path_arg: str) -> tuple[int, int]:
         fails.append("③ 缺少必备 H2：" + "、".join(missing))
     if not (titles & CORE_VARIANTS):
         fails.append("③ 缺少『核心机制』节（可用 §3 变体名：" + "、".join(sorted(CORE_VARIANTS)) + "）")
-    for soft in SOFT_H2:
-        if soft not in titles:
-            warns.append(f"③ 建议补节 ## {soft}")
 
     # ① 卡片数与误区条数
     cards = parse_file(content_rel(p), raw)
@@ -196,8 +249,9 @@ def check(path_arg: str) -> tuple[int, int]:
     if nl > 20:
         fails.append(f"⑥ 围栏内共 {nl} 行（上限 20）")
     nchars = prose_len(body)
-    if nchars > 2200:
-        fails.append(f"⑥ 正文 {nchars} 字（上限 2200）")
+    limit, hub_note = length_limit(body, nchars)
+    if nchars > limit:
+        fails.append(f"⑥ 正文 {nchars} 字 > 上限 {limit}｜{hub_note}")
 
     # ⑤ / ⑦ 与 git HEAD 比对
     try:
@@ -222,7 +276,11 @@ def check(path_arg: str) -> tuple[int, int]:
         warns.append(f"⑧ 悬空双链 [[{d}]]")
 
     tag = "FAIL" if fails else "PASS"
-    print(f"{tag} {content_rel(p)}  (正文 {nchars} 字 / 围栏 {nb} 块 {nl} 行 / 卡 {n_def}def+{n_trap}trap)")
+    hub = f" [{hub_note}]" if limit == 3400 else ""
+    print(
+        f"{tag} {content_rel(p)}  "
+        f"(正文 {nchars}/{limit} 字 / 围栏 {nb} 块 {nl} 行 / 卡 {n_def}def+{n_trap}trap){hub}"
+    )
     for f in fails:
         print(f"   ✗ {f}")
     for w in warns:
