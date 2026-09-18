@@ -49,12 +49,18 @@ Agent 的**常驻工具脚本**统一收在 `scripts/agent/`（2026-09-18 从 `.
 | 常驻工具 | 用途 |
 |------|------|
 | `scripts/agent/shot.mjs` | 零依赖 CDP 截图：`node scripts/agent/shot.mjs <url> <out.png> [w] [h] [clickSel]`，`clickSel` 传 CSS 选择器可先点击再截图（验证按钮交互态） |
+| `scripts/agent/imgdiff.mjs` | 截图像素对比：`node scripts/agent/imgdiff.mjs <a.png> <b.png> [ignoreRegions]`，产出差异热图并输出差异占比；UI 改动后**必须**跑（见下方 UI 回归纪律） |
 | `scripts/agent/evalcdp.mjs` | CDP 执行任意 JS 并回显返回值 + console 报错：`node scripts/agent/evalcdp.mjs <url> "<js表达式>"`，查"改了没生效"类问题利器 |
 | `scripts/agent/verifyall.mjs` | 双阶段全状态断言模板（同页两阶段 evaluate，如 pretty/md 视图切换），按需改表达式复用 |
 | `scripts/agent/scan_fm.py` | frontmatter 污染扫描：`python scripts/agent/scan_fm.py [扫描根]`，正文前 400 字符内又出现完整 fm 块 = 污染（baike 提质时沉淀） |
 | `scripts/agent/scan_dup.py` | 抓取残留副本扫描：`python scripts/agent/scan_dup.py [扫描根]`，`xxx-<数字>.md` 与 `xxx.md` 同名共存即残留 |
 
 两个 scan 脚本的扫描根默认按脚本位置推导到仓库根下的 `content/`（不再写死盘符），传 argv[1] 可覆盖。
+
+**UI 回归纪律（2026-09-18 起，ImageMagick 已装）**：改动 UI（css/js 模板/渲染逻辑）后，除 smoke 截图外，对受影响页面执行
+1. 改前基线已留在 `.workbuddy/qa-shots/` 时：`node scripts/agent/imgdiff.mjs 基线.png 新.png`（默认 2% 容差）；
+2. 无基线则先 `shot.mjs` 补拍明暗两态入档；
+3. 差异热图里出现**不该变的区域变红** = 改 A 崩 B，修完再交。动效/图表时序造成的细碎噪点用调大 fuzz 抑制（如 `imgdiff a b 5%`），不要为过 diff 把真回归糊掉。
 
 | 临时产物（`.workbuddy/`） | 用途 |
 |------|------|
