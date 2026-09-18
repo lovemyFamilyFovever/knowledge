@@ -85,3 +85,14 @@
 | content/baike/software-engineering/03-代码质量.md | 13 | s4 | 3282 | 术语汇编（13 def 卡）：规范/linter/CodeReview/重构/技术债/圈复杂度/SOLID/DRY/KISS/YAGNI/CleanCode/代码异味，重构·技术债务·代码评审已有专文需去重 → 按主题各拆词条 | pending |
 | content/baike/software-engineering/04-CI CD.md | 14 | s4 | 3659 | 术语汇编（14 def 卡）：CI/持续交付/持续部署/流水线/自动化测试/Jenkins/GitHubActions/GitLabCI/制品/环境/蓝绿/金丝雀/滚动更新/特性开关，与 devops 蓝绿部署重叠 → 按主题各拆词条 | pending |
 | content/baike/software-engineering/05-项目管理.md | 13 | s4 | 3078 | 术语汇编（13 def 卡）：Jira/看板/燃尽图/燃起图/里程碑/需求管理/Bug生命周期/发布计划/风险管理/干系人/RACI/OKR/KPI → 按术语各拆词条 | pending |
+| content/baike/network/HTTP协议.md | 13 | s2 | 7815 | baike B 多定义汇编（方法/状态码/头部/缓存/keep-alive/分块/CORS 各带 def+代码）；正文 7815 ≫ 3400、围栏 13 ≫ 2/20，且与 HTTP 状态码 等专文重叠；压缩必毁逐主题细节 → 建议按主题拆词条 | pending |
+| content/baike/network/TCP深入.md | 12 | s2 | 8090 | baike B 多定义（三次握手/四次挥手/滑动窗口/拥塞控制/超时重传/Nagle 各带 def+代码）；8090 ≫ 3400、14 围栏 ≫ 2/20，且与三次握手与四次挥手/滑动窗口/拥塞控制 专文重叠 → 建议去重后按机制拆词条 | pending |
+| content/baike/network/应用层协议.md | 13 | s2 | 9411 | baike B 多定义（HTTP/DNS/SMTP/FTP/SSH/DHCP 各协议带 def+报文示例）；9411 ≫ 3400、12 围栏 ≫ 2/20 → 建议按协议各拆词条 | pending |
+| content/baike/network/网络基础.md | 14 | s2 | 8389 | baike B 多定义（OSI/TCP-IP/以太网/IP/MAC/子网/CIDR/VLAN 各带 def）；8389 ≫ 3400、14 围栏 ≫ 2/20，且与 OSI 参考模型/IP 协议 等专文重叠 → 建议去重后按主题拆词条 | pending |
+| content/baike/network/网络安全协议.md | 11 | s2 | 9247 | baike B 多定义（防火墙/IDS-IPS/VPN/IPsec/TLS/DDoS/WAF 各带 def+示例）；9247 ≫ 3400、11 围栏 ≫ 2/20 → 建议按主题各拆词条 | pending |
+| content/baike/testing/01 - 测试基础.md | 12 | s4 | 10044 | 术语汇编：测试金字塔/单元/集成/E2E/冒烟/回归/探索性/验收/断言/覆盖率/测试替身/TDD 12 个独立测试概念（枢纽①对比表14行②子概念7），0 def 卡；正文 10044 ≫ 3400、21 围栏 ≫ 2/20 → 按概念各拆词条 | pending |
+| content/baike/testing/02 - 测试工具.md | 12 | s4 | 14217 | 工具汇编：pytest/JUnit5/Jest/Mocha·Chai/Selenium/Cypress/Playwright/Postman/JMeter/Mockito/测试数据/环境管理 12 独立工具（①对比表7行②子概念5）；正文 14217、24 围栏 ≫ 上限 → 按工具各拆词条 | pending |
+| content/baike/testing/03 - 性能测试.md | 12 | s4 | 11513 | 性能主题汇编：性能测试类型/QPS/TPS/并发用户/响应时间百分位/吞吐量/JMeter/K6/Locust/报告解读/瓶颈分析/优化思路 12 子话题（①对比表12行②子概念6）；正文 11513、18 围栏 ≫ 3400 → 按主题各拆词条 | pending |
+| algorithms/复杂度分析.md | 11 | s3 | 5811 | 概念汇编：时间/空间复杂度/最好最坏平均/均摊/主定理/NP完全/P vs NP/空间换时间/时间换空间/对比表/实战模板 11 块、0 def、11 围栏，远超 3400；NP·P vs NP 属计算理论宜并入[[计算理论]]，其余各复杂度主题各自独立面试必备，压缩必毁；应按主题拆分或收敛为速查枢纽+子词条 | pending |
+| algorithms/排序与搜索.md | 16 | s3 | 7437 | 算法汇编：冒泡/选择/插入/归并/快排/堆排/计数/桶/基数 + 二分/线性/DFS/BFS/A*/Dijkstra/Floyd 共 16 独立算法、0 def、16 围栏，远超上限；其中堆排序/二分/最短路径已有专文应去重，余下每个排序与搜索算法各为面试必备独立词条，压缩必毁；应按算法逐个拆词条，总览对比表留作排序/搜索枢纽 | pending |
+| algorithms/算法思想.md | 13 | s3 | 6781 | 思想汇编：分治/DP/贪心/回溯/拓扑/并查集/最短路/MST 多数已有专门词条(应去重)，双指针/滑动窗口/前缀和/差分数组 尚无专文且各自独立面试必备；0 def、12 围栏、6781 ≫ 上限，压缩必毁；应把无专文的 4 种技巧各拆词条、已有专文者删除重复段，本文件收敛为"算法思想速查枢纽" | pending |
