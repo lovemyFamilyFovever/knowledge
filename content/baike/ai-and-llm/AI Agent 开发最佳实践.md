@@ -11,133 +11,56 @@ status: "imported"
 
 > 📌 **导航**：本文是 **AI Agent 开发最佳实践** 词条，属于 ai-and-llm 术语集（Agent 方向）。相关枢纽：[[AI Agent 概述与核心架构]]、[[Agent 架构模式详解]]、[[多 Agent 协作系统]]、[[大模型基础术语详解]]、[[RAG 与检索技术详解]]。
 
-## 概述
-本文总结AI Agent开发中的工程最佳实践，包括错误处理、重试机制、日志追踪和可观测性。
+## 定义
 
-## 错误处理
+**一句话定义：** AI Agent 开发最佳实践是把不确定的大模型调用封装成可上线服务的一组工程约定，涵盖容错、可观测、成本控制与人工兜底。
 
-| 错误类型 | 处理策略 | 示例 |
-|---------|---------|------|
-| **API限流** | 指数退避重试 | 429 Too Many Requests |
-| **解析错误** | 重新格式化输入 | JSON解析失败 |
-| **工具失败** | 降级备选工具 | 搜索API超时 |
-| **超时** | 增加超时或拆分任务 | 长任务超时 |
+**通俗类比：** 给一个"会犯错的聪明实习生"配一套 SOP、一块监控仪表盘和一个紧急叫停按钮，让他的产出从"偶尔惊艳"变成"稳定可用"。
 
-```python
-import time
-from functools import wraps
+## 为什么需要它
 
-def retry_with_backoff(max_retries=3, base_delay=1):
-    def decorator(func):
-        @wraps(func)
-        def wrapper(*args, **kwargs):
-            for attempt in range(max_retries):
-                try:
-                    return func(*args, **kwargs)
-                except RateLimitError:
-                    time.sleep(base_delay * (2 ** attempt))
-                except Exception as e:
-                    if attempt == max_retries - 1:
-                        raise
-                    logger.warning(f"重试 {attempt+1}/{max_retries}: {e}")
-            return None
-        return wrapper
-    return decorator
-```
+大模型输出天然带随机性，外部工具会超时、限流、返回脏数据。没有工程化约定时，Agent 在 Demo 里惊艳、在生产里崩溃。最佳实践的意义，是把"大概率能用"提升为"故障可预期、可观测、可恢复"——这是 Agent 从玩具走向服务的关键一环。
 
-## 日志追踪
-```python
-import logging
-import uuid
+## 做法
 
-class AgentLogger:
-    def __init__(self, agent_name):
-        self.logger = logging.getLogger(agent_name)
-        self.trace_id = str(uuid.uuid4())[:8]
+- **容错优先**：每个工具与模型调用都包超时与异常处理；限流（HTTP 429）走指数退避重试并设最大次数；解析失败先重排输入再重试，而非直接崩溃。
+- **降级与兜底**：主工具失败切备选工具；连续失败到阈值转人工接管，而不是无限重试烧钱。
+- **全链路可观测**：给每次运行分配 trace_id，记录每步输入/输出/耗时/Token；把延迟、成功率、错误率、成本四类指标汇聚成看板。
+- **评估驱动迭代**：固化评测集，prompt、模型或工具改动先跑回归、再灰度、后全量，避免"修好一个 case 弄坏一片"。
+- **幂等与状态**：长任务支持断点续跑，工具调用尽量幂等，防止重试造成重复副作用。
 
-    def log_step(self, step, input_data, output_data, duration):
-        self.logger.info({
-            'trace_id': self.trace_id,
-            'step': step,
-            'input': str(input_data)[:200],
-            'output': str(output_data)[:200],
-            'duration_ms': duration * 1000,
-        })
+## 具体示例
 
-    def log_tool_call(self, tool_name, args, result, success):
-        self.logger.info({
-            'trace_id': self.trace_id,
-            'tool': tool_name,
-            'args': str(args)[:100],
-            'success': success,
-            'result_preview': str(result)[:100],
-        })
-```
+一个"查股价" Agent：行情 API 返回 500 → 重试 2 次仍失败 → 降级返回缓存价并标注"数据延迟" → trace 记录该步 success=false → 若连续多用户命中同一失败则触发告警。整个过程服务不崩，用户拿到的是带质量标注的结果。
 
-## 可观测性
+## 何时用 / 何时不用
 
-| 维度 | 指标 | 工具 |
-|------|------|------|
-| **延迟** | 端到端响应时间 | Prometheus |
-| **Token使用** | 输入/输出Token数 | 自定义指标 |
-| **成功率** | 任务完成率 | Grafana |
-| **错误率** | 各类错误比例 | Sentry |
-| **成本** | API调用成本 | 账单追踪 |
+- **用**：任何要对外提供服务、有 SLA 或成本约束的生产 Agent。
+- **不用**：一次性本地脚本、纯离线实验——过度工程反而拖慢探索节奏。
 
-## 代码组织
-```
-project/
-├── agents/
-│   ├── base_agent.py      # 基类
-│   ├── research_agent.py   # 具体Agent
-│   └── code_agent.py
-├── tools/
-│   ├── search_tool.py
-│   └── calculator_tool.py
-├── memory/
-│   ├── short_term.py
-│   └── long_term.py
-├── prompts/
-│   ├── system_prompts.py
-│   └── templates/
-├── config/
-│   └── settings.py
-└── tests/
-    ├── test_agents.py
-    └── test_tools.py
-```
+## 优劣与代价
 
-## 测试策略
-```python
-class AgentTest:
-    def test_basic_response(self):
-        result = self.agent.run("什么是AI?")
-        assert len(result) > 0
+✅ 把 Agent 从玩具变成服务，故障可预期、可复盘。
+✅ 指标驱动，让优化决策有据可依。
+⚠️ 前期搭监控与评测有固定成本，小项目可能显重。
+⚠️ 重试与兜底策略若配置不当，会掩盖真实故障、拉高尾延迟。
 
-    def test_tool_usage(self):
-        result = self.agent.run("北京天气如何?")
-        assert "天气" in result or "°C" in result
+## 与相关概念的区别
 
-    def test_error_recovery(self):
-        # 模拟工具失败
-        with mock_tool_failure('search'):
-            result = self.agent.run("搜索最新新闻")
-            assert result is not None  # 应有降级处理
-```
+- **vs Agent 架构模式**：架构模式管"单次任务内部如何思考与执行"（ReAct、Plan-and-Execute 等）；最佳实践管"跨请求的工程运维"（容错、监控、发布）。
+- **vs Agent 评估与基准**：评估是"改动前后打分"这一环，最佳实践把它纳入发布流程，并额外覆盖运行时的可观测与兜底。
 
-## 最佳实践清单
+## 常见误区
 
-1. **错误处理**: 每个工具调用都需try-catch
-2. **重试机制**: 指数退避，设置最大重试次数
-3. **日志追踪**: 记录每步输入输出，支持链路追踪
-4. **超时控制**: 设置合理的超时时间
-5. **成本监控**: 追踪Token使用和API调用成本
-6. **人工兜底**: 失败时提供人工接入选项
-7. **渐进式发布**: 新功能先灰度后全量
-8. **A/B测试**: 持续优化prompt和工具
+- Agent 只要 prompt 写得好，就不需要重试、超时和监控这些工程措施。
+- 重试次数设得越多、退避拉得越长，Agent 就一定越可靠。
+- 有了日志就算可观测，不再需要指标看板和成本追踪。
 
-## 小结
-Agent开发需要软件工程的最佳实践：错误处理、日志追踪、可观测性。生产级Agent需要完善的监控和兜底机制。
+## 面试速答
+
+> 🎯 生产级 Agent = 大模型能力 + 工程外壳：容错（退避重试/降级/人工兜底）、全链路可观测（trace_id + 四类指标）、评估驱动灰度。目标是把随机输出变成可预期、可复盘、可恢复的服务。
+> 🔍 追问：限流 429 怎么处理？（指数退避加抖动，设最大重试，超限则降级或排队）
+> 🔍 追问：怎么防止重试造成重复下单这类副作用？（工具幂等化或去重键，非幂等操作不自动重试）
 
 ## 相关术语
 

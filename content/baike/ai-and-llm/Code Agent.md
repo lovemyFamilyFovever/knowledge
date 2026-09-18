@@ -12,90 +12,71 @@ status: "imported"
 
 > 📌 **导航**：本文是 **Code Agent** 词条，属于 ai-and-llm 术语集。相关枢纽：[[大模型基础术语详解]]、[[Transformer架构深度解析]]、[[RAG 与检索技术详解]]、[[多 Agent 协作系统]]、[[Prompt 工程与 Agent 详解]]。
 
-## 概述
-**Code Agent** 专注于代码相关任务：生成、调试、重构、测试。它将LLM的代码理解能力与工具执行相结合。
+## 定义
 
-## 核心能力
+**一句话定义：** Code Agent 是专注软件工程任务的 Agent，把大模型的代码理解与沙箱执行、Linter、测试等工程工具结合，端到端完成生成、调试、重构、审查与测试。
+
+**通俗类比：** 一个能自己写代码、跑起来看报错、再改到测试全绿的"AI 程序员"，而不是只会弹候选、不负责跑通的补全插件。
+
+## 为什么需要它
+
+纯补全只给候选、不验证，正确性靠人把关。真实开发要的是"写→跑→错→修"的闭环。Code Agent 把执行与反馈纳入循环，用可运行的测试结果当客观裁判，显著抬高产出质量与自动化程度。
+
+## 核心机制
+
+它的五项核心能力：
 
 | 能力 | 说明 | 实现方式 |
 |------|------|---------|
-| **代码生成** | 根据需求生成代码 | LLM + 代码执行器 |
-| **代码调试** | 发现并修复bug | 错误分析 + 修复建议 |
-| **代码重构** | 优化代码结构 | 代码理解 + 变换 |
-| **代码审查** | 代码质量检查 | 规则 + LLM分析 |
-| **测试生成** | 自动生成测试用例 | 代码分析 + 测试框架 |
+| 代码生成 | 按需求生成代码 | LLM + 代码执行器 |
+| 代码调试 | 发现并修复 bug | 错误分析 + 修复建议 |
+| 代码重构 | 优化代码结构 | 代码理解 + 变换 |
+| 代码审查 | 质量与安全把关 | 规则 + LLM 分析 |
+| 测试生成 | 自动补测试用例 | 代码分析 + 测试框架 |
 
-## Code Agent 架构
-```python
-class CodeAgent:
-    def __init__(self, llm, sandbox):
-        self.llm = llm
-        self.sandbox = sandbox  # 安全执行环境
+驱动这些能力的是一个**生成—自修复闭环**：理解需求 → 生成代码 → 在沙箱执行 → 若报错则依据错误信息定位并修复 → 重跑，直到测试通过或达到重试上限。调试是其缩影：分析报错 → 定位问题代码 → 生成修复 → 验证 → 失败则换方案。
 
-    def generate(self, requirement: str) -> str:
-        # 1. 理解需求
-        spec = self.llm.analyze(requirement)
-        # 2. 生成代码
-        code = self.llm.generate_code(spec)
-        # 3. 在沙箱中测试
-        test_result = self.sandbox.execute(code)
-        # 4. 根据错误修复
-        while test_result.has_error:
-            code = self.llm.fix_code(code, test_result.error)
-            test_result = self.sandbox.execute(code)
-        return code
-```
-
-## Copilot 架构
-```
-用户输入(代码/注释) → 上下文收集(打开的文件、光标位置) → LLM推理 → 补全建议 → 用户接受/拒绝
-```
-
-## 代码调试Agent
-```python
-class DebugAgent:
-    def debug(self, code, error):
-        # 1. 分析错误信息
-        analysis = self.analyze_error(error)
-        # 2. 定位问题代码
-        location = self.locate_bug(code, analysis)
-        # 3. 生成修复方案
-        fix = self.generate_fix(code, location, analysis)
-        # 4. 验证修复
-        if self.verify_fix(code, fix, error):
-            return fix
-        # 5. 如果失败，尝试其他方案
-        return self.try_alternatives(code, error)
-```
-
-## 代码审查
-```python
-def code_review(code: str, llm) -> dict:
-    prompt = f"""
-    请审查以下代码，检查：
-    1. 潜在bug
-    2. 性能问题
-    3. 安全漏洞
-    4. 代码风格
-    5. 可读性
-
-    代码：{code}
-    """
-    return llm.generate(prompt)
-```
-
-## 代码Agent工具集
+支撑闭环的是工程工具集，安全沙箱是其可信前提：
 
 | 工具 | 功能 | 示例 |
 |------|------|------|
-| **代码执行器** | 运行代码 | Python/JS沙箱 |
-| **Linter** | 静态分析 | pylint, eslint |
-| **测试框架** | 运行测试 | pytest, jest |
-| **版本控制** | 代码管理 | git操作 |
-| **文件系统** | 读写文件 | 项目文件 |
+| 代码执行器 | 运行代码 | Python / JS 沙箱 |
+| Linter | 静态分析 | pylint、eslint |
+| 测试框架 | 运行测试 | pytest、jest |
+| 版本控制 | 代码管理 | git 操作 |
+| 文件系统 | 读写项目文件 | 项目上下文 |
 
-## 小结
-Code Agent将LLM的代码能力与工程工具结合，实现端到端的代码开发辅助。核心是安全的代码执行环境和可靠的错误修复能力。
+## 具体示例
+
+需求"写一个解析 CSV 并统计每列均值的函数"：Code Agent 生成代码 → 在沙箱跑样例 → 报 KeyError（列名带空格）→ 自动对列名做 strip 后重跑 → 测试通过再返回。整个修 bug 过程无需人介入。
+
+## 何时用 / 何时不用
+
+- **用**：任务边界清晰、且有可执行 / 可测试环境可作验证时。
+- **不用**：无法安全执行代码、或缺少验证手段的场景——此时退化为纯生成，容易"看着对、跑不通"。
+
+## 优劣与代价
+
+✅ 以测试为客观裁判，正确性远高于纯补全，能端到端交付。
+⚠️ 强依赖沙箱与可靠测试，缺失时"自修复"可能越改越错。
+⚠️ 要真跑生成的任意代码，安全隔离与权限控制是硬要求。
+
+## 与相关概念的区别
+
+- **vs Copilot 式补全**：补全是"给候选、人来跑"；Code Agent 是"自己跑、自己修到通过"的自主闭环。
+- **vs [[Computer Use Agent]]**：后者操作整台电脑 / GUI，Code Agent 聚焦代码与开发工具链。
+
+## 常见误区
+
+- Code Agent 只要模型够强，就不需要沙箱执行和测试反馈，也能一次把代码写对。
+- Code Agent 和 Copilot 的自动补全是同一回事，只是名字不同。
+- 在没有任何测试、无法运行代码的环境里，Code Agent 的自我修复依然可靠。
+
+## 面试速答
+
+> 🎯 Code Agent = LLM 代码能力 + 工程工具闭环：生成 → 沙箱执行 → 按报错自修复 → 跑测试验证，直到通过。核心不在"会写代码"，而在有"可执行的客观裁判"（测试 / Linter），这是它比纯补全可靠的根本，前提是安全沙箱与验证手段。
+> 🔍 追问：Code Agent 靠什么避免"改错代码"？（用测试 / Linter 的可执行反馈作客观验证，不通过才继续修）
+> 🔍 追问：为什么沙箱是刚需？（要真跑生成的任意代码，必须隔离环境以防副作用与安全事件）
 
 ## 相关术语
 

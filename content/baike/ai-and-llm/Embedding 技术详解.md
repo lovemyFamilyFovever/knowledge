@@ -12,71 +12,39 @@ status: "imported"
 
 > 📌 **导航**：本文是 **Embedding 技术详解** 词条，属于 ai-and-llm 术语集。相关枢纽：[[大模型基础术语详解]]、[[Transformer架构深度解析]]、[[RAG 与检索技术详解]]、[[多 Agent 协作系统]]、[[Prompt 工程与 Agent 详解]]。
 
-## 概述
-**Embedding（嵌入）** 是将文本、图像等数据转换为高维数值向量的技术。向量之间的距离反映语义相似度，是 RAG、搜索、推荐系统的基础。
+## 定义
 
-## 技术演进
+**一句话定义：** Embedding 是把文本、图像等离散对象映射成稠密实值向量的技术，让语义相近的对象在向量空间中彼此靠近，是检索、RAG、推荐与聚类的底座。
+
+**通俗类比：** 给每个词、句子或图片发一个"语义经纬度"——意思越接近的点挨得越近，于是"找相似"就简化成了"量距离"。
+
+## 为什么需要它
+
+计算机只认数字、不认字。要对语义做比较、检索、聚类，就得先把非结构化数据变成可运算的向量，用空间距离表达相似度。Embedding 正是文本世界与数学空间之间的那座桥。
+
+## 核心机制
+
+它的演进是一条"从静态到上下文、从预测共现到对比学习"的路：
 
 | 技术 | 年代 | 原理 | 特点 |
 |------|------|------|------|
-| **Word2Vec** | 2013 | Skip-gram/CBOW | 静态词向量 |
-| **GloVe** | 2014 | 全局矩阵分解 | 统计共现 |
-| **ELMo** | 2018 | 双向LSTM | 上下文相关 |
-| **BERT** | 2018 | Transformer编码器 | 双向上下文 |
-| **OpenAI Embedding** | 2022 | 对比学习 | API服务 |
+| Word2Vec | 2013 | Skip-gram / CBOW | 静态词向量 |
+| GloVe | 2014 | 全局共现矩阵分解 | 统计共现 |
+| ELMo | 2018 | 双向 LSTM | 上下文相关 |
+| BERT | 2018 | Transformer 编码器 | 双向上下文 |
+| OpenAI Embedding | 2022 | 对比学习 | API 服务 |
 
-## Word2Vec 原理
-```python
-# Skip-gram: 用中心词预测上下文
-from gensim.models import Word2Vec
-sentences = [['AI','agent','framework'], ['vector','database','search']]
-model = Word2Vec(sentences, vector_size=100, window=5, min_count=1)
-vector = model.wv['AI']  # 获取词向量
-similar = model.wv.most_similar('AI', topn=5)  # 相似词
-```
+**对比学习（InfoNCE）** 是现代强嵌入模型的关键：把 anchor 与其正样本对的余弦相似度拉近、与大量负样本推远，用 temperature（如 0.07）缩放后走 cross-entropy，让"正样本排在最前"。这让相似度空间本身变得可分，检索因而更准。
 
-## BERT Embedding
-```python
-from transformers import AutoTokenizer, AutoModel
-import torch
+**句向量怎么取**：用 BERT 类模型时，常取 `[CLS]` 位的输出、或对所有 token 做 mean-pooling，作为整句向量；工程上 mean-pooling 往往比裸 `[CLS]` 更稳。
 
-tokenizer = AutoTokenizer.from_pretrained('bert-base-chinese')
-model = AutoModel.from_pretrained('bert-base-chinese')
+## 具体示例
 
-inputs = tokenizer('人工智能代理', return_tensors='pt')
-with torch.no_grad():
-    outputs = model(**inputs)
-# [CLS] token的输出作为句子向量
-embedding = outputs.last_hidden_state[:, 0, :]
-```
+语义搜索：把文档库全部 embed 存进向量库，用户 query 同样 embed 后取最近邻 Top-K。"苹果公司股价"与"苹果水果食谱"因上下文不同，向量分处两侧，能被正确区分——这是关键词匹配做不到的。
 
-## OpenAI Embedding
-```python
-from openai import OpenAI
-client = OpenAI()
+常见嵌入模型按质量与成本各有取舍（MTEB 为公开榜单得分，随版本变化，仅作量级参考、建议核验）：
 
-response = client.embeddings.create(
-    model='text-embedding-3-small',
-    input='AI Agent是能够自主执行任务的智能系统',
-)
-vector = response.data[0].embedding  # 1536维向量
-```
-
-## 对比学习训练 Embedding
-```python
-# InfoNCE Loss: 拉近正样本对，推远负样本对
-class ContrastiveLoss:
-    def __call__(self, anchor, positive, negatives, temperature=0.07):
-        pos_sim = cosine_similarity(anchor, positive) / temperature
-        neg_sims = [cosine_similarity(anchor, neg) / temperature for neg in negatives]
-        logits = torch.cat([pos_sim.unsqueeze(0), torch.stack(neg_sims)])
-        labels = torch.tensor([0])  # 正样本在第0位
-        return F.cross_entropy(logits.unsqueeze(0), labels)
-```
-
-## Embedding 模型对比
-
-| 模型 | 维度 | 中文支持 | MTEB得分 | 延迟 |
+| 模型 | 维度 | 中文支持 | MTEB 得分 | 延迟 |
 |------|------|---------|---------|------|
 | text-embedding-3-small | 1536 | 是 | 62.3 | 低 |
 | text-embedding-3-large | 3072 | 是 | 64.6 | 中 |
@@ -84,8 +52,33 @@ class ContrastiveLoss:
 | e5-mistral-7b | 4096 | 是 | 66.6 | 高 |
 | jina-embeddings-v2 | 768 | 是 | 60.4 | 低 |
 
-## 小结
-Embedding是AI系统中连接文本与数学空间的桥梁。从Word2Vec到现代对比学习模型，质量持续提升。选择模型时需权衡质量、速度和成本。
+## 何时用 / 何时不用
+
+- **用**：需要"按语义而非关键词"匹配、聚类或跨模态检索的场景。
+- **不用**：精确关键词匹配或结构化过滤——用倒排索引 / SQL 更快也更准。
+
+## 优劣与代价
+
+✅ 让相似度可计算、可跨语言与多模态，是语义检索的基础设施。
+⚠️ 向量相似不等于逻辑等价，易召回"看着像、其实不同"的结果。
+⚠️ 维度高，需配套向量数据库与相似度阈值调优。
+
+## 与相关概念的区别
+
+- **vs [[词向量]]**：词向量特指 Word2Vec/GloVe 的词级静态嵌入；Embedding 是更广义概念，含句、段、图、文的动态表示。
+- **vs [[Tokenizer 技术]]**：Tokenizer 把文本切成 token，Embedding 把 token / 文本变成向量，二者是上下游关系。
+
+## 常见误区
+
+- Word2Vec 得到的词向量会随上下文变化，同一个词在任何句子里向量都不同。
+- 两段文本的向量余弦相似度越高，它们在逻辑上就一定等价。
+- Embedding 只能处理文本，图像等其他模态无法被转成向量。
+
+## 面试速答
+
+> 🎯 Embedding 把文本 / 图像映射成稠密向量，用距离表示语义相似度，是检索、RAG、推荐的底座。技术从 Word2Vec / GloVe 静态词向量，到 ELMo / BERT 上下文向量，再到现代对比学习（InfoNCE：拉近正样本、推远负样本）。选型看质量（MTEB）、维度、中文支持、延迟与成本；但向量相似不等于逻辑等价，需配阈值与向量库。
+> 🔍 追问：静态词向量与上下文向量差别？（前者一词一固定向量，后者同词不同语境向量不同，如 BERT）
+> 🔍 追问：为何对比学习训出的嵌入检索更强？（直接以"正样本更近、负样本更远"为目标优化可分的相似度空间）
 
 ## 相关术语
 

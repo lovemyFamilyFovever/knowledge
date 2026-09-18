@@ -11,118 +11,73 @@ status: "imported"
 
 > 📌 **导航**：本文是 **Agent 记忆系统** 词条，属于 ai-and-llm 术语集（Agent 方向）。相关枢纽：[[AI Agent 概述与核心架构]]、[[Agent 架构模式详解]]、[[多 Agent 协作系统]]、[[大模型基础术语详解]]、[[RAG 与检索技术详解]]。
 
-## 概述
+## 定义
 
-记忆系统是AI Agent的'大脑存储'，决定Agent能否从经验中学习、保持上下文连贯性。就像人类有工作记忆、短期记忆、长期记忆，Agent也有多层设计。
+**一句话定义：** Agent 记忆系统是分层保存工作、短期与长期信息并在推理时按需检索，使 Agent 保持上下文连贯、积累经验的多层存储机制。
 
-## 记忆分类
+**通俗类比：** 像人脑的"手中便签（工作记忆）+ 今日日记（短期）+ 图书馆（长期）"——先想手头的事，需要时翻今天的记录，再必要时去图书馆查旧资料。
+
+## 为什么需要它
+
+上下文窗口容量有限，长对话与跨会话信息若全塞进去既放不下又烧 Token。记忆系统把不常用的信息沉到外部存储，用时再按相关性检索回来，在"上下文连贯"与"成本可控"之间取得平衡，是 Agent 能记住过去、持续个性化的前提。
+
+## 核心机制
+
+三层记忆各司其职：
 
 | 类型 | 容量 | 持久性 | 实现方式 | 类比 |
 |------|------|--------|---------|------|
-| **工作记忆** | 小 | 临时 | 上下文窗口 | 手中纸条 |
-| **短期记忆** | 中 | 会话级 | 对话历史 | 今天日记 |
-| **长期记忆** | 大 | 永久 | 向量DB | 图书馆 |
+| 工作记忆 | 小 | 临时 | 上下文窗口 | 手中纸条 |
+| 短期记忆 | 中 | 会话级 | 对话历史 | 今天日记 |
+| 长期记忆 | 大 | 永久 | 向量数据库 | 图书馆 |
 
-## 工作记忆
+**写入与召回**：新信息先进工作记忆并追加到会话历史；当接近阈值或被判定重要时，摘要进短期、向量化后写入长期。每轮拼装上下文时，工作记忆全带、短期带近况、长期按语义相关性召回 Top-K，再拼接成当前 prompt。
 
-```python
-class WorkingMemory:
-    def __init__(self, max_tokens=4000):
-        self.max_tokens = max_tokens
-        self.items = []
-
-    def add(self, content: str):
-        self.items.append(content)
-        self._truncate()
-
-    def get_context(self) -> str:
-        return '\n'.join(self.items)
-
-    def _truncate(self):
-        total = sum(len(item) for item in self.items)
-        while total > self.max_tokens * 3 and self.items:
-            total -= len(self.items.pop(0))
-```
-
-## 短期记忆
-
-```python
-from collections import deque
-
-class ShortTermMemory:
-    def __init__(self, max_turns=20):
-        self.history = deque(maxlen=max_turns)
-
-    def add_turn(self, role: str, content: str):
-        self.history.append({'role': role, 'content': content})
-
-    def get_recent(self, n=None):
-        turns = list(self.history)
-        return turns[-n:] if n else turns
-
-    def get_summary(self, llm) -> str:
-        prompt = f'请压缩以下对话为摘要:\n{self.get_recent()}'
-        return llm.generate(prompt)
-```
-
-## 长期记忆
-
-```python
-from langchain_openai import OpenAIEmbeddings
-from langchain_community.vectorstores import Chroma
-
-class LongTermMemory:
-    def __init__(self, persist_dir='./memory_store'):
-        self.vectorstore = Chroma(
-            persist_directory=persist_dir,
-            embedding_function=OpenAIEmbeddings(),
-        )
-
-    def store(self, content: str, metadata: dict = None):
-        self.vectorstore.add_texts([content], metadatas=[metadata or {}])
-
-    def recall(self, query: str, k: int = 5) -> list:
-        results = self.vectorstore.similarity_search_with_score(query, k=k)
-        return [{'content': d.page_content, 'score': s} for d, s in results]
-```
-
-## 综合记忆系统
-
-```python
-class AgentMemorySystem:
-    def __init__(self, llm):
-        self.working = WorkingMemory(max_tokens=4000)
-        self.short_term = ShortTermMemory(max_turns=20)
-        self.long_term = LongTermMemory()
-
-    def add(self, role: str, content: str):
-        self.working.add(f'{role}: {content}')
-        self.short_term.add_turn(role, content)
-        if len(content) > 100:
-            self.long_term.store(content, {'role': role})
-
-    def get_context(self) -> str:
-        working_ctx = self.working.get_context()
-        long_term_ctx = self.long_term.recall(working_ctx, k=3)
-        return f'{working_ctx}\n\n相关历史:\n{long_term_ctx}'
-```
-
-## 压缩策略对比
+窗口装不下时必须做**压缩取舍**：
 
 | 策略 | 说明 | 优点 | 缺点 |
 |------|------|------|------|
-| **截断** | 保留最近N条 | 简单高效 | 丢失重要信息 |
-| **摘要** | LLM生成摘要 | 保留核心 | 有信息损失 |
-| **滑动窗口** | 最近N个token | 平滑过渡 | 可能截断 |
-| **重要性排序** | 按重要性保留 | 智能筛选 | 额外计算 |
-| **层次化** | 详情→摘要分层 | 平衡详略 | 实现复杂 |
+| 截断 | 保留最近 N 条 | 简单高效 | 丢失早期重要信息 |
+| 摘要 | 用 LLM 压缩 | 保留核心 | 有信息损失 |
+| 滑动窗口 | 保留最近 Token | 过渡平滑 | 可能截断 |
+| 重要性排序 | 按重要性保留 | 智能筛选 | 额外计算 |
+| 层次化 | 详情→摘要分层 | 平衡详略 | 实现复杂 |
 
-## 小结
+## 具体示例
 
-三层记忆的协调配合，让Agent能够像人类一样'记住'过去经验并应用于当前任务。
+客服 Agent 进行到第 30 轮：早期订单细节已滑出窗口，但短期记忆的摘要仍留着"用户已确认订单 #88"；当用户提到"去年投诉过"，从长期向量库按语义召回相似历史片段。三者拼成当前上下文，既不爆窗又保持连贯。
+
+## 何时用 / 何时不用
+
+- **用**：长程多轮、跨会话、需要个性化或经验积累的场景。
+- **不用**：单轮短任务，窗口足以容纳全部信息，加记忆反而引入检索噪声与额外成本。
+
+## 优劣与代价
+
+✅ 突破窗口限制，支持连贯对话、个性化与经验复用。
+⚠️ 召回不精准会把无关或过时信息塞进上下文，造成"检索污染"。
+⚠️ 写入、压缩与更新策略本身有工程复杂度，管理不当会让记忆越用越乱。
+
+## 与相关概念的区别
+
+- **vs [[RAG 与检索技术详解]]**：机制同源（向量召回），但 RAG 检索的是外部知识库文档，记忆检索的是 Agent 自身的交互历史。
+- **vs [[长上下文技术]]**：长上下文靠扩大窗口"硬塞"，记忆靠外置存储 + 检索"省 Token"，两者常互补而非替代。
+
+## 常见误区
+
+- 只要把上下文窗口做到足够大，就不再需要任何外部记忆系统。
+- 工作记忆、短期记忆、长期记忆的容量和持久性完全相同，只是叫法不同。
+- 长期记忆只要存进去就一定准确有用，不需要管理遗忘与更新。
+
+## 面试速答
+
+> 🎯 Agent 记忆分三层：工作记忆（上下文窗口、临时）、短期记忆（会话历史、可摘要）、长期记忆（向量库、持久）。核心是"该放的放窗口、该沉的沉外部、用时按相关性召回"，再配截断/摘要/分层等压缩策略，在连贯与成本间取平衡。
+> 🔍 追问：记忆检索和 RAG 有何异同？（同为向量召回；RAG 取外部知识库，记忆取 Agent 自身历史）
+> 🔍 追问：窗口装不下时怎么办？（截断、摘要、滑动窗口、重要性排序、层次化压缩等取舍旧信息）
+
 ## 相关术语
 
-[[AI Agent 概述与核心架构]]、[[Agent 架构模式详解]]、[[Agent 规划与推理]]、[[Agent 记忆系统]]、[[Agent 评估与基准]]、[[多 Agent 协作系统]]、[[大模型基础术语详解]]、[[RAG 与检索技术详解]]、[[Prompt 工程与 Agent 详解]]
+[[AI Agent 概述与核心架构]]、[[Agent 架构模式详解]]、[[Agent 规划与推理]]、[[Agent 评估与基准]]、[[多 Agent 协作系统]]、[[大模型基础术语详解]]、[[RAG 与检索技术详解]]、[[Prompt 工程与 Agent 详解]]、[[长上下文技术]]
 
 ## 参考资料
 

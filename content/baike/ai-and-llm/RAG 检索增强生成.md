@@ -10,141 +10,82 @@ status: "imported"
 # RAG 检索增强生成
 
 
-> 📌 **导航**：本文是 **RAG 检索增强生成** 词条，属于 ai-and-llm 术语集。相关枢纽：[[大模型基础术语详解]]、[[Transformer架构深度解析]]、[[RAG 与检索技术详解]]、[[多 Agent 协作系统]]、[[Prompt 工程与 Agent 详解]]。
+> 📌 **导航**：本文是 **RAG 检索增强生成** 词条，属于 ai-and-llm 术语集。相关枢纽：[[RAG 与检索技术详解]]、[[向量数据库技术]]、[[Embedding 技术详解]]、[[LangChain 框架全解析]]。
 
-## 概述
+## 定义
 
-**RAG（Retrieval-Augmented Generation）** 将外部知识检索与LLM生成相结合，解决LLM的**知识时效性**和**幻觉**问题。
+**一句话定义：** RAG（检索增强生成）把外部知识检索与大模型生成结合，用"先查后答"缓解知识过时与幻觉，本词条聚焦其基础范式、Advanced 变体与生成质量评估。
 
-## 基础架构
+**通俗类比：** 开卷考试——基础 RAG 是"翻到相关页就答"，Advanced RAG 是"先审题改写、多翻几处、再挑最对的页作答"，Graph RAG 则像"顺着一张人物关系图去找答案"。
 
-```
-用户问题 → 检索模块(Retriever) → 相关文档 → 生成模块(Generator) → 最终回答
-```
+## 为什么需要它
 
-## 基础RAG实现
+纯 LLM 有知识过时与幻觉两大痛。基础 RAG 补上"事实依据"，但检索质量参差会直接拖累答案，于是长出 Advanced、Graph 等变体来提质；又需要生成侧指标来判断"答得忠不忠实"，形成一条可迭代的工程路线。
 
-```python
-from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langchain_openai import OpenAIEmbeddings, ChatOpenAI
-from langchain_community.vectorstores import Chroma
-from langchain_core.prompts import ChatPromptTemplate
-from langchain_core.output_parsers import StrOutputParser
-from langchain_core.runnables import RunnablePassthrough
+## 核心机制
 
-# 加载和分割
-documents = TextLoader('knowledge.txt').load()
-chunks = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=50).split_documents(documents)
+RAG 的能力随范式分三级演进：
 
-# 向量存储
-vectorstore = Chroma.from_documents(chunks, OpenAIEmbeddings())
-retriever = vectorstore.as_retriever(search_kwargs={'k': 3})
-
-# RAG Chain
-template = '基于上下文回答:\n{context}\n\n问题：{question}\n回答：'
-prompt = ChatPromptTemplate.from_template(template)
-
-rag_chain = (
-    {'context': retriever, 'question': RunnablePassthrough()}
-    | prompt | ChatOpenAI(model='gpt-4o') | StrOutputParser()
-)
-result = rag_chain.invoke('什么是向量数据库？')
-```
-
-## Advanced RAG 技术
+1. **基础 RAG（Naive）**：离线把文档分块、Embedding 后存入向量库；在线把问题向量化、检索 Top-K、拼进 Prompt 交给 LLM 生成。用 LangChain / LlamaIndex 写一条 `retriever → prompt → llm → parser` 链即可跑通。它简单有效，但上限被"检不准就答错"卡住。
+2. **Advanced RAG**：在检索前后加装换与精修，系统性提质：
 
 | 技术 | 说明 | 效果 |
 |------|------|------|
-| **HyDE** | 用假设答案检索 | 提高语义匹配 |
-| **Multi-Query** | 多角度查询 | 提高召回率 |
-| **Re-ranking** | 结果重排序 | 提高精确度 |
-| **Sentence Window** | 扩展上下文 | 提高完整性 |
-| **Parent-Child** | 子块检索父块返回 | 平衡粒度 |
+| HyDE | 用假设答案去检索 | 提高语义匹配 |
+| Multi-Query | 从多个角度改写查询 | 提高召回率 |
+| Re-ranking | 检索结果二次精排 | 提高精确度 |
+| Sentence Window | 命中块向两侧扩上下文 | 提高完整性 |
+| Parent-Child | 子块检索、返回父块 | 平衡粒度与信息量 |
 
-## Graph RAG
+3. **Graph RAG**：把知识图谱并入检索，将向量召回与实体 / 关系子图查询结合，擅长"多跳、复杂实体关系"的问题（如"公司 A 创始人的母校"），弥补纯向量对关系推理的短板。
 
-将知识图谱与RAG结合，处理复杂实体关系查询。
+## 具体示例
 
-```python
-class GraphRAG:
-    def __init__(self, kg, vectorstore):
-        self.kg = kg
-        self.vectorstore = vectorstore
+问"某公司创始人的母校是哪所"：Naive RAG 可能只捞回公司简介页；Graph RAG 顺着"公司 → 创始人 → 毕业院校"的实体关系链做多跳检索，再交给 LLM 组织答案，显著更准。
 
-    def query(self, question: str) -> str:
-        vector_results = self.vectorstore.similarity_search(question, k=3)
-        entities = self.extract_entities(question)
-        graph_results = [self.kg.query_related(e) for e in entities]
-        combined = self.merge_results(vector_results, graph_results)
-        return self.llm.generate(question, combined)
-```
+评估要分两侧：检索侧看 Recall@K / MRR / NDCG（详见 [[RAG 与检索技术详解]]）；生成侧常用 RAGAS 类四指标——**Context Precision**（检回文档里相关的比例）、**Context Recall**（该检到的相关文档被检回多少）、**Faithfulness**（回答是否忠于上下文、有无编造）、**Answer Relevancy**（答案与问题的相关性）。
 
-## RAG vs Fine-tuning
+## RAG 与微调的取舍
 
 | 维度 | RAG | Fine-tuning |
 |------|-----|-------------|
-| **知识更新** | 实时 | 需重新训练 |
-| **成本** | 低 | 高 |
-| **准确性** | 依赖检索质量 | 依赖训练数据 |
-| **幻觉** | 较少 | 仍有风险 |
-| **适用场景** | 知识密集型 | 风格调整 |
+| 知识更新 | 实时（改库即可） | 需重新训练 |
+| 成本 | 低 | 高 |
+| 准确性 | 依赖检索质量 | 依赖训练数据 |
+| 幻觉 | 较少（有据可依） | 仍有风险 |
+| 适用 | 知识密集型 | 风格 / 格式调整 |
 
-## RAG评估指标
+## 何时用 / 何时不用
 
-| 指标 | 含义 |
-|------|------|
-| **Context Precision** | 检索文档的相关比例 |
-| **Context Recall** | 相关文档的检索覆盖率 |
-| **Faithfulness** | 回答是否忠实于上下文 |
-| **Answer Relevancy** | 回答与问题的相关性 |
+- **用**：知识密集型问答，先用 Naive 起步、按需叠加 Advanced / Graph。
+- **不用**：目标是改变模型的风格、语气或输出格式——那更适合微调，而非外挂检索。
 
-## 小结
+## 优劣与代价
 
-RAG是最实用的LLM增强技术。基础RAG提供事实依据，Advanced RAG通过查询转换等提升质量，Graph RAG引入知识图谱处理复杂关系。
-## RAG 完整流程图
+✅ Naive 易落地，Advanced 明显提质，Graph 解决多跳关系。
+⚠️ 每种变体都增加复杂度与成本（Graph 还需构建知识图谱）。
+⚠️ 整体质量高度依赖检索与分块，必须配针对性评估才能定位瓶颈。
 
-<svg viewBox="0 0 800 350" xmlns="http://www.w3.org/2000/svg" style="max-width:100%;font-family:Arial,sans-serif">
-  <rect width="800" height="350" fill="#f8fafc" rx="12"/>
-  <text x="400" y="30" text-anchor="middle" font-size="18" font-weight="bold" fill="#1e293b">RAG (检索增强生成) 流程</text>
-  <rect x="30" y="50" width="340" height="130" rx="8" fill="#dbeafe" stroke="#3b82f6" opacity="0.3"/>
-  <text x="200" y="75" text-anchor="middle" font-size="13" font-weight="bold" fill="#1e40af">离线索引阶段</text>
-  <rect x="50" y="90" width="80" height="35" rx="6" fill="#93c5fd"/>
-  <text x="90" y="112" text-anchor="middle" font-size="11" fill="#1e3a8a">文档库</text>
-  <rect x="160" y="90" width="80" height="35" rx="6" fill="#93c5fd"/>
-  <text x="200" y="112" text-anchor="middle" font-size="11" fill="#1e3a8a">文本分块</text>
-  <rect x="270" y="90" width="80" height="35" rx="6" fill="#93c5fd"/>
-  <text x="310" y="112" text-anchor="middle" font-size="11" fill="#1e3a8a">Embedding</text>
-  <rect x="240" y="140" width="110" height="30" rx="4" fill="#60a5fa"/>
-  <text x="295" y="160" text-anchor="middle" font-size="11" fill="white">向量数据库</text>
-  <line x1="130" y1="107" x2="160" y2="107" stroke="#3b82f6" stroke-width="2"/>
-  <line x1="240" y1="107" x2="270" y2="107" stroke="#3b82f6" stroke-width="2"/>
-  <line x1="310" y1="125" x2="295" y2="140" stroke="#3b82f6" stroke-width="2"/>
-  <rect x="420" y="50" width="360" height="250" rx="8" fill="#dcfce7" stroke="#22c55e" opacity="0.3"/>
-  <text x="600" y="75" text-anchor="middle" font-size="13" font-weight="bold" fill="#166534">在线查询阶段</text>
-  <rect x="440" y="90" width="80" height="35" rx="6" fill="#86efac"/>
-  <text x="480" y="112" text-anchor="middle" font-size="11" fill="#166534">用户问题</text>
-  <rect x="550" y="90" width="80" height="35" rx="6" fill="#86efac"/>
-  <text x="590" y="112" text-anchor="middle" font-size="11" fill="#166534">Embedding</text>
-  <rect x="660" y="90" width="100" height="35" rx="6" fill="#86efac"/>
-  <text x="710" y="112" text-anchor="middle" font-size="11" fill="#166534">向量检索Top-K</text>
-  <rect x="440" y="150" width="130" height="35" rx="6" fill="#86efac"/>
-  <text x="505" y="172" text-anchor="middle" font-size="11" fill="#166534">拼接: 问题+上下文</text>
-  <rect x="610" y="150" width="150" height="35" rx="6" fill="#4ade80"/>
-  <text x="685" y="172" text-anchor="middle" font-size="12" font-weight="bold" fill="#14532d">LLM 生成答案</text>
-  <rect x="610" y="220" width="150" height="35" rx="6" fill="#22c55e"/>
-  <text x="685" y="242" text-anchor="middle" font-size="12" fill="white">最终回答</text>
-  <line x1="530" y1="107" x2="550" y2="107" stroke="#22c55e" stroke-width="2"/>
-  <line x1="630" y1="107" x2="660" y2="107" stroke="#22c55e" stroke-width="2"/>
-  <line x1="570" y1="167" x2="610" y2="167" stroke="#22c55e" stroke-width="2"/>
-  <line x1="685" y1="185" x2="685" y2="220" stroke="#22c55e" stroke-width="2"/>
-  <path d="M 350 155 C 390 155, 410 155, 440 155" stroke="#64748b" stroke-width="2" stroke-dasharray="5,5"/>
-  <text x="395" y="148" text-anchor="middle" font-size="10" fill="#64748b">检索</text>
-  <text x="400" y="330" text-anchor="middle" font-size="12" fill="#475569">文档离线索引 + 在线检索增强生成 = RAG</text>
-</svg>
+## 与相关概念的区别
+
+- **vs [[RAG 与检索技术详解]]**：那篇是"检索管线全景（BM25 / 向量 / 重排 / 分块）"，本篇聚焦"RAG 范式演进（Naive→Advanced→Graph）与生成质量评估"。
+- **vs [[微调与训练技术详解]]**：RAG 外挂知识、可溯源、易更新；微调把能力内化进权重、擅长改风格格式。
+
+## 常见误区
+
+- Faithfulness 指标衡量的是检索回来的文档有多相关。
+- Graph RAG 相比基础 RAG 的唯一作用是提升检索速度。
+- 只要用上了 Advanced RAG，RAG 系统就不再需要做质量评估。
+
+## 面试速答
+
+> 🎯 RAG 有三级演进：Naive（索引 + 检索 + 拼 Prompt 生成，易落地但受检索牵制）→ Advanced（HyDE / Multi-Query 改写、Re-ranking、Sentence Window、Parent-Child 系统性提质）→ Graph RAG（并入知识图谱做多跳实体关系）。评估分两侧：检索看 Recall@K / NDCG，生成看 Context Precision/Recall、Faithfulness（忠于上下文防幻觉）、Answer Relevancy。与微调取舍：更新知识、要溯源选 RAG，改风格格式选微调。
+> 🔍 追问：Faithfulness 和 Context Precision 有何不同？（前者查"回答是否忠于给定上下文"，后者查"检回文档的相关比例"）
+> 🔍 追问：什么时候该上 Graph RAG？（需要多跳 / 实体关系推理时，如"A 创始人的母校"，纯向量难以召回）
 
 ## 相关术语
 
-[[RAG 与检索技术详解]]、[[向量数据库技术]]、[[Embedding 技术详解]]、[[LangChain 框架全解析]]、[[LlamaIndex 框架指南]]
+[[RAG 与检索技术详解]]、[[向量数据库技术]]、[[Embedding 技术详解]]、[[LangChain 框架全解析]]、[[LlamaIndex 框架指南]]、[[微调与训练技术详解]]
 
 ## 参考资料
 

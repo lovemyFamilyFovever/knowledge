@@ -10,91 +10,74 @@ status: "imported"
 # Research Agent
 
 
-> 📌 **导航**：本文是 **Research Agent** 词条，属于 ai-and-llm 术语集。相关枢纽：[[大模型基础术语详解]]、[[Transformer架构深度解析]]、[[RAG 与检索技术详解]]、[[多 Agent 协作系统]]、[[Prompt 工程与 Agent 详解]]。
+> 📌 **导航**：本文是 **Research Agent** 词条，属于 ai-and-llm 术语集。相关枢纽：[[大模型基础术语详解]]、[[RAG 与检索技术详解]]、[[多 Agent 协作系统]]、[[Prompt 工程与 Agent 详解]]。
 
-## 概述
-**Research Agent** 专注于学术研究辅助：论文阅读、文献综述、实验设计、科学发现。
+## 定义
+
+**一句话定义：** Research Agent 是面向科研流程的 Agent，把论文检索、阅读总结、文献综述与假设 / 实验设计自动化，充当研究者的"科研助理"。
+
+**通俗类比：** 像一位不知疲倦的博士后——你给个题目，它去扒 arXiv / Semantic Scholar、逐篇精读、整理成综述，还能提示"这块好像还没人做过"。
+
+## 为什么需要它
+
+文献量爆炸、跨语言、方法细节密集，人根本读不过来。Research Agent 用"检索 + 结构化抽取 + 综合"，把"读几十篇找脉络"从数周压到数小时，并降低遗漏关键工作的概率。
 
 ## 核心能力
 
 | 能力 | 说明 | 实现方式 |
 |------|------|---------|
-| **论文阅读** | 理解和总结论文 | PDF解析+LLM |
-| **文献检索** | 搜索相关文献 | 学术API |
-| **文献综述** | 综合分析多篇论文 | 比较分析 |
-| **实验设计** | 设计实验方案 | 知识推理 |
-| **假设生成** | 提出研究假设 | 创造性推理 |
+| 论文阅读 | 理解并总结单篇 | PDF 解析 + LLM |
+| 文献检索 | 搜索相关文献 | 学术 API |
+| 文献综述 | 综合分析多篇 | 比较分析 |
+| 实验设计 | 设计实验方案 | 知识推理 |
+| 假设生成 | 提出研究假设 | 创造性推理 |
 
-## 论文分析
-```python
-class PaperAnalyzer:
-    def __init__(self, llm):
-        self.llm = llm
+其典型工作流是一条流水线：先用 arXiv、Semantic Scholar 等学术 API 广泛检索 → 解析 PDF 抽取"标题 / 摘要 / 方法 / 结果 / 贡献 / 局限"等结构 → 跨多篇比较异同、按发展脉络综合成文献综述并指出研究空白 → 再生成假设与实验设计草图供人验证。
 
-    def analyze(self, paper_text: str) -> dict:
-        return {
-            'title': self.extract_title(paper_text),
-            'abstract': self.extract_abstract(paper_text),
-            'methods': self.extract_methods(paper_text),
-            'results': self.extract_results(paper_text),
-            'contributions': self.extract_contributions(paper_text),
-            'limitations': self.extract_limitations(paper_text),
-        }
+## 具体示例
 
-    def compare_papers(self, papers: list) -> str:
-        prompt = f"""
-        请比较以下论文的异同：
-        {self.format_papers(papers)}
-        分析它们的方法、结果和贡献的差异。"""
-        return self.llm.generate(prompt)
-```
-
-## 文献综述生成
-```python
-def generate_review(papers: list, topic: str, llm) -> str:
-    summaries = [PaperAnalyzer(llm).analyze(p) for p in papers]
-    prompt = f"""
-    基于以下论文分析，撰写关于"{topic}"的文献综述：
-
-    论文摘要：{json.dumps(summaries, ensure_ascii=False, indent=2)}
-
-    要求：
-    1. 概述研究领域的发展脉络
-    2. 总结主要研究方向和方法
-    3. 分析当前研究的不足
-    4. 提出未来研究方向"""
-    return llm.generate(prompt)
-```
-
-## 学术搜索工具
-```python
-class AcademicSearch:
-    def search_arxiv(self, query: str, max_results=10):
-        import arxiv
-        search = arxiv.Search(query=query, max_results=max_results)
-        return [r.title + ': ' + r.summary for r in search.results()]
-
-    def search_semantic_scholar(self, query: str):
-        import requests
-        url = f'https://api.semanticscholar.org/graph/v1/paper/search?query={query}'
-        return requests.get(url).json()
-```
-
-## 应用场景
+典型落地面：
 
 | 场景 | 说明 | 价值 |
 |------|------|------|
-| **快速调研** | 快速了解新领域 | 节省大量阅读时间 |
-| **文献综述** | 系统性综述生成 | 提高综述质量 |
-| **论文选题** | 发现研究空白 | 启发创新 |
-| **实验复现** | 理解实验细节 | 辅助复现 |
+| 快速调研 | 快速了解新领域 | 节省大量阅读时间 |
+| 文献综述 | 生成系统性综述 | 提高综述效率与覆盖 |
+| 论文选题 | 发现研究空白 | 启发创新方向 |
+| 实验复现 | 厘清实验细节 | 辅助复现工作 |
 
-## 小结
-Research Agent是科研工作者的得力助手，能显著提高文献调研和论文分析的效率。
+比如给"扩散模型用于视频生成"这一主题，它能检索近两年的代表工作、抽取各篇方法与数据集、列出一张对比表并总结尚存瓶颈。
+
+## 何时用 / 何时不用
+
+- **用**：快速摸清一个领域、生成综述初稿、寻找选题缺口时。
+- **慎用**：把它的结论直接当定论——LLM 会幻觉引用，所有事实与文献必须回原文核验。
+
+## 优劣与代价
+
+✅ 大幅提速调研，结构化抽取减少遗漏，能启发选题。
+⚠️ 引用与结论易被编造，必须人工核验，否则"看似有据实则虚构"。
+⚠️ 全文获取受版权与付费 API 限制；真正的科学新意与实验判断仍归人。
+
+## 与相关概念的区别
+
+- **vs 通用 [[Web Agent]]**：Research Agent 面向学术语料与论文结构做抽取与综述，强调"研究脉络"，而非泛网页浏览。
+- **vs [[Code Agent]]**：前者读文献、提假设、设计实验，后者写代码实现与复现，常在科研流水线里接力。
+
+## 常见误区
+
+- Research Agent 生成的综述可直接引用，它列出的论文一定真实存在。
+- Research Agent 能完全取代研究者做出可靠的科学发现与新假设。
+- 它的论文阅读能力只是全文翻译，无法抽取方法或局限。
+
+## 面试速答
+
+> 🎯 Research Agent 自动化科研流程：接 arXiv / Semantic Scholar 等学术 API 检索 → 解析 PDF 抽取标题/摘要/方法/结果/贡献/局限 → 跨篇比较综合成文献综述、指出研究空白，并辅助生成假设与实验设计。它把"读几十篇找脉络"从数周压到数小时，但输出会幻觉、引用必须回原文核验，不能替研究者做真正的科学判断。
+> 🔍 追问：它最大的风险是什么？（编造不存在的论文或结论，所有引用与事实需人工核验）
+> 🔍 追问：Research Agent 与 Code Agent 在科研里怎么配合？（前者读文献、提假设、设计实验，后者写代码实现与复现）
 
 ## 相关术语
 
-[[AI Agent 概述与核心架构]]、[[Agent 规划与推理]]、[[Agent 记忆系统]]、[[Code Agent]]、[[多 Agent 协作系统]]
+[[AI Agent 概述与核心架构]]、[[Agent 规划与推理]]、[[Agent 记忆系统]]、[[Code Agent]]、[[多 Agent 协作系统]]、[[Web Agent]]
 
 ## 参考资料
 

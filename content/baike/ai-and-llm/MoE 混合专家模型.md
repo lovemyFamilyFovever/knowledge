@@ -12,71 +12,25 @@ status: "imported"
 
 > 📌 **导航**：本文是 **MoE 混合专家模型** 词条，属于 ai-and-llm 术语集。相关枢纽：[[大模型基础术语详解]]、[[Transformer架构深度解析]]、[[RAG 与检索技术详解]]、[[多 Agent 协作系统]]、[[Prompt 工程与 Agent 详解]]。
 
-## 概述
-**MoE（Mixture of Experts）** 通过稀疏激活实现"大参数、小计算"——模型总参数量大，但每个token只激活一小部分参数。
+## 定义
 
-## 核心原理
-```
-输入 → Router(门控网络) → 选择Top-K专家 → 加权输出
+**一句话定义：** MoE（混合专家）用"门控路由 + 稀疏激活"让每个 token 只调用少数专家子网络，从而以接近小模型的计算量驱动参数量巨大的模型。
 
-总参数: 671B (DeepSeek V3)
-每token激活参数: 37B
-计算效率: 接近37B模型，性能接近671B模型
-```
+**通俗类比：** 像一家有几百位专科医生的大医院：分诊台（Router）按症状把病人派给最合适的 1-2 位专家，而不是让所有医生轮流看每个病人——总学识极大，每次却只看诊几位。
 
-## Switch Transformer
-Google 2021年提出的简化MoE：
-```python
-class SwitchTransformer(nn.Module):
-    def __init__(self, num_experts, d_model):
-        self.experts = [FFN(d_model) for _ in range(num_experts)]
-        self.router = nn.Linear(d_model, num_experts)
+## 为什么需要它
 
-    def forward(self, x):
-        # 计算路由权重
-        router_logits = self.router(x)
-        weights, indices = torch.topk(router_logits, k=1)  # Top-1路由
-        weights = F.softmax(weights, dim=-1)
+dense 模型参数越大，每个 token 的计算越多，很快撞算力墙。MoE 把"总容量"与"每 token 计算量"解耦：容量随专家数量增长，而每个 token 只激活很小一部分参数，实现"大参数、小计算"的高性价比扩展。
 
-        # 只计算被选中的专家
-        output = self.experts[indices](x) * weights
-        return output
-```
+## 核心机制
 
-## Mixtral 架构
-Mistral的MoE模型，8个专家每次激活2个：
-```python
-class MixtralBlock(nn.Module):
-    def __init__(self):
-        self.attention = MultiHeadAttention()
-        self.experts = nn.ModuleList([FFN() for _ in range(8)])
-        self.gate = nn.Linear(d_model, 8)
+基本流程是：输入 → Router 门控打分 → 选 Top-K 个专家 → 各专家 FFN 的输出按路由权重加权求和。
 
-    def forward(self, x):
-        h = self.attention(x)
-        # Top-2路由
-        gate_logits = self.gate(h)
-        weights, indices = torch.topk(gate_logits, k=2)
-        weights = F.softmax(weights, dim=-1)
+三条代表性路线体现了设计演化：
 
-        # 加权组合2个专家的输出
-        expert_output = sum(
-            w * self.experts[i](h)
-            for w, i in zip(weights, indices)
-        )
-        return h + expert_output
-```
-
-## DeepSeek MoE
-DeepSeek V3的创新MoE架构：
-```
-特点:
-1. 细粒度专家: 256个小专家（而非8个大专家）
-2. 共享专家: 1个始终激活的共享专家
-3. 更细的路由: Top-6从256个中选择
-```
-
-## 主流MoE模型对比
+1. **Switch Transformer（Google 2021）**：把路由简化到 Top-1，每个 token 只走一个专家，显著降低复杂度、训练更稳，是早期把 MoE 规模化的里程碑，总参数可达万亿级（表中 1.6T）。
+2. **Mixtral 8x7B（Mistral）**：8 个专家、每 token 激活 Top-2，46.7B 总参却只算约 12.9B 激活参数，用较少的专家换来接近大模型的性价比与可开源部署的友好度。
+3. **DeepSeek V2 / V3**：走"细粒度专家 + 共享专家"路线——V3 用 256 个小专家外加 1 个恒激活的共享专家、Top-6 路由，总参 671B、每 token 仅激活 37B，做到计算接近 37B 模型而性能接近 671B 模型。
 
 | 模型 | 总参数 | 激活参数 | 专家数 | Top-K |
 |------|--------|---------|--------|-------|
@@ -86,27 +40,47 @@ DeepSeek V3的创新MoE架构：
 | DeepSeek V3 | 671B | 37B | 256 | 6 |
 | Qwen MoE | 14.3B | 2.7B | 60 | 4 |
 
-## 训练挑战
+稀疏路由也带来训练上的新麻烦，核心是别让 token 全"卷"到少数专家：
 
 | 挑战 | 说明 | 解决方案 |
 |------|------|---------|
-| **负载均衡** | 部分专家过载 | 辅助损失函数 |
-| **专家坍缩** | 大部分token路由到少数专家 | 路由正则化 |
-| **通信开销** | 专家分布在不同GPU | 优化通信策略 |
-| **训练不稳定** | 路由决策的离散性 | Z-loss正则化 |
+| 负载均衡 | 部分专家过载 | 辅助损失函数 |
+| 专家坍缩 | token 集中路由到少数专家 | 路由正则化 |
+| 通信开销 | 专家分布在不同 GPU | 优化通信策略 |
+| 训练不稳定 | 路由决策离散 | Z-loss 正则化 |
 
-```python
-# 负载均衡损失
-def load_balancing_loss(router_probs, expert_mask, num_experts):
-    # 鼓励均匀路由
-    fraction_tokens = expert_mask.float().mean(0)
-    fraction_probs = router_probs.mean(0)
-    balance_loss = num_experts * (fraction_tokens * fraction_probs).sum()
-    return balance_loss
-```
+## 具体示例
 
-## 小结
-MoE通过稀疏激活实现了参数效率的突破。DeepSeek V3的细粒度MoE设计代表了最新进展。MoE正在成为大模型的主流架构。
+Mixtral 处理一句英文：Router 给 8 个专家打分，选中风格最匹配的 2 个，各自 FFN 输出按 softmax 权重相加再走残差；同一步里另外 6 个专家完全不参与计算——省下的这部分，就是 MoE 的效率来源。
+
+## 何时用 / 何时不用
+
+- **用**：追求"大容量、可控推理算力"，且有能力处理路由与多卡并行时。
+- **不用**：小模型或边端场景——路由开销与"要装下全部专家"的显存反而不划算。
+
+## 优劣与代价
+
+✅ 参数效率的突破，用稀疏计算放大模型容量。
+⚠️ 路由的离散性导致训练不稳定、易专家坍缩，需要额外正则。
+⚠️ 专家分布跨卡带来通信开销；显存仍需容纳全部专家参数。
+
+## 与相关概念的区别
+
+- **vs dense Transformer**：dense 每个 token 过全部参数，MoE 只过 Top-K 个专家。
+- **vs [[Scaling Law]]**：MoE 提供了"加容量不加每 token 计算"的新扩展维度。
+- **vs [[长上下文技术]]**：MoE 省的是每 token 计算，长上下文管的是序列长度，二者正交。
+
+## 常见误区
+
+- MoE 模型每个 token 都会激活并计算它的全部专家。
+- Mixtral 8x7B 每次推理都要把 8 个专家全部跑一遍。
+- MoE 天然训练稳定，不需要负载均衡之类的辅助损失。
+
+## 面试速答
+
+> 🎯 MoE 用"门控路由 + 稀疏激活"把总容量与每 token 计算解耦：Router 为每个 token 选 Top-K 个专家、加权组合，于是可用接近小模型的计算量驱动超大参数（如 DeepSeek V3 总 671B、每 token 仅激活 37B）。代表路线 Switch（Top-1）、Mixtral（8 选 2）、DeepSeek 细粒度（256 专家 + 共享 + Top-6）。主要挑战是负载均衡与专家坍缩，靠辅助损失 / Z-loss 缓解。
+> 🔍 追问：为什么 MoE 能"大参数小计算"？（每 token 只激活少数专家，未被选中的专家不参与该步计算）
+> 🔍 追问：路由不均会怎样、怎么治？（少数专家过载 / 专家坍缩，用负载均衡辅助损失、路由正则与 Z-loss 缓解）
 
 ## 相关术语
 

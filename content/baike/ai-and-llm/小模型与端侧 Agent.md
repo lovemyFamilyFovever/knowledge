@@ -10,61 +10,42 @@ status: "imported"
 # 小模型与端侧 Agent
 
 
-> 📌 **导航**：本文是 **小模型与端侧 Agent** 词条，属于 ai-and-llm 术语集。相关枢纽：[[大模型基础术语详解]]、[[Transformer架构深度解析]]、[[RAG 与检索技术详解]]、[[多 Agent 协作系统]]、[[Prompt 工程与 Agent 详解]]。
+> 📌 **导航**：本文是 **小模型与端侧 Agent** 词条，属于 ai-and-llm 术语集。相关枢纽：[[AI Agent 概述与核心架构]]、[[LLM 推理优化]]、[[大模型基础术语详解]]、[[多模态 Agent]]。
 
-## 概述
-**端侧Agent** 在本地设备上运行，保护隐私、降低延迟、减少成本。小模型的进步使端侧AI成为可能。
+## 定义
 
-## 主流小模型
+**一句话定义：** 小模型与端侧 Agent 指在本地设备（手机 / 车机 / PC）运行的轻量模型及其 Agent，靠量化与高效推理在保护隐私、降低延迟与成本的同时提供"够用"的智能。
+
+**通俗类比：** 云端大模型像"远程智库"，端侧小模型是"随身智能耳机"——能力小一档，但离线、即时、私密，应付多数日常任务绰绰有余。
+
+## 为什么需要它
+
+全走云端有四痛：隐私泄露、网络延迟、按量计费、离线不可用。1B–9B 级小模型经量化后可在手机 / PC 本地跑，把敏感与高频请求留在端侧，只在必要时回落云端。
+
+## 核心机制
+
+1. **小模型谱系**——各厂都推出了可端侧跑的轻量模型：
 
 | 模型 | 参数量 | 发布方 | 特点 |
 |------|--------|--------|------|
-| **Phi-3** | 3.8B | Microsoft | 高质量小模型 |
-| **Gemma 2** | 2B/9B/27B | Google | 多尺寸选择 |
-| **Llama 3.2** | 1B/3B | Meta | 轻量级 |
-| **Qwen2.5** | 0.5B-72B | Alibaba | 中文优化 |
-| **Mistral** | 7B | Mistral | 高效架构 |
-| **DeepSeek** | 7B | DeepSeek | 强推理能力 |
+| Phi-3 | 3.8B | Microsoft | 高质量小模型 |
+| Gemma 2 | 2B/9B/27B | Google | 多尺寸选择 |
+| Llama 3.2 | 1B/3B | Meta | 轻量级 |
+| Qwen2.5 | 0.5B-72B | Alibaba | 中文优化 |
+| Mistral | 7B | Mistral | 高效架构 |
+| DeepSeek | 7B | DeepSeek | 强推理 |
 
-## 端侧部署技术
+2. **部署与量化**——端侧靠专用引擎与低比特量化把模型塞进有限内存：
 
 | 技术 | 说明 | 工具 |
 |------|------|------|
-| **ONNX Runtime** | 跨平台推理引擎 | onnxruntime |
-| **llama.cpp** | CPU优化推理 | GGUF格式 |
-| **MLC LLM** | 移动端推理 | Android/iOS |
-| **Core ML** | Apple设备优化 | Apple |
-| **TensorRT** | NVIDIA GPU优化 | NVIDIA |
+| ONNX Runtime | 跨平台推理引擎 | onnxruntime |
+| llama.cpp | CPU 优化推理 | GGUF 格式 |
+| MLC LLM | 移动端推理 | Android / iOS |
+| Core ML | Apple 设备优化 | Apple |
+| TensorRT | NVIDIA GPU 优化 | NVIDIA |
 
-## ONNX 导出和优化
-```python
-from optimum.onnxruntime import ORTModelForCausalLM
-
-# 导出为ONNX
-model = ORTModelForCausalLM.from_pretrained(
-    'microsoft/Phi-3-mini-4k-instruct',
-    export=True,
-)
-model.save_pretrained('./phi3-onnx')
-
-# ONNX推理
-import onnxruntime as ort
-session = ort.InferenceSession('./phi3-onnx/model.onnx')
-```
-
-## llama.cpp 部署
-```bash
-# 量化模型为GGUF格式
-python convert_hf_to_gguf.py model-name --outtype q4_k_m
-
-# 运行推理
-./llama-cli -m model.gguf -p "什么是AI Agent?" -n 256
-
-# 启动API服务
-./llama-server -m model.gguf --host 0.0.0.0 --port 8080
-```
-
-## 量化对比
+量化是让小模型上手机的关键——以 7B 模型为例，用可控的质量损失换显存与速度：
 
 | 格式 | 位数 | 大小(7B) | 速度 | 质量 |
 |------|------|---------|------|------|
@@ -73,42 +54,46 @@ python convert_hf_to_gguf.py model-name --outtype q4_k_m
 | Q4_K_M | 4-bit | 4GB | 2.5x | 97% |
 | Q2_K | 2-bit | 2.5GB | 3x | 90% |
 
-## 端侧Agent架构
-```python
-class EdgeAgent:
-    def __init__(self, model_path):
-        self.model = load_model(model_path)  # 本地模型
-        self.tools = [local_calc, local_file, local_db]  # 本地工具
+3. **端侧 Agent 架构**：本地模型 + 本地工具（计算 / 文件 / 数据库），**优先端侧处理，仅当任务超出本地能力时才回落云端 API**，形成端云混合、隐私优先的模式。
 
-    def run(self, task):
-        # 优先本地处理
-        result = self.model.generate(task)
-        if self.needs_cloud(result):
-            # 仅在必要时调用云端API
-            result = self.fallback_to_cloud(task)
-        return result
-```
+## 具体示例
 
-## 应用场景
+手机助手（离线低延迟）、车载 AI（实时安全隐私）、IoT 设备（低成本低功耗）、桌面助手（本地隐私）是典型面。实测上小模型与旗舰仍有差距（Phi-3 vs GPT-4o 示意，随版本变化、建议核验）：
 
-| 场景 | 设备 | 价值 |
-|------|------|------|
-| **手机助手** | 智能手机 | 离线可用、低延迟 |
-| **车载AI** | 汽车 | 实时响应、安全隐私 |
-| **IoT设备** | 嵌入式 | 低成本、低功耗 |
-| **桌面助手** | PC/Mac | 本地隐私保护 |
-
-## 模型能力对比
-
-| 任务 | Phi-3(3.8B) | GPT-4o | 差距 |
+| 任务 | Phi-3 (3.8B) | GPT-4o | 差距 |
 |------|-------------|--------|------|
 | 简单问答 | 85% | 95% | 10% |
 | 代码生成 | 70% | 90% | 20% |
 | 数学推理 | 75% | 92% | 17% |
 | 中文理解 | 72% | 93% | 21% |
 
-## 小结
-小模型的进步使端侧Agent成为现实。通过量化和优化，3B参数的模型已在手机上流畅运行。隐私敏感场景应优先考虑端侧部署。
+## 何时用 / 何时不用
+
+- **用**：隐私敏感、需离线 / 低延迟、高频简单任务、成本受限时。
+- **不用**：复杂推理、长文创作、高精度任务——云端旗舰仍明显更强，宜端云协同。
+
+## 优劣与代价
+
+✅ 隐私、离线、低延迟、零边际成本。
+⚠️ 能力有天花板（见差距表），不能对标旗舰大模型。
+⚠️ 本地算力 / 内存受限，量化过狠会掉质量。
+
+## 与相关概念的区别
+
+- **vs [[LLM 推理优化]]**：推理优化管"云端高效跑大模型"（量化、KV Cache 等），端侧复用其量化思路，但目标是"装进设备"。
+- **vs [[MoE 混合专家模型]]**：MoE 靠稀疏专家在云端扩容量，端侧小模型走"整体做小 + 量化"路线，思路不同。
+
+## 常见误区
+
+- Q4_K_M 量化会严重损害模型，质量通常只剩不到一半。
+- 端侧小模型在能力上已经全面追平 GPT-4o 等大模型。
+- 端侧 Agent 必须完全离线，任何情况下都不能回落云端 API。
+
+## 面试速答
+
+> 🎯 小模型与端侧 Agent 把"够用"的智能放到本地：1B–9B 级模型（Phi-3 / Gemma / Llama 3.2 / Qwen2.5 等）经 llama.cpp、ONNX、CoreML 等引擎与 GGUF 量化（FP16→Q4，如 7B 从约 14GB 压到约 4GB、质量约 97%）即可在手机 / PC 运行，换来隐私、离线、低延迟与零边际成本。端侧 Agent 用"本地优先、必要时回落云端"的混合架构。代价是对旗舰仍有约 10–20% 能力差距，复杂任务宜端云协同。
+> 🔍 追问：量化为什么能让大模型上端侧、代价是什么？（降位宽省显存 / 带宽、提吞吐；过低比特掉质量，故选 Q4 这类折中）
+> 🔍 追问：端侧 Agent 为何常设计成可回落云端？（本地遇超能力任务时兜底，兼顾隐私 / 成本与质量）
 
 ## 相关术语
 

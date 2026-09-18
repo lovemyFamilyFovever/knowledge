@@ -10,81 +10,69 @@ status: "imported"
 # Workflow Agent
 
 
-> 📌 **导航**：本文是 **Workflow Agent** 词条，属于 ai-and-llm 术语集。相关枢纽：[[大模型基础术语详解]]、[[Transformer架构深度解析]]、[[RAG 与检索技术详解]]、[[多 Agent 协作系统]]、[[Prompt 工程与 Agent 详解]]。
+> 📌 **导航**：本文是 **Workflow Agent** 词条，属于 ai-and-llm 术语集。相关枢纽：[[大模型基础术语详解]]、[[Agent 编排框架对比]]、[[Agent 架构模式详解]]、[[多 Agent 协作系统]]。
 
-## 概述
-**Workflow Agent** 将AI Agent能力嵌入业务流程，实现自动化编排和执行。
+## 定义
 
-## 核心概念
+**一句话定义：** Workflow Agent 是把 AI Agent 能力嵌入结构化业务流程的编排形态——用触发条件、步骤、分支与人工节点，把智能能力按既定流程自动串起来端到端执行。
+
+**通俗类比：** 像给公司 SOP 装了一个会自己干活的机器人：流程照旧（接单 → 分类 → 处理 → 回访），只是每一步可由 Agent 自动完成，只在关键审批处喊人签字。
+
+## 为什么需要它
+
+纯自由 Agent 不可控、难审计；企业流程讲究稳定、合规、可追溯。Workflow 把 AI 能力关进"有向图 / 步骤"的轨道，既自动化又行为可预期、可在关键节点人工介入。
+
+## 核心机制
 
 | 概念 | 说明 | 类比 |
 |------|------|------|
-| **Workflow** | 完整的业务流程 | 工作手册 |
-| **Step** | 流程中的一个步骤 | 工作步骤 |
-| **Trigger** | 流程启动条件 | 开始按钮 |
-| **Condition** | 步骤执行条件 | 判断规则 |
-| **Action** | 具体执行动作 | 操作动作 |
+| Workflow | 完整的业务流程 | 工作手册 |
+| Step | 流程中的一个步骤 | 工作步骤 |
+| Trigger | 流程启动条件 | 开始按钮 |
+| Condition | 步骤执行条件 | 判断规则 |
+| Action | 具体执行动作 | 操作动作 |
 
-## LangGraph 工作流
-```python
-from langgraph.graph import StateGraph, END
-from typing import TypedDict
-
-class State(TypedDict):
-    input: str
-    analysis: str
-    decision: str
-    result: str
-
-def analyze(state):
-    return {'analysis': llm.analyze(state['input'])}
-
-def decide(state):
-    decision = llm.decide(state['analysis'])
-    return {'decision': decision}
-
-def execute_action(state):
-    return {'result': f'执行了{state["decision"]}'}
-
-# 构建图
-graph = StateGraph(State)
-graph.add_node('analyze', analyze)
-graph.add_node('decide', decide)
-graph.add_node('execute', execute_action)
-
-graph.set_entry_point('analyze')
-graph.add_edge('analyze', 'decide')
-graph.add_conditional_edges('decide', lambda s: s['decision'], {
-    'action_a': 'execute',
-    'action_b': 'some_other_node',
-})
-graph.add_edge('execute', END)
-
-workflow = graph.compile()
-result = workflow.invoke({'input': '用户请求'})
-```
-
-## 工作流模式
+主流编排方式是用 LangGraph 这类"状态图"框架：把每个环节定义成节点（如 analyze / decide / execute），节点读写共享 State，用普通边连接顺序、用**条件边**按状态值路由到不同分支、以 END 收尾；把图 `compile` 后 `invoke` 一次即可跑完整流程。可组合出五种工作流模式：
 
 | 模式 | 说明 | 适用场景 |
 |------|------|---------|
-| **顺序执行** | 按步骤依次执行 | 线性流程 |
-| **条件分支** | 根据条件选择路径 | 决策流程 |
-| **并行执行** | 多步骤同时执行 | 独立任务 |
-| **循环执行** | 重复直到满足条件 | 迭代优化 |
-| **人机协作** | 关键节点人工确认 | 审批流程 |
+| 顺序执行 | 按步骤依次执行 | 线性流程 |
+| 条件分支 | 根据条件选择路径 | 决策流程 |
+| 并行执行 | 多步骤同时执行 | 独立任务 |
+| 循环执行 | 重复直到满足条件 | 迭代优化 |
+| 人机协作 | 关键节点人工确认 | 审批流程 |
 
-## 业务场景
+## 具体示例
 
-| 场景 | 流程 | Agent作用 |
-|------|------|----------|
-| **客户支持** | 接收→分类→路由→处理→反馈 | 智能分类和自动回复 |
-| **内容审核** | 提交→初审→人工复审→发布 | 自动化初筛 |
-| **审批流程** | 申请→审核→批准→执行 | 智能审核建议 |
-| **数据分析** | 收集→清洗→分析→报告 | 自动化分析 |
+客户支持"接收 → 分类 → 路由 → 处理 → 反馈"，由 Agent 做智能分类与自动回复；内容审核先自动初筛再转人工复审；审批流程给出智能建议后由人批准——都是"固定流程 + AI 步骤 + 关键人审"的典型组合。
 
-## 小结
-Workflow Agent将AI能力编排为结构化的业务流程，实现端到端的自动化。LangGraph是最常用的编排框架。
+## 何时用 / 何时不用
+
+- **用**：流程明确、需要可审计可回退、且要在固定节点插人工确认的自动化。
+- **不用**：目标开放、步骤无法预先定义时——纯自主 Agent（如 ReAct）更合适，硬编成流程反而僵化。
+
+## 优劣与代价
+
+✅ 可控、可审计、步骤可复用，兼顾自动化与合规。
+⚠️ 前期要建模流程，灵活性低于自由 Agent。
+⚠️ 分支一多，图的维护与测试成本明显上升。
+
+## 与相关概念的区别
+
+- **vs 自主 Agent（[[Agent 架构模式详解]]）**：自主 Agent 由模型临场决定下一步、灵活但不可控；Workflow Agent 控制流预定义、稳定可审计。
+- **vs [[Agent 编排框架对比]]**：那是跨框架选型视角，本条聚焦"流程编排"这一形态本身。
+
+## 常见误区
+
+- Workflow Agent 的控制流完全交给大模型临场决定，无法预先固定。
+- 用状态图编排时，节点之间只能顺序连接，无法表达条件分支或循环。
+- Workflow Agent 一旦自动化，就绝不能再加入任何人工确认环节。
+
+## 面试速答
+
+> 🎯 Workflow Agent 把 AI 能力嵌进结构化流程：以触发条件启动，按步骤 / 条件 / 动作编排，常见实现是 LangGraph 这类"状态图"——节点（analyze / decide / execute）读写共享 State，普通边定顺序、条件边按状态路由、以 END 收尾。支持顺序、分支、并行、循环、人机协作五种模式，适合客服、审核、审批等需可控可审计的场景；相较完全自主的 ReAct，它控制流预定义、更稳更合规，代价是灵活性较低。
+> 🔍 追问：Workflow Agent 与自主 ReAct Agent 的核心取舍？（可控 / 可审计 vs 临场灵活，取决于流程能否预先定义）
+> 🔍 追问：LangGraph 里"条件边"起什么作用？（依据当前 State 的值把执行路由到不同后继节点，实现分支）
 
 ## 相关术语
 

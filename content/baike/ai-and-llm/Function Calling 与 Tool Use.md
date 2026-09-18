@@ -12,94 +12,76 @@ status: "imported"
 
 > 📌 **导航**：本文是 **Function Calling 与 Tool Use** 词条，属于 ai-and-llm 术语集。相关枢纽：[[大模型基础术语详解]]、[[Transformer架构深度解析]]、[[RAG 与检索技术详解]]、[[多 Agent 协作系统]]、[[Prompt 工程与 Agent 详解]]。
 
-## 概述
+## 定义
 
-**Function Calling** 和 **Tool Use** 是让 LLM 从'只会说话'变为'能做事情'的关键技术。LLM 可以自动选择合适的工具、构造参数、执行并整合结果。
+**一句话定义：** Function Calling 与 Tool Use 让 LLM 依自然语言意图自主选择工具、生成结构化参数并整合返回结果，是从"只会说"到"能做事"的关键机制。
 
-## OpenAI Function Calling
+**通俗类比：** 给只会聊天的模型配一份"服务黄页 + 填表员"——它判断该找哪个服务（选函数）、照表格填好参数（JSON），由系统真正执行，再把结果念回给它总结成答复。
 
-```python
-from openai import OpenAI
-import json
+## 为什么需要它
 
-client = OpenAI()
-tools = [
-    {
-        'type': 'function',
-        'function': {
-            'name': 'get_weather',
-            'description': '获取指定城市的当前天气',
-            'parameters': {
-                'type': 'object',
-                'properties': {
-                    'city': {'type': 'string', 'description': '城市名称'},
-                },
-                'required': ['city']
-            }
-        }
-    }
-]
+大模型知识有截止日期、无法触达外部实时世界，也不擅精确计算。工具调用让它能按需查天气、跑代码、查数据库，把语言理解转成对外部世界的实际操作，因此是 Agent 的地基能力。
 
-messages = [{'role': 'user', 'content': '北京天气怎么样？'}]
-response = client.chat.completions.create(
-    model='gpt-4o', messages=messages, tools=tools, tool_choice='auto',
-)
+## 核心机制
 
-message = response.choices[0].message
-if message.tool_calls:
-    for tc in message.tool_calls:
-        func_args = json.loads(tc.function.arguments)
-        result = get_weather(**func_args)
-        messages.append(message)
-        messages.append({'role': 'tool', 'tool_call_id': tc.id,
-                        'content': json.dumps(result, ensure_ascii=False)})
-    final = client.chat.completions.create(model='gpt-4o', messages=messages, tools=tools)
-```
+整条链路是一个"模型决策、应用执行"的往返：
 
-## 工具定义最佳实践
+- **定义工具**：为每个工具写 `name` / `description` 与 JSON Schema 参数（类型、必填、枚举），告诉模型"有什么、怎么用"。
+- **选择与调用**：请求时带上工具清单与 `tool_choice`（auto 或指定）。模型若判断需要工具，不直接作答，而是返回 `tool_calls`——函数名加一段 JSON 参数。
+- **执行与回填**：真正执行函数的是应用侧（模型自己不执行），把结果以 `role=tool` 的消息回填对话，再次请求，模型据结果生成最终答复。OpenAI 用 `parameters`、Anthropic 用 `input_schema`，字段不同、流程一致。
+
+工具定义得好不好，直接决定模型会不会选错、填错：
 
 | 原则 | 说明 | 示例 |
 |------|------|------|
-| **清晰描述** | 工具用途明确 | '获取**当前**天气' |
-| **合理参数** | 只包含必要参数 | 不暴露api_key |
-| **枚举约束** | 有限选项用enum | temperature: ['c','f'] |
-| **类型标注** | 明确参数类型 | string/number |
-| **默认值** | 非必填设默认 | unit: 'celsius' |
+| 清晰描述 | 工具用途明确 | "获取**当前**天气" |
+| 合理参数 | 只暴露必要参数 | 不外泄 api_key |
+| 枚举约束 | 有限选项用 enum | unit: ['c','f'] |
+| 类型标注 | 明确参数类型 | string / number |
+| 默认值 | 非必填设默认 | unit: 'celsius' |
 
-## 工具类型总览
+可接入的工具种类繁多：
 
 | 工具类型 | 功能 | 应用场景 |
 |---------|------|--------|
-| **搜索工具** | 互联网搜索 | 信息检索 |
-| **计算工具** | 数学运算 | 数据分析 |
-| **代码工具** | 执行代码 | 数据处理 |
-| **数据库工具** | SQL查询 | 数据查询 |
-| **API工具** | 调用外部服务 | 天气、股票 |
-| **文件工具** | 读写文件 | 文档处理 |
+| 搜索工具 | 互联网搜索 | 信息检索 |
+| 计算工具 | 数学运算 | 数据分析 |
+| 代码工具 | 执行代码 | 数据处理 |
+| 数据库工具 | SQL 查询 | 数据查询 |
+| API 工具 | 调用外部服务 | 天气、股票 |
+| 文件工具 | 读写文件 | 文档处理 |
 
-## Anthropic Tool Use
+## 具体示例
 
-```python
-import anthropic
-client = anthropic.Anthropic()
-tools = [{
-    'name': 'get_stock_price',
-    'description': '获取股票最新价格',
-    'input_schema': {
-        'type': 'object',
-        'properties': {'symbol': {'type': 'string', 'description': '股票代码'}},
-        'required': ['symbol'],
-    },
-}]
-response = client.messages.create(
-    model='claude-sonnet-4-20250514', max_tokens=1024, tools=tools,
-    messages=[{'role': 'user', 'content': '苹果公司股价？'}],
-)
-```
+用户问"北京天气怎么样"：模型选用 `get_weather`、生成参数 `{"city":"北京"}` → 应用侧调用天气 API → 结果以 `role=tool` 回填 → 模型再答"北京晴，25℃"。模型全程只产出"调哪个函数 + 传什么参"，真实执行发生在应用侧。
 
-## 小结
+## 何时用 / 何时不用
 
-Function Calling和Tool Use是AI Agent的核心能力，将LLM从文本生成器转变为能与外部世界交互的智能系统。
+- **用**：需要实时数据、外部系统或精确计算等模型自身不具备的能力时。
+- **不用**：纯生成、闲聊，或缺乏可靠工具时——乱调用只会增加错误与延迟。
+
+## 优劣与代价
+
+✅ 让模型安全地触达外部世界，能力可扩展、参数结构化可校验。
+⚠️ 强依赖工具描述质量，描述含糊会选错函数或填错参数。
+⚠️ 每次调用多一趟往返，增加延迟；执行权限在应用侧，须做好鉴权与输入校验。
+
+## 与相关概念的区别
+
+- **vs [[MCP（Model Context Protocol）]]**：Function Calling 是"模型决定调哪个函数"的能力，MCP 是"如何把工具与资源标准化暴露给模型"的协议层。
+- **vs Prompt 工程**：Prompt 靠文本引导输出，Tool Use 则让输出变成可执行的结构化调用。
+
+## 常见误区
+
+- 模型自己会执行函数，直接拿到天气或股价的结果。
+- 只要注册了工具，模型每次对话都一定会去调用它。
+- 工具的 parameters 用自然语言随便写写就行，不需要 JSON Schema 的类型与必填约束。
+
+## 面试速答
+
+> 🎯 Function Calling 让模型从"会说"到"会调"：你给工具清单（name/description + JSON Schema 参数），模型判断需要时不直接答、而返回 tool_calls（函数名 + JSON 参数），应用侧执行后以 role=tool 回填结果，模型再生成最终答复。关键是模型只决定"调什么 + 传什么"，真正执行与权限在应用侧；OpenAI 与 Anthropic 字段名不同但流程一致。
+> 🔍 追问：为什么执行不放进模型里？（模型不真跑代码/请求，执行与鉴权由应用侧掌控，安全可控）
+> 🔍 追问：工具描述为什么重要？（模型靠 description / 参数 Schema 来选函数、填参数，含糊就会选错或漏必填）
 
 ## 相关术语
 

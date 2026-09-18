@@ -10,55 +10,32 @@ status: "imported"
 # Tokenizer 技术
 
 
-> 📌 **导航**：本文是 **Tokenizer 技术** 词条，属于 ai-and-llm 术语集。相关枢纽：[[大模型基础术语详解]]、[[Transformer架构深度解析]]、[[RAG 与检索技术详解]]、[[多 Agent 协作系统]]、[[Prompt 工程与 Agent 详解]]。
+> 📌 **导航**：本文是 **Tokenizer 技术** 词条，属于 ai-and-llm 术语集。相关枢纽：[[大模型基础术语详解]]、[[Transformer架构深度解析]]、[[Embedding 技术详解]]、[[词向量]]。
 
-## 概述
-**Tokenizer** 将文本分割为模型可处理的token序列。不同tokenizer的分词策略直接影响模型性能。
+## 定义
 
-## 主流算法
+**一句话定义：** Tokenizer 把原始文本切成模型可处理的 token 序列并映射为 ID，是模型"看"文本的第一步，其分词策略与词表直接决定效率与多语言能力。
+
+**通俗类比：** 模型的一副"断词眼镜"——同一段话，有人按整词看、有人按字母看；断得越好，模型读得越省、越懂，尤其中文这种没有空格的语言。
+
+## 为什么需要它
+
+模型只吃数字 ID，须先把文本规整进一个有限词表。分词粒度直接影响序列长度、成本与语言覆盖：切太碎序列爆炸，切太粗丢失语义，中文与多语言尤其依赖好的子词方案。
+
+## 核心机制
+
+主流都是"子词"策略，在词与字符之间取平衡：
 
 | 算法 | 原理 | 代表模型 |
 |------|------|---------|
-| **BPE** | 字节对编码 | GPT系列 |
-| **WordPiece** | 最大似然子词 | BERT |
-| **SentencePiece** | 语言无关分词 | Llama, T5 |
-| **Unigram** | 概率模型 | T5 |
+| BPE | 字节对合并 | GPT 系列 |
+| WordPiece | 最大似然选子词 | BERT |
+| SentencePiece | 语言无关分词 | Llama、T5 |
+| Unigram | 概率子词模型 | T5 |
 
-## BPE算法
-```python
-def learn_bpe(corpus, num_merges=1000):
-    # 1. 初始词汇表为所有字符
-    vocab = set(c for word in corpus for c in word)
+**BPE 流程**：从字符级词表出发，反复统计相邻 token 对的频率、把最高频的一对合并成新 token，迭代到目标词表规模；预测时按学到的合并规则依次拆词。SentencePiece 把这套做成"语言无关、直接吃原始文本 / 字节流"，因此多语言模型常用。
 
-    # 2. 统计相邻token对频率
-    for i in range(num_merges):
-        pairs = count_pairs(corpus)
-        best_pair = max(pairs, key=pairs.get)
-        # 3. 合并最频繁的token对
-        corpus = merge_pair(corpus, best_pair)
-        vocab.add(''.join(best_pair))
-
-    return vocab
-```
-
-## 中文分词挑战
-
-| 挑战 | 说明 | 示例 |
-|------|------|------|
-| **无空格分隔** | 中文词之间无空格 | '人工智能' |
-| **歧义切分** | 多种切分可能 | '研究生命科学' |
-| **新词识别** | 网络新词 | '内卷' |
-
-## Tokenizer对模型的影响
-
-| 方面 | 影响 |
-|------|------|
-| **词汇表大小** | 大→覆盖广，小→效率高 |
-| **分词粒度** | 细→长序列，粗→语义损失 |
-| **中文效率** | 不同tokenizer的中文token效率差异很大 |
-| **多语言支持** | 影响非英语语言的性能 |
-
-## 常见Tokenizer对比
+中文分词另有难处：词间无空格、存在歧义切分（"研究生命科学"可切"研究/生命/科学"或"研究生/命/科学"）、新词（如"内卷"）不断涌现。词表与中文效率高度相关：
 
 | Tokenizer | 词汇表 | 中文效率 | 模型 |
 |-----------|--------|---------|------|
@@ -67,16 +44,37 @@ def learn_bpe(corpus, num_merges=1000):
 | Qwen | 152K | 很好 | Qwen |
 | DeepSeek | 102K | 好 | DeepSeek |
 
-```python
-# 查看token数量
-from transformers import AutoTokenizer
-tokenizer = AutoTokenizer.from_pretrained('meta-llama/Llama-3-8B')
-tokens = tokenizer.encode('人工智能代理是未来趋势')
-print(f'Token数量: {len(tokens)}')
-```
+## 具体示例
 
-## 小结
-Tokenizer是LLM的'眼睛'，决定了模型如何'看'文本。中文场景需特别关注tokenizer的中文效率。
+"人工智能代理"在不同 tokenizer 下切出的 token 数差别很大：中文效率差、以英文为主的老词表可能近似"一字一 token"、序列翻倍；Qwen 等针对中文优化、词表更大，同样句子 token 更省、推理成本更低。
+
+## 何时用 / 何时不用
+
+- **用**：凡用 LLM 都绕不开选 / 配 tokenizer，中文与多语言场景尤其要挑中文效率高的。
+- **权衡**：词表越大覆盖越好，但 embedding 与输出层成本越高，需在覆盖与效率间取舍。
+
+## 优劣与代价
+
+✅ 子词兼顾"未登录词"与词表规模，语言无关方案利于多语言。
+⚠️ 粒度不当会让中文 token 膨胀、成本上升。
+⚠️ 换 tokenizer 会影响序列长度与结果可比性，评测时须对齐。
+
+## 与相关概念的区别
+
+- **vs [[Embedding 技术详解]]**：Tokenizer 先把文本切成 token ID，Embedding 再把 ID 转成向量，二者是上下游。
+- **vs [[词向量]]**：词向量关注"词 → 稠密向量"的语义表示，Tokenizer 关注"文本 → 词表 ID"的切分。
+
+## 常见误区
+
+- 词表越大一定越好，因为对任何语言都百利而无一害。
+- SentencePiece 只能处理英文，无法做语言无关的字节级分词。
+- 同一段中文在不同 tokenizer 下切出的 token 数一定相同，与词表设计无关。
+
+## 面试速答
+
+> 🎯 Tokenizer 把文本切成词表里的 token 再映射成 ID，是模型"看"文本的第一步。主流是子词法：BPE（GPT）从字符起反复合并最高频相邻对，WordPiece（BERT）按最大似然选子词，SentencePiece / Unigram（Llama / T5）语言无关、利于多语。中文没空格、歧义切分、新词多，英文为主的小词表会 token 爆炸、成本高，故 Qwen（152K）等对中文更省。选 tokenizer 要在覆盖（词表大）与成本（embedding / 序列长）间权衡，且它是 Embedding 的上游。
+> 🔍 追问：为什么中文常比英文更耗 token？（很多词表以英文为主，中文被切成单字甚至字节，序列更长）
+> 🔍 追问：词表变大有什么代价？（embedding 与输出层参数随之增加，显存 / 计算上升，并非越大越优）
 
 ## 相关术语
 

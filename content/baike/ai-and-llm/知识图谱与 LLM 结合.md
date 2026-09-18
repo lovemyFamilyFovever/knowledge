@@ -10,100 +10,65 @@ status: "imported"
 # 知识图谱与 LLM 结合
 
 
-> 📌 **导航**：本文是 **知识图谱与 LLM 结合** 词条，属于 ai-and-llm 术语集。相关枢纽：[[大模型基础术语详解]]、[[Transformer架构深度解析]]、[[RAG 与检索技术详解]]、[[多 Agent 协作系统]]、[[Prompt 工程与 Agent 详解]]。
+> 📌 **导航**：本文是 **知识图谱与 LLM 结合** 词条，属于 ai-and-llm 术语集。相关枢纽：[[大模型基础术语详解]]、[[RAG 与检索技术详解]]、[[向量数据库技术]]、[[图神经网络]]。
 
-## 概述
-将**知识图谱（KG）** 的结构化知识与LLM的推理能力结合，可以实现更准确、可解释的AI系统。
+## 定义
 
-## KG + RAG
-传统RAG基于文本块检索，KG-RAG基于实体关系检索：
-```
-传统RAG: 问题 → 文本相似度 → 相关段落 → 生成答案
-KG-RAG: 问题 → 实体识别 → 图遍历 → 结构化知识 → 生成答案
-```
+**一句话定义：** 知识图谱与 LLM 结合，是把知识图谱（KG）的结构化实体关系与 LLM 的自然语言理解 / 生成能力融合，得到既精确可推理、又能灵活对话的系统。
 
-## 实体提取
-```python
-def extract_entities(text: str, llm) -> list:
-    prompt = f"""
-    从以下文本中提取实体，标注类型：
+**通俗类比：** LLM 像"读过很多书、却记不准确切关系"的博学顾问，KG 像一本"精确的人物 / 事件关系档案"——两者合体，顾问答题时先查档案核实关系，再流畅作答。
 
-    文本：{text}
+## 为什么需要它
 
-    输出格式：[{{"name": "...", "type": "人物/组织/技术/概念"}}]
-    """
-    return json.loads(llm.generate(prompt))
-```
+LLM 擅语言却有幻觉、对多跳精确关系偏弱；KG 精确可推理但构建笨重、不懂自然语言。二者结合可让检索沿"实体-关系"结构化进行，提升多跳问答的准确率与可解释性。
 
-## 关系提取
-```python
-def extract_relations(text: str, entities: list, llm) -> list:
-    prompt = f"""
-    基于实体列表，提取实体间的关系：
+## 核心机制
 
-    文本：{text}
-    实体：{entities}
+- **KG 构建**：用 LLM 从文本抽取实体（带类型，如人物 / 组织 / 技术）与关系（source-relation-target 三元组），再灌入图数据库（如 Neo4j，节点为实体、边为关系，用 Cypher / SPARQL 查询与遍历）。LLM 大幅降低了传统人工建图的成本。
+- **KG + RAG**：不同于"文本块相似度检索"的向量 RAG，KG-RAG 的链路是 问题 → 实体识别 → 图遍历 → 取结构化子图 → 交 LLM 生成，尤其擅长"A 的导师的导师"这类多跳关系查询。
 
-    输出格式：[{{"source": "...", "relation": "...", "target": "..."}}]
-    """
-    return json.loads(llm.generate(prompt))
-```
-
-## 知识图谱构建
-```python
-class KnowledgeGraph:
-    def __init__(self):
-        self.entities = {}
-        self.relations = []
-
-    def add_entity(self, name, entity_type, properties=None):
-        self.entities[name] = {'type': entity_type, 'properties': properties or {}}
-
-    def add_relation(self, source, relation, target):
-        self.relations.append({'source': source, 'relation': relation, 'target': target})
-
-    def query_related(self, entity: str, depth=1) -> list:
-        """查询与实体相关的知识"""
-        results = []
-        for r in self.relations:
-            if r['source'] == entity or r['target'] == entity:
-                results.append(r)
-        return results
-```
-
-## 图数据库 Neo4j
-```python
-from neo4j import GraphDatabase
-
-driver = GraphDatabase.driver('bolt://localhost:7687', auth=('neo4j', 'password'))
-
-def create_entity(tx, name, entity_type):
-    tx.run('MERGE (e:Entity {name: $name, type: $type})', name=name, type=entity_type)
-
-def create_relation(tx, source, relation, target):
-    tx.run(f'MATCH (a:Entity {{name: $src}}), (b:Entity {{name: $tgt}}) '
-           f'MERGE (a)-[:{relation}]->(b)', src=source, tgt=target)
-
-def query_kg(tx, entity, depth=2):
-    result = tx.run(
-        'MATCH (e:Entity {name: $name})-[*1..{depth}]-(related) '
-        'RETURN related.name, related.type', name=entity, depth=depth
-    )
-    return [record.data() for record in result]
-```
-
-## 知识图谱 vs 向量数据库
+两种知识底座的能力互补：
 
 | 维度 | 知识图谱 | 向量数据库 |
 |------|---------|-----------|
-| **数据结构** | 图（节点+边） | 向量空间 |
-| **查询方式** | 图遍历/SPARQL | 相似度搜索 |
-| **优势** | 关系推理 | 语义搜索 |
-| **劣势** | 构建成本高 | 缺乏关系 |
-| **适用场景** | 多跳推理 | 相似匹配 |
+| 数据结构 | 图（节点 + 边） | 向量空间 |
+| 查询方式 | 图遍历 / SPARQL | 相似度搜索 |
+| 优势 | 关系推理 | 语义搜索 |
+| 劣势 | 构建成本高 | 缺乏显式关系 |
+| 适用场景 | 多跳推理 | 相似匹配 |
 
-## 小结
-KG+LLM结合兼顾了结构化推理和语义理解。知识图谱提供精确的关系知识，LLM提供灵活的自然语言理解能力。
+## 具体示例
+
+问"张三的博士生导师现在在哪个机构"：KG-RAG 先定位张三 → 沿"师从 / 任职"关系遍历两跳 → 取到导师及其当前机构 → LLM 组织成自然语言答案，并给出一条可核验的关系路径。纯向量检索很难把这种多跳关系一次召回。
+
+## 何时用 / 何时不用
+
+- **用**：需要精确关系、多跳推理、可解释与事实稳定（医疗、金融、组织图谱）。
+- **不用**：关系松散、以模糊语义匹配为主时，向量 RAG 更省；且建图与 Schema 设计本身有成本。
+
+## 优劣与代价
+
+✅ 关系精确、多跳可推、可溯源、能抑制幻觉。
+⚠️ 构建与维护成本高，Schema 设计难。
+⚠️ 图谱覆盖不全时会答不出，泛化不如向量召回。
+
+## 与相关概念的区别
+
+- **vs [[向量数据库技术]]**：向量库按语义相似度检索非结构化文本、缺显式关系；KG 有实体-关系可精确遍历，二者常混合使用（见上表）。
+- **vs [[RAG 与检索技术详解]]**：KG-RAG 是"结构化检索增强"，普通 RAG 是文本块检索。
+- **vs [[图神经网络]]**：GNN 是在图上"学习"表示，KG 是"表示"结构化知识，二者可互补（用 GNN 编码 KG 做推理）。
+
+## 常见误区
+
+- 知识图谱和向量数据库是同一类技术，只是叫法不同。
+- 引入知识图谱后，LLM 的幻觉问题会被自动、彻底地消除。
+- KG-RAG 与文本块 RAG 完全一样，只是多了一步无关紧要的分词。
+
+## 面试速答
+
+> 🎯 知识图谱 + LLM 把"结构化精确关系"与"灵活语言理解"结合：LLM 先从文本抽实体与关系三元组建图（存进 Neo4j，用 Cypher / SPARQL 遍历），问答时走 KG-RAG——实体识别 → 图遍历取子图 → LLM 生成，擅长"A 导师的导师"这类多跳关系、且可给可核验关系路径、抑制幻觉。它与向量库互补：向量库胜在语义泛化匹配、KG 胜在显式关系推理，生产常混合。代价是建图与 Schema 成本高、覆盖不全时答不出。
+> 🔍 追问：KG-RAG 相比向量 RAG 强在哪？（沿显式关系做多跳遍历、可解释可溯源，向量相似度难召回精确关系）
+> 🔍 追问：什么时候仍该用向量检索而非 KG？（关系松散、以模糊语义匹配为主、或没精力建图时）
 
 ## 相关术语
 

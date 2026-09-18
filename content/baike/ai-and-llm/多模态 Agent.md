@@ -10,89 +10,28 @@ status: "imported"
 # 多模态 Agent
 
 
-> 📌 **导航**：本文是 **多模态 Agent** 词条，属于 ai-and-llm 术语集。相关枢纽：[[大模型基础术语详解]]、[[Transformer架构深度解析]]、[[RAG 与检索技术详解]]、[[多 Agent 协作系统]]、[[Prompt 工程与 Agent 详解]]。
+> 📌 **导航**：本文是 **多模态 Agent** 词条，属于 ai-and-llm 术语集。相关枢纽：[[多模态大模型]]、[[AI Agent 概述与核心架构]]、[[语音AI技术]]、[[Diffusion扩散模型]]。
 
-## 概述
-**多模态Agent** 能够理解和处理多种模态的信息：文本、图像、音频、视频。
+## 定义
+
+**一句话定义：** 多模态 Agent 能同时感知与生成文本、图像、音频、视频等多种模态，并在它们之间联合推理、依据环境采取行动。
+
+**通俗类比：** 不只用"文字"看世界，还长了眼睛（图 / 视频）、耳朵（语音）和嘴（TTS）——像人能边看图、边听、边说地把任务办完。
+
+## 为什么需要它
+
+真实信息本就跨模态：一张报错截图、一段会议录音。纯文本 Agent 看不见也听不到；多模态把感知补齐，让 Agent 能处理"发张截图问怎么办""看视频找异常事件"这类任务。
 
 ## 核心能力
 
 | 模态 | 输入能力 | 输出能力 |
 |------|---------|---------|
-| **文本** | 理解和生成 | 自然语言输出 |
-| **图像** | 理解和描述 | 图像生成 |
-| **音频** | 语音识别 | 语音合成 |
-| **视频** | 视频理解 | 视频分析 |
+| 文本 | 理解与生成 | 自然语言输出 |
+| 图像 | 理解与描述 | 图像生成 |
+| 音频 | 语音识别 | 语音合成 |
+| 视频 | 视频理解 | 视频分析 |
 
-## 视觉理解
-```python
-from openai import OpenAI
-client = OpenAI()
-
-response = client.chat.completions.create(
-    model='gpt-4o',
-    messages=[{
-        'role': 'user',
-        'content': [
-            {'type': 'text', 'text': '描述这张图片中的内容'},
-            {'type': 'image_url', 'image_url': {'url': 'https://example.com/image.jpg'}},
-        ],
-    }],
-)
-```
-
-## 语音交互
-```python
-class VoiceAgent:
-    def __init__(self, llm):
-        self.llm = llm
-
-    def listen(self, audio_file):
-        # 语音转文本
-        transcript = self.speech_to_text(audio_file)
-        return transcript
-
-    def think(self, text):
-        # LLM处理
-        response = self.llm.generate(text)
-        return response
-
-    def speak(self, text):
-        # 文本转语音
-        audio = self.text_to_speech(text)
-        return audio
-
-    def interact(self, audio_input):
-        text = self.listen(audio_input)
-        response = self.think(text)
-        audio_output = self.speak(response)
-        return audio_output
-```
-
-## 多模态推理
-```python
-class MultimodalAgent:
-    def analyze_document(self, image_path, question):
-        # 图文混合推理
-        response = self.llm.chat([{
-            'role': 'user',
-            'content': [
-                {'type': 'image_url', 'image_url': {'url': image_path}},
-                {'type': 'text', 'text': f'基于图片回答：{question}'},
-            ]
-        }])
-        return response
-
-    def video_understanding(self, video_frames):
-        # 多帧理解
-        content = []
-        for frame in video_frames:
-            content.append({'type': 'image_url', 'image_url': {'url': frame}})
-        content.append({'type': 'text', 'text': '描述视频中发生了什么'})
-        return self.llm.chat([{'role': 'user', 'content': content}])
-```
-
-## 多模态模型对比
+三类典型工作流：**视觉理解**把图文混排进模型（如多段消息里 image_url + text）做描述、问答与 OCR；**语音交互**用 listen → think → speak 三段（ASR → LLM → TTS）串成语音助手，也已出现端到端语音模型；**多模态推理**涵盖文档解析（扫描图 → 结构化数据）与视频理解（抽多帧当作图像序列再提问）。主流模型的多模态覆盖差异明显：
 
 | 模型 | 文本 | 图像 | 音频 | 视频 |
 |------|------|------|------|------|
@@ -102,21 +41,41 @@ class MultimodalAgent:
 | Qwen-VL | ✓ | ✓ | ✗ | ✗ |
 | LLaVA | ✓ | ✓ | ✗ | ✗ |
 
-## 应用场景
+## 具体示例
 
-| 场景 | 输入 | 输出 | 价值 |
-|------|------|------|------|
-| **图像问答** | 图片+问题 | 文本回答 | 辅助理解 |
-| **文档解析** | 扫描文档 | 结构化数据 | 自动化录入 |
-| **视觉客服** | 截图+描述 | 解决方案 | 提高效率 |
-| **视频分析** | 视频流 | 事件描述 | 安防监控 |
+图像问答（发图问内容）、文档解析（扫描件转结构化）、视觉客服（截图 + 描述给方案）、视频安防（视频流转事件描述）都是落地面。如处理"用户发来一张崩溃截图求助"：模型先 OCR 读出台账信息，再结合文本描述判断可能原因与解决步骤。
 
-## 小结
-多模态Agent通过整合多种感知能力，实现了更全面的环境理解和交互。GPT-4o和Gemini是多模态能力最强的模型。
+## 何时用 / 何时不用
+
+- **用**：输入含图 / 音 / 视频等文本外模态、需要跨模态联合理解时。
+- **不用**：纯文本任务——上多模态模型反增成本，还可能稀释文本能力。
+
+## 优劣与代价
+
+✅ 感知全面、贴近真实交互，解锁"看图听音看视频"类任务。
+⚠️ 更贵、更慢，跨模态对齐与幻觉更难控。
+⚠️ 模态越多评测越难，音视频还涉及隐私敏感。
+
+## 与相关概念的区别
+
+- **vs [[多模态大模型]]**：那是"能处理多模态的模型"，多模态 Agent 在其上再加"自主决策 + 工具行动"。
+- **vs [[Computer Use Agent]]**：后者也用视觉，但专指"看屏幕去操作 GUI"，本条是泛化的多模态感知与生成。
+
+## 常见误区
+
+- 多模态 Agent 只能处理文本与图像，天生无法涉及音频或视频。
+- Claude 3.5 的原生能力覆盖音频与视频，和 GPT-4o 完全一样。
+- 语音交互一定得走"ASR → LLM → TTS"三段，不存在端到端语音模型。
+
+## 面试速答
+
+> 🎯 多模态 Agent 给 Agent 装上眼耳鼻嘴：能理解文本 / 图像 / 音频 / 视频并跨模态联合推理。典型能力——视觉（图文混排做描述 / 问答 / OCR）、语音（listen→think→speak：ASR→LLM→TTS）、视频（抽多帧当图像序列理解）、文档解析。模型上 GPT-4o、Gemini 覆盖最全，Claude 3.5 / Qwen-VL 偏文本 + 图像。它让 Agent 贴近真实多模态交互，代价是更贵更慢、跨模态幻觉与隐私风险更高；"多模态模型"是底座，加上自主决策与工具才成 Agent。
+> 🔍 追问：多模态 Agent 与多模态大模型的区别？（模型只负责感知 / 生成，Agent 在其上加规划、工具与自主行动）
+> 🔍 追问：视频理解的常见做法？（抽关键帧作为图像序列连同问题一起输入，让模型跨帧理解时序）
 
 ## 相关术语
 
-[[多模态大模型]]、[[AI Agent 概述与核心架构]]、[[多 Agent 协作系统]]、[[语音AI技术]]、[[Diffusion扩散模型]]
+[[多模态大模型]]、[[AI Agent 概述与核心架构]]、[[多 Agent 协作系统]]、[[语音AI技术]]、[[Diffusion扩散模型]]、[[Computer Use Agent]]
 
 ## 参考资料
 

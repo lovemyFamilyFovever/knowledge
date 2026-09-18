@@ -12,95 +12,69 @@ status: "imported"
 
 > 📌 **导航**：本文是 **MCP（Model Context Protocol）** 词条，属于 ai-and-llm 术语集。相关枢纽：[[大模型基础术语详解]]、[[Transformer架构深度解析]]、[[RAG 与检索技术详解]]、[[多 Agent 协作系统]]、[[Prompt 工程与 Agent 详解]]。
 
-## 概述
-**MCP（Model Context Protocol）** 是 Anthropic 提出的开放协议，标准化了 LLM 与外部工具/数据源的连接方式。
+## 定义
 
-## 协议架构
+**一句话定义：** MCP（Model Context Protocol）是 Anthropic 提出的开放协议，用统一方式让 LLM 应用（Client）发现并调用外部工具与资源（Server），把"接工具"变成跨厂商可互操作的标准件。
 
-```
-LLM应用(Client) ←→ MCP协议 ←→ MCP Server（提供工具/资源）
-```
+**通俗类比：** 像 AI 界的 USB 接口——工具方按同一接口做"USB 设备（MCP Server）"，任何支持 MCP 的模型应用都能即插即用，不必为每个模型各写一套驱动。
+
+## 为什么需要它
+
+各家的 Function Calling 接口不一、工具与模型绑定，导致重复集成、难以复用。MCP 让工具与数据以标准协议对外暴露一次，任何 Client 都能在运行时发现并调用，从而形成生态级的复用，而非一个个孤岛。
+
+## 核心机制
+
+架构上是一个 Client ↔ Server 的会话，底座是 JSON-RPC 2.0：
 
 | 组件 | 角色 | 说明 |
 |------|------|------|
-| **Client** | LLM应用 | 发起工具调用请求 |
-| **Server** | 工具提供者 | 暴露工具和资源 |
-| **Protocol** | 通信协议 | JSON-RPC 2.0 |
+| Client | LLM 应用 | 发起工具调用请求 |
+| Server | 工具/数据提供方 | 暴露工具与资源 |
+| Protocol | 通信协议 | JSON-RPC 2.0，传输可走 stdio / SSE / HTTP |
 
-## Server 端实现
-```python
-from mcp import Server, Tool
+Server 侧用装饰器把函数注册为工具、把文件/文档注册为资源；Client 侧在运行时 `list_tools` 发现可用工具（含 name、description、inputSchema），用 `call_tool` 调用、`read_resource` 读取，还能订阅资源变化。它对外暴露三类原语：**Tools（可调用函数）、Resources（可读数据）、Prompts（模板）**。
 
-server = Server('my-tools')
-
-@server.tool()
-def search_database(query: str, limit: int = 10) -> str:
-    """搜索数据库中的记录"""
-    results = db.search(query, limit=limit)
-    return json.dumps(results, ensure_ascii=False)
-
-@server.tool()
-def send_email(to: str, subject: str, body: str) -> str:
-    """发送电子邮件"""
-    email_client.send(to=to, subject=subject, body=body)
-    return f'邮件已发送至 {to}'
-
-@server.resource('docs://')
-def get_documentation(path: str) -> str:
-    """获取文档内容"""
-    return read_file(f'./docs/{path}')
-```
-
-## Client 端使用
-```python
-from mcp import ClientSession, StdioServerParameters
-from mcp.client.stdio import stdio_client
-
-# 连接MCP Server
-server_params = StdioServerParameters(command='python', args=['my_server.py'])
-async with stdio_client(server_params) as (read, write):
-    async with ClientSession(read, write) as session:
-        # 发现可用工具
-        tools = await session.list_tools()
-
-        # 调用工具
-        result = await session.call_tool('search_database', {'query': 'AI Agent'})
-
-        # 读取资源
-        doc = await session.read_resource('docs://api-reference')
-```
-
-## MCP vs Function Calling
+与原生 Function Calling 的关键差异：
 
 | 维度 | MCP | Function Calling |
 |------|-----|-----------------|
-| **标准化** | 开放协议 | 厂商特定 |
-| **可发现性** | 运行时发现工具 | 预定义工具 |
-| **跨平台** | 任意Client/Server | 绑定特定LLM |
-| **资源访问** | 支持资源订阅 | 仅函数调用 |
-| **传输方式** | stdio/SSE/HTTP | API请求 |
+| 标准化 | 开放协议 | 厂商特定 |
+| 可发现性 | 运行时发现工具 | 预定义工具 |
+| 跨平台 | 任意 Client/Server | 绑定特定 LLM |
+| 资源访问 | 支持资源与订阅 | 仅函数调用 |
+| 传输方式 | stdio / SSE / HTTP | API 请求 |
 
-## 工具发现
-```python
-# Client在运行时发现Server提供的工具
-tools = await session.list_tools()
-for tool in tools:
-    print(f"工具: {tool.name}, 描述: {tool.description}")
-    print(f"参数: {tool.inputSchema}")
-```
+## 具体示例
 
-## 生态系统
+一个 GitHub MCP Server 暴露 `create_issue`、`search_code` 等工具；任何接入它的 MCP Client 都能自动列出这些工具并调用，无需为每个模型重写一套集成。官方与社区已有 GitHub、PostgreSQL、Filesystem、Slack 等一批现成 Server，也可自建接入自有工具。
 
-| Server | 功能 | 来源 |
-|--------|------|------|
-| **GitHub MCP** | GitHub操作 | 官方 |
-| **PostgreSQL MCP** | 数据库操作 | 官方 |
-| **Filesystem MCP** | 文件操作 | 官方 |
-| **Slack MCP** | Slack消息 | 社区 |
-| **自定义MCP** | 自有工具 | 自建 |
+## 何时用 / 何时不用
 
-## 小结
-MCP通过标准化协议连接LLM与外部工具，实现工具的可发现性和跨平台互操作。它正在成为AI Agent工具连接的事实标准。
+- **用**：希望工具 / 数据一次接入、跨多个模型应用复用，或搭建开放的工具生态时。
+- **不用**：单一封闭应用、只需厂商原生 Function Calling 且不需跨平台时。
+
+## 优劣与代价
+
+✅ 标准化、运行时可发现、跨厂商互操作，促进工具生态复用。
+⚠️ 协议较新，生态与安全边界仍在成型。
+⚠️ "运行时发现并调用外部 Server"引入信任与权限治理问题——接入不可信 Server 有安全风险。
+
+## 与相关概念的区别
+
+- **vs [[Function Calling 与 Tool Use]]**：Function Calling 是"模型决定调哪个函数"的能力、常绑定厂商；MCP 是"工具如何被标准化暴露与发现"的开放协议层，二者互补。
+- **vs [[Agent 架构模式详解]]**：MCP 提供工具接入的基础设施，架构模式提供任务的控制流。
+
+## 常见误区
+
+- MCP 是某家厂商私有的 Function Calling API，换个模型厂商就用不了。
+- MCP Server 只能暴露可调用的工具，无法提供可读取的资源。
+- 接入任意第三方 MCP Server 都是安全的，不必做权限与信任治理。
+
+## 面试速答
+
+> 🎯 MCP 是 Anthropic 提出的开放协议（基于 JSON-RPC 2.0，可走 stdio/SSE/HTTP）：把 LLM 应用当 Client、工具与数据提供方当 Server，Server 一次性暴露 Tools / Resources / Prompts，Client 运行时 list_tools 发现、call_tool 调用、read_resource 读取。相比各家 Function Calling，它主打标准化、可发现与跨平台互操作，正成为工具连接的事实标准；代价是较新、需治理接入信任与权限。
+> 🔍 追问：MCP 和 Function Calling 什么关系？（互补：FC 是模型选函数的能力，MCP 是工具如何标准化暴露 / 发现的协议层）
+> 🔍 追问：MCP 除了工具还提供什么原语？（Resources 可读资源、Prompts 模板，且支持运行时订阅）
 
 ## 相关术语
 

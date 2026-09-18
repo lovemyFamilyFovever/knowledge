@@ -12,101 +12,66 @@ status: "imported"
 
 > 📌 **导航**：本文是 **Prompt Engineering 高级技巧** 词条，属于 ai-and-llm 术语集。相关枢纽：[[大模型基础术语详解]]、[[Transformer架构深度解析]]、[[RAG 与检索技术详解]]、[[多 Agent 协作系统]]、[[Prompt 工程与 Agent 详解]]。
 
-## 概述
-**Prompt Engineering** 是通过设计高质量的提示词来引导LLM产生期望输出的技术。本文介绍高级提示技巧。
+## 定义
 
-## Few-shot Prompting
-通过在提示中提供少量示例来引导模型：
-```python
-prompt = """
-请将文本分类为正面/负面情感。
+**一句话定义：** Prompt Engineering 高级技巧是用示例编排、思维链、多路径搜索与自洽投票等提示构造方法，在不改模型权重的前提下引导 LLM 产出更准、更稳、更可控的结果。
 
-文本：这个产品太棒了！
-情感：正面
+**通俗类比：** 不换厨师（模型），而是把"菜单怎么写"打磨到位——给几道参照菜（少样本）、要求边做边讲（思维链）、多试几种做法再挑最好的（树搜索 / 自洽），用同一个厨子做出更好的菜。
 
-文本：服务态度非常差
-情感：负面
+## 为什么需要它
 
-文本：效果还可以，但价格偏贵
-情感：
-"""
-```
+同一个模型，措辞不同结果天差地别。高级提示技巧能以近零成本榨出模型上限：省训练与推理资源、可快速迭代，对复杂推理和格式控制立竿见影，是使用 LLM 最划算的一层优化。
 
-## Chain-of-Thought (CoT)
-引导模型逐步推理，显著提高复杂问题的准确率：
-```python
-# 零样本 CoT
-prompt = """问题：一个果园有15棵苹果树，每棵树平均产60个苹果。
-如果每个苹果卖2元，总收入是多少？
+## 做法
 
-让我们一步步思考：
-1. 苹果总数 = 15棵 x 60个/棵 = 900个
-2. 总收入 = 900个 x 2元/个 = 1800元
+**时机**：模型能力够、只是没被"问对"时，先调 prompt，再考虑微调 / RAG。**输出物**是一套可复用、可回归测试的 prompt 模板与示例集。几种主力技巧：
 
-答案：1800元"""
-```
+- **Few-shot**：在提示里给 2-5 个"输入 → 输出"示例，让模型模仿其格式与判别标准，适合有固定格式或分类标准的任务。
+- **CoT（思维链）**：要求模型"先分步推理、再给答案"，显著提升算术、逻辑等复杂推理的准确率；即便是零样本，加一句"让我们一步步思考"也常能触发。
+- **ToT（思维树）**：把推理拆成多步，每步生成多个分支、给每个分支打分，保留或回退最优，按广度 × 深度搜索——适合需要探索与试错的创造性任务，代价是大模型调用量成倍增长。
+- **Self-Consistency（自洽性）**：同一题以较高温度多次采样、各走一条 CoT，再对最终答案做多数投票，取最一致者，用"多数决"提高可靠性；Token 成本很高。
 
-## Tree-of-Thought (ToT)
-在多个推理分支中搜索最优路径：
-```python
-class ToTNode:
-    def __init__(self, thought, parent=None):
-        self.thought = thought
-        self.parent = parent
-        self.children = []
-        self.score = 0
+设计原则贯穿始终：明确指令、给足上下文、分步引导、约束边界（说清不要做什么）、迭代优化。各技巧的适用与成本：
 
-def tree_of_thought(problem, llm, breadth=3, depth=3):
-    root = ToTNode(problem)
-    for d in range(depth):
-        nodes = get_leaves(root)
-        for node in nodes:
-            # 生成多个推理分支
-            thoughts = llm.generate_thoughts(node.thought, n=breadth)
-            for t in thoughts:
-                child = ToTNode(t, parent=node)
-                child.score = llm.evaluate(t)
-                node.children.append(child)
-        # 保留最优分支
-        best = max(get_leaves(root), key=lambda n: n.score)
-    return best.thought
-```
-
-## Self-Consistency
-多次采样后投票选择最一致的答案：
-```python
-def self_consistency(problem, llm, n_samples=5):
-    answers = []
-    for _ in range(n_samples):
-        # 每次用不同的温度采样
-        response = llm.generate(problem, temperature=0.7)
-        answer = extract_answer(response)
-        answers.append(answer)
-    # 多数投票
-    from collections import Counter
-    most_common = Counter(answers).most_common(1)[0][0]
-    return most_common
-```
-
-## 技巧对比
-
-| 技巧 | 适用场景 | 准确率提升 | Token消耗 | 复杂度 |
+| 技巧 | 适用场景 | 准确率提升 | Token 消耗 | 复杂度 |
 |------|---------|-----------|----------|--------|
-| **Zero-shot** | 简单任务 | 基准 | 低 | 最低 |
-| **Few-shot** | 格式要求 | 中 | 中 | 低 |
-| **CoT** | 推理任务 | 高 | 中 | 低 |
-| **ToT** | 创造性任务 | 很高 | 高 | 高 |
-| **Self-Consistency** | 需要可靠答案 | 高 | 很高 | 中 |
+| Zero-shot | 简单任务 | 基准 | 低 | 最低 |
+| Few-shot | 格式要求 | 中 | 中 | 低 |
+| CoT | 推理任务 | 高 | 中 | 低 |
+| ToT | 创造性任务 | 很高 | 高 | 高 |
+| Self-Consistency | 需要可靠答案 | 高 | 很高 | 中 |
 
-## Prompt 设计原则
-1. **明确指令**：清楚说明期望的输出格式
-2. **提供上下文**：给模型足够的背景信息
-3. **分步引导**：复杂任务分解为步骤
-4. **约束边界**：说明不要做什么
-5. **迭代优化**：根据输出持续改进prompt
+## 具体示例
 
-## 小结
-Prompt Engineering是使用LLM的核心技能。CoT适合推理，ToT适合搜索，Self-Consistency提高可靠性。实践中往往组合多种技巧。
+一道数学应用题：直接问模型容易答错；加上"一步步思考"（CoT）准确率上升；再采样 5 次做多数投票（Self-Consistency）更稳。而若要生成"用四个数凑 24"的算式，用 ToT 让模型探索多条算式、给中间结果打分并回退更合适。
+
+## 何时用 / 何时不用
+
+- **用**：复杂推理、格式严格、或需要高可靠答案时。
+- **不用**：简单零样本已够，或成本 / 延迟预算极紧时——ToT、自洽会成倍烧 Token。
+
+## 优劣与代价
+
+✅ 零训练成本、见效快、多种技巧可组合叠加。
+⚠️ 每种技巧都在增加 Token 与延迟，ToT / 自洽尤其明显。
+⚠️ 提示较脆弱，换模型或改表述都可能失效，需配回归测试。
+
+## 与相关概念的区别
+
+- **vs [[Prompt 工程与 Agent 详解]]**：那条是提示工程总览，本条聚焦"高级推理类技巧"。
+- **vs [[Agent 规划与推理]]**：CoT / ToT 与 Agent 的推理、搜索共享思想，但这里指的是单次提示内的推理引导，而非跨步的工具循环。
+
+## 常见误区
+
+- 提示词写得越长、塞的示例越多，模型效果就一定越好，无需权衡成本。
+- Self-Consistency 只需采样一次、把答案复制几遍就能提升可靠性。
+- CoT 会改变模型权重，所以效果提升其实相当于"重新训练"了模型。
+
+## 面试速答
+
+> 🎯 高级 Prompt 技巧用措辞榨出模型上限、零训练成本：Few-shot 给示例模仿格式；CoT 让模型分步推理（零样本加"一步步思考"即触发）；ToT 把推理展成多分支打分搜索、适合探索但烧 Token；Self-Consistency 多次采样对答案多数投票提可靠性。原则是明确指令、给上下文、分步、约束边界、迭代；按准确率收益对 Token / 延迟成本取舍并做回归。
+> 🔍 追问：CoT 与 Self-Consistency 什么关系？（CoT 让单次推理分步；自洽性在其之上多采样投票，更稳但更贵）
+> 🔍 追问：什么时候不该用 ToT？（任务没有明确分支 / 评分，或成本、延迟受限时——调用量成倍增长不划算）
 
 ## 相关术语
 
