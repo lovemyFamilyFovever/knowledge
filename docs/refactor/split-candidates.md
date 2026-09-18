@@ -7,7 +7,7 @@
 > - 路径一律写 `content/baike/<子域>/<文件>.md`（s1/s3 原用子域相对路径、s2/s4/s5 原用 content 相对路径，已统一；每行均已核验文件存在）。
 > - 排序：子域字母序，子域内路径字母序。
 > - 共 **102** 行，一行一篇待拆长文，无重复。
-> - 状态列本轮一律 `pending`（s1 原写 `待拆`，已归一）；二期落地时改 `doing` / `done` / `merged-into: <目标>`。
+> - 状态列本轮一律 `pending`（s1 原写 `待拆`，已归一）；二期落地时改 `doing` / `done` / `merged-into: <目标>` / `exempt-reference`（改判为参考手册型、原样保留不再排期拆分，行留在本表作记录）。
 > - `子概念预览` 列从各片 split 理由中人工核对提取，仅供拆分时快速定位切口，**不是权威清单**——以 `理由` 列与原文为准。
 
 ## 重叠去重队列
@@ -104,7 +104,7 @@
 | content/baike/network/应用层协议.md | 13 | s2 | 9411 | HTTP、DNS、SMTP、FTP、SSH、DHCP | baike B 多定义（HTTP/DNS/SMTP/FTP/SSH/DHCP 各协议带 def+报文示例）；9411 ≫ 3400、12 围栏 ≫ 2/20 → 建议按协议各拆词条 | pending |
 | content/baike/network/网络基础.md | 14 | s2 | 8389 | OSI、TCP-IP、以太网、IP、MAC、子网、CIDR、VLAN | baike B 多定义（OSI/TCP-IP/以太网/IP/MAC/子网/CIDR/VLAN 各带 def）；8389 ≫ 3400、14 围栏 ≫ 2/20，且与 OSI 参考模型/IP 协议 等专文重叠 → 建议去重后按主题拆词条 | pending |
 | content/baike/network/网络安全协议.md | 11 | s2 | 9247 | 防火墙、IDS-IPS、VPN、IPsec、TLS、DDoS、WAF | baike B 多定义（防火墙/IDS-IPS/VPN/IPsec/TLS/DDoS/WAF 各带 def+示例）；9247 ≫ 3400、11 围栏 ≫ 2/20 → 建议按主题各拆词条 | pending |
-| content/baike/os/Linux 命令速查手册.md | 20+ | s2 | 4504 | ls、cd、mkdir、cp·mv·rm、cat·less、grep、find、sed、awk、chmod、ps·top、df·du、netstat、tar | 命令型速查手册：ls/cd/mkdir/cp·mv·rm/cat·less/grep/find/sed/awk/chmod/ps·top/df·du/netstat/tar 等按命令分组，每组带独立示例围栏；无 `## 定义`、15 围栏 ≫ 2/20，压缩会毁掉逐命令用法示例（这是手册的核心价值）→ 建议保留为速查参考或按命令族拆词条 | pending |
+| content/baike/os/Linux 命令速查手册.md | 20+ | s2 | 4504 | ls、cd、mkdir、cp·mv·rm、cat·less、grep、find、sed、awk、chmod、ps·top、df·du、netstat、tar | 命令型速查手册：ls/cd/mkdir/cp·mv·rm/cat·less/grep/find/sed/awk/chmod/ps·top/df·du/netstat/tar 等按命令分组，每组带独立示例围栏；无 `## 定义`、15 围栏 ≫ 2/20，压缩会毁掉逐命令用法示例（这是手册的核心价值）→ 建议保留为速查参考或按命令族拆词条 | exempt-reference（已改判，见 `docs/refactor/exempt-reference.md`） |
 | content/baike/os/Shell 脚本详解.md | 8+ | s2 | 8061 | 变量、条件if·case、循环for·while·until、函数、数组、字符串操作、正则grep·sed·awk、管道与重定向 | 教程/手册式汇编：变量/条件 if·case/循环 for·while·until/函数/grep·sed·awk 等多块各带大量代码，无 `## 定义` 单词条结构、正文 8061 ≫ 3400、15 围栏 ≫ 2/20，压缩必毁逐语法示例；与 Shell脚本编程 词条重叠需去重 → 建议按语法主题拆词条 | pending |
 | content/baike/os/进程管理详解.md | 12+ | s2 | 6581 | ps、top·htop、kill、nohup、systemd、cron、nice、/proc、dmesg、journalctl、systemctl | 命令+概念混合详解：ps/top·htop/kill/nohup/systemd/cron/nice//proc/dmesg/journalctl/systemctl 等 11+ 子块各带 def 与代码，17 围栏 ≫ 2/20、6581 ≫ 3400，压缩会毁掉逐命令实战细节；与 Linux命令速查手册 重叠 → 建议拆命令词条+进程管理枢纽 | pending |
 | content/baike/programming-languages/Flutter跨平台开发实战.md | 5 | s4 | 22743 | Dart精要、Widget体系、布局、路由GoRouter、状态管理 | Dart精要/Widget体系/布局/路由GoRouter/状态管理 各独立且带大量代码；正文 22743、围栏 14 块 1284 行 ≫ 上限 → 按主题拆词条 | pending |
