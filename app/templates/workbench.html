@@ -51,15 +51,7 @@
       <button class="iconbtn primary{% if doc.favorite %} faved{% endif %}" id="fav-btn" onclick="toggleFav()"><svg class="i i-12"><use href="#i-star"/></svg> {% if doc.favorite %}已收藏{% else %}收藏{% endif %}</button>
       {% if doc.name.endswith(('.txt', '.pdf', '.xlsx', '.epub')) %}<a class="iconbtn" id="kb-lib-dl" href="/raw/{{ doc.rel }}" download="{{ doc.name }}" title="下载原文件"><svg class="i i-12"><use href="#i-download"/></svg> 下载</a>{% endif %}
     </div>
-    {# 读数元信息条：域/子域 与状态由模板静态注入（doc-data JSON 仍为 JS 唯一事实源） #}
-    <div class="readhead" aria-hidden="false">
-      <span class="rh-chip">{{ doc.domain_label|default(doc.domain) }}</span>
-      <span class="rh-chip">{{ sub_label }}</span>
-      <span class="rh-chip rh-acc">{{ doc.status_label|default(doc.fm.status|default('—')|upper) }}</span>
-      <span class="rh-chip rh-mono">{{ doc.fm.collected|default('—') }} 收录</span>
-      <span class="rh-chip rh-mono">{{ doc.size|default('—') }}</span>
-      {% if doc.has_html %}<span class="rh-chip">美化版可用</span>{% endif %}
-    </div>
+    {# 读数元信息条（2026-09-18）：chips 上移并入 crumb 左端 #crumb-chips（JS renderHeadChips 填充），独立 readhead 行取消 #}
     <div class="article"><div class="article-inner" id="article"></div></div>
     <div class="editor" id="editor" role="dialog" aria-label="Markdown 编辑器">
       <div class="bar">

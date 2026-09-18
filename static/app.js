@@ -251,18 +251,8 @@ window.promptNewDocInDir = promptNewDocInDir;
    顶部 crumb 已显示完整标题 → 正文不重复标题；
    格式/体积/下载统一并入「crumb 按钮组」与「readhead 状态栏」同一行，不单独起行。 */
 function syncLibraryChrome(ext, sizeMiB) {
-  const readhead = document.querySelector(".readhead");
-  if (!readhead) return;
-  /* 格式 · 体积 chip → readhead 状态栏同一行（下载按钮由 renderCrumb 统一渲染，避免被重建冲掉） */
-  const chipId = "kb-lib-fmt";
-  let fmt = document.getElementById(chipId);
-  if (!fmt) {
-    fmt = document.createElement("span");
-    fmt.id = chipId;
-    fmt.className = "rh-chip rh-mono";
-    readhead.appendChild(fmt);
-  }
-  fmt.textContent = ext.toUpperCase() + " · " + sizeMiB + " MB";
+  /* 2026-09-18：readhead 独立行已取消，格式 · 体积 chip 由 renderHeadChips() 统一渲染进 crumb 左端。 */
+  renderHeadChips();
 }
 
 /* 切换到非书库文档时清掉上一个文档挂上的 chrome（防串场） */
@@ -297,9 +287,25 @@ function renderLibraryDoc(el, ext) {
   }
   // txt：>2MB 只展示前 512KB 预览，完整阅读走下载
   el.innerHTML = `<div class="a-body lib-txt" id="lib-txt"><div class="kb-skeleton" aria-busy="true"><i style="width:70%"></i><i style="width:92%"></i><i style="width:84%"></i></div></div>`;
+  /* 编码修复（2026-09-18）：本地书库 txt 大量是 GBK/GB18030，浏览器 fetch 默认按
+     UTF-8 解码会整页菱形问号。策略：BOM 判定 → UTF-8 严格解码（fatal:true）→
+     失败回退 GB18030（GBK 超集，兼容 Big5 常用字不足时再退 Big5）。 */
   fetch(rawHref).then(r => {
     if (!r.ok) throw new Error("HTTP " + r.status);
-    return r.text();
+    return r.arrayBuffer();
+  }).then(buf => {
+    const bytes = new Uint8Array(buf);
+    let t;
+    if (bytes[0] === 0xEF && bytes[1] === 0xBB && bytes[2] === 0xBF) {
+      t = new TextDecoder("utf-8").decode(bytes.slice(3));
+    } else {
+      try { t = new TextDecoder("utf-8", { fatal: true }).decode(bytes); }
+      catch (e) {
+        try { t = new TextDecoder("gb18030").decode(bytes); }
+        catch (e2) { t = new TextDecoder("big5").decode(bytes); }
+      }
+    }
+    return t;
   }).then(t => {
     const LIMIT = 512 * 1024;
     const truncated = t.length > LIMIT;
@@ -1290,7 +1296,8 @@ function renderCrumb() {
   const canSwitchToMd = DOC.has_html && !DOC.is_html;
   /* 书库格式（txt/pdf/xlsx/epub）：下载按钮统一并入本行最右（用户要求） */
   const libExt = (DOC.name || "").match(/\.(txt|pdf|xlsx|epub)$/i);
-  crumb.innerHTML = `<b>${esc(DOC.title)}</b><span class="spacer"></span>
+  /* 用户要求（2026-09-18）：左上角不再显示标题；readhead 状态栏 chips 上移并入本行左端（#crumb-chips，renderHeadChips 填充）。 */
+  crumb.innerHTML = `<span class="crumb-chips" id="crumb-chips"></span><span class="spacer"></span>
     ${canSwitchToMd ? `<button class="iconbtn" id="kb-md-src-btn" onclick="toggleMdSource()" title="在美化版 / Markdown 源之间切换">${MD_SRC_ON ? icon("preview-eye", 13) + " 美化版" : icon("file-md", 13) + " Markdown 源"}</button>` : ""}
     ${DOC.has_html ? `<a class="iconbtn" href="${rawUrl(DOC.is_html ? DOC.rel : DOC.html_rel)}" target="_blank" title="新标签页打开美化版">${icon("external-link", 13)} 新标签页</a>` : ""}
     ${!DOC.is_html ? `<button class="iconbtn" onclick="openEditor()">${icon("edit",13)} 编辑</button>
@@ -1298,6 +1305,24 @@ function renderCrumb() {
     <button class="iconbtn" onclick="jumpToTagEdit()" title="编辑本篇标签（右栏信息·标签页）">${icon("tag-outline",13)} 标签</button>` : ""}
     <button class="iconbtn primary ${DOC.favorite ? "faved" : ""}" id="fav-btn" onclick="toggleFav()">${icon("star",13)} ${DOC.favorite ? "已收藏" : "收藏"}</button>
     ${libExt ? `<a class="iconbtn" id="kb-lib-dl" href="${rawUrl(DOC.rel)}" download="${esc(DOC.name || "文件")}" title="下载原文件">${icon("download", 13)} 下载</a>` : ""}`;
+  renderHeadChips();
+}
+
+/* 读数元信息 chips：原 .readhead 独立行内容，现渲染进 crumb 左端 #crumb-chips。
+   书库格式（txt/pdf/xlsx/epub）额外追加「TXT · 0.2 MB」chip（替代原 syncLibraryChrome）。 */
+function renderHeadChips() {
+  const box = $("#crumb-chips"); if (!box || !DOC) return;
+  const libExt = (DOC.name || "").match(/\.(txt|pdf|xlsx|epub)$/i);
+  const sizeMiB = libExt ? (parseFloat(DOC.size) / 1024).toFixed(1) : null;
+  const chips = [
+    DOC.domain_label || DOC.domain,
+    DOC.sub_label || "",
+    DOC.status_label || (DOC.fm && DOC.fm.status ? String(DOC.fm.status).toUpperCase() : ""),
+    DOC.fm && DOC.fm.collected ? `${DOC.fm.collected} 收录` : "",
+    DOC.size && !libExt ? `${DOC.size}` : "",
+    libExt ? `${libExt[0].slice(1).toUpperCase()} · ${sizeMiB} MB` : ""
+  ].filter(Boolean);
+  box.innerHTML = chips.map(c => `<span class="rh-chip">${esc(c)}</span>`).join("");
 }
 
 function renderInfo() {

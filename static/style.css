@@ -30,8 +30,8 @@
 /* [2] token 定义区 ===== 原始层（raw hex 只在此区）===== */
 :root{
   /* -- 基准皮肤「仪表 instrument」Light -- */
-  --hex-bg:#e9edf0; --hex-panel:#ffffff; --hex-sunk:#dde3e8;
-  --hex-ink:#131c23; --hex-line:#d5dce1; --hex-line2:#aebbc6;
+  --hex-bg:#f6f7f9; --hex-panel:#ffffff; --hex-sunk:#eef1f4;
+  --hex-ink:#161d24; --hex-line:#e4e8ed; --hex-line2:#cfd6de;
   --hex-primary:#0d8a5f; --hex-info:#0f7fa3; --hex-warn:#9a6700;
   --hex-danger:#b3261e; --hex-ok:#12864b; --hex-mark:#ffd973;
   /* -- 仪表 Dark -- */
@@ -58,11 +58,11 @@
   --hex-plate-dark-a:#0f1c25; --hex-plate-dark-b:#0a131b;
   --hex-paper-dark:#22312c;
   --hex-plate-fg:#cfe0da; --hex-plate-com:#5c716c; /* LCD 板专用（原 --code-fg/-com，避开正文代码 token） */
-  --hex-acc2:#6366f1; --hex-acc2-d:#a78bfa; /* 次强调（追问框 fu 左条/底） */
+  --hex-acc2:#0f766e; --hex-acc2-d:#2dd4bf; /* 次强调（追问框 fu 左条/底）·青，弃靛蓝 */
   /* 正文代码块随主题翻转 + h2 渐变条饱和/明度（Prompt-R 渲染层） */
   --code-bg:#f6f8fa; --code-fg:#24292f; --code-com:#6a737d;
   --code-key:#0b6e4f; --code-str:#0a5c46; --code-num:#8a4b00;
-  --bar-s:62%; --bar-l:44%; --bar-fg:#ffffff;
+  --bar-s:50%; --bar-l:89%; --bar-fg:#1f2937;
   /* mascot --ill-* 族（Light 种子，Dark patch 在 [3] 尾部） */
   --hex-skin-light:#e8cba9; --hex-skin-shadow-light:#c9a482; --hex-hair-light:#2a3833;
   --hex-glasses-light:#3d4b47; --hex-shirt-light:#f7f7f2; --hex-shirt-shadow-light:#dcded6; --hex-device-light:#4a5d58;
@@ -127,7 +127,7 @@ html[data-theme="dark"]{
   /* 正文代码块（暗色）+ h2 渐变条（暗色压明度防刺眼） */
   --code-bg:#161b22; --code-fg:#c9d1d9; --code-com:#8b949e;
   --code-key:#7ee787; --code-str:#a5d6ff; --code-num:#f2cc60;
-  --bar-s:52%; --bar-l:40%;
+  --bar-s:40%; --bar-l:82%;
   --plate:linear-gradient(165deg,var(--hex-plate-dark-a),var(--hex-plate-dark-b));
   /* mascot --ill-*（Dark） */
   --ill-skin:var(--hex-skin-dark); --ill-skin-shadow:var(--hex-skin-shadow-dark); --ill-hair:var(--hex-hair-dark);
@@ -400,6 +400,10 @@ main.single{display:flex;flex-direction:column}
   font-family:var(--f-mono);font-size:11px;color:var(--muted);flex-wrap:wrap;row-gap:6px}
 .crumb b{color:var(--c-acc);font-weight:600;flex:0 1 auto;min-width:0;letter-spacing:.02em}
 .crumb .sep{color:var(--faint)}
+/* 读数 chips 并入 crumb 行（2026-09-18：标题取消，readhead 上移） */
+.crumb-chips{display:flex;align-items:center;gap:6px;flex-wrap:wrap;min-width:0;overflow-x:auto;scrollbar-width:none}
+.crumb-chips::-webkit-scrollbar{display:none}
+.crumb .rh-chip{height:18px;line-height:16px;font-size:11px}
 .crumb .spacer{flex:1}
 .iconbtn{display:inline-flex;align-items:center;gap:6px;height:28px;padding:0 10px;border-radius:var(--rd-ctl);font-size:12px;flex:none;white-space:nowrap;
   border:1px solid var(--c-line);background:var(--c-panel);color:var(--muted);cursor:pointer;transition:color var(--dur-1),background var(--dur-1),border-color var(--dur-1);font-family:var(--f-body)}
@@ -441,7 +445,7 @@ h1.a-title{font-family:var(--f-disp);font-weight:700;font-size:28px;line-height:
 /* 标题：h1 居中主题色下划线；h2 整条渐变主题条（--gh/--gh2 由 JS 按标题 hash 注入）；h3 主题色+左竖条 */
 .a-body h1{font-size:1.55rem;font-weight:700;text-align:center;line-height:1.4;padding:.9rem 0;margin:0 0 1.4rem;border-bottom:3px solid var(--c-acc)}
 .a-body h1:first-child{margin-top:0}
-.a-body h2{font-size:1.3rem;font-weight:700;margin:.2rem 0 1.2rem;padding:.7rem 1.1rem;letter-spacing:.01em;border-bottom:none;
+.a-body h2{font-size:1.3rem;font-weight:700;margin:.2rem 0 1.2rem;padding:.7rem 1.1rem;letter-spacing:.01em;border-bottom:none;border-left:4px solid var(--c-acc);
   color:var(--bar-fg);border-radius:9px;
   background:linear-gradient(135deg,hsl(var(--gh,160) var(--bar-s) var(--bar-l)),hsl(var(--gh2,200) var(--bar-s) var(--bar-l)))}
 .a-body h3{font-size:1.12rem;font-weight:700;margin:1.6rem 0 .8rem;letter-spacing:.01em;
@@ -532,10 +536,8 @@ h1.a-title{font-family:var(--f-disp);font-weight:700;font-size:28px;line-height:
 .crumb .rh-path .rh-sep{font-style:normal;color:var(--faint);margin:0 6px}
 .crumb .rh-path .rh-sep::before{content:"/"}
 .rh-head-pad .rh-path b{color:var(--c-acc);font-weight:600}
-/* 读数元信息条：等宽 chip 行（域 / 子域 / 状态 / 收录 / 大小 / 格式）——始终单行（用户要求） */
-.readhead{flex:none;display:flex;align-items:center;gap:6px;flex-wrap:nowrap;padding:8px 16px 0;
-  overflow-x:auto;scrollbar-width:none}
-.readhead::-webkit-scrollbar{display:none}
+/* 读数元信息条（2026-09-18 已上移并入 crumb 左端 .crumb-chips，保留类样式兜底） */
+.readhead{display:none}
 .rh-chip{display:inline-block;flex:0 1 auto;min-width:0;max-width:340px;height:20px;line-height:18px;padding:0 9px;
   border-radius:var(--rd-ctl);border:1px solid var(--c-line);background:var(--c-sunk);color:var(--muted);
   font:500 12px/18px var(--f-mono);letter-spacing:.08em;text-transform:uppercase;font-variant-numeric:tabular-nums;
