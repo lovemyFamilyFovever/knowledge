@@ -23,6 +23,7 @@
 **2. `software-engineering/03-代码质量.md` ↔ `重构.md` / `技术债务.md` / `代码评审.md`**（预案：改双链，不新建）
 - 冲突：重构 / 技术债 / CodeReview 三个子概念，`content/baike/software-engineering/` 同子域已有专文。
 - 预案：这三条**不新建**，汇编里删重复定义、改双链；`圈复杂度`、`代码异味`、`CleanCode` 无归口，可各自独立成篇。
+- ✅ 已执行（2026-09-19，二期第 2 篇）：父文档原地改写为枢纽页（`s4.md` 登记 `done-hub`，正文 2402/3400），新建 `software-engineering/圈复杂度.md`、`代码异味.md`、`Clean Code 原则.md`；重构/技术债务/代码评审/SOLID 族全部双链不新建。原汇编的「坏味道（Bad Smell）」与「代码异味」是同义重复条，已并入后者、不再单列；`代码规范` 与 `ESLint/Prettier/Black` 无专条可双链，按 v1.1 §1 第三档留在枢纽内联。**未产生 `pending-merge`**：父汇编在同一篇内即收敛，无遗留双归口。
 
 **3. `software-engineering/04-CI CD.md` ↔ `devops/蓝绿部署与灰度发布.md`**（预案：改双链，不新建）
 - 冲突：蓝绿 / 金丝雀 / 滚动更新 三种发布策略，`content/baike/devops/蓝绿部署与灰度发布.md` 已重写完成并 PASS。
@@ -140,7 +141,7 @@
 | content/baike/security/认证与授权篇.md | 14 | s5 | ~3000+ | OAuth 2.0、JWT、Session、Cookie、SSO、API Key、Bearer Token、OIDC | 14个认证授权独立话题 | pending |
 | content/baike/software-engineering/01-开发流程.md | 13 | s4 | 3855 | 瀑布、敏捷、Scrum、Kanban、Sprint、用户故事、验收标准、故事点、计划扑克、站会、回顾、产品待办、冲刺待办 | 术语汇编（13 def 卡）：瀑布/敏捷/Scrum/Kanban/Sprint/用户故事/验收标准/故事点/计划扑克/站会/回顾/产品待办/冲刺待办，各带独立定义，不符单词条 1def+2trap 契约 → 按术语各拆词条 | pending |
 | content/baike/software-engineering/02-版本控制.md | 14 | s4 | 3948 | 三区模型、add·commit·push、分支、merge、rebase、冲突、PR·MR、CodeReview、Hooks、GitFlow、主干开发、cherry-pick、stash | 术语汇编（14 def 卡、9 围栏）：三区模型/add·commit·push/分支/merge/rebase/冲突/PR·MR/CodeReview/Hooks/GitFlow/主干开发/cherry-pick/stash，与 Git 词条重叠 → 按命令与概念各拆词条 | pending |
-| content/baike/software-engineering/03-代码质量.md | 13 | s4 | 3282 | 规范、linter、CodeReview、重构、技术债、圈复杂度、SOLID、DRY、KISS、YAGNI、CleanCode、代码异味 | 术语汇编（13 def 卡）：规范/linter/CodeReview/重构/技术债/圈复杂度/SOLID/DRY/KISS/YAGNI/CleanCode/代码异味，重构·技术债务·代码评审已有专文需去重 → 按主题各拆词条 | pending |
+| content/baike/software-engineering/03-代码质量.md | 13 | s4 | 3282 | 规范、linter、CodeReview、重构、技术债、圈复杂度、SOLID、DRY、KISS、YAGNI、CleanCode、代码异味 | 术语汇编（13 def 卡）：规范/linter/CodeReview/重构/技术债/圈复杂度/SOLID/DRY/KISS/YAGNI/CleanCode/代码异味，重构·技术债务·代码评审已有专文需去重 → 按主题各拆词条 | done（2026-09-19 枢纽页 + 圈复杂度/代码异味/Clean Code 原则 3 子词条，见去重队列第 2 对） |
 | content/baike/software-engineering/04-CI CD.md | 14 | s4 | 3659 | CI、持续交付、持续部署、流水线、自动化测试、Jenkins、GitHubActions、GitLabCI、制品、环境、蓝绿、金丝雀、滚动更新、特性开关 | 术语汇编（14 def 卡）：CI/持续交付/持续部署/流水线/自动化测试/Jenkins/GitHubActions/GitLabCI/制品/环境/蓝绿/金丝雀/滚动更新/特性开关，与 devops 蓝绿部署重叠 → 按主题各拆词条 | pending |
 | content/baike/software-engineering/05-项目管理.md | 13 | s4 | 3078 | Jira、看板、燃尽图、燃起图、里程碑、需求管理、Bug生命周期、发布计划、风险管理、干系人、RACI、OKR、KPI | 术语汇编（13 def 卡）：Jira/看板/燃尽图/燃起图/里程碑/需求管理/Bug生命周期/发布计划/风险管理/干系人/RACI/OKR/KPI → 按术语各拆词条 | pending |
 | content/baike/testing/01 - 测试基础.md | 12 | s4 | 10044 | 测试金字塔、单元、集成、E2E、冒烟、回归、探索性、验收、断言、覆盖率、测试替身、TDD | 术语汇编：测试金字塔/单元/集成/E2E/冒烟/回归/探索性/验收/断言/覆盖率/测试替身/TDD 12 个独立测试概念（枢纽①对比表14行②子概念7），0 def 卡；正文 10044 ≫ 3400、21 围栏 ≫ 2/20 → 按概念各拆词条 | pending |
