@@ -10,7 +10,7 @@ status: "imported"
 # WebAssembly完全指南
 
 
-> 📌 **导航**：本文是 **WebAssembly完全指南** 词条，属于 frontend-frameworks 术语集。相关枢纽：[[GraphQL从入门到精通]]、[[WebAssembly完全指南]]、[[Web性能优化完全指南]]、[[现代前端工程化完全指南]]。
+> 📌 **导航**：本文是 **WebAssembly完全指南** 词条，属于 frontend-frameworks 术语集。相关枢纽：[[GraphQL从入门到精通]]、[[WebAssembly完全指南]]、[[Web性能优化]]、[[现代前端工程化完全指南]]。
 
 ## WebAssembly 完全指南
 
@@ -1121,7 +1121,7 @@ class ImageProcessorApp {
 
 ## 相关术语
 
-[[GraphQL从入门到精通]]、[[Next.js全栈开发实战]]、[[Web性能优化完全指南]]、[[现代前端工程化完全指南]]
+[[GraphQL从入门到精通]]、[[Next.js全栈开发实战]]、[[Web性能优化]]、[[现代前端工程化完全指南]]
 
 ## 参考资料
 

@@ -10,7 +10,7 @@ status: "imported"
 # Next.js全栈开发实战
 
 
-> 📌 **导航**：本文是 **Next.js全栈开发实战** 词条，属于 frontend-frameworks 术语集。相关枢纽：[[GraphQL从入门到精通]]、[[WebAssembly完全指南]]、[[Web性能优化完全指南]]、[[现代前端工程化完全指南]]。
+> 📌 **导航**：本文是 **Next.js全栈开发实战** 词条，属于 frontend-frameworks 术语集。相关枢纽：[[GraphQL从入门到精通]]、[[WebAssembly完全指南]]、[[Web性能优化]]、[[现代前端工程化完全指南]]。
 
 ## Next.js 全栈开发实战指南（基于 App Router）
 
@@ -1193,7 +1193,7 @@ export async function POST(request: Request) {
 
 ## 相关术语
 
-[[GraphQL从入门到精通]]、[[WebAssembly完全指南]]、[[Web性能优化完全指南]]、[[现代前端工程化完全指南]]
+[[GraphQL从入门到精通]]、[[WebAssembly完全指南]]、[[Web性能优化]]、[[现代前端工程化完全指南]]
 
 ## 参考资料
 
