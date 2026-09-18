@@ -9,6 +9,8 @@ status: "imported"
 
 # DeepSeek Harness 模型接入层深度分析 — 第二部分
 
+第二部分：SDK 客户端/服务端 API 与错误处理体系 | 分析日期：2026-08-29
+
 ## 4. SDK 客户端 API
 
 ### 4.1 客户端封装的设计
@@ -25,11 +27,14 @@ SDK 客户端分为两层：
 - **会话树订阅** — `subscribeSessionTree(sessionId)` 通过 `subagent.started` 的父/子关系边自动发现后代会话
 
 `NotificationSubscriptionImpl` 实现了生产者-消费者模式：
-- `push(notification)` — 过滤匹配后推送给等待者或入队
-- `next()` — 从队列取或注册等待者（异步）
-- `tryNext()` — 非阻塞出队，无则返回 `undefined`
-- `close()` — 断开并丢弃队列
-- `fail(error)` — 终端失败，拒绝待处理的等待者
+
+| 方法 | 行为 |
+|------|------|
+| `push(notification)` | 过滤匹配后推送给等待者或入队 |
+| `next()` | 从队列取或注册等待者（异步） |
+| `tryNext()` | 非阻塞出队，无则返回 `undefined` |
+| `close()` | 断开并丢弃队列 |
+| `fail(error)` | 终端失败，拒绝待处理的等待者 |
 
 **高层：`DeepSeekHarness`**（`sdk/client/src/api.ts`）
 
@@ -48,7 +53,7 @@ console.log(result.finalResponse)
 ```
 
 `HarnessSession.run()` 的流程：
-1. 确保 harness 已初始化
+1. 确保 harness 已初始化（懒启动 + 握手）
 2. 订阅会话树通知
 3. 发送 prompt，获取 messageId
 4. 等待 inbox receipt 确认消息已入队
@@ -63,21 +68,26 @@ console.log(result.finalResponse)
 **SDK 客户端层的错误处理**：
 
 三种错误类型：
-- `TransportClosedError` — 子进程死亡或不可用（退出码 + stderr 尾部）
-- `RequestTimeoutError` — 请求超时（方法名 + 超时时间），超时后放弃（abandon）而非取消
-- `SdkProtocolError` — 运行时返回协议外的响应（协议违规描述）
+
+| 错误类型 | 触发条件 | 信息内容 |
+|----------|----------|----------|
+| `TransportClosedError` | 子进程死亡或不可用 | 退出码 + stderr 尾部 |
+| `RequestTimeoutError` | 请求超时 | 方法名 + 超时时间 |
+| `SdkProtocolError` | 运行时返回协议外的响应 | 协议违规描述 |
 
 **请求超时机制**：
 - 可配置的 `requestTimeoutMs`
-- 使用 `AbortController` 实现放弃语义——超时后传输丢弃待处理条目
+- 使用 `AbortController` 实现放弃语义——超时后放弃（abandon）而非取消，超时后传输丢弃待处理条目
 - 运行时死亡时快速失败而非等到超时
 
 **LLM 层的重试机制**（`llm-retry` 插件）：
 
 `llm-retry` 插件安装在 `agent/request-error` waterfall 上，实现 provider 路由的请求恢复。两种重试模式：
 
-- **normal** — 仅重试配置的瞬态失败码，默认最多 5 次（可重试 `EMPTY_RESPONSE` / `RATE_LIMIT` / `SERVER` / `TIMEOUT` / `TRANSPORT`）
-- **always** — 重试所有失败，直到成功、取消或处置，无次数限制
+| 重试模式 | 行为 | 默认配置 |
+|----------|------|----------|
+| normal | 仅重试配置的瞬态失败码 | 最多 5 次，可重试 EMPTY_RESPONSE / RATE_LIMIT / SERVER / TIMEOUT / TRANSPORT |
+| always | 重试所有失败，直到成功、取消或处置 | 无次数限制 |
 
 重试延迟采用**有界指数退避 + 对称抖动**：
 
@@ -108,10 +118,13 @@ const upstream = options.signal === undefined
 using watchdog = idleWatchdog(upstream, timeoutMs, 'LLM_STREAM_IDLE_TIMEOUT')
 ```
 
-三层信号（信号层 / 来源 / 语义）：
-1. `options.signal` — 调用者 — 外部取消请求
-2. `consumer.signal` — 消费者 — 消费停止
-3. `watchdog.signal` — 空闲看门狗 — 流空闲超时
+三层信号：
+
+| 信号层 | 来源 | 语义 |
+|--------|------|------|
+| `options.signal` | 调用者 | 外部取消请求 |
+| `consumer.signal` | 消费者 | 消费停止 |
+| `watchdog.signal` | 空闲看门狗 | 流空闲超时 |
 
 **子进程处置梯子**（`sdk/client/src/dispose.ts`）：
 
@@ -129,7 +142,7 @@ Windows 平台跳过 SIGTERM（Node 将其映射为 TerminateProcess），直接
 
 ### 5.1 服务端接口定义
 
-**`HarnessSdkJsonRpcServer`**（`sdk/server/src/server.ts`）是运行时侧的 JSON-RPC 服务器。
+**`HarnessSdkJsonRpcServer`**（`sdk/server/src/server.ts`）是运行时侧的 JSON-RPC 服务器，绑定到一个已启动的 Cordis context 和 transport peer。
 
 三个 RPC 方法：
 
@@ -141,7 +154,7 @@ Windows 平台跳过 SIGTERM（Node 将其映射为 TerminateProcess），直接
 
 **协议类型**（`sdk/protocol/src/types.ts`）定义了 4 种服务端通知：
 
-| 通知方法 | 载荷 | 触发时机 |
+| 通知方法 | 载荷类型 | 触发时机 |
 |---------|------|---------|
 | `session.event` | `SessionEventNotification` | 会话日志事件记录时 |
 | `session.status` | `SessionStatusNotification` | agent 状态变化（idle/running） |
@@ -180,11 +193,11 @@ Error
               └── requestId?: ProviderRequestId
 
 Error
-  └── TransportClosedError — 子进程死亡
-  └── RequestTimeoutError — 请求超时
-  └── SdkProtocolError — 协议违规
-  └── JsonRpcResponseError — JSON-RPC 错误响应
-  └── SessionQueryError — 查询错误
+  └── TransportClosedError (sdk/client) — 子进程死亡
+  └── RequestTimeoutError (sdk/client) — 请求超时
+  └── SdkProtocolError (sdk/client) — 协议违规
+  └── JsonRpcResponseError (sdk/protocol) — JSON-RPC 错误响应
+  └── SessionQueryError (session-query) — 查询错误
 ```
 
 ### 6.2 错误码定义
@@ -216,7 +229,7 @@ Error
 `normalizeLlmFailure` 处理任意抛出值：
 1. 非 Error 值 → 包装为 `HarnessError('UNKNOWN')`
 2. 检查 Error 的 `failure` own property（避免 SDK 定义的 getter）
-3. 验证 failure 结构的完整性
+3. 验证 failure 结构的完整性（code、status 范围等）
 4. 只信任 Harness 拥有的 code，第三方 SDK code 不进入分类
 
 **上下文窗口检测**（`error.ts`）：`isContextWindowExceededError` 通过正则匹配多种 provider 错误措辞：
@@ -228,4 +241,4 @@ Error
 
 **文件 ID 过期恢复**（DeepSeek adapter）：当 provider 拒绝一个文件 ID（过期/删除/无效）时，adapter 使失效的文件映射，最多重试一次（重新上传后重发）。如果再次失败或 provider 拒绝规范化图片，产生详细诊断。
 
-**Pi-AI 错误分类**（`stream.ts`）：由于 pi-ai 扁平化了原始 Error，适配器通过模式匹配分类，涵盖 AUTH、QUOTA、RATE_LIMIT、INVALID_REQUEST、SERVER、TIMEOUT、TRANSPORT 等。
+**Pi-AI 错误分类**（`stream.ts`）：由于 pi-ai 扁平化了原始 Error（丢失 cause），适配器通过模式匹配分类。涵盖 AUTH、QUOTA、RATE_LIMIT、INVALID_REQUEST、SERVER、TIMEOUT、TRANSPORT 等类别。

@@ -9,6 +9,8 @@ status: "imported"
 
 # DeepSeek Harness 模型接入层深度分析 — 第三部分
 
+*第三部分：API 兼容性、性能优化与改进建议 | 分析日期：2026-08-29*
+
 ## 7. 与各主流模型 API 的兼容性
 
 ### 7.1 OpenAI API 兼容性
@@ -28,6 +30,13 @@ DeepSeek 适配器直接实现了 OpenAI Chat Completions API 的有线格式（
 - `reasoning_effort: 'low' | 'high' | 'max'` — 推理努力级别
 - `reasoning_content` — assistant 历史消息中的 CoT 回传
 - `file` 类型内容部分（user content part）— Files API 引用（`file_id`）
+
+| 扩展字段 | 位置 | 说明 |
+| --- | --- | --- |
+| `thinking.type` | 请求顶层 | 思维模式开关（`enabled` / `disabled`） |
+| `reasoning_effort` | 请求顶层 | 推理努力级别（`low` / `high` / `max`） |
+| `reasoning_content` | assistant 历史消息 | CoT 回传（thinking 模式必需） |
+| `file` 类型 | user content part | Files API 引用（`file_id`） |
 
 **SSE 格式**：
 - 标准 OpenAI SSE 格式（`data: {...}\n\n`）
@@ -60,6 +69,8 @@ Anthropic 支持通过 pi-ai 适配器实现，pi-ai 库内部处理 Anthropic M
 
 **方式一：pi-ai 手动声明路由**
 
+在 `llm-pi-ai` 配置的 `providers` 字典中添加条目，指定 `api`（协议）、`baseURL`、`models` 等。适合 OpenAI 兼容的网关和自托管端点。
+
 ```yaml
 providers:
   my-gateway:
@@ -80,6 +91,8 @@ providers:
 ```
 
 **方式二：实现 `LlmAdapter` 抽象类**
+
+继承 `LlmAdapter` 抽象类，实现 `stream()` 方法，然后通过 `ctx.llm.registerAdapter()` 注册。适合需要完全自定义传输逻辑的场景。
 
 需要实现的唯一必需方法：
 ```typescript
