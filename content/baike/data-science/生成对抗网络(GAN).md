@@ -93,7 +93,7 @@ z → Mapping Network → w → AdaIN 注入各层 → 2x2 → 4x4 → … → 1
 
 ## 面试速答
 
-> 🎯 GAN=生成器 G(z) 与判别器 D 的零和博弈，min_G max_D 用 log D(x)+log(1−D(G(z))) 交替优化，不建模显式似然、生成质量高且单次前向采样快；演进有 DCGAN/WGAN(Wasserstein 稳训练)/StyleGAN(AdaIN 风格控制)/CycleGAN/Pix2Pix。核心难点是模式崩塌与训练不稳、评估靠 FID/IS，D 太强反致 G 梯度消失。相比 VAE 更锐更不稳，相比 Diffusion 更快但易崩。
+> 🎯 GAN=生成器 G 与判别器 D 的零和博弈，min-max 交替优化，不建模显式似然、采样快；演进有 DCGAN/WGAN/StyleGAN/CycleGAN。难点是模式崩塌与训练不稳，评估靠 FID/IS，D 太强会让 G 梯度消失。比 VAE 更锐更不稳，比 Diffusion 更快但易崩。
 > 🔍 追问：为什么 D 训得太强 G 反而学不动？
 > 🔍 追问：WGAN 凭什么改善训练稳定性？
 > 🔍 追问：GAN 为什么难评估，FID 衡量什么？
