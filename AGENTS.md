@@ -72,7 +72,7 @@ requirements/       依赖清单（requirements.txt 核心 / -rag.txt 语义检�
 
 - 适时提交：每完成一个逻辑独立的开发单元（一个功能、一次修复、一次重构等），自行判断并执行 git commit，不要等全部结束才提交。消息说人话（feat/fix/docs/test + 中文或英文摘要）。
 - 提交前跑上面三套测试——pre-commit 钩子会自动跑（`git config core.hooksPath .githooks` 已设置）。
-- push 是备份链的一环（另有 Windows 计划任务每日自动 commit+push，见 `scripts/daily_backup.ps1`）。
+- push 目前需手动执行：`scripts/daily_backup.ps1` 是为「每日自动 commit+push」准备的脚本，但**尚未注册任何 Windows 计划任务**（历史曾有的自建维护计划任务已于 2026-09-18 全部删除）。要启用自动备份须由用户在场时用脚本注释里的 `schtasks /Create` 命令注册。
 - **只提交自己改过的文件**：commit 一律用显式 pathspec（如 `git commit -F msg -- app/templates/workbench.html static/style.css`），绝不要用 `git add -A` / `git add .` 一把梭。未跟踪文件要先 `git add -- <file>` 再 pathspec 提交（pathspec 不会自动 add 未跟踪文件，否则整次提交会 abort）。
 - **绝不用 `git reset` / `git checkout` / `git restore` 去动别的 agent（或别的会话）改过的文件**：多会话并发时，其他会话的暂存/未提交改动只会被你的 `git reset HEAD -- <file>` 之类命令误带出/误回退。碰了就立刻 `git add` 原样恢复其状态，已提交/已改动的内容一律不碰。
 - **改代码前先 `git status` 看清工作区归属**：自己改的才提交，别人的保持原状；无法判断归属时宁可只提交明确属于自己的文件。
