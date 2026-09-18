@@ -46,6 +46,10 @@ status: "imported"
 ⚠️ will-change 与合成层滥用吃内存。
 ⚠️ 瓶颈靠猜很难，需 Performance 面板归因。
 
+## 与相关概念的区别
+
+vs [[JS执行性能]]：前者管渲染管线的范围（变化能推到多后：layout/paint/composite），后者管主线程的时间片（别让长任务占死）；掉帧先归因再决定治哪边。
+
 ## 常见误区
 
 - display:none 不触发重排。
