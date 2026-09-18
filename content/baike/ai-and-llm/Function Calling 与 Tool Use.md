@@ -85,7 +85,7 @@ status: "imported"
 
 ## 相关术语
 
-[[MCP（Model Context Protocol）]]、[[Prompt 工程与 Agent 详解]]、[[AI Agent 概述与核心架构]]、[[Agent 与数据库交互]]、[[LangChain 框架全解析]]、[[Agent 架构模式详解]]
+[[MCP（Model Context Protocol）]]、[[Prompt 工程与 Agent 详解]]、[[AI Agent 概述与核心架构]]、[[LangChain 框架全解析]]、[[Agent 架构模式详解]]
 
 ## 参考资料
 
