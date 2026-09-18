@@ -55,3 +55,33 @@
 | database/数据库设计术语.md | 15 | s3 | 10034 | 术语汇编实为 15 个独立词条(各带 def+示例、17 围栏、0 trap)，无法并入单条上限；应按术语各拆独立词条，并与 数据库范式/数据库设计 相关专文去重后统一收敛 | pending |
 | database/搜索引擎技术详解.md | 6 | s3 | 17928 | 搜索引擎全书：架构/爬虫设计/倒排索引/分词/查询解析/相关性排序 6 大主题、0 def 卡、19 围栏 922 内行(爬虫章节尤长)，远超上限。爬虫/分词/TF-IDF·BM25 排序等多为本文独有深度内容、无对应专文，压入 3400 必毁；应按 6 主题各拆词条，通用原理留作搜索枢纽并链接 ElasticSearch搜索/向量数据库技术 | pending |
 | database/索引与查询优化术语.md | 12 | s3 | 9066 | 术语汇编实为 12 个独立词条(各带 def+示例、13 围栏、0 trap)：聚簇/非聚簇/B+树/哈希/全文/联合/覆盖索引、最左前缀、ICP、EXPLAIN、慢查询优化、索引失效场景，均面试必备且各自独立，压入 3400 必毁；应各拆词条，B+树索引段与 B+树 专文去重 | pending |
+| content/baike/os/Linux 命令速查手册.md | 20+ | s2 | 4504 | 命令型速查手册：ls/cd/mkdir/cp·mv·rm/cat·less/grep/find/sed/awk/chmod/ps·top/df·du/netstat/tar 等按命令分组，每组带独立示例围栏；无 `## 定义`、15 围栏 ≫ 2/20，压缩会毁掉逐命令用法示例（这是手册的核心价值）→ 建议保留为速查参考或按命令族拆词条 | pending |
+| content/baike/os/Shell 脚本详解.md | 8+ | s2 | 8061 | 教程/手册式汇编：变量/条件 if·case/循环 for·while·until/函数/grep·sed·awk 等多块各带大量代码，无 `## 定义` 单词条结构、正文 8061 ≫ 3400、15 围栏 ≫ 2/20，压缩必毁逐语法示例；与 Shell脚本编程 词条重叠需去重 → 建议按语法主题拆词条 | pending |
+| content/baike/os/进程管理详解.md | 12+ | s2 | 6581 | 命令+概念混合详解：ps/top·htop/kill/nohup/systemd/cron/nice//proc/dmesg/journalctl/systemctl 等 11+ 子块各带 def 与代码，17 围栏 ≫ 2/20、6581 ≫ 3400，压缩会毁掉逐命令实战细节；与 Linux命令速查手册 重叠 → 建议拆命令词条+进程管理枢纽 | pending |
+| data-science/数据分析与可视化实战.md | 3 | s3 | 17377 | 实战手册：Python工具链/数据清洗实战/EDA方法论 3 大主题、0 def 卡、8 围栏 784 代码行，远超上限。概念词条已由"数据分析与可视化"承载，本文是代码级实操详解，压入 3400 必毁实操细节；应拆为三篇实操子文档或并入 ETL/EDA 专题 | pending |
+| content/baike/programming-languages/Flutter跨平台开发实战.md | 5 | s4 | 22743 | Dart精要/Widget体系/布局/路由GoRouter/状态管理 各独立且带大量代码；正文 22743、围栏 14 块 1284 行 ≫ 上限 → 按主题拆词条 | pending |
+| content/baike/programming-languages/Go语言系统编程指南.md | 5 | s4 | 18340 | 并发模型/内存模型 happens-before/隐式接口/反射/unsafe 各独立话题；正文 18340、1187 代码行 → 拆词条 | pending |
+| content/baike/programming-languages/Python全栈开发教程.md | 5 | s4 | 23070 | Python基础/FastAPI/SQLAlchemy/PostgreSQL/React 全栈五大块，各为独立体系；正文 23070、1166 代码行 → 拆子文档 | pending |
+| content/baike/programming-languages/Python高级编程完全指南.md | 4 | s4 | 21427 | 装饰器高级/元类/描述符协议/上下文管理器 各独立带大量代码；正文 21427、1075 代码行 → 拆词条 | pending |
+| content/baike/programming-languages/Rust系统编程入门到精通.md | 7 | s4 | 17989 | 所有权/Trait泛型/错误处理/智能指针/并发/异步/Unsafe 7 大独立主题；正文 17989、24 围栏 1121 行 → 按主题拆词条 | pending |
+| content/baike/programming-languages/TypeScript高级编程指南.md | 8 | s4 | 22260 | 类型系统/泛型/类型体操/装饰器/模块/.d.ts/编译器API/框架集成 8 独立话题；正文 22260、33 围栏 → 拆词条 | pending |
+| content/baike/programming-languages/函数式编程完全指南.md | 10 | s4 | 18943 | FP概念/高阶函数/闭包柯里化/Functor·Monad/Either·Option·IO/不可变/并发/JS·Haskell 实践 10 话题；正文 18943、24 围栏 → 拆词条 | pending |
+| content/baike/programming-languages/密码学与区块链技术指南.md | 6 | s4 | 16609 | 密码学基础/加密算法/密钥管理/TLS·SSL/区块链原理/比特币 6 大部分各成体系；正文 16609、10 围栏 584 行 → 拆词条 | pending |
+| content/baike/programming-languages/并发编程模式与实践.md | 8 | s4 | 17776 | 并发vs并行/线程模型/互斥同步/无锁/并发数据结构/协程/Channel·CSP/Actor（枢纽①mermaid②子概念20）；正文 17776、1071 代码行 ≫ 3400 → 拆词条 | pending |
+| content/baike/programming-languages/程序员的数学基础.md | 6 | s4 | 19326 | 离散数学/线性代数/…多个独立数学分支章节；正文 19326、7 围栏 966 行 ≫ 上限 → 按分支拆词条 | pending |
+| content/baike/programming-languages/编程概念音频课-数据结构.md | 6 | s4 | 8957 | 数组链表/栈队列/哈希表/树二叉树/图/堆 6 站各独立数据结构主题；正文 8957、8 围栏 178 行 → 按结构拆词条 | pending |
+| content/baike/programming-languages/编程概念音频课-设计模式.md | 8 | s4 | 10591 | 单例/工厂/观察者/策略/装饰器/适配器/代理/模板方法 8 模式各独立；正文 10591、8 围栏 328 行 → 按模式拆词条 | pending |
+| content/baike/programming-languages/编程语言通用概念.md | 11 | s4 | 7301 | 变量/常量/基本类型/引用值类型/运算符/控制流/循环/函数/递归/作用域/命名 11 词条（11 def 卡）；多定义汇编不符单词条契约，30 围栏 ≫ 2/20 → 按概念各拆词条 | pending |
+| content/baike/programming-languages/编译原理与解释器实现.md | 10 | s4 | 16339 | 编译器架构/词法/语法/语义/IR/优化/代码生成/GC/实战构建语言/LLVM 十部分；正文 16339、501 代码行 → 按阶段拆词条 | pending |
+| content/baike/programming-languages/计算机科学完整知识图谱.md | 5 | s4 | 14109 | 数据结构算法/操作系统/计算机网络/数据库/编译原理 多子系统图谱（枢纽①对比表8行②子概念20）；正文 14109、30 围栏 ≫ 3400/20 → 按子系统拆词条+枢纽 | pending |
+| content/baike/programming-languages/软件测试完全指南.md | 6 | s4 | 20441 | 测试金字塔/TDD·BDD·ATDD/单元/集成/E2E·Playwright·Cypress/性能 各独立体系；正文 20441、20 围栏 937 行 → 拆词条（与 testing 子域去重） | pending |
+| content/baike/programming-languages/面向对象编程（OOP）概念.md | 13 | s4 | 10181 | 类/对象/封装/继承/多态/抽象/接口/抽象类/构造析构/重载重写/访问修饰符/组合vs继承/LSP 13 词条（13 def）；32 围栏 ≫ 2/20 → 按概念各拆词条 | pending |
+| content/baike/programming-languages/React Native移动应用开发.md | 6 | s4 | 21874 | RN新架构/核心组件布局/导航/状态管理/网络缓存/原生桥接 各独立；正文 21874、14 围栏 1122 行 ≫ 上限 → 拆词条 | pending |
+| content/baike/programming-languages/Rust Web开发实战.md | 6 | s4 | 20339 | Web生态概览/Axum/数据库集成/serde/认证授权/tokio 六部分各独立；正文 20339、32 围栏 959 行 → 拆词条 | pending |
+| content/baike/programming-languages/函数式编程（Functional Programming）概念.md | 14 | s4 | 11638 | 纯函数/副作用/不可变/高阶函数/Lambda/闭包/柯里化/组合/Monad/Functor/Applicative/声明式/惰性求值 14 词条（14 def）；29 围栏 ≫ 2/20 → 按概念各拆词条 | pending |
+| content/baike/programming-languages/并发编程（Concurrent Programming）概念.md | 14 | s4 | 17338 | 并发vs并行/线程vs进程/锁Mutex/读写锁/信号量/条件变量/死锁/原子/CAS/线程池/协程/消息传递/Future·Promise/事件循环 14 词条（14 def）；40 围栏 ≫ 2/20 → 按概念各拆词条 | pending |
+| content/baike/software-engineering/01-开发流程.md | 13 | s4 | 3855 | 术语汇编（13 def 卡）：瀑布/敏捷/Scrum/Kanban/Sprint/用户故事/验收标准/故事点/计划扑克/站会/回顾/产品待办/冲刺待办，各带独立定义，不符单词条 1def+2trap 契约 → 按术语各拆词条 | pending |
+| content/baike/software-engineering/02-版本控制.md | 14 | s4 | 3948 | 术语汇编（14 def 卡、9 围栏）：三区模型/add·commit·push/分支/merge/rebase/冲突/PR·MR/CodeReview/Hooks/GitFlow/主干开发/cherry-pick/stash，与 Git 词条重叠 → 按命令与概念各拆词条 | pending |
+| content/baike/software-engineering/03-代码质量.md | 13 | s4 | 3282 | 术语汇编（13 def 卡）：规范/linter/CodeReview/重构/技术债/圈复杂度/SOLID/DRY/KISS/YAGNI/CleanCode/代码异味，重构·技术债务·代码评审已有专文需去重 → 按主题各拆词条 | pending |
+| content/baike/software-engineering/04-CI CD.md | 14 | s4 | 3659 | 术语汇编（14 def 卡）：CI/持续交付/持续部署/流水线/自动化测试/Jenkins/GitHubActions/GitLabCI/制品/环境/蓝绿/金丝雀/滚动更新/特性开关，与 devops 蓝绿部署重叠 → 按主题各拆词条 | pending |
+| content/baike/software-engineering/05-项目管理.md | 13 | s4 | 3078 | 术语汇编（13 def 卡）：Jira/看板/燃尽图/燃起图/里程碑/需求管理/Bug生命周期/发布计划/风险管理/干系人/RACI/OKR/KPI → 按术语各拆词条 | pending |

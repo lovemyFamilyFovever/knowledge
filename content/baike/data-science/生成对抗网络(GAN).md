@@ -12,68 +12,91 @@ status: "imported"
 
 > 📌 **导航**：本文是 **生成对抗网络(GAN)** 词条，属于 data-science 术语集。相关枢纽：[[A B测试与实验设计]]、[[ETL]]、[[MLOps实践]]、[[RNN LSTM GRU]]、[[卷积神经网络(CNN)]]。
 
-## 核心思想
+## 定义
 
-两个网络博弈：Generator（生成器）从噪声生成数据，Discriminator（判别器）判断真假。
+**一句话定义：** GAN（生成对抗网络）是一类生成模型，让生成器（从噪声造样本）与判别器（判真假）对抗训练，二者在零和博弈中互相抬升，最终使生成器产出以假乱真的样本。
 
-**类比：** 造假币者(G)和警察(D)的博弈——造假者不断提升伪造技术，警察不断提升鉴别能力。
+**通俗类比：** 像造假币者（G）与验钞警察（D）的博弈——造假者不断精进仿制、警察不断提升鉴别，直到假币逼真到警察分不清，生成器就算"出师"了。
 
-## 训练过程
+## 为什么需要它
+
+直接对高维数据分布 p(x) 建模极难（要处理归一化常数）。GAN 不显式建模似然，而是把"能否骗过判别器"作为可优化的对抗目标，绕开分布假设，从而能生成高保真图像，做超分、风格迁移、图像翻译等，且训练后只需喂噪声即可一次前向采样新样本。
+
+## 核心机制
+
+- **两网络博弈：** 生成器 G(z) 把噪声 z 映射为假样本；判别器 D 判断输入是真样本还是 G 造的。
+- **对抗目标：** min_G max_D  V = E[log D(x)] + E[log(1 − D(G(z)))]。D 最大化对真假的区分，G 最小化"被骗"（即最大化 log D(G(z))）。
 
 ```python
-# 判别器训练：最大化log(D(x)) + log(1-D(G(z)))
-def train_discriminator(real_data, fake_data):
-    d_real = discriminator(real_data)
-    d_fake = discriminator(fake_data)
-    loss = -(torch.log(d_real) + torch.log(1 - d_fake)).mean()
+def train_discriminator(real, fake):
+    loss = -(torch.log(D(real)) + torch.log(1 - D(fake))).mean()  # 判别器：拉真假、压假
     return loss
 
-# 生成器训练：最大化log(D(G(z)))
 def train_generator(noise):
-    fake = generator(noise)
-    d_fake = discriminator(fake)
-    loss = -torch.log(d_fake).mean()
+    fake = G(noise)
+    loss = -torch.log(D(fake)).mean()   # 生成器：让 D 把假判成真
     return loss
 ```
 
-## GAN变体演进
+- **变体演进：**
 
 | 模型 | 年份 | 创新 | 应用 |
 |------|------|------|------|
-| 原始GAN | 2014 | 对抗训练 | 理论奠基 |
-| DCGAN | 2015 | CNN架构 | 图像生成 |
-| WGAN | 2017 | Wasserstein距离 | 训练稳定 |
-| StyleGAN | 2019 | 风格控制 | 人脸生成 |
-| StyleGAN2 | 2020 | 权重解调 | 高质量人脸 |
+| 原始 GAN | 2014 | 对抗训练 | 理论奠基 |
+| DCGAN | 2015 | CNN 架构 | 图像生成 |
+| WGAN | 2017 | Wasserstein 距离 | 训练稳定 |
+| StyleGAN/2 | 2019/20 | 风格控制、权重解调 | 高质量人脸 |
 | CycleGAN | 2017 | 无配对转换 | 风格迁移 |
 | Pix2Pix | 2017 | 配对转换 | 图像翻译 |
 
-## StyleGAN架构
+StyleGAN 用映射网络把噪声 z 转为中间向量 w，再经 AdaIN 注入生成器各层、由低分辨率逐步放大到 1024×1024：
 
 ```
-z(噪声) -> Mapping Network -> w(中间向量)
-                                    ↓
-w -> AdaIN注入到每一层 -> 逐步生成 2x2 -> 4x4 -> ... -> 1024x1024
+z → Mapping Network → w → AdaIN 注入各层 → 2x2 → 4x4 → … → 1024x1024
 ```
 
-## 训练难点与解决
+- **训练难点与对策：**
 
 | 问题 | 症状 | 解决方案 |
 |------|------|----------|
 | 模式崩塌 | 只生成少数类型 | Minibatch Discrimination |
-| 训练不稳定 | loss震荡 | WGAN、谱归一化 |
-| 梯度消失 | G无法学习 | WGAN、Least Square GAN |
+| 训练不稳定 | loss 震荡 | WGAN、谱归一化 |
+| 梯度消失 | G 无法学习 | WGAN、LSGAN |
 | 评估困难 | 无明确指标 | FID、IS |
 
-## GAN vs Diffusion
+## 具体示例
 
-| 特性 | GAN | Diffusion |
-|------|-----|-----------|
-| 生成速度 | 极快（单次前向） | 慢（多步去噪） |
-| 训练稳定性 | 不稳定 | 稳定 |
-| 多样性 | 易模式崩塌 | 高多样性 |
-| 质量上限 | 高 | 极高 |
-| 主流趋势 | 下降 | 上升 |
+训练人脸生成：G 吃 128 维噪声输出 1024² 人脸，D 判真伪并交替更新。初期 D 太容易分辨会让 G 梯度消失，改用 WGAN-GP 的 Wasserstein 损失稳定训练；用 FID（真实集与生成集在特征空间的分布距离）衡量质量与多样性，若发现只会生成几种脸（模式崩塌），就加 Minibatch Discrimination。
+
+## 何时用 / 何时不用
+
+- **用：** 图像生成、超分、风格迁移、数据增广、图像翻译，且需要单次前向、采样速度快的场景。
+- **不用：** 要求高多样性且训练稳定（Diffusion 更稳但慢）；数据极少易崩塌；需要显式似然/密度估计（用 VAE/Flow/Diffusion）。
+
+## 优劣与代价
+
+✅ 生成质量高、采样快（单次前向）、不受显式似然约束、表达灵活。
+⚠️ 训练不稳定、易模式崩塌、调参玄学。
+⚠️ 无显式似然使评估困难，需 FID/IS 等间接指标。
+
+## 与相关概念的区别
+
+- **vs VAE：** VAE 最大化似然下界、训练稳定但样本偏糊；GAN 用对抗、样本更锐但更不稳。
+- **vs Diffusion：** GAN 单次前向快但易崩、多样性弱；Diffusion 多步去噪稳定、多样性与质量上限高但采样慢。
+- **vs [[数据增强技术]]：** GAN 生成的样本可反过来做训练数据增广。
+
+## 常见误区
+
+- 训练 GAN 的目标是让判别器 D 尽可能完美地区分真假。
+- GAN 通过最大化训练数据的对数似然来学习数据分布。
+- 出现模式崩塌时，加大判别器的训练强度就能解决。
+
+## 面试速答
+
+> 🎯 GAN=生成器 G(z) 与判别器 D 的零和博弈，min_G max_D 用 log D(x)+log(1−D(G(z))) 交替优化，不建模显式似然、生成质量高且单次前向采样快；演进有 DCGAN/WGAN(Wasserstein 稳训练)/StyleGAN(AdaIN 风格控制)/CycleGAN/Pix2Pix。核心难点是模式崩塌与训练不稳、评估靠 FID/IS，D 太强反致 G 梯度消失。相比 VAE 更锐更不稳，相比 Diffusion 更快但易崩。
+> 🔍 追问：为什么 D 训得太强 G 反而学不动？
+> 🔍 追问：WGAN 凭什么改善训练稳定性？
+> 🔍 追问：GAN 为什么难评估，FID 衡量什么？
 
 ## 相关术语
 
