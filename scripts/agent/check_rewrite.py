@@ -1,8 +1,13 @@
-"""baike 重写验收：按 docs/writing-spec-v1.1.md §9 做机械检查。
+"""baike 重写验收：按 docs/writing-spec-v1.2.md §3 做机械检查。
 
 用法: python scripts/agent/check_rewrite.py content/baike/<域>/<词条>.md [...]
       python scripts/agent/check_rewrite.py --exempt <path> [...] <待检路径> [...]
 退出码 0 = 全部 PASS；非 0 = 至少一篇 FAIL。warning 不影响退出码。
+
+v1.2 变更：
+- 枢纽信号②b 收紧：粗体领起项除自身叙述 ≥70 字外，**还必须内含 ≥1 个 [[双链]]**
+  才计入豁免信号。堵住叶子词条靠「≥3 条粗体 bullet + 一张表」白拿 3400 额度。
+- 新增 ⑨：`> 🎯` 首行去空白后 ≤150 字，超限 FAIL（原 v1.0 §2 的 30–60 字不可行）。
 
 v1.1 变更：
 - 枢纽信号② 两条 OR：②a H2/H3 或编号粗体具名子概念 ≥3；②b「核心机制」节内
@@ -10,8 +15,9 @@ v1.1 变更：
 - exempt-reference（v1.1 §5）：--exempt 显式豁免，或自动读 docs/refactor/exempt-reference.md
   （一行一路径，# 为注释）；命中者输出 EXEMPT、跳过全部检查、计入 PASS。
 
-注意两处盲区（v1.1 §9）：⑦ frontmatter 比的是 HEAD，分片提交后即空转，收尾须另与批前基线比；
-⑧ 悬空双链是朴素正则，会误报围栏里的 bash `[[ -f x ]]`，权威口径是 index.db 的 links.resolved。
+注意三处盲区（v1.1 §9 / v1.2 §3）：⑦ frontmatter 比的是 HEAD，分片提交后即空转，收尾须另与批前基线比；
+⑧ 悬空双链是朴素正则，会误报围栏里的 bash `[[ -f x ]]`，权威口径是 index.db 的 links.resolved；
+⑨ 是新加的门，对 ⑨ 之前已判 done 的存量稿有追溯力——存量超标只修 🎯 那一行，不要顺手重写全篇。
 """
 from __future__ import annotations
 
@@ -46,6 +52,9 @@ RE_BOLD_LEAD = re.compile(r"^\s*(?:[-*+]\s+|\d+\.\s+)\*\*([^*]+?)\*\*[：:]?")
 # ②b 每项叙述字数下限。取 70 而非 v1.0 ②a 的 100：折叠式枢纽的项普遍 70–110 字，
 # 100 会把 ESB 这类正主挡在豁免外（实测其四项为 107/91/75/46）。
 BOLD_ITEM_MIN = 70
+# 规范 v1.2 §4：`> 🎯` 首行去空白后的字数上限（原 30–60 字装不下"定义+取舍+关键词"）
+ANSWER_MAX = 150
+RE_ANSWER = re.compile(r"^>\s*🎯\s*(.+)$", re.M)
 EXEMPT_LIST = ROOT / "docs" / "refactor" / "exempt-reference.md"
 
 
@@ -168,10 +177,16 @@ def subconcept_count(body: str) -> int:
 
 
 def core_bold_subconcepts(body: str) -> list[str]:
-    """枢纽信号②b（v1.1 §2）：核心机制节内粗体领起、自身叙述 ≥BOLD_ITEM_MIN 字的列表项名。
+    """枢纽信号②b（v1.1 立、v1.2 收紧）：核心机制节内粗体领起、自身叙述 ≥BOLD_ITEM_MIN 字
+    **且该项内含 ≥1 个 [[双链]]** 的列表项名。
 
     多定义汇编收敛成折叠式枢纽时子概念写在项目符号里、拿不到 ②a 的 H2/H3 计数，
     本函数补这条路。计数剔除表格行与围栏内容，避免靠塞表格凑豁免。
+
+    v1.2 加双链硬条件的原因：只验结构会漏——任何叶子词条把「核心能力/做法」写成
+    ≥3 条粗体 bullet 再加一张 ≥4 行表，就能白拿 3400 额度（实测 Playwright 与 Cypress
+    在 2775 字时以"②b 粗体项 6"过线，而它根本不是枢纽）。枢纽的定义性特征是**索引子词条**，
+    故要求每项自带双链。
     """
     seg: list[str] = []
     grab = False
@@ -202,7 +217,8 @@ def core_bold_subconcepts(body: str) -> list[str]:
             if fenced[j] or seg[j].lstrip().startswith("|"):
                 continue
             parts.append(seg[j])
-        if len(re.sub(r"\s", "", "\n".join(parts))) >= BOLD_ITEM_MIN:
+        text = "\n".join(parts)
+        if len(re.sub(r"\s", "", text)) >= BOLD_ITEM_MIN and RE_WIKI.search(text):
             out.append(name)
     return out
 
@@ -221,7 +237,8 @@ def length_limit(body: str, nchars: int) -> tuple[int, str]:
         return 3400, f"枢纽型（①{sig1} ②{sig2}）"
     return 2200, (
         f"未获枢纽豁免（①{'满足' if s1 else '不满足：无 mermaid 且对比表 <4 数据行'} "
-        f"②不满足：具名子概念 {subs} <3 且核心机制粗体项 {len(bolds)} <3）"
+        f"②不满足：具名子概念 {subs} <3 且核心机制粗体项 {len(bolds)} <3"
+        f"（粗体项须自身 ≥{BOLD_ITEM_MIN} 字且内含 [[双链]]））"
     )
 
 
@@ -316,6 +333,15 @@ def check(path_arg: str, exempt: set[str] | None = None) -> tuple[int, int]:
     limit, hub_note = length_limit(body, nchars)
     if nchars > limit:
         fails.append(f"⑥ 正文 {nchars} 字 > 上限 {limit}｜{hub_note}")
+
+    # ⑨ 面试速答长度（规范 v1.2 §4）
+    answers = [re.sub(r"\s", "", a) for a in RE_ANSWER.findall(body)]
+    if answers:
+        longest = max(answers, key=len)
+        if len(longest) > ANSWER_MAX:
+            fails.append(
+                f"⑨ 面试速答 🎯 首行 {len(longest)} 字 > 上限 {ANSWER_MAX}（规范 v1.2 §4）"
+            )
 
     # ⑤ / ⑦ 与 git HEAD 比对
     try:
