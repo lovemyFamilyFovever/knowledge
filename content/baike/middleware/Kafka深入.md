@@ -75,7 +75,7 @@ Topic 有 3 个分区 (P0,P1,P2)、消费组有 2 个消费者：再平衡后 C1
 
 ## 面试速答
 
-> 🎯 Kafka=分区日志式高吞吐流/消息平台：Topic 分 Partition（分区内追加、有序、不可变，Offset 定位），Consumer Group 组内分摊分区、组间独立、可重放；可靠性靠副本+ISR+acks=all(还要 min.insync.replicas≥2 才不丢)，exactly-once 靠幂等生产者+事务。快在顺序写+Page Cache+零拷贝+批量压缩+分区并行。坑在只单分区有序、并行度受分区数限、KRaft 已取代 ZooKeeper。
+> 🎯 Kafka=分区日志式高吞吐消息平台：Topic 分 Partition（追加有序、Offset 定位），Consumer Group 分摊分区、可重放；可靠性靠 ISR+acks=all，exactly-once 靠幂等+事务。快在顺序写+Page Cache+零拷贝+批量压缩。坑：仅单分区有序，并行度=分区数。
 > 🔍 追问：acks=all 为什么还要配 min.insync.replicas？
 > 🔍 追问：Kafka 为什么吞吐这么高？
 > 🔍 追问：怎么实现"同一用户消息有序"？

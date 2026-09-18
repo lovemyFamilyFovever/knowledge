@@ -68,7 +68,7 @@ status: "imported"
 
 ## 面试速答
 
-> 🎯 消息队列=在 Producer 与 Consumer 间加一层 Broker 做异步中转，带来解耦/削峰/异步三大价值；模型有发布订阅(多组各收全量)与点对点(单消费者)，关键概念 Topic/Partition/Offset/Consumer Group，可靠性靠生产确认+Broker 持久化副本+消费手动 ACK+死信+幂等协同。它牺牲实时性与强一致换吞吐与松耦合，不保全局顺序、需配套幂等/重试运维。选型：RabbitMQ 灵活路由低延迟、Kafka 高吞吐可重放、RocketMQ 事务延迟、Pulsar 云原生。
+> 🎯 消息队列=在 Producer 与 Consumer 间加一层 Broker 异步中转，换来解耦/削峰/异步；模型分发布订阅与点对点，关键概念 Topic/Partition/Offset/Consumer Group，可靠性靠确认+副本+手动 ACK+死信+幂等协同。代价是让出实时性与强一致，且不保全局顺序。
 > 🔍 追问：MQ 三大价值分别解决什么问题？
 > 🔍 追问：为什么上 MQ 还必须配幂等？
 > 🔍 追问：什么场景不该用 MQ 而该用同步 RPC？

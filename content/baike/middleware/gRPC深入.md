@@ -81,7 +81,7 @@ message User {
 
 ## 面试速答
 
-> 🎯 gRPC=Google 开源高性能 RPC 框架：HTTP/2(多路复用/头部压缩/双向流) + Protobuf(.proto 契约优先、二进制强类型、字段编号保兼容)，支持一元与三种流式，内置 deadline、interceptor、status code。多语言代码生成降联调成本，性能高；但浏览器不能直连(需 gRPC-Web/网关)、二进制难调试、需 HTTP/2 通路。具体快多少依场景，非固定 5–10 倍。
+> 🎯 gRPC=Google 开源高性能 RPC：HTTP/2（多路复用/头部压缩/双向流）+ Protobuf 契约优先、二进制强类型，支持一元与三种流式，内置 deadline 与拦截器。多语言代码生成降联调成本；短板是浏览器不能直连（需 gRPC-Web）、二进制难调试，性能提升幅度依场景而定。
 > 🔍 追问：gRPC 性能优势主要来自哪两点？
 > 🔍 追问：Protobuf 靠什么保证向后兼容、删字段要注意什么？
 > 🔍 追问：浏览器为什么不能直连 gRPC？

@@ -79,7 +79,7 @@ class PostLoader(DataLoader):
 
 ## 面试速答
 
-> 🎯 GraphQL=强类型 Schema 上的 API 查询语言与运行时：单一端点 + Resolver，客户端按需精确取字段(Query/Mutation/Subscription)，一次拿齐省往返、契约即文档、演进平滑；核心坑是 N+1(用 DataLoader 批量+缓存) 与深层嵌套查询成本不可控(需深度/复杂度/持久化查询)。相比 REST 免过/欠获取但少了 HTTP 原生缓存、相比 gRPC 面向前端查询而非高效服务间 RPC，小项目可能过度设计。
+> 🎯 GraphQL=强类型 Schema 上按需取字段的查询语言与运行时：单端点+Resolver，一次拿齐省往返、契约即文档；核心坑是 N+1（DataLoader 批量）与深层查询成本不可控（限深度/复杂度）。比 REST 免过/欠获取但失去 HTTP 缓存，比 gRPC 面向前端而非服务间。
 
 > 🔍 追问：N+1 问题怎么产生、DataLoader 怎么解？
 > 🔍 追问：为什么 GraphQL 反而可能比 REST 慢？
