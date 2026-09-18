@@ -1,7 +1,17 @@
-"""baike 重写验收：按 docs/writing-spec-v1.0.md §8 做机械检查。
+"""baike 重写验收：按 docs/writing-spec-v1.1.md §9 做机械检查。
 
 用法: python scripts/agent/check_rewrite.py content/baike/<域>/<词条>.md [...]
+      python scripts/agent/check_rewrite.py --exempt <path> [...] <待检路径> [...]
 退出码 0 = 全部 PASS；非 0 = 至少一篇 FAIL。warning 不影响退出码。
+
+v1.1 变更：
+- 枢纽信号② 两条 OR：②a H2/H3 或编号粗体具名子概念 ≥3；②b「核心机制」节内
+  粗体领起列表项 ≥3 且各项叙述 ≥100 字（不含表格行与围栏）——折叠式枢纽由此拿到 3400 豁免。
+- exempt-reference（v1.1 §5）：--exempt 显式豁免，或自动读 docs/refactor/exempt-reference.md
+  （一行一路径，# 为注释）；命中者输出 EXEMPT、跳过全部检查、计入 PASS。
+
+注意两处盲区（v1.1 §9）：⑦ frontmatter 比的是 HEAD，分片提交后即空转，收尾须另与批前基线比；
+⑧ 悬空双链是朴素正则，会误报围栏里的 bash `[[ -f x ]]`，权威口径是 index.db 的 links.resolved。
 """
 from __future__ import annotations
 
@@ -31,6 +41,12 @@ RE_ARXIV = re.compile(r"arXiv[:：\s]\s*(\d{4}\.\d{4,5})")
 RE_DOI = re.compile(r"\b(10\.\d{4,9}/[^\s)>\]，。；]+)")
 RE_WIKI = re.compile(r"\[\[([^\]|#]+)")
 RE_NUM_BOLD = re.compile(r"^\s*\d+\.\s+\*\*[^*]+\*\*", re.M)
+# 枢纽信号②b：粗体领起的列表项，兼容 `- **名**：` 与 `- **名：**` 两种写法
+RE_BOLD_LEAD = re.compile(r"^\s*(?:[-*+]\s+|\d+\.\s+)\*\*([^*]+?)\*\*[：:]?")
+# ②b 每项叙述字数下限。取 70 而非 v1.0 ②a 的 100：折叠式枢纽的项普遍 70–110 字，
+# 100 会把 ESB 这类正主挡在豁免外（实测其四项为 107/91/75/46）。
+BOLD_ITEM_MIN = 70
+EXEMPT_LIST = ROOT / "docs" / "refactor" / "exempt-reference.md"
 
 
 def norm_title(t: str) -> str:
@@ -151,17 +167,62 @@ def subconcept_count(body: str) -> int:
     return n
 
 
+def core_bold_subconcepts(body: str) -> list[str]:
+    """枢纽信号②b（v1.1 §2）：核心机制节内粗体领起、自身叙述 ≥BOLD_ITEM_MIN 字的列表项名。
+
+    多定义汇编收敛成折叠式枢纽时子概念写在项目符号里、拿不到 ②a 的 H2/H3 计数，
+    本函数补这条路。计数剔除表格行与围栏内容，避免靠塞表格凑豁免。
+    """
+    seg: list[str] = []
+    grab = False
+    for ln in body.splitlines():
+        if re.match(r"^## (?!#)", ln):
+            grab = norm_title(ln[3:]) in CORE_VARIANTS
+            continue
+        if grab:
+            seg.append(ln)
+
+    fenced: list[bool] = []
+    cur = False
+    for ln in seg:
+        if ln.lstrip().startswith("```"):
+            cur = not cur
+            fenced.append(True)
+            continue
+        fenced.append(cur)
+
+    marks = [i for i, ln in enumerate(seg) if RE_BOLD_LEAD.match(ln)]
+    bounds = marks + [len(seg)]
+    out: list[str] = []
+    for k, i in enumerate(marks):
+        m = RE_BOLD_LEAD.match(seg[i])
+        name = m.group(1).strip().rstrip("：:").strip()
+        parts = [seg[i][m.end() :]]
+        for j in range(i + 1, bounds[k + 1]):
+            if fenced[j] or seg[j].lstrip().startswith("|"):
+                continue
+            parts.append(seg[j])
+        if len(re.sub(r"\s", "", "\n".join(parts))) >= BOLD_ITEM_MIN:
+            out.append(name)
+    return out
+
+
 def length_limit(body: str, nchars: int) -> tuple[int, str]:
-    """规范 §4：超 2200 时按枢纽信号①②决定放行到 3400 还是维持原判。"""
+    """规范 v1.1 §2：超 2200 时按枢纽信号①②决定放行到 3400 还是维持原判。"""
     if nchars <= 2200:
         return 2200, ""
     mer, rows, subs = has_mermaid(body), table_data_rows(body), subconcept_count(body)
+    bolds = core_bold_subconcepts(body)
     s1 = mer or rows >= 4
-    s2 = subs >= 3
+    s2 = subs >= 3 or len(bolds) >= 3
+    sig2 = f"具名子概念 {subs}" if subs >= 3 else f"折叠式粗体子概念 {len(bolds)}（{'、'.join(bolds[:3])}）"
     if s1 and s2:
-        sig = "mermaid" if mer else f"对比表 {rows} 数据行"
-        return 3400, f"枢纽型（①{sig} ②具名子概念 {subs}）"
-    return 2200, f"未获枢纽豁免（①{'满足' if s1 else '不满足：无 mermaid 且对比表 <4 数据行'} ②具名子概念 {subs} <3）"
+        sig1 = "mermaid" if mer else f"对比表 {rows} 数据行"
+        return 3400, f"枢纽型（①{sig1} ②{sig2}）"
+    return 2200, (
+        f"未获枢纽豁免（①{'满足' if s1 else '不满足：无 mermaid 且对比表 <4 数据行'} "
+        f"②不满足：具名子概念 {subs} <3 且核心机制粗体项 {len(bolds)} <3）"
+    )
 
 
 def content_rel(p: pathlib.Path) -> str:
@@ -191,9 +252,12 @@ def md_stems() -> set[str]:
     return _all_stems
 
 
-def check(path_arg: str) -> tuple[int, int]:
+def check(path_arg: str, exempt: set[str] | None = None) -> tuple[int, int]:
     """返回 (fail 数, warn 数)。"""
     p = pathlib.Path(path_arg).resolve()
+    if exempt and p.as_posix() in exempt:
+        print(f"EXEMPT {content_rel(p)}  （v1.1 §5 exempt-reference：原样保留，跳过检查）")
+        return 0, 0
     fails: list[str] = []
     warns: list[str] = []
 
@@ -288,17 +352,66 @@ def check(path_arg: str) -> tuple[int, int]:
     return len(fails), len(warns)
 
 
+def _resolve(s: str) -> str:
+    p = pathlib.Path(s)
+    return (p if p.is_absolute() else ROOT / p).resolve().as_posix()
+
+
+def load_exempt(cli: list[str]) -> set[str]:
+    """v1.1 §5：--exempt 显式豁免 + docs/refactor/exempt-reference.md 清单（缺文件视为空）。"""
+    out = {_resolve(s) for s in cli}
+    if not EXEMPT_LIST.exists():
+        return out
+    for ln in EXEMPT_LIST.read_text(encoding="utf-8").splitlines():
+        s = ln.strip()
+        if not s or s.startswith("#"):
+            continue
+        if s.startswith("|"):
+            cells = [c.strip() for c in s.strip("|").split("|")]
+            s = cells[0] if cells else ""
+        else:
+            s = s.lstrip("->* \t").strip("`").strip()
+        if s.endswith(".md"):
+            out.add(_resolve(s))
+    return out
+
+
 def main() -> int:
-    if len(sys.argv) < 2:
+    args = sys.argv[1:]
+    if not args:
         print(__doc__)
         return 2
-    total_f = total_w = 0
-    for arg in sys.argv[1:]:
-        f, w = check(arg)
+    paths: list[str] = []
+    cli_exempt: list[str] = []
+    i = 0
+    while i < len(args):
+        a = args[i]
+        if a == "--exempt":
+            if i + 1 >= len(args):
+                print("--exempt 缺少路径")
+                return 2
+            cli_exempt.append(args[i + 1])
+            i += 2
+            continue
+        if a.startswith("--"):
+            print(f"未知参数：{a}")
+            return 2
+        paths.append(a)
+        i += 1
+    if not paths:
+        print(__doc__)
+        return 2
+
+    exempt = load_exempt(cli_exempt)
+    total_f = total_w = n_ex = 0
+    for arg in paths:
+        if _resolve(arg) in exempt:
+            n_ex += 1
+        f, w = check(arg, exempt)
         total_f += f
         total_w += w
-    n = len(sys.argv) - 1
-    print(f"\n{n} 篇检查：{total_f} 项 FAIL，{total_w} 项 warning")
+    ex = f"，其中 EXEMPT {n_ex} 篇" if n_ex else ""
+    print(f"\n{len(paths)} 篇检查：{total_f} 项 FAIL，{total_w} 项 warning{ex}")
     return 1 if total_f else 0
 
 
