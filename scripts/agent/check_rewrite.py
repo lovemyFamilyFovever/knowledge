@@ -2,12 +2,16 @@
 
 用法: python scripts/agent/check_rewrite.py content/baike/<域>/<词条>.md [...]
       python scripts/agent/check_rewrite.py --exempt <path> [...] <待检路径> [...]
+      python scripts/agent/check_rewrite.py --strict <待检路径> [...]
 退出码 0 = 全部 PASS；非 0 = 至少一篇 FAIL。warning 不影响退出码。
 
 v1.2 变更：
 - 枢纽信号②b 收紧：粗体领起项除自身叙述 ≥70 字外，**还必须内含 ≥1 个 [[双链]]**
   才计入豁免信号。堵住叶子词条靠「≥3 条粗体 bullet + 一张表」白拿 3400 额度。
 - 新增 ⑨：`> 🎯` 首行去空白后 ≤150 字，超限 FAIL（原 v1.0 §2 的 30–60 字不可行）。
+- ⑨ 带 grandfather（默认生效）：台账状态恰为 `done` **且**末次提交严格早于 v1.2 落盘
+  commit（`ANSWER_GATE_COMMIT`）的存量稿，超标降级为 WARNING；新稿、split 新产物、
+  未登记稿仍硬 FAIL。加 `--strict` 关闭 grandfather，用于三期速答压缩会话全量清账。
 
 v1.1 变更：
 - 枢纽信号② 两条 OR：②a H2/H3 或编号粗体具名子概念 ≥3；②b「核心机制」节内
@@ -242,6 +246,69 @@ def length_limit(body: str, nchars: int) -> tuple[int, str]:
     )
 
 
+STRICT = False
+ANSWER_GATE_COMMIT = "e611848"  # ⑨ 门落盘的 commit；此前已判 done 的存量稿享受 grandfather
+_BAIKE_REL_RE = re.compile(r"^(?:content/)?(?:baike/)?")
+_done_rows: set[str] | None = None
+
+
+def done_ledger_paths() -> set[str]:
+    """`docs/refactor/status/sN.md` 中状态列恰为 done 的路径，归一为 `<子域>/<文件>.md`。
+
+    五片台账的路径前缀有三种写法（`子域/x.md` / `baike/子域/x.md` / `content/baike/子域/x.md`），
+    统一剥掉前缀后比对，避免为此回头改写台账。只认精确 `done`：done-hub / split /
+    exempt-reference 都是本轮或之后的产物，不该享受追溯豁免。
+    """
+    global _done_rows
+    if _done_rows is None:
+        _done_rows = set()
+        for f in sorted((ROOT / "docs" / "refactor" / "status").glob("*.md")):
+            for ln in f.read_text(encoding="utf-8").splitlines():
+                if not ln.startswith("|"):
+                    continue
+                cells = [c.strip() for c in ln.strip("|").split("|")]
+                if len(cells) < 2 or cells[1] != "done" or not cells[0].endswith(".md"):
+                    continue
+                _done_rows.add(_BAIKE_REL_RE.sub("", cells[0]))
+    return _done_rows
+
+
+def is_grandfathered(p: pathlib.Path) -> bool:
+    """⑨ 门 grandfather：v1.2 落盘前就已判 done 的存量稿，超标只 WARNING 不 FAIL。
+
+    两个条件缺一不可——既是台账 done、又确实在 `ANSWER_GATE_COMMIT` 之前提交。
+    新稿、split 新产物、未登记稿一律硬 FAIL。非 baike 语料路径直接不豁免。
+    """
+    try:
+        rel_baike = _BAIKE_REL_RE.sub(
+            "", p.relative_to(ROOT / "content" / "baike").as_posix()
+        )
+    except ValueError:
+        return False
+    if rel_baike not in done_ledger_paths():
+        return False
+    rel_root = p.relative_to(ROOT).as_posix()
+    r = subprocess.run(
+        ["git", "-C", str(ROOT), "log", "-1", "--format=%H", "--", rel_root],
+        capture_output=True, text=True,
+    )
+    last = r.stdout.strip()
+    if not last:
+        return False
+    g = subprocess.run(
+        ["git", "-C", str(ROOT), "rev-parse", ANSWER_GATE_COMMIT],
+        capture_output=True, text=True,
+    )
+    gate = g.stdout.strip()
+    if not gate or last == gate:
+        return False
+    a = subprocess.run(
+        ["git", "-C", str(ROOT), "merge-base", "--is-ancestor", last, gate],
+        capture_output=True,
+    )
+    return a.returncode == 0
+
+
 def content_rel(p: pathlib.Path) -> str:
     try:
         return p.relative_to(ROOT / "content").as_posix()
@@ -339,9 +406,11 @@ def check(path_arg: str, exempt: set[str] | None = None) -> tuple[int, int]:
     if answers:
         longest = max(answers, key=len)
         if len(longest) > ANSWER_MAX:
-            fails.append(
-                f"⑨ 面试速答 🎯 首行 {len(longest)} 字 > 上限 {ANSWER_MAX}（规范 v1.2 §4）"
-            )
+            msg = f"⑨ 面试速答 🎯 首行 {len(longest)} 字 > 上限 {ANSWER_MAX}（规范 v1.2 §4）"
+            if not STRICT and is_grandfathered(p):
+                warns.append(msg + "｜grandfather：v1.2 前的存量 done 稿，三期 --strict 清理")
+            else:
+                fails.append(msg)
 
     # ⑤ / ⑦ 与 git HEAD 比对
     try:
@@ -407,11 +476,16 @@ def main() -> int:
     if not args:
         print(__doc__)
         return 2
+    global STRICT
     paths: list[str] = []
     cli_exempt: list[str] = []
     i = 0
     while i < len(args):
         a = args[i]
+        if a == "--strict":
+            STRICT = True
+            i += 1
+            continue
         if a == "--exempt":
             if i + 1 >= len(args):
                 print("--exempt 缺少路径")
@@ -437,7 +511,8 @@ def main() -> int:
         total_f += f
         total_w += w
     ex = f"，其中 EXEMPT {n_ex} 篇" if n_ex else ""
-    print(f"\n{len(paths)} 篇检查：{total_f} 项 FAIL，{total_w} 项 warning{ex}")
+    mode = "strict（⑨ 全量硬 FAIL）" if STRICT else "默认（⑨ 对 v1.2 前 done 存量降级 WARNING）"
+    print(f"\n{len(paths)} 篇检查 [{mode}]：{total_f} 项 FAIL，{total_w} 项 warning{ex}")
     return 1 if total_f else 0
 
 
