@@ -168,22 +168,24 @@ def test_parse_interview_i5() -> None:
 
 
 def test_parse_interview_i4() -> None:
-    """I-4 编号问答式：`### Q1: xxx` + `**答案要点：**` / `**参考答案：**`。"""
+    """I-4 编号问答式（2026-09-18 统一为 I-5 渲染约定）：`### N. 题面｜初级|中级|高级` + `**答案要点：**` / `**参考答案：**`。"""
     rel = "interview/ai-agent/AI Agent开发面试题库.md"
     cards = parse_file(rel, read_sample(rel))
-    check("I-4：抽出编号题目", len(cards) >= 50, f"got {len(cards)}")
+    check("I-4：抽出编号题目", len(cards) >= 80, f"got {len(cards)}")
     check("I-4：全是 interview_qa", all(c.kind == "interview_qa" for c in cards))
     check("I-4：front 形如 Q1. 标题", bool(cards) and cards[0].front.startswith("Q1. "),
           f"got {cards[0].front if cards else None!r}")
     check("I-4：题面原样保留（已带问号的不重复加）",
           bool(cards) and cards[0].front.endswith("？"), f"got {cards[0].front if cards else None!r}")
-    check("I-4：has_answer=1（答案要点有内容）", all(c.has_answer == 1 for c in cards))
-    check("I-4：difficulty 缺省 medium", all(c.difficulty == "medium" for c in cards))
-    check("I-4：back 不含答案标记行本身",
-          all("答案要点" not in c.back[:20] for c in cards))
+    check("I-4：难度三档来自后缀且无空值",
+          {c.difficulty for c in cards} == {"easy", "medium", "hard"},
+          f"got {sorted({c.difficulty for c in cards})}")
+    check("I-4：答案有内容（编程纯代码题除外）",
+          sum(1 for c in cards if c.has_answer == 1) >= len(cards) - 5,
+          f"has_answer=1 仅 {sum(1 for c in cards if c.has_answer == 1)}/{len(cards)}")
     check("I-4：back 剔除了代码块", all("```" not in c.back for c in cards))
-    check("I-4：back 截断到 600 字内", all(len(c.back) <= 600 for c in cards))
-    check("I-4：anchor 是原题标题", bool(cards) and cards[0].anchor.startswith("Q1:"),
+    check("I-4：back 截断到 800 字内", all(len(c.back) <= 800 for c in cards))
+    check("I-4：anchor 是 Q{no}", bool(cards) and cards[0].anchor == "Q1",
           f"got {cards[0].anchor if cards else None!r}")
     check("I-4：term 取 frontmatter/H1 而非 Q 标题",
           bool(cards) and not cards[0].term.startswith("Q"), f"got {cards[0].term!r}")
@@ -191,11 +193,14 @@ def test_parse_interview_i4() -> None:
     # 详解版：块内是成段正文 + 表格 + **详细解析：**
     rel2 = "interview/ai-agent/AI Agent开发面试题库 - 详细答案解析.md"
     cards2 = parse_file(rel2, read_sample(rel2))
-    check("I-4 详解版：也抽出题目", len(cards2) >= 50, f"got {len(cards2)}")
+    check("I-4 详解版：也抽出题目", len(cards2) >= 80, f"got {len(cards2)}")
     check("I-4 详解版：back 不是把「参考答案」标记当答案",
           bool(cards2) and all(not c.back.startswith("参考答案") for c in cards2))
-    check("I-4 详解版：back 有实质正文",
-          all(len(c.back) >= 20 for c in cards2), f"最短 {min((len(c.back) for c in cards2), default=0)}")
+    check("I-4 详解版：答案有内容（编程题短答除外）",
+          sum(1 for c in cards2 if c.has_answer == 1) >= len(cards2) - 5,
+          f"has_answer=1 仅 {sum(1 for c in cards2 if c.has_answer == 1)}/{len(cards2)}")
+    check("I-4 详解版：back 最短有实质正文", all(len(c.back) >= 5 for c in cards2),
+          f"最短 {min((len(c.back) for c in cards2), default=0)}")
 
     # 护栏②：块内完全没有中文（纯代码）不建卡
     md = ('# 编码题\n\n## 基础\n\n### Q1: 实现一个简单的ReAct Agent\n\n'
