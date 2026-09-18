@@ -116,9 +116,23 @@ def test_parse_interview_i2() -> None:
     check("I-2：anchor 落在最近的 ### 主题N", bool(cards) and "主题1" in cards[0].anchor)
 
 
+def _legacy_flat_sample(n: int = 22) -> str:
+    """旧「扁平纯文本式」样例（本地合成）。
+
+    2026-09-18 面试语料统一改为 I-5 排版后，content/ 里已没有 I-3 形态的真实样本，
+    故 I-3 解析器的回归网改用合成样本，避免测试依赖于已迁移的语料。
+    """
+    parts = ['---\ntitle: "扁平题样例"\ntags: []\n---\n', "# 扁平题样例\n", "📦 基础\n"]
+    for i in range(1, n + 1):
+        parts.append(
+            f"{i}. 第{i}题的题干是什么？\n简单\n标签A\n查看答案\n"
+            f"回答模板1：基础解释\n这是第{i}题的答案正文，用于守住扁平解析器不回归。\n")
+    return "\n".join(parts)
+
+
 def test_parse_interview_i3() -> None:
-    rel = "interview/css-html/CSS与HTML面试题库 - 60道精选题目.md"
-    cards = parse_file(rel, read_sample(rel))
+    rel = "interview/css-html/扁平题样例.md"
+    cards = parse_file(rel, _legacy_flat_sample())
     check("I-3：抽出扁平题目", len(cards) >= 20, f"got {len(cards)}")
     check("I-3：题面以 ？ 结尾", all(c.front.rstrip().endswith("？") or c.front.rstrip().endswith("?")
                                      for c in cards))
@@ -128,6 +142,29 @@ def test_parse_interview_i3() -> None:
           all(c.back.strip() != "简单" for c in cards))
     check("I-3：back 截断到 800 字内", all(len(c.back) <= 800 for c in cards))
     check("I-3：保留「回答模板N」小标题", any("回答模板" in c.back for c in cards))
+
+
+def test_parse_interview_i5() -> None:
+    """I-5 编号标题式：`### N. 题干｜难度` + 紧随的答案正文（面试语料 2026-09-18 新排版）。"""
+    rel = "interview/css-html/CSS与HTML面试题库 - 60道精选题目.md"
+    cards = parse_file(rel, read_sample(rel))
+    check("I-5：抽出题目", len(cards) >= 55, f"got {len(cards)}")
+    check("I-5：全是 interview_qa", all(c.kind == "interview_qa" for c in cards))
+    check("I-5：front 形如 Q1. 题面", bool(cards) and cards[0].front.startswith("Q1. "),
+          f"got {cards[0].front if cards else None!r}")
+    check("I-5：难度后缀不进 front", all("｜" not in c.front and "|" not in c.front for c in cards))
+    check("I-5：difficulty 三档齐全且无空值",
+          {c.difficulty for c in cards} == {"easy", "medium", "hard"},
+          f"got {sorted({c.difficulty for c in cards})}")
+    check("I-5：has_answer=1（答案紧随题干）", all(c.has_answer == 1 for c in cards))
+    check("I-5：back 剔除了代码块", all("```" not in c.back for c in cards))
+    check("I-5：back 截断到 800 字内", all(len(c.back) <= 800 for c in cards))
+    check("I-5：anchor 是 Q{no}", bool(cards) and cards[0].anchor == "Q1")
+    check("I-5：back 不含小节标题（## 不入答案）",
+          all("（10 题）" not in c.back for c in cards))
+    check("I-5：题干编号重排后编号连续",
+          [c.front.split(".", 1)[0] for c in cards][:3] == ["Q1", "Q2", "Q3"],
+          f"got {[c.front[:6] for c in cards[:3]]}")
 
 
 def test_parse_interview_i4() -> None:
@@ -691,6 +728,7 @@ def main() -> int:
     test_parse_interview_i2()
     test_parse_interview_i3()
     test_parse_interview_i4()
+    test_parse_interview_i5()
     test_baike_b_term_cleaning()
     test_i3_difficulty_backfill()
     test_parser_version_bumped()

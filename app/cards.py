@@ -21,6 +21,8 @@ parse_file(rel, raw) 是纯函数：同样输入永远得到同样输出，便�
     interview I-2  表格清单式：`| 1 | 题面 | 中级 |`（全篇只有题面没有答案）
     interview I-3  扁平纯文本式：`1. 题面？` … `查看答案` … 答案正文
     interview I-4  编号问答式：`### Q1: xxx` + `**参考答案：**` / `**答案要点：**`
+    interview I-5  编号标题式：`### N. 题面｜初级|中级|高级` + 紧随其后的答案正文
+                   （阅读器渲染约定，2026-09-18 起面试语料统一采用）
 """
 import hashlib
 import json
@@ -39,7 +41,10 @@ from app.store import parse_frontmatter
 #       ③ I-3 难度回填（题面下一行的 简单/中等/困难 → difficulty）
 #       ④ I-3/I-4 答案标记扩展（补 详细解答/参考答案/答案要点 等，此前这些文件的 back 全为空）
 #   v2 会改变部分 card_id（术语名变了），旧卡走软下线；此刻尚无真实复习数据，代价为零。
-CARDS_PARSER_VERSION = 2
+#   v3  ① 新增 I-5（`### N. 题干｜难度`，面试语料 2026-09-18 统一改用的渲染约定）
+#       ② front 与 I-3/I-4 同口径（`Q{no}. 题面`），题干未变的题目 card_id 保持不变；
+#          题干编号被重排过的题目会换 card_id，旧卡软下线（经查无复习进度落在这些题上）。
+CARDS_PARSER_VERSION = 3
 
 # 只有这两个域会产出卡片；其余域（articles/projects/career/…）不抽。
 CARD_DOMAINS: tuple[str, ...] = ("baike", "interview")
@@ -101,6 +106,10 @@ RE_CJK = re.compile(r"[\u4e00-\u9fff]")
 # baike B 术语名前导编号：只去前导的「N. / N、/ N)」，不动标题中间的括号
 RE_TERM_NUM = re.compile(r"^\s*\d+\s*[.、)）]\s*")
 RE_I3_DIFF = re.compile(r"^(简单|中等|困难|初级|中级|高级)$")
+# interview I-5：`### N. 题干｜初级|中级|高级`（2026-09-18 面试语料统一排版；
+# 竖线允许全角「｜」/半角「|」，难度后缀必须在行尾）
+RE_I5_Q = re.compile(r"^###\s+(\d+)\s*[.、]\s*(.+?)\s*$", re.M)
+RE_I5_DIFF = re.compile(r"[｜|]\s*(初级|中级|高级)\s*$")
 RE_I3_TEMPLATE = re.compile(r"^💡?\s*回答模板\s*[\d一二三四五六七八九十]+\s*[:：]?\s*(.*)$")
 WIKILINK = re.compile(r"!?\[\[([^\[\]|#]+)(?:#[^\[\]|]*)?(?:\|[^\[\]]*)?\]\]")
 # 行首粗体小节（收集多行值时到此为止）
@@ -600,6 +609,52 @@ def _parse_i3(rel: str, domain: str, sub: str, tags: str, fm: dict, clean: str) 
     return cards
 
 
+def _parse_i5(rel: str, domain: str, sub: str, tags: str, fm: dict, clean: str) -> list[Card]:
+    """I-5 编号标题式（阅读器渲染约定）：`### N. 题面｜初级|中级|高级` + 正文答案。
+
+    2026-09-18 面试语料统一改为该排版（`##` 小节 + `### N. 题干｜难度` + `> 🎯/🔍` 提示框），
+    答案正文直接跟在题干之后；难度后缀行尾剥离后走 DIFF_MAP 回填 difficulty。
+    front 与 I-3/I-4 保持同一口径（`Q{no}. {题面}`），使题干未变的题目 card_id 不变。
+    """
+    term = _term_of(fm, clean, rel)
+    q_matches = list(RE_I5_Q.finditer(clean))
+    if not q_matches:
+        return []
+    cards: list[Card] = []
+    for i, m in enumerate(q_matches):
+        no = int(m.group(1))
+        stem = RE_I5_DIFF.sub("", m.group(2)).strip()
+        if not stem:
+            continue
+        end = q_matches[i + 1].start() if i + 1 < len(q_matches) else len(clean)
+        region = clean[m.end():end]
+        # 该题与下一题之间若夹着 `## 小节名`，截断掉（小节标题不属于答案）
+        m_h2 = RE_ANY_H2.search(region)
+        if m_h2:
+            region = region[:m_h2.start()]
+
+        difficulty = ""
+        md = RE_I5_DIFF.search(m.group(2))
+        if md:
+            difficulty = DIFF_MAP.get(md.group(1), "")
+
+        ans_lines: list[str] = []
+        for ln in region.splitlines():
+            s = ln.strip()
+            if not s:
+                continue
+            if s.startswith(">"):
+                s = s[1:].strip()  # 提示框标记（🎯 关键要点 / 🔍 追问 / 💡 / ⚠️）只去引用符
+            if not s or RE_I3_DIFF.match(s):
+                continue
+            ans_lines.append(s)
+        back = _tidy_answer("\n".join(ans_lines))[:800]
+        cards.append(
+            _mk(KIND_INTERVIEW_QA, term, f"Q{no}. {stem}", back, "", rel, domain, sub,
+                tags, [], anchor=f"Q{no}", difficulty=difficulty))
+    return cards
+
+
 # ---------------- 入口 ----------------
 def parse_file(rel: str, raw: str) -> list[Card]:
     """把一篇语料解析成卡片列表。返回空列表表示该篇不产生卡片。
@@ -635,8 +690,8 @@ def parse_file(rel: str, raw: str) -> list[Card]:
                 return cards
         return _parse_baike_b(rel, domain, sub, tags, fm, clean)
 
-    # interview：按 I-1 → I-4 → I-2 → I-3 顺序 try，命中即停
-    for parser in (_parse_i1, _parse_i4, _parse_i2, _parse_i3):
+    # interview：按 I-1 → I-4 → I-5 → I-2 → I-3 顺序 try，命中即停
+    for parser in (_parse_i1, _parse_i4, _parse_i5, _parse_i2, _parse_i3):
         cards = parser(rel, domain, sub, tags, fm, clean)
         if cards:
             return cards

@@ -7,2606 +7,1792 @@ collected: "2026-09-05"
 status: "imported"
 ---
 
-CSS与HTML面试题库 - 60道精选题目
-🎨 CSS与HTML面试题库
-60道精选题目 - 从基础到高级的全面覆盖
-📚 60道题目
-🎯 详细解答
-💡 实战技巧
-📱 响应式设计
-📦 CSS基础
-📐 布局技巧
-✨ 动画效果
-📱 响应式设计
-🚀 高级特性
-🏷️ HTML5
-📦 CSS基础
-1. CSS选择器的优先级是如何计算的？
-简单
-CSS选择器
-优先级
-基础概念
-查看答案
-回答模板1：基础解释
-CSS选择器的优先级计算遵循以下规则：
-1.
-!important
-具有最高优先级
-2. 内联样式（style属性）优先级为 1,0,0,0
-3. ID选择器（#id）优先级为 0,1,0,0
-4. 类选择器（.class）、属性选择器、伪类优先级为 0,0,1,0
-5. 元素选择器、伪元素优先级为 0,0,0,1
-6. 通配符选择器（*）优先级为 0,0,0,0
-回答模板2：实战应用
-在实际开发中，我建议：
-• 避免过度使用
-!important
-，因为它会破坏CSS的自然级联
-• 使用BEM命名规范来避免选择器冲突
-• 当需要覆盖第三方样式时，可以使用更高优先级的选择器
-• 使用开发者工具查看元素的计算样式和应用的CSS规则
-回答模板3：问题解决
-当遇到样式不生效的问题时，我会：
-1. 检查选择器优先级是否足够
-2. 查看是否有其他样式规则覆盖了目标样式
-3. 使用浏览器开发者工具的"Computed"面板查看最终应用的样式
-4. 检查CSS规则是否被浏览器解析（语法错误可能导致规则失效）
-2. 请解释盒模型（Box Model）是什么？
-简单
-盒模型
-基础概念
-布局
-查看答案
-回答模板1：概念解释
-CSS盒模型描述了元素在页面中占据的空间，由四个部分组成：
-•
-Content（内容）
-：元素的实际内容，如文本、图片等
-•
-Padding（内边距）
-：内容与边框之间的空间
-•
-Border（边框）
-：围绕内边距的边框
-•
-Margin（外边距）
-：元素与其他元素之间的空间
-回答模板2：两种盒模型
-CSS有两种盒模型：
-1.
-标准盒模型（content-box）
-：元素的width/height只包含内容区域，不包含padding和border
-2.
-IE盒模型（border-box）
-：元素的width/height包含内容、padding和border
-使用
-box-sizing: border-box
-可以切换到IE盒模型，这在响应式设计中非常有用。
-回答模板3：实际应用
-在实际项目中，我通常：
-• 在全局CSS中设置
-* { box-sizing: border-box; }
-• 使用CSS变量统一管理间距和尺寸
-• 利用Flexbox和Grid布局简化盒模型的计算
-• 在响应式设计中，注意不同设备上的盒模型表现
-3. CSS单位有哪些？它们各自适用什么场景？
-简单
-CSS单位
-响应式
-布局
-查看答案
-回答模板1：基础单位介绍
-CSS中有多种单位，主要分为：
-•
-绝对单位
-：px, cm, mm, in等（不推荐在响应式中使用）
-•
-相对单位
-：em, rem, %, vw, vh等
-•
-特殊单位
-：ch, ex, fr等
-回答模板2：使用场景
-px
-：适用于需要精确控制的场景，如边框、阴影
-em
-：相对于父元素字体大小，适用于组件内间距
-rem
-：相对于根元素字体大小，适用于全局布局
-%
-：相对于父元素，适用于响应式宽度
-vw/vh
-：相对于视口尺寸，适用于全屏布局
-回答模板3：最佳实践
-我的单位使用原则：
-1. 全局使用
-rem
-作为基础单位，便于统一缩放
-2. 响应式布局使用
-vw/vh
-或
-%
-3. 需要精确控制时使用
-px
-4. 组件内部使用
-em
-保持相对性
-5. 避免混合使用多种单位造成混乱
-📦 CSS基础（续）
-4. 请解释CSS继承的概念和规则
-中等
-CSS继承
-级联
-基础概念
-查看答案
-回答模板1：概念解释
-CSS继承是指某些CSS属性会从父元素传递给子元素的特性。继承的属性包括：
-• 字体相关：font-family, font-size, color等
-• 文本相关：text-align, line-height, letter-spacing等
-• 列表相关：list-style-type, list-style-position等
-回答模板2：继承规则
-继承遵循以下规则：
-1.
-自然继承
-：如上所述的属性会自动继承
-2.
-强制继承
-：使用
-inherit
-关键字强制继承父元素的值
-3.
-初始值
-：使用
-initial
-关键字重置为默认值
-4.
-取消继承
-：使用
-unset
-关键字
-回答模板3：实际应用
-在实际开发中，我这样处理继承：
-• 在
-body
-上设置全局字体和颜色，利用继承减少重复代码
-• 使用CSS变量（自定义属性）实现更灵活的继承
-• 注意继承的级联顺序，避免意外的样式覆盖
-• 使用开发者工具查看元素的继承链
-5. 什么是CSS层叠（Cascade）？它如何影响样式应用？
-中等
-CSS层叠
-级联
-优先级
-查看答案
-回答模板1：基础概念
-CSS层叠是指浏览器如何确定多个CSS规则应用于同一元素时的最终样式。层叠规则包括：
-1.
-来源
-：用户样式 < 浏览器样式 < 开发者样式 < !important
-2.
-优先级
-：按照选择器优先级计算
-3.
-顺序
-：相同优先级时，后定义的规则覆盖先定义的
-回答模板2：层叠算法
-浏览器应用层叠算法的步骤：
-1. 收集所有匹配元素的CSS规则
-2. 按来源和优先级排序
-3. 按特殊性排序
-4. 按源顺序排序（后定义的优先）
-5. 应用最终计算出的样式
-回答模板3：实际影响
-层叠机制对开发的影响：
-• 可以利用层叠特性进行样式覆盖和主题切换
-• 需要理解优先级计算，避免使用过多
-!important
-• 使用CSS预处理器可以更好地管理层叠关系
-• 在大型项目中，需要建立清晰的CSS架构来管理层叠
-6. 请解释CSS伪类和伪元素的区别和用法
-中等
-伪类
-伪元素
-选择器
-查看答案
-回答模板1：概念区分
-伪类
-：用于选择处于特定状态的元素，如
-:hover
-,
-:focus
-,
-:active
-伪元素
-：用于创建不存在于DOM中的虚拟元素，如
-::before
-,
-::after
-,
-::first-line
-回答模板2：常用示例
-常用伪类
-：
-•
-:hover
-- 鼠标悬停状态
-•
-:focus
-- 元素获得焦点
-•
-:nth-child(n)
-- 选择第n个子元素
-•
-:not(selector)
-- 排除特定选择器
-常用伪元素
-：
-•
-::before
-- 在元素内容前插入内容
-•
-::after
-- 在元素内容后插入内容
-•
-::first-letter
-- 选择首字母
-回答模板3：实际应用
-在实际项目中：
-• 使用伪类实现交互效果，如悬停、聚焦状态
-• 使用伪元素添加装饰性内容，如图标、分隔线
-• 注意伪元素需要
-content
-属性才能显示
-• 合理使用伪类和伪元素可以减少HTML和JavaScript的复杂度
-7. 如何实现水平垂直居中？请列举至少5种方法
-中等
-居中
-布局
-Flexbox
-Grid
-查看答案
-回答模板1：传统方法
-1.
-文本居中
-：
-text-align: center
-（水平）+
-line-height
-（垂直）
-2.
-绝对定位
-：
-position: absolute
-+
-top: 50%
-+
-transform: translateY(-50%)
-3.
-表格布局
-：
-display: table-cell
-+
-vertical-align: middle
-回答模板2：现代方法
-4.
-Flexbox
-：父容器设置
-display: flex
-+
-justify-content: center
-+
-align-items: center
-5.
-Grid
-：父容器设置
-display: grid
-+
-place-items: center
-6.
-Grid简化
-：
-display: grid
-+
-place-content: center
-回答模板3：选择建议
-我的选择原则：
-• 简单文本居中：使用
-text-align
-• 已知尺寸的元素：使用绝对定位 + transform
-• 不确定尺寸的元素：使用Flexbox或Grid
-• 兼容性要求高的项目：使用传统方法
-• 现代项目：优先使用Flexbox或Grid
-8. 什么是CSS特异性（Specificity）？如何计算？
-中等
-CSS特异性
-优先级
-选择器
-查看答案
-回答模板1：概念解释
-CSS特异性是浏览器决定哪个CSS规则应用于元素的权重计算方法。特异性值以四位数表示：
-•
-行内样式
-：1,0,0,0
-•
-ID选择器
-：0,1,0,0
-•
-类选择器
-：0,0,1,0
-•
-元素选择器
-：0,0,0,1
-回答模板2：计算规则
-特异性计算规则：
-1. 从左到右比较每一位的值
-2. 较高特异性的选择器优先
-3. 相同特异性时，后定义的规则优先
-4.
-!important
-具有最高优先级
-5. 继承的样式特异性为0
-回答模板3：实际应用
-在实际开发中：
-• 避免使用行内样式，保持关注点分离
-• 使用BEM命名规范，避免ID选择器的高特异性
-• 当需要覆盖第三方样式时，可以使用更高特异性的选择器
-• 使用CSS预处理器时，注意嵌套选择器会增加特异性
-9. CSS变量（自定义属性）有哪些优势？
-中等
-CSS变量
-自定义属性
-现代CSS
-查看答案
-回答模板1：基础优势
-CSS变量（自定义属性）的主要优势：
-1.
-可重用性
-：定义一次，多处使用
-2.
-可维护性
-：修改一处即可全局更新
-3.
-动态性
-：可以在JavaScript中动态修改
-4.
-作用域
-：支持变量作用域和继承
-回答模板2：使用示例
+本页汇总 60 道 CSS 与 HTML 面试题，覆盖基础、布局、动画、渲染性能、响应式、高级特性与 HTML5 七大板块；难度由初级到高级梯度分布，每题含核心结论、关键要点与面试官追问。
+
+## CSS 基础（10 题）
+
+### 1. CSS选择器的优先级是如何计算的？｜初级
+
+核心结论：浏览器按「来源与重要性 → 选择器特异性 → 书写顺序」三级依次比较，特异性用 (行内, ID, 类/属性/伪类, 元素/伪元素) 四元组衡量，高位大者胜。
+
+- 权重六档（由高到低）：
+  1. `!important` 声明（最高优先级，但会被更高层来源的 `!important` 反超）
+  2. 行内样式 `style` 属性：`1,0,0,0`
+  3. ID 选择器 `#id`：`0,1,0,0`
+  4. 类 `.class`、属性 `[type]`、伪类 `:hover`：`0,0,1,0`
+  5. 元素 `div`、伪元素 `::before`：`0,0,0,1`
+  6. 通配符 `*`、子代/相邻等组合符：`0,0,0,0`
+- 比较规则：从四元组最高位逐位比较，先比行内再比 ID、再比类、最后比元素；`!important` 会反转来源顺序（开发者/用户的 `!important` 高于普通作者样式）。
+- 继承与默认：继承得到的样式特异性为 0，低于任何直接匹配规则；浏览器默认样式优先级最低。
+- 同特异性时，后定义的规则覆盖先定义的（源顺序取胜）。
+
+> 🎯 关键要点
+> - 特异性四元组从左到右比较，先比行内、再比 ID。
+> - `!important` 是「最后手段」，会破坏自然级联、极难被覆盖。
+> - 通配符与组合符不增加特异性。
+> - 继承值特异性为 0，遇到任何匹配规则都会被覆盖。
+> - 调试用开发者工具的 Computed/Styles 面板查看最终生效来源。
+
+> 🔍 追问
+> - 行内 `style` 上的 `!important` 与作者样式表的 `!important` 谁更高？
+> - `:not(.a.b)` 的特异性等于多少？
+
+### 2. 请解释盒模型（Box Model）是什么？｜初级
+
+核心结论：CSS 盒模型描述每个元素在页面中占据的空间，由外到内分四层；`box-sizing` 决定 `width/height` 是否包含 padding 与 border。
+
+- 四个组成部分：
+  - Content（内容）：文本、图片等实际内容区。
+  - Padding（内边距）：内容与边框之间的空白。
+  - Border（边框）：环绕内边距的边界。
+  - Margin（外边距）：元素与其他元素之间的间距，不计入自身尺寸。
+- 两种盒模型：
+  - 标准盒模型 `content-box`：`width/height` 只包含内容区，不含 padding 和 border。
+  - IE 盒模型 `border-box`：`width/height` 包含内容、padding 和 border。
+- 现代实践：全局设置 `box-sizing: border-box`，在响应式布局中设置固定 `width` 时 padding 不会撑破容器。
+
+| 盒模型 | `width/height` 包含 | 元素实际占宽 | 定宽 + padding 时 |
+| --- | --- | --- | --- |
+| `content-box`（标准） | 仅内容区 | width + padding + border | 容器被撑大，可能溢出 |
+| `border-box`（IE） | 内容 + padding + border | width | 外尺寸受控，内容区被压缩 |
+
+
+```css
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+```
+
+> 🎯 关键要点
+> - 四个区域由外到内为 margin / border / padding / content。
+> - `content-box` 与 `border-box` 的差异仅在于 `width` 的计算口径。
+> - `margin` 不计入元素自身所占盒尺寸，但影响外部排布。
+> - `box-sizing: border-box` 能避免 padding 撑大定宽容器，是响应式常用基线。
+> - 背景绘制到 padding 区，border 区默认也覆盖背景。
+
+> 🔍 追问
+> - `margin` 重叠（collapse）发生在哪些场景？如何消除？
+> - `box-sizing` 能否被继承？
+
+### 3. CSS单位有哪些？它们各自适用什么场景？｜初级
+
+核心结论：CSS 单位分绝对单位与相对单位，响应式项目应以相对单位为主、绝对单位只用于需要精确控制的细节。
+
+- 绝对单位：`px`、`cm`、`mm`、`in` 等，1in = 96px；不随环境缩放，响应式中不推荐做主单位。
+- 相对单位：
+  - `em`：相对父元素字体大小，适合组件内间距。
+  - `rem`：相对根元素（`<html>`）字体大小，适合全局布局与统一缩放。
+  - `%`：相对父元素，适合响应式宽度。
+  - `vw`/`vh`：相对视口宽/高，适合全屏布局。
+- 特殊单位：`ch`（字符 0 宽度）、`ex`（x 高度）、`fr`（Grid 轨道剩余比例）。
+
+```css
+:root { font-size: 16px; }
+.card { padding: 1rem; width: 50%; }      /* rem 全局、% 相对父 */
+.title { font-size: 5vw; }                /* vw 全屏标题 */
+.grid { display: grid; grid-template-columns: 1fr 2fr; }
+```
+
+> 🎯 关键要点
+> - `px` 精确但僵化，`rem` 易于整体缩放，`em` 在组件内保持相对性。
+> - `vw/vh` 依赖视口，移动端 `100vh` 可能包含地址栏高度。
+> - `fr` 仅用于 Grid，表示剩余空间分配比例。
+> - 避免在同一布局中无意义地混用多种单位。
+
+> 🔍 追问
+> - `rem` 与 `em` 嵌套时各自如何计算？
+> - `vmin/vmax` 在横竖屏切换时分别取什么值？
+
+### 4. 请解释CSS继承的概念和规则｜中级
+
+核心结论：CSS 继承指部分属性自动从父元素传递给子元素；开发者可用 `inherit`/`initial`/`unset`/`revert` 显式控制继承行为。
+
+- 自然继承的属性：
+  - 字体相关：`font-family`、`font-size`、`color`、`font-weight`。
+  - 文本相关：`text-align`、`line-height`、`letter-spacing`、`word-spacing`。
+  - 列表相关：`list-style-type`、`list-style-position`。
+- 继承规则与关键字：
+  - 自然继承：上述属性自动向下传递。
+  - `inherit`：强制继承父元素的计算值。
+  - `initial`：重置为属性的初始值（未必是 0 或空）。
+  - `unset`：有继承性的属性表现为 `inherit`，否则表现为 `initial`。
+  - `revert`：回退到用户代理/作者样式表中的上一层定义。
+
+> ⚠️ 注意
+> `unset` 与 `initial` 不同：`unset` 对可继承属性等价于 `inherit`，对不可继承属性才等价于 `initial`。
+
+> 🎯 关键要点
+> - 不是所有属性都会继承，`margin`、`padding`、`border` 等盒模型属性默认不继承。
+> - 在 `<body>` 上设置字体与颜色可借助继承减少重复代码。
+> - `color` 可继承，但 `background` 不继承。
+> - CSS 变量（自定义属性）天然可继承，是更灵活的「继承」手段。
+
+> 🔍 追问
+> - `all: unset` 会对一个按钮造成哪些副作用？
+> - `revert` 与 `unset` 在级联来源上的区别是什么？
+
+### 5. 什么是CSS层叠（Cascade）？它如何影响样式应用？｜中级
+
+核心结论：层叠（Cascade）是浏览器在多条规则同时匹配同一元素时，决定最终样式的一套算法，综合「来源、重要性、特异性、源顺序」四个维度。
+
+- 层叠的来源与重要性顺序（由低到高）：
+  1. 浏览器默认样式（user agent）
+  2. 用户样式（user）
+  3. 作者样式（author）
+  4. 作者 `!important` ＞ 用户 `!important` ＞ 浏览器 `!important`
+  - 注意：`!important` 会反转「作者优先于用户」的常规顺序。
+- 层叠算法步骤：
+  1. 收集所有匹配该元素的声明。
+  2. 按来源与重要性筛选排序。
+  3. 同组内按选择器特异性排序。
+  4. 特异性相同则按源顺序，后定义者胜。
+  5. 得出最终计算样式。
+- 实际影响：可利用层叠做主题覆盖与样式重置，但应克制使用 `!important`。
+
+> 🎯 关键要点
+> - 层叠 = 来源重要性 + 特异性 + 顺序，三者逐级兜底。
+> - 默认来源顺序为「浏览器 < 用户 < 作者」。
+> - `!important` 反转来源优先级，是维护噩梦的根源。
+> - 大型项目要靠清晰的架构（如 @layer、BEM）而非堆特异性来管理层叠。
+
+> 🔍 追问
+> - 浏览器默认样式与作者样式冲突时，谁优先？
+> - 如何用 `@layer` 改变来源之外的层叠次序？
+
+### 6. 请解释CSS伪类和伪元素的区别和用法｜中级
+
+核心结论：伪类用于选中「处于某状态的元素」（不新增节点），伪元素用于创建「DOM 中不存在的虚拟节点」；伪类用单冒号、伪元素用双冒号。
+
+- 伪类（单冒号）：描述元素的特定状态或特征。
+  - `:hover` 鼠标悬停、`:focus` 获得焦点、`:active` 激活态。
+  - `:nth-child(n)` 第 n 个子元素、`:not(selector)` 排除特定选择器。
+- 伪元素（双冒号）：在元素内生成虚拟节点承载装饰内容。
+  - `::before` 在内容前插入、`::after` 在内容后插入。
+  - `::first-line` 首行、`::first-letter` 首字母、`::selection` 选中文本。
+- 关键差异：伪元素默认需要 `content` 属性才会渲染；伪类不依赖 `content`，仅匹配已有元素。
+
+| 维度 | 伪类 | 伪元素 |
+| --- | --- | --- |
+| 作用 | 选中处于某状态的已有元素 | 创建 DOM 中不存在的虚拟节点 |
+| 语法 | 单冒号 `:hover` | 双冒号 `::before` |
+| 是否依赖 `content` | 否 | 是（否则不渲染） |
+| 典型值 | `:hover` `:focus` `:nth-child()` `:not()` | `::before` `::after` `::first-line` `::selection` |
+
+
+```css
+a:hover { color: #f60; }
+.tip::after {
+  content: "↑";
+  margin-left: 4px;
+}
+li:nth-child(odd) { background: #f5f5f5; }
+```
+
+> 🎯 关键要点
+> - 伪类选中「状态」，伪元素生成「虚拟节点」。
+> - 伪元素必须写 `content`（即使是空串）才会显示。
+> - `::before/::after` 生成的内容无法被屏幕阅读器可靠朗读，勿放关键信息。
+> - 历史写法 `:before` 仍被兼容，但新代码应统一用双冒号。
+
+> 🔍 追问
+> - `:nth-child(2n+1)` 与 `:nth-of-type(odd)` 有何区别？
+> - 伪元素能再嵌套伪元素吗？
+
+### 7. 如何实现水平垂直居中？请列举至少5种方法｜中级
+
+核心结论：已知尺寸用绝对定位 + `transform`，未知尺寸优先 Flexbox/Grid，纯文本用 `text-align`+`line-height`，老方案可用 table 布局。
+
+- 方法一·文本居中：`text-align: center`（水平）+ `line-height` 等于容器高（垂直，仅单行文本）。
+- 方法二·绝对定位 + `transform`：`position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%)`，不依赖子元素尺寸。
+- 方法三·表格布局：`display: table-cell; vertical-align: middle`，父容器需为 `table`。
+- 方法四·Flexbox：父容器 `display: flex; justify-content: center; align-items: center`。
+- 方法五·Grid：`display: grid; place-items: center`（同时控制行列）或 `place-content: center`。
+
+```css
+/* Flexbox */
+.parent { display: flex; justify-content: center; align-items: center; }
+/* Grid */
+.parent { display: grid; place-items: center; }
+/* 绝对定位 */
+.child { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); }
+```
+
+> 🎯 关键要点
+> - `place-items: center` 是 Grid 一行实现双轴居中的最简写法。
+> - `transform: translate(-50%,-50%)` 不引发重排，性能优于改 `top/left`。
+> - 老 IE 不支持 Flex/Grid，必要时回退 table 或绝对定位方案。
+> - 单行文本可用 `line-height` 居中，多行则不行。
+
+> 🔍 追问
+> - `justify-content` 与 `align-items` 在 Flex 中分别对应哪个轴？
+> - 为什么 `margin: auto` 在 Flex/Grid 中也能居中？
+
+### 8. 什么是CSS特异性（Specificity）？如何计算？｜中级
+
+核心结论：特异性是「选择器权重的工程侧管控」，重点不是比较大小，而是用 `:is()/:where()/:not()` 与 @layer 等机制主动降低或隔离特异性，避免用 `!important` 堆优先级。
+
+- 现代特异性计数要点：
+  - 类、属性选择器 `[type]`、伪类 `:hover` 三者等价，各计 `(0,0,1,0)`。
+  - `:is()` 取「括号内特异性最高的参数」作为整体特异性；`:where()` 与 `:not()` 的括号本身计 0，但 `:not(.a)` 内部的 `.a` 正常计数。
+  - 元素、伪元素各计 `(0,0,0,1)`；组合符不计数。
+- 工程控制而非硬扛：
+  - 用 `:where()` 包裹重置规则，使其特异性恒为 0，方便后续覆盖。
+  - 用 `@layer` 把工具类、第三方样式放进低优先级层，组件样式放高层，避免比谁选择器更长。
+  - 优先「降低自身特异性 / 用层隔离」而非追加 `!important` 或使用 ID 选择器。
+- 与 Q1 的分工：Q1 讲权重怎么算、怎么比较；本题讲如何主动控制特异性。
+
+```css
+/* :where 特异性为 0，便于覆盖 */
+:where(button, input) { margin: 0; }
+/* :is 取参数中最高特异性 */
+:is(section, #hero) p { color: #333; }   /* 等于 #hero p 的特异性 */
+@layer utilities, components;
+@layer components { .btn { color: blue; } }
+```
+
+> ⚠️ 注意
+> `:is()` 会「继承」其参数里最高的特异性，容易意外拉高权重；而 `:where()` 永远为 0，重置样式优先用 `:where()`。
+
+> 🎯 关键要点
+> - 类、属性选择器、伪类三者权重相同。
+> - `:where()` 恒为 0 特异性，`:is()` 取参数最高特异性。
+> - `:not()` 括号内选择器正常计数。
+> - 与其堆 `!important`，不如用 @layer 隔离或降低选择器特异性。
+
+> 🔍 追问
+> - `:is(.a, #b)` 作为整体特异性是多少？
+> - 为什么说 @layer 比 `!important` 更适合管理第三方样式？
+
+### 9. CSS变量（自定义属性）有哪些优势？｜中级
+
+核心结论：CSS 自定义属性（`--x`）提供可复用、可继承、可被 JS 动态修改的设计令牌，是主题化与响应式系统的基石。
+
+- 核心优势：
+  - 可重用性：定义一次（`--primary`），多处 `var(--primary)` 引用。
+  - 可维护性：改一处即可全局更新，优于散落的硬编码值。
+  - 动态性：可在 JS 中读写 `style.setProperty('--primary', ...)`，无需改样式表。
+  - 作用域与继承：声明在 `:root` 全局可用，声明在局部则仅该子树生效，并沿 DOM 向下继承。
+- 配合 `calc()` 可做运行时计算，如 `padding: var(--u) calc(var(--u) * 2)`。
+
+```css
 :root {
-    --primary-color: #2196f3;
-    --spacing-unit: 8px;
+  --primary-color: #2196f3;
+  --spacing-unit: 8px;
 }
-
 .button {
-    background: var(--primary-color);
-    padding: var(--spacing-unit) calc(var(--spacing-unit) * 2);
+  background: var(--primary-color);
+  padding: var(--spacing-unit) calc(var(--spacing-unit) * 2);
 }
+:root.dark-theme { --primary-color: #9c27b0; }
+```
 
-/* 动态修改 */
-:root.dark-theme {
-    --primary-color: #9c27b0;
-}
-回答模板3：实际应用
-我在项目中使用CSS变量：
-• 定义设计系统的基础值（颜色、间距、字体）
-• 实现主题切换功能
-• 创建响应式断点系统
-• 与JavaScript结合实现动态样式
-• 在组件库中保持一致性
-10. 请解释CSS层叠层（@layer）的作用
-困难
-@layer
-CSS层叠层
-现代CSS
-查看答案
-回答模板1：概念解释
-CSS层叠层（
-@layer
-）是一种新的CSS特性，用于控制样式的层叠顺序。它允许开发者创建多个样式层，并显式控制这些层的优先级。
-回答模板2：使用方式
-/* 声明层叠层顺序 */
-@layer base, components, utilities;
+> 🎯 关键要点
+> - 自定义属性天然继承，是比 `inherit` 关键字更灵活的机制。
+> - `var()` 可带兜底值：`var(--x, #000)`。
+> - 自定义属性区分大小写，值可以是任意合法 token。
+> - 结合 `@media` 或类名切换根变量即可实现主题切换。
 
-/* 定义层 */
+> 🔍 追问
+> - `var()` 的回退值里能再嵌套 `var()` 吗？
+> - 自定义属性参与动画有哪些限制？
+
+### 10. 请解释CSS层叠层（@layer）的作用｜高级
+
+核心结论：@layer 把样式划成「层」，层间按声明顺序比较优先级（后声明的层高于先声明的层），层内仍是常规层叠；但 `!important` 在层间会反转顺序，这是反直觉的关键点。
+
+- 层叠顺序：未分层的普通样式优先级最高；分层样式中，后定义的层（在 `@layer a, b` 中靠右的）高于先定义的层。
+- 层内行为：层内部依然按「特异性 + 源顺序」正常层叠，层的存在不改变层内比较规则。
+- 反直觉点——`!important` 反转：在普通重要性下「后层胜先层」，但一旦加上 `!important`，顺序反过来——先声明的层反而高于后声明的层。这正是 @layer 用来「让基础样式 `!important` 兜底、工具类自由覆盖」的机制。
+- 价值：把 reset、第三方库、组件、工具类分别入层，组件层天然覆盖基础层，无需提高选择器特异性。
+
+```css
+@layer base, components, utilities;   /* 后写的 utilities 优先级更高 */
 @layer base {
-    body { font-family: sans-serif; }
+  a { color: blue; }                  /* 基础层 */
 }
-
 @layer components {
-    .button { background: blue; }
+  a.btn { color: red; }               /* 组件层覆盖基础层 */
 }
+/* 未分层样式优先级最高 */
+a { color: green; }
+```
 
-@layer utilities {
-    .hidden { display: none; }
-}
-回答模板3：实际优势
-层叠层解决了CSS的哪些问题：
-1.
-第三方样式冲突
-：可以控制第三方库样式的优先级
-2.
-大型项目管理
-：为不同类型的样式建立清晰的优先级
-3.
-工具类框架
-：如Tailwind CSS可以更好地与自定义样式共存
-4.
-主题系统
-：更容易实现主题切换和样式覆盖
-📐 布局技巧
-11. Flexbox布局的核心概念是什么？
-简单
-Flexbox
-布局
-现代CSS
-查看答案
-回答模板1：基础概念
-Flexbox是一种一维布局模型，主要用于在容器中对齐和分布空间。核心概念包括：
-•
-主轴（Main Axis）
-：默认水平方向
-•
-交叉轴（Cross Axis）
-：默认垂直方向
-•
-容器（Container）
-：设置
-display: flex
-的元素
-•
-项目（Item）
-：容器的直接子元素
-回答模板2：常用属性
-容器属性
-：
-•
-flex-direction
-：主轴方向
-•
-justify-content
-：主轴对齐
-•
-align-items
-：交叉轴对齐
-•
-flex-wrap
-：换行控制
-项目属性
-：
-•
-flex-grow
-：放大比例
-•
-flex-shrink
-：缩小比例
-•
-flex-basis
-：基础大小
-回答模板3：使用场景
-Flexbox最适合的场景：
-• 导航栏布局
-• 卡片列表布局
-• 表单元素对齐
-• 不确定高度的垂直居中
-• 等分布局
-12. CSS Grid布局与Flexbox有何区别？
-中等
-Grid
-Flexbox
-布局对比
-查看答案
-回答模板1：核心区别
-Flexbox
-：一维布局，适用于行或列的布局
-Grid
-：二维布局，适用于行和列的复杂布局
-回答模板2：使用场景
-Flexbox更适合
-：
-• 导航栏、工具栏
-• 卡片列表
-• 表单元素对齐
-• 不确定高度的布局
-Grid更适合
-：
-• 整体页面布局
-• 复杂的网格布局
-• 需要精确控制行列的布局
-• 响应式网格系统
-回答模板3：选择原则
-我的选择原则：
-1. 如果只需要控制一个维度（行或列），使用Flexbox
-2. 如果需要同时控制行和列，使用Grid
-3. 如果布局比较复杂，通常Grid更简单
-4. 两者可以结合使用，Grid用于整体布局，Flexbox用于组件内部
-13. 如何实现多列等高布局？
-中等
-等高布局
-Flexbox
-Grid
-查看答案
-回答模板1：Flexbox方法
+> 🎯 关键要点
+> - 未分层的样式永远高于任何 @layer 内的样式。
+> - 普通重要性下「后声明层胜先声明层」。
+> - `!important` 下层的优先级顺序反转，先声明层反而胜出。
+> - @layer 让「低特异性选择器」也能稳定覆盖「高特异性选择器」。
+
+> 🔍 追问
+> - 为什么有时给第三方样式加 `!important` 反而被你的基础层盖住？
+> - `@import` 语句放在 @layer 内外有何差异？
+
+## 布局技巧（10 题）
+
+### 11. Flexbox布局的核心概念是什么？｜初级
+
+核心结论：Flexbox 是一维布局模型，沿「主轴 / 交叉轴」对齐与分布子项，靠容器属性控制整体、靠项目属性控制个体。
+
+- 核心概念：
+  - 主轴（Main Axis）：默认水平，由 `flex-direction` 决定方向。
+  - 交叉轴（Cross Axis）：默认垂直，垂直于主轴。
+  - 容器（Container）：设 `display: flex` 的元素。
+  - 项目（Item）：容器的直接子元素。
+- 容器属性：`flex-direction`（主轴方向）、`justify-content`（主轴对齐）、`align-items`（交叉轴对齐）、`flex-wrap`（换行）。
+- 项目属性：`flex-grow`（放大比例）、`flex-shrink`（缩小比例）、`flex-basis`（基础尺寸）。
+
+```css
 .container {
-    display: flex;
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
 }
+.item { flex: 1 1 auto; }   /* grow shrink basis */
+```
 
-.column {
-    flex: 1; /* 等分空间 */
-}
-回答模板2：Grid方法
-.container {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-}
+> 🎯 关键要点
+> - Flexbox 只管「一个维度」的行或列。
+> - `justify-content` 管主轴，`align-items` 管交叉轴，别混淆。
+> - `flex: 1` 等价于 `flex: 1 1 0%`，会均分剩余空间。
+> - 适合导航栏、卡片列表、表单对齐、垂直居中。
 
-.column {
-    /* Grid自动等高 */
-}
-回答模板3：传统方法
-传统方法（不推荐）：
-1.
-padding-bottom + negative margin
-：通过设置很大的padding-bottom和等大的负margin-bottom
-2.
-table布局
-：使用
-display: table
-和
-display: table-cell
-3.
-JavaScript计算
-：动态计算并设置高度
-现代项目中，推荐使用Flexbox或Grid，它们原生支持等高布局。
-14. 请解释CSS的overflow属性及其值
-简单
-overflow
-布局
-滚动
-查看答案
-回答模板1：属性介绍
-overflow属性控制内容溢出容器时的处理方式：
-•
-visible
-：默认值，内容溢出容器边界显示
-•
-hidden
-：隐藏溢出内容
-•
-scroll
-：始终显示滚动条
-•
-auto
-：需要时显示滚动条
-回答模板2：使用场景
-visible
-：不需要隐藏内容时
-hidden
-：裁剪溢出内容，如卡片内容截断
-scroll
-：需要始终显示滚动条的场景
-auto
-：内容可能溢出也可能不溢出的场景
-clip
-：类似hidden，但不允许程序性滚动
-回答模板3：最佳实践
-使用overflow的注意事项：
-1. 避免在body上设置overflow: hidden，可能影响滚动
-2. 使用overflow: auto时，注意滚动条的空间
-3. 结合text-overflow实现文本截断
-4. 在响应式设计中，注意不同设备上的表现
-15. 如何实现圣杯布局和双飞翼布局？
-困难
-圣杯布局
-双飞翼布局
-经典布局
-查看答案
-回答模板1：圣杯布局
-.container {
-    padding: 0 200px;
-}
+> 🔍 追问
+> - `flex-basis: 0` 与 `auto` 在 `flex-grow` 时表现有何不同？
+> - `align-content` 在什么条件下才生效？
 
-.left, .right {
-    position: absolute;
-    width: 200px;
-    height: 100%;
-}
+### 12. CSS Grid布局与Flexbox有何区别？｜中级
 
-.left { left: 0; }
-.right { right: 0; }
+核心结论：Flexbox 是一维（行或列）布局，Grid 是二维（同时管行与列）布局；整体页面骨架用 Grid，组件内部对齐用 Flexbox。
+
+- 维度差异：
+  - Flexbox：一维，沿单一主轴排列，适合「一条线」的流式分布。
+  - Grid：二维，用 `grid-template-columns/rows` 显式定义行列轨道，适合矩阵式布局。
+- 适用场景：
+  - Flexbox 更适合：导航栏、工具栏、卡片行、表单元素对齐、不确定高度的居中。
+  - Grid 更适合：整页布局、复杂网格、需精确控制行列交叠的区域、响应式网格系统。
+- 协同：Grid 负责整体骨架，Flexbox 负责组件内部细节，二者不互斥。
+
+| 维度 | Flexbox | Grid |
+| --- | --- | --- |
+| 维度 | 一维（行或列） | 二维（行 + 列） |
+| 轨道 | 无显式轨道，沿主轴排布 | `grid-template-columns/rows` 显式定义 |
+| 思路 | 内容驱动尺寸 | 布局驱动内容位置 |
+| 典型场景 | 导航、工具栏、卡片行、居中 | 整页骨架、矩阵布局、区域交叠 |
+| 换行/自适应 | `flex-wrap` 逐行排 | `auto-fill/auto-fit` + `minmax()` |
+
+
+```css
+/* Grid 二维 */
+.page { display: grid; grid-template-columns: 200px 1fr 200px; }
+/* Flex 一维 */
+.nav  { display: flex; justify-content: space-between; }
+```
+
+> 🎯 关键要点
+> - 只控制一个维度选 Flexbox，行列都要控制选 Grid。
+> - Grid 的 `fr` 单位分配剩余空间，等价于弹性轨道。
+> - Grid 可用 `grid-template-areas` 做语义化布局。
+> - 复杂布局通常 Grid 比嵌套 Flex 更简洁。
+
+> 🔍 追问
+> - Grid 的 `1fr` 与 `auto` 轨道在内容溢出时如何分配？
+> - Flex 的 `wrap` 与 Grid 的 `auto-fill` 各解决什么问题？
+
+### 13. 如何实现多列等高布局？｜中级
+
+核心结论：等高布局的本质是「让同一行的列共享行高」，现代用 Flexbox/Grid 天然等高，传统方案（padding 负 margin、table）已不推荐。
+
+- Flexbox 方法：父容器 `display: flex`，子项 `flex: 1`，Flex 行内各项目默认拉伸到同行最高。
+- Grid 方法：父容器 `display: grid; grid-template-columns: repeat(3, 1fr)`，Grid 同一行的单元格自动等高。
+- 传统方案（不推荐）：
+  - `padding-bottom` + 等大同向负 `margin-bottom` 撑高后裁切。
+  - `display: table` / `table-cell`，单元格天然等高。
+  - JS 动态测量并设置最高列高度。
+
+```css
+/* Flexbox 等高 */
+.container { display: flex; }
+.column { flex: 1; }
+/* Grid 等高 */
+.container { display: grid; grid-template-columns: repeat(3, 1fr); }
+```
+
+> 🎯 关键要点
+> - Flex/Grid 的「拉伸对齐」默认即等高，无需额外代码。
+> - `align-items: stretch`（默认）是等高的前提，设为 `flex-start` 会失效。
+> - 传统 padding 负 margin 方案可读性差且有溢出隐患。
+> - 现代项目直接上 Flex/Grid，原生支持等高。
+
+> 🔍 追问
+> - 若某列内容远超其他列，Flex 等高会撑高整行吗？
+> - `align-items: stretch` 对绝对定位子项有效吗？
+
+### 14. 请解释CSS的overflow属性及其值｜初级
+
+核心结论：overflow 控制内容溢出容器边界时的处理方式，常用 `visible/hidden/scroll/auto/clip`，它还会影响 BFC 与滚动表现。
+
+- 各值语义：
+  - `visible`：默认，溢出内容照常显示、可超出容器。
+  - `hidden`：裁剪溢出内容，不可滚动查看。
+  - `scroll`：始终显示滚动条（即使无需滚动）。
+  - `auto`：仅在内容溢出时显示滚动条。
+  - `clip`：类似 hidden 但不允许程序性滚动（无滚动容器），更可控。
+- 使用场景：卡片截断用 hidden；可能溢出也可能不溢出用 auto；`clip` 适合纯裁剪且不想生成滚动容器的场景。
+- 副作用：`overflow` 非 `visible` 会触发 BFC；`overflow-x/y` 可单独设置，但其中一个为 `visible` 另一个非 visible 时，visible 会被计算为 `auto`。
+
+```css
+.box { overflow: hidden; }      /* 裁剪 */
+.box { overflow: auto; }        /* 按需滚动 */
+.box { overflow: clip; }        /* 裁剪且不可滚动 */
+```
+
+> ⚠️ 注意
+> 在 `<body>` 上设 `overflow: hidden` 可能禁用整页滚动；`overflow-x: hidden` 配合 `overflow-y: visible` 时，浏览器会把 y 计算成 `auto`，可能引发意外滚动条。
+
+> 🎯 关键要点
+> - `auto` 与 `scroll` 的区别在于「是否始终显示滚动条」。
+> - `clip` 比 `hidden` 更现代，且不会创建滚动容器。
+> - `overflow` 非 visible 会建立 BFC。
+> - 常与 `text-overflow` 配合实现文本截断。
+
+> 🔍 追问
+> - `overflow: hidden` 与 `display: flow-root` 在建立 BFC 上有何取舍？
+> - 为什么 `overflow-x: hidden` 有时会让页面无法纵向滚动？
+
+### 15. 如何实现圣杯布局和双飞翼布局？｜高级
+
+核心结论：圣杯与双飞翼都是「两侧固定宽、中间自适应」的三栏布局；圣杯靠父 padding + 绝对定位，双飞翼靠中间额外包裹层 + 负 margin，现代用 Flex/Grid 更简洁。
+
+- 圣杯布局：父容器左右 padding 预留侧栏位；左/右栏绝对定位贴边，中间栏 `margin` 让出侧栏宽度。
+- 双飞翼布局：中间多一层 `.main` 包裹内容，三栏全部 `float: left`；左栏 `margin-left: -100%`、右栏 `margin-left: -200px` 拉回，中间内容靠自身 `margin` 让位。
+- 现代实现：Flex（`.main { flex: 1 }` + 两侧定宽）或 Grid（`grid-template-columns: 200px 1fr 200px`），语义清晰、无负 margin 黑魔法。
+
+```css
+/* 圣杯 */
+.container { padding: 0 200px; position: relative; }
+.left, .right { position: absolute; width: 200px; }
+.left { left: 0; } .right { right: 0; }
 .center { margin: 0 200px; }
-回答模板2：双飞翼布局
-.container {
-    float: left;
-    width: 100%;
-}
+/* 双飞燕（双飞翼） */
+.container { float: left; width: 100%; }
+.main { margin: 0 200px; }
+.left  { float: left; width: 200px; margin-left: -100%; }
+.right { float: left; width: 200px; margin-left: -200px; }
+```
 
-.main {
-    margin: 0 200px;
-    height: 200px;
-}
+> 🎯 关键要点
+> - 二者目标一致：中间优先渲染且自适应，两侧固定。
+> - 圣杯用绝对定位、双飞翼用负 margin + 包裹层。
+> - 负 margin 的 `-100%` 表示拉回「一整行宽度」到左栏位。
+> - 新项目直接用 Grid/Flex，可读性与兼容性都更好。
 
-.left, .right {
-    float: left;
-    width: 200px;
-    height: 200px;
-}
+> 🔍 追问
+> - 双飞翼为什么需要中间额外加一层 `.main`？
+> - Grid 实现时如何保证中间列优先加载（DOM 顺序）？
 
-.left { margin-left: -100%; }
-.right { margin-left: -200px; }
-回答模板3：现代方法
-现代CSS推荐使用Flexbox或Grid实现类似布局：
-/* Flexbox实现 */
-.container {
-    display: flex;
-}
+### 16. 什么是BFC（块格式化上下文）？如何触发？｜高级
 
-.main { flex: 1; }
-.left, .right { width: 200px; }
+核心结论：BFC 是一个独立的块级渲染区域，内部布局不影响外部、外部浮动也不侵入；常用于清除浮动、阻止 margin 重叠、隔离浮动。
 
-/* Grid实现 */
-.container {
-    display: grid;
-    grid-template-columns: 200px 1fr 200px;
-}
-现代方法更简洁，兼容性更好，推荐在新项目中使用。
-16. 什么是BFC（块格式化上下文）？如何触发？
-困难
-BFC
-格式化上下文
-布局
-查看答案
-回答模板1：概念解释
-BFC（Block Formatting Context）是CSS中的一个独立渲染区域，它决定了元素如何对其内部内容进行定位，以及与其他元素的关系。
-回答模板2：触发条件
-以下情况会创建BFC：
-• 根元素（
-<html>
-）
-• 浮动元素（
-float
-不为 none）
-• 绝对定位元素（
-position
-为 absolute 或 fixed）
-• 行内块元素（
-display: inline-block
-）
-• 表格元素（
-display: table-cell
-,
-table-caption
-）
-•
-overflow
-不为 visible 的元素
-•
-display: flow-root
-回答模板3：实际应用
-BFC的实际应用：
-1.
-清除浮动
-：父元素触发BFC可以包含浮动子元素
-2.
-防止margin重叠
-：相邻BFC之间的margin不会重叠
-3.
-阻止元素被浮动元素覆盖
-：BFC区域不会与浮动元素重叠
-4.
-包含浮动元素
-：解决父元素高度塌陷问题
-17. 如何实现文本截断（单行和多行）？
-中等
-文本截断
-溢出处理
-响应式
-查看答案
-回答模板1：单行截断
+- 触发条件清单：
+  - 根元素 `<html>`。
+  - 浮动元素（`float` 不为 `none`）。
+  - 绝对/固定定位（`position: absolute | fixed`）。
+  - 行内块（`display: inline-block`）。
+  - 表格相关（`display: table-cell`、`table-caption`、`table` 等）。
+  - `overflow` 不为 `visible`（如 `hidden/auto/scroll`）。
+  - `display: flow-root`（专门为此而生，无副作用）。
+- 三大用途：
+  1. 包含浮动：父元素触发 BFC 可包裹浮动子元素，避免高度塌陷。
+  2. 阻止 margin 重叠：相邻 BFC 之间的垂直 margin 不合并。
+  3. 隔离浮动：BFC 区域不与外部浮动元素重叠（实现文字环绕侧栏布局）。
+
+```css
+.clearfix { display: flow-root; }     /* 推荐：专用于建立 BFC */
+.modal-body { overflow: auto; }       /* overflow 非 visible 也触发 */
+```
+
+> 🎯 关键要点
+> - `display: flow-root` 是建立 BFC 的「无副作用」首选。
+> - `overflow: hidden` 能触发 BFC，但会裁剪溢出内容。
+> - BFC 隔离浮动，也能抑制 margin 折叠。
+> - 根元素天然是 BFC。
+
+> 🔍 追问
+> - `display: flow-root` 相比 `overflow: hidden` 建立 BFC 好在哪？
+> - 两个相邻 BFC 的垂直 margin 会合并吗？
+
+### 17. 如何实现文本截断（单行和多行）？｜中级
+
+核心结论：单行截断用 `white-space + overflow + text-overflow`，多行截断用 `-webkit-line-clamp`，二者都依赖定宽容器。
+
+- 单行截断：容器定宽 + `white-space: nowrap; overflow: hidden; text-overflow: ellipsis`。
+- 多行截断（基于 WebKit 弹性盒）：`display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: N; overflow: hidden`，`N` 为显示行数。
+- 注意事项：必须设容器宽度；多行方案依赖 `-webkit-` 前缀，Firefox 也支持该前缀属性，但非WebKit内核（如旧 IE）不支持，必要时用 JS 兜底。
+
+```css
 .text-truncate {
-    width: 200px;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+  width: 200px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
-回答模板2：多行截断
-.text-truncate-lines {
-    display: -webkit-box;
-    -webkit-box-orient: vertical;
-    -webkit-line-clamp: 3; /* 显示3行 */
-    overflow: hidden;
-    text-overflow: ellipsis;
+.text-clamp {
+  width: 200px;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow: hidden;
 }
-回答模板3：注意事项
-使用文本截断的注意事项：
-1. 必须设置容器宽度
-2. 单行截断需要
-white-space: nowrap
-3. 多行截断需要
--webkit-
-前缀，兼容性有限
-4. 考虑使用JavaScript实现更复杂的截断逻辑
-5. 在响应式设计中，注意不同屏幕尺寸下的表现
-18. CSS的position属性有哪些值？它们的区别是什么？
-简单
-定位
-position
-布局
-查看答案
-回答模板1：属性值介绍
-CSS的position属性有5个主要值：
-•
-static
-：默认值，元素在文档流中正常定位
-•
-relative
-：相对定位，相对于自身正常位置定位
-•
-absolute
-：绝对定位，相对于最近的定位祖先元素定位
-•
-fixed
-：固定定位，相对于视口定位
-•
-sticky
-：粘性定位，基于滚动位置定位
-回答模板2：使用场景
-static
-：默认状态，不需要特殊定位时
-relative
-：微调元素位置，或作为绝对定位的参考
-absolute
-：弹窗、下拉菜单、工具提示等
-fixed
-：导航栏、返回顶部按钮等
-sticky
-：表头、侧边栏等需要粘在某个位置的元素
-回答模板3：注意事项
-使用定位的注意事项：
-1. 绝对定位元素会脱离文档流
-2. 固定定位元素在滚动时保持位置不变
-3. 粘性定位需要设置
-top
-、
-right
-、
-bottom
-或
-left
-4. 定位元素可能影响其他元素的布局
-5. 合理使用z-index控制层叠顺序
-19. 如何实现响应式图片？
-中等
-响应式图片
-性能优化
-移动适配
-查看答案
-回答模板1：基础方法
-响应式图片的基本方法：
-/* 方法1：设置max-width */
-img {
-    max-width: 100%;
-    height: auto;
-}
+```
 
-/* 方法2：使用srcset属性 */
-<img 
-    srcset="small.jpg 480w, medium.jpg 800w, large.jpg 1200w"
-    sizes="(max-width: 600px) 480px, (max-width: 1000px) 800px, 1200px"
-    src="medium.jpg"
-    alt="响应式图片"
->
-回答模板2：picture元素
+> 🎯 关键要点
+> - 单行三件套缺一不可：`nowrap + overflow:hidden + ellipsis`。
+> - `-webkit-line-clamp` 需配合 `-webkit-box` 与 `overflow:hidden`。
+> - 多行截断兼容性有限，关键业务用 JS 测量兜底。
+> - 截断会隐藏文本，考虑提供 `title` 属性方便查看全文。
+
+> 🔍 追问
+> - `-webkit-line-clamp` 在非 WebKit 浏览器（如 Firefox）是否可用？
+> - 如何在不支持 line-clamp 时优雅降级？
+
+### 18. CSS的position属性有哪些值？它们的区别是什么？｜初级
+
+核心结论：`position` 有 `static/relative/absolute/fixed/sticky` 五个常用值，区别在于是否脱离文档流、定位参照物是什么。
+
+- 各值语义：
+  - `static`：默认，正常文档流定位，忽略 `top/left` 等偏移。
+  - `relative`：相对自身原位置偏移，不脱离文档流，仍占位。
+  - `absolute`：脱离文档流，相对「最近的非 static 定位祖先」定位。
+  - `fixed`：脱离文档流，相对视口定位，滚动时位置不变。
+  - `sticky`：混合态，在阈值内像 relative，越过阈值后像 fixed（相对滚动容器/视口）。
+- 使用场景：弹窗/下拉用 absolute，导航栏/返回顶部用 fixed，表头/侧栏用 sticky，微调用 relative。
+
+| 值 | 是否脱离文档流 | 定位参照 | 典型用途 |
+| --- | --- | --- | --- |
+| `static` | 否 | 无（正常文档流） | 默认态，忽略偏移属性 |
+| `relative` | 否（仍占位） | 自身原位置 | 微调、给 absolute 当参照 |
+| `absolute` | 是 | 最近的非 static 祖先 | 弹窗、下拉、角标 |
+| `fixed` | 是 | 视口（有 transform 祖先时改为该祖先） | 固定导航、返回顶部 |
+| `sticky` | 否（越阈值后视觉吸附） | 最近的滚动容器 | 表头吸顶、侧栏跟随 |
+
+
+```css
+.modal { position: absolute; top: 50%; left: 50%; }
+.bar   { position: fixed; top: 0; }
+.th    { position: sticky; top: 0; }
+```
+
+> ⚠️ 注意
+> `sticky` 必须设置 `top/right/bottom/left` 之一才生效；若祖先存在 `overflow: hidden/auto` 滚动容器，sticky 会相对该容器而非视口粘滞。
+
+> 🎯 关键要点
+> - absolute 的参照是「最近的非 static 祖先」，没有则到初始包含块。
+> - fixed 相对视口，移动端某些浏览器对 fixed 支持有差异。
+> - sticky 是 relative 与 fixed 的混合，需阈值触发。
+> - 定位元素可用 `z-index` 控制层叠（需先形成层叠上下文）。
+
+> 🔍 追问
+> - absolute 元素没有定位祖先时会相对什么定位？
+> - 为什么 sticky 在 `overflow: auto` 的父容器里「粘不住」？
+
+### 19. 如何实现响应式图片？｜中级
+
+核心结论：响应式图片靠「约束尺寸 + 按分辨率/视口切换源」实现，核心是 `max-width:100%`、`srcset/sizes` 与 `<picture>`。
+
+- 基础约束：
+
+```css
+img { max-width: 100%; height: auto; }
+```
+
+- 按分辨率切换（`srcset` + `sizes`）：浏览器据设备 DPR 与视口选最合适图源，`sizes` 描述「该图在不同断点下的显示宽度」。
+- 按艺术方向切换（`<picture>`）：用 `<source media>` 在不同视口给不同裁切/格式的图，`<img>` 作兜底。
+
+```html
+<img
+  srcset="small.jpg 480w, medium.jpg 800w, large.jpg 1200w"
+  sizes="(max-width: 600px) 480px, (max-width: 1000px) 800px, 1200px"
+  src="medium.jpg" alt="响应式图片">
+
 <picture>
-    <source media="(min-width: 1200px)" srcset="large.jpg">
-    <source media="(min-width: 768px)" srcset="medium.jpg">
-    <img src="small.jpg" alt="响应式图片">
+  <source media="(min-width: 1200px)" srcset="large.jpg">
+  <source media="(min-width: 768px)" srcset="medium.jpg">
+  <img src="small.jpg" alt="响应式图片">
 </picture>
-回答模板3：最佳实践
-响应式图片的最佳实践：
-1. 始终设置
-max-width: 100%
-2. 使用
-srcset
-提供不同分辨率的图片
-3. 使用
-sizes
-指定不同视口下的图片尺寸
-4. 考虑使用WebP等现代图片格式
-5. 使用图片CDN进行图片优化
-6. 实现懒加载提升性能
-20. CSS的display属性有哪些常用值？
-简单
-display
-显示模式
-基础概念
-查看答案
-回答模板1：基础值
-display属性的常用值：
-•
-none
-：隐藏元素
-•
-block
-：块级元素
-•
-inline
-：行内元素
-•
-inline-block
-：行内块元素
-回答模板2：布局相关
-•
-flex
-：Flexbox容器
-•
-grid
-：Grid容器
-•
-inline-flex
-：行内Flexbox容器
-•
-inline-grid
-：行内Grid容器
-•
-table
-：表格布局
-•
-table-cell
-：表格单元格
-回答模板3：现代值
-•
-flow-root
-：创建新的BFC
-•
-contents
-：元素本身不渲染，只渲染子元素
-•
-list-item
-：列表项
-•
-run-in
-：运行框（实验性）
-选择合适的display值可以大大简化布局代码。
-✨ 动画效果
-21. CSS过渡（transition）和动画（animation）有什么区别？
-中等
-过渡
-动画
-性能
-查看答案
-回答模板1：概念区别
-Transition（过渡）
-：需要触发事件才能执行，如:hover、:focus等
-Animation（动画）
-：可以自动执行，支持关键帧和循环
-回答模板2：语法区别
-/* 过渡 */
-.box {
-    transition: all 0.3s ease;
-}
+```
 
-.box:hover {
-    transform: scale(1.1);
-}
+> 🎯 关键要点
+> - `max-width: 100%` 防止大图撑破布局，是响应式图片底线。
+> - `srcset` 的 `w` 描述图源真实宽度，浏览器据 DPR 选择。
+> - `sizes` 要如实反映显示宽度，否则选错图源。
+> - `<picture>` 还能按格式优先给 WebP/AVIF。
 
-/* 动画 */
+> 🔍 追问
+> - `srcset` 的 `480w` 中 `w` 代表什么？浏览器如何结合 DPR 选择？
+> - `sizes` 写错会导致什么问题？
+
+### 20. CSS的display属性有哪些常用值？｜初级
+
+核心结论：`display` 决定元素如何参与布局，从基础的 `block/inline` 到布局型的 `flex/grid` 与语义型的 `flow-root/contents`，各有明确用途。
+
+- 基础显示：
+  - `none`：不渲染且不占空间。
+  - `block`：块级，独占一行。
+  - `inline`：行内，不独占行、不设宽高。
+  - `inline-block`：行内块，可设宽高且同行排列。
+- 布局相关：`flex`/`grid`/`inline-flex`/`inline-grid`/`table`/`table-cell`。
+- 现代/语义值：
+  - `flow-root`：建立 BFC，专用于清除浮动。
+  - `contents`：元素自身不渲染，子元素「提升」到父级参与布局。
+  - `list-item`：生成列表项标记；`run-in`：实验性运行框。
+
+```css
+.wrap { display: flow-root; }   /* 清除浮动且无裁剪副作用 */
+.card { display: inline-block; }
+```
+
+> 🎯 关键要点
+> - `inline-block` 既有 inline 同行特性又有 block 可设尺寸特性。
+> - `display: none` 与 `visibility: hidden` 的差异：前者不占空间。
+> - `flow-root` 比 `overflow:hidden` 更适合单纯建立 BFC。
+> - `display: contents` 会让元素「消失」但保留子节点布局。
+
+> 🔍 追问
+> - `display: contents` 对可访问性（屏幕阅读器）有何影响？
+> - `inline-flex` 与 `flex` 容器的外部表现有何不同？
+
+## 动画与过渡（5 题）
+
+### 21. CSS过渡（transition）和动画（animation）有什么区别？｜中级
+
+核心结论：transition 是「状态变化补间」，需事件触发、无循环；animation 是「关键帧序列」，可自动播放、循环、控制多帧。
+
+- 触发方式：transition 依赖状态切换（如 `:hover`、class 变化）才执行；animation 通过 `animation-name` 立即/定时自动运行。
+- 能力差异：transition 只有起止两态；animation 支持多关键帧（`@keyframes`）、`iteration-count` 循环、`direction` 反向、`fill-mode` 保持终态。
+- 性能共识：二者都应优先动画 `transform` 与 `opacity`，避免触发布局重排与重绘。
+
+```css
+.box { transition: all 0.3s ease; }
+.box:hover { transform: scale(1.1); }
+
 @keyframes rotate {
-    from { transform: rotate(0deg); }
-    to { transform: rotate(360deg); }
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
 }
+.spin { animation: rotate 2s linear infinite; }
+```
 
-.box {
-    animation: rotate 2s linear infinite;
-}
-回答模板3：使用场景
-使用过渡
-：简单的状态变化，如悬停效果、焦点状态
-使用动画
-：复杂的动画序列、需要自动执行的动画、循环动画
-性能考虑
-：两者都应优先使用transform和opacity，避免触发布局重排
-22. 如何优化CSS动画的性能？
-困难
-性能优化
-动画
-渲染
-查看答案
-回答模板1：性能原则
-CSS动画性能优化的核心原则：
-1.
-使用transform和opacity
-：这两个属性不会触发重排
-2.
-避免同时动画多个属性
-：减少浏览器计算负担
-3.
-使用will-change
-：提示浏览器优化动画元素
-回答模板2：具体优化
-/* 优化前 */
-.box {
-    animation: move 2s ease-in-out;
-}
+> 🎯 关键要点
+> - 简单悬停/状态变化用 transition。
+> - 复杂序列、自动播放、循环用 animation。
+> - 优先 `transform/opacity`，二者可走合成线程不触发重排。
+> - transition 无法在「首帧即需动画」时自动运行，要靠 animation。
 
-@keyframes move {
-    0% { left: 0; top: 0; }
-    100% { left: 200px; top: 100px; }
-}
+> 🔍 追问
+> - 为什么 animation 可以自动播放而 transition 不行？
+> - `animation-fill-mode: forwards` 解决什么问题？
 
-/* 优化后 */
-.box {
-    will-change: transform;
-    animation: move 2s ease-in-out;
-}
+### 22. 如何优化CSS动画的性能？｜高级
 
-@keyframes move {
-    0% { transform: translate(0, 0); }
-    100% { transform: translate(200px, 100px); }
-}
-回答模板3：监控和调试
-如何监控动画性能：
-1. 使用Chrome DevTools的Performance面板
-2. 观察帧率，确保动画保持在60fps
-3. 使用浏览器的Layers面板查看合成层
-4. 注意动画的内存使用，避免内存泄漏
-5. 在低端设备上测试动画性能
-23. 什么是CSS硬件加速？如何启用？
-困难
-硬件加速
-GPU
-性能
-查看答案
-回答模板1：概念解释
-CSS硬件加速是指利用GPU（图形处理器）来处理某些CSS动画，从而提高性能和流畅度。
-回答模板2：启用方式
-启用硬件加速的方法：
-1.
-使用transform
-：任何transform属性都会触发硬件加速
-2.
-使用opacity
-：透明度变化会触发硬件加速
-3.
-使用will-change
-：提示浏览器为元素创建独立层
+核心结论：动画性能优化的核心是「只动 compositor-only 属性（transform/opacity），把元素提升到独立合成层，避免重排重绘」。
+
+- 优化原则：
+  - 只用 `transform` 与 `opacity` 做动画，二者可由 GPU 合成线程处理，不触发 Layout/Paint。
+  - 避免同时动画过多属性、避免动画 `width/height/top/left`（会重排）。
+  - 用 `will-change` 提前提示浏览器为元素建层，但勿滥用。
+- 工具与指标：用 Chrome DevTools Performance 面板看帧率，动画目标稳定 60fps（高刷屏可 120fps）；用 Layers 面板检查合成层数量，层数过多反而耗内存。
+
+```css
+/* 优化前：动 left/top → 重排 */
+@keyframes move1 { 0%{left:0;top:0} 100%{left:200px;top:100px} }
+/* 优化后：动 transform → 仅合成 */
+.box { will-change: transform; }
+@keyframes move2 { 0%{transform:translate(0,0)} 100%{transform:translate(200px,100px)} }
+```
+
+> ⚠️ 注意
+> `will-change` 不是「越多越好」：每个合成层都占内存，低端设备上层过多会加剧卡顿甚至 OOM。
+
+> 🎯 关键要点
+> - 动画属性选择优先级：transform/opacity > 其他。
+> - `will-change` 应「即用即加、用完移除」，避免常驻。
+> - 目标 60fps，用 Performance/Layers 面板验证。
+> - 低端设备务必实测，合成层内存开销不可忽视。
+
+> 🔍 追问
+> - 为什么动画 `top/left` 比 `transform: translate` 慢？
+> - 如何判断一个动画是否触发了重排（Layout）？
+
+### 23. 什么是CSS硬件加速？如何启用？｜高级
+
+核心结论：硬件加速指把渲染工作交给 GPU（合成线程）处理，主要通过把元素提升为独立合成层实现；`transform`/`opacity`/`will-change` 是关键触发手段。
+
+- 启用方式：
+  - `transform`：任何 transform 动画会触发 GPU 合成（如 `translateZ(0)`）。
+  - `opacity`：透明度变化走合成线程。
+  - `will-change: transform`：显式提示浏览器建独立层。
+- 注意：`transform: translateZ(0)` 是经典的「强制合成层」hack；但层过多会吃内存，filter 等属性跨浏览器表现不一。
+
+```css
 .element {
-    will-change: transform;
-    transform: translateZ(0); /* 强制创建合成层 */
+  will-change: transform;
+  transform: translateZ(0);   /* 强制创建合成层 */
 }
-回答模板3：注意事项
-使用硬件加速的注意事项：
-1. 不要滥用will-change，过多的层会消耗更多内存
-2. 硬件加速主要优化2D变换和透明度
-3. 某些属性（如filter）可能在不同浏览器上表现不同
-4. 在移动设备上，硬件加速可能更有效
-5. 监控层的数量，避免过度使用
-24. 如何实现平滑滚动效果？
-中等
-滚动
-用户体验
-CSS
-查看答案
-回答模板1：CSS方法
-/* 全局平滑滚动 */
-html {
-    scroll-behavior: smooth;
-}
+```
 
-/* 特定容器平滑滚动 */
-.container {
-    scroll-behavior: smooth;
-}
-回答模板2：JavaScript方法
-// 使用scrollIntoView
-element.scrollIntoView({
-    behavior: 'smooth',
-    block: 'start'
-});
+> 🎯 关键要点
+> - 硬件加速本质是「元素进入 GPU 合成层」。
+> - `transform`/`opacity` 是天然 compositor-only 属性。
+> - `translateZ(0)` 是强制建层的兼容写法。
+> - 层不是免费的：内存与合成成本需权衡。
 
-// 使用scrollTo
-window.scrollTo({
-    top: 0,
-    behavior: 'smooth'
-});
-回答模板3：注意事项
-平滑滚动的注意事项：
-1.
-scroll-behavior: smooth
-在现代浏览器中支持良好
-2. 某些浏览器可能需要特殊处理
-3. 避免在动画期间同时使用平滑滚动
-4. 考虑用户偏好，提供禁用动画的选项
-5. 在移动端测试滚动性能
-25. CSS动画的timing-function有哪些值？
-中等
-timing-function
-动画曲线
-缓动函数
-查看答案
-回答模板1：预定义值
-常用的预定义缓动函数：
-•
-ease
-：默认值，慢速开始，快速结束
-•
-linear
-：匀速
-•
-ease-in
-：慢速开始
-•
-ease-out
-：慢速结束
-•
-ease-in-out
-：慢速开始和结束
-回答模板2：自定义值
-/* 贝塞尔曲线 */
-.box {
-    transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-}
+> 🔍 追问
+> - 硬件加速一定能提升性能吗？什么情况下反而变慢？
+> - `will-change` 与 `translateZ(0)` 建层有何异同？
 
-/* 步进函数 */
-.box {
-    animation: move 2s steps(4, end);
+### 24. 如何实现平滑滚动效果？｜中级
+
+核心结论：平滑滚动可用纯 CSS 的 `scroll-behavior: smooth`（整页或容器）或 JS 的 `scrollIntoView`/`scrollTo`，并应尊重用户的「减少动效」偏好。
+
+- CSS 方案：`html { scroll-behavior: smooth }` 让锚点跳转与 `scrollTo` 平滑；也可只作用于某个可滚动容器。
+- JS 方案：`element.scrollIntoView({ behavior: 'smooth' })`、`window.scrollTo({ top, behavior: 'smooth' })`，可控到具体坐标。
+- 注意：`scroll-behavior: smooth` 现代浏览器支持良好；应配合 `prefers-reduced-motion` 在用户要求时降级为 `auto`。
+
+```css
+html { scroll-behavior: smooth; }
+```
+
+```js
+element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+window.scrollTo({ top: 0, behavior: 'smooth' });
+```
+
+> 🎯 关键要点
+> - 锚点跳转的平滑滚动用 CSS 即可，无需 JS。
+> - JS 的 `scrollIntoView` 能精确控制对齐与行为。
+> - 移动端滚动性能需实测，过度平滑可能拖慢低端机。
+> - 尊重 `prefers-reduced-motion`，必要时降级为瞬时滚动。
+
+> 🔍 追问
+> - `scroll-behavior: smooth` 对 `scrollIntoView` 有效吗？
+> - 如何在用户开启「减少动效」时关闭平滑滚动？
+
+### 25. CSS动画的timing-function有哪些值？｜中级
+
+核心结论：`timing-function` 控制动画/过渡的「进度节奏」，分预定义缓动函数、贝塞尔曲线 `cubic-bezier()` 与步进函数 `steps()` 三类。
+
+- 预定义值：
+  - `ease`：默认，慢起快落。
+  - `linear`：匀速。
+  - `ease-in`：慢起。
+  - `ease-out`：慢落。
+  - `ease-in-out`：慢起慢落。
+- 自定义：
+  - `cubic-bezier(x1,y1,x2,y2)`：任意三次贝塞尔曲线，精细控制加速/减速。
+  - `steps(n, start|end)`：把动画切成 n 段阶梯式跳变，适合逐帧/打字机效果。
+- 选择：进入动画用 ease-out，退出用 ease-in，状态切换用 ease-in-out，进度条/旋转用 linear。
+
+```css
+.box { transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94); }
+.frames { animation: step 2s steps(4, end); }
+```
+
+> 🎯 关键要点
+> - `ease` 是默认且通用，多数 UI 动效够用。
+> - `linear` 用于旋转、进度条等需匀速的场景。
+> - `cubic-bezier` 可精确塑形曲线。
+> - `steps()` 做离散跳变，而非连续过渡。
+
+> 🔍 追问
+> - `steps(1, end)` 与 `steps(1, start)` 视觉差异是什么？
+> - 贝塞尔曲线的 y 值能否大于 1？意味着什么？
+
+## 渲染与性能（5 题）
+
+### 26. 浏览器渲染流程中重排（Reflow）与重绘（Repaint）有什么区别？哪些 CSS 属性会触发重排？如何避免强制同步布局（layout thrashing）？｜高级
+
+核心结论：重排（Reflow/Layout）是重新计算元素几何位置、成本高；重绘（Repaint）只重画外观、跳过布局；渲染管线为 JS→Style→Layout→Paint→Composite，强制同步布局发生在「写 DOM 后立刻读几何属性」时。
+
+- 二者区别：
+  - 重排：改变几何信息（尺寸、位置）时，浏览器重新计算布局树，并连带触发后续 Paint 与 Composite。
+  - 重绘：仅视觉属性（颜色、阴影、可见性）变化时跳过 Layout，直接 Paint；比重排轻，但仍消耗主线程。
+- 触发重排的典型属性：`width/height`、`margin/padding/border`、`top/left/right/bottom`、`display`、`position`、`float`、`font-size`、`line-height`、`vertical-align`、内容增删、`offsetWidth`/`clientHeight` 读取、`viewport` resize。
+- 强制同步布局（layout thrashing）：在 JS 中交替「写样式/改 DOM」与「读 `offsetTop/clientWidth/getBoundingClientRect` 等几何属性」，浏览器被迫在每个读之前同步 flush 一次布局，循环放大开销。
+- 规避：先批量读、再批量写；用 `requestAnimationFrame` 把写集中到一帧；或借助 `fastdom` 库读写分离。
+
+```js
+// 反例：读写交错 → 每次读都强制重排
+for (const el of items) {
+  el.style.width = el.offsetWidth + 10 + 'px'; // 写后立刻读
 }
-回答模板3：选择建议
-如何选择合适的缓动函数：
-•
-ease
-：通用选择，适合大多数UI动画
-•
-linear
-：进度条、旋转等需要匀速的动画
-•
-ease-in
-：退出动画，如元素离开视口
-•
-ease-out
-：进入动画，如元素出现
-•
-ease-in-out
-：状态变化，如悬停效果
-📱 响应式设计
-31. 什么是响应式设计？它的核心原则是什么？
-简单
-响应式设计
-移动优先
-核心概念
-查看答案
-回答模板1：概念解释
-响应式设计是一种网页设计方法，使网站能够适应不同设备和屏幕尺寸，提供最佳的用户体验。
-核心原则：
-1.
-移动优先
-：先设计移动端，再逐步增强到更大屏幕
-2.
-流式布局
-：使用百分比和相对单位
-3.
-弹性图片
-：图片能够适应不同屏幕
-4.
-媒体查询
-：根据屏幕尺寸应用不同样式
-回答模板2：技术实现
-响应式设计的技术实现：
-•
-Viewport meta标签
-：
+// 正例：先读后写
+const widths = items.map(el => el.offsetWidth);
+items.forEach((el, i) => { el.style.width = widths[i] + 10 + 'px'; });
+```
+
+> 🎯 关键要点
+> - 重排必带重绘，重绘不一定带重排。
+> - 渲染管线：JS→Style→Layout→Paint→Composite。
+> - 几何读取类属性（offset*/client*/getBoundingClientRect）会触发强制同步布局。
+> - 读写分离 + rAF 是消除 layout thrashing 的通用手段。
+
+> 🔍 追问
+> - 修改 `color` 与修改 `width` 在渲染管线上的差异在哪一步？
+> - `will-change` 能否消除强制同步布局？
+
+### 27. 什么是层叠上下文（Stacking Context）？哪些属性会创建它？为什么 z-index 有时会"失效"？｜高级
+
+核心结论：层叠上下文是元素在 z 轴上的「隔离渲染单元」，子元素的 `z-index` 只在同一上下文内比较；z-index「失效」几乎都是因为比较的不是同一上下文。
+
+- 什么是层叠上下文：每个上下文是一个独立的 z 轴盒子，内部子元素按上下文内规则堆叠，整体作为一个单元参与父上下文的排序。
+- 创建条件（常见）：
+  - 根元素 `<html>`（最外层上下文）。
+  - `position` 非 static 且 `z-index` 非 auto。
+  - `opacity` 小于 1。
+  - `transform`/`filter`/`perspective`/`clip-path`/`mask` 非 none。
+  - `will-change` 取值为上述任一属性。
+  - `mix-blend-mode` 非 normal。
+  - `isolation: isolate`。
+  - Flex/Grid 的直接子项且 `z-index` 非 auto。
+  - `position: fixed`（现代浏览器中）。
+  - `contain: layout/paint` 等。
+- 为什么 z-index 失效：z-index 只在「同一个层叠上下文」中比较大小；一个被层层嵌套在父上下文里的子元素，无论 `z-index` 多大，都无法越过父上下文的边界，盖到父上下文的兄弟之上。
+
+> 💡 提示
+> 调试 z-index 问题时，先沿 DOM 向上找「最近的创建了层叠上下文的祖先」，确认比较范围，再决定给谁加 `z-index` 或 `isolation`。
+
+```css
+.parent { position: relative; z-index: 1; }      /* 创建上下文 A */
+.child  { position: absolute; z-index: 9999; }    /* 只在 A 内比较 */
+.sibling-of-parent { position: relative; z-index: 2; } /* 与 A 同级比较 */
+```
+
+> 🎯 关键要点
+> - z-index 的比较严格局限于同一层叠上下文。
+> - transform/opacity/filter 等都会「意外」创建上下文。
+> - 想要隔离比较范围可用 `isolation: isolate`。
+> - Flex/Grid 子项设 z-index 也会建上下文。
+
+> 🔍 追问
+> - `opacity: 0.99` 为何会悄悄创建层叠上下文？
+> - `isolation: isolate` 相比设 `z-index` 有何优势？
+
+### 28. contain 与 content-visibility 是什么？如何用它们降低长列表/复杂页面的渲染开销？｜高级
+
+核心结论：`contain` 把子树与页面其余部分在布局/绘制/尺寸上隔离，`content-visibility: auto` 跳过屏外元素的渲染；二者都能显著减少长列表与复杂页面的渲染与更新成本。
+
+- `contain` 的取值与含义：
+  - `size`：元素尺寸不依赖子内容（需自定尺寸），外部布局不受其内部影响。
+  - `layout`：内部布局变化不向外传播，隔离重排。
+  - `paint`：子内容不溢出元素绘制边界，可裁剪。
+  - `style`：抑制部分属性（如 counters）向子树外扩散。
+  - `strict` = `size layout paint`；`content` = `layout paint style`（常用，不强制自定尺寸）。
+- `content-visibility: auto`：浏览器对「屏外」元素跳过其布局与绘制（相当于 `contain: layout style paint` + 跳过渲染），首屏与滚动性能大幅提升；配合 `contain-intrinsic-size` 预留占位尺寸，避免滚动条跳动。
+- 兼容性：Chromium 系支持良好；Firefox 对 `content-visibility` 仍在推进；Safari 18+ 起支持。不支持的浏览器会「正常渲染」，无破坏性副作用，可放心渐进增强。
+
+```css
+/* 长列表项：跳过屏外渲染 */
+.card { content-visibility: auto; contain-intrinsic-size: 200px; }
+/* 复杂组件：隔离布局与绘制 */
+.widget { contain: content; }
+```
+
+> ⚠️ 注意
+> 用 `content-visibility: auto` 却不设 `contain-intrinsic-size`，元素屏外时高度为 0，会导致页面滚动条长度和锚点定位在滚动过程中剧烈跳动。
+
+> 🎯 关键要点
+> - `contain` 隔离重排/重绘，「影响范围」被锁在子树内。
+> - `content-visibility: auto` 是长列表渲染优化的利器。
+> - `contain-intrinsic-size` 必须配合，否则滚动跳动。
+> - 两者均为渐进增强，不支持时仅退化为普通渲染。
+
+> 🔍 追问
+> - `contain: strict` 与 `content` 的差异为何关键（size 的副作用）？
+> - `content-visibility: auto` 对 SEO 与可访问性有无影响？
+
+### 29. 移动端 1px 边框问题是怎么产生的？设备像素比（DPR）与视口缩放有什么关系，如何解决？｜高级
+
+核心结论：1px 边框「变粗」是因为 CSS 的 1px 是逻辑像素，在高 DPR 屏上被映射成多个物理像素；要得到真正发丝级细线需按 DPR 缩放绘制。
+
+- 成因：CSS 像素是逻辑单位，`devicePixelRatio = 物理像素 / CSS 像素`。在 DPR=2 的屏上，1 个 CSS px = 2 个物理像素，于是 `border: 1px` 实际渲染为 2 物理像素，肉眼显得比预期「粗」；反过来若想画「1 物理像素」发丝线，用 `1px` 反而做不到。
+- 视口关系：`<meta name="viewport" content="width=device-width, initial-scale=1">` 让 1 CSS px 对应 DPR 个设备像素；若 `initial-scale=1` 不变，DPR 越高逻辑像素越「密」，同一 CSS px 占的物理像素越多。
+- 解决方案：
+  - 伪元素 + `transform: scale`：用 `::after` 画 1px 边框，按 `scale(0.5)`（DPR=2）或 `scale(0.333)`（DPR=3）缩放为发丝线。
+  - `border-image` / `background` 渐变：用 0.5px 渐变模拟单像素线。
+  - 媒体查询按 DPR 切换：`@media (min-resolution: 2dppx)` 时启用缩放方案。
+  - 现代方案：直接依赖 `0.5px` 边框在部分高分屏被识别为 1 物理像素（兼容性有限，需兜底）。
+
+```css
+.hairline {
+  position: relative;
+}
+.hairline::after {
+  content: "";
+  position: absolute;
+  left: 0; top: 0;
+  width: 200%; height: 200%;
+  border: 1px solid #ccc;
+  transform: scale(0.5);
+  transform-origin: 0 0;
+  box-sizing: border-box;
+  pointer-events: none;
+}
+@media (min-resolution: 3dppx) {
+  .hairline::after { transform: scale(0.333); }
+}
+```
+
+> 🎯 关键要点
+> - 1px 变粗的本质是 DPR 把逻辑像素放大成多物理像素。
+> - DPR = 物理像素 / CSS 像素，视口 meta 决定二者映射。
+> - 伪元素 + `transform: scale` 是最稳的发丝线方案。
+> - 应针对 DPR=2/3 分别缩放，并保留普通边框兜底。
+
+> 🔍 追问
+> - 为什么 `border-width: 0.5px` 在部分手机上仍是 1px？
+> - `initial-scale=0.5` 缩放整页能否解决 1px 问题？代价是什么？
+
+### 30. 如何用 prefers-reduced-motion 等媒体特性实现可降级的动效与无障碍适配？｜中级
+
+核心结论：`prefers-reduced-motion` 让用户表达「减少动效」偏好，开发者应在 `reduce` 时关闭/简化装饰性动画，保留必要的状态变化；同类媒体特性还有 `prefers-color-scheme`/`prefers-contrast` 等。
+
+- 机制：操作系统（Windows 动画设置、macOS 减弱动态效果、iOS 辅助功能）会把用户偏好暴露为媒体查询 `prefers-reduced-motion: reduce / no-preference`。
+- 实践：默认用 `no-preference` 提供丰富动效；在 `reduce` 中把 `animation`/`transition` 设为 `none` 或极短，仅保留「信息性」的状态切换（如颜色变化），去掉位移、缩放、视差等易引发眩晕的效果。
+- 相关无障碍媒体特性：`prefers-color-scheme`（深/浅色）、`prefers-contrast`（高对比）、`prefers-reduced-transparency`（减少透明）。
+- 降级原则：动效是增强而非功能本身，关闭后页面须完全可用；不要全局 `*{animation:none}` 一刀切时破坏焦点提示等关键反馈。
+
+```css
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+```
+
+> 🎯 关键要点
+> - 动效应尊重「减少动态效果」系统设置。
+> - `reduce` 下禁用位移/缩放类眩晕动效，保留必要反馈。
+> - 同类特性可一并做深/浅色、高对比适配。
+> - 降级后页面必须仍完整可用，不能牺牲功能。
+
+> 🔍 追问
+> - 为什么 `reduce` 下仍要保留极短 transition 而非完全 none？
+> - 如何用 JS 读取用户的 reduced-motion 偏好？
+
+## 响应式设计（10 题）
+
+### 31. 什么是响应式设计？它的核心原则是什么？｜初级
+
+核心结论：响应式设计让同一套页面自适应不同屏幕尺寸与设备，核心是「移动优先 + 流式布局 + 弹性媒体 + 媒体查询」。
+
+- 核心原则：
+  1. 移动优先：先设计小屏，再逐步增强到大屏。
+  2. 流式布局：用百分比/`fr` 等相对单位而非固定宽。
+  3. 弹性图片：图片随容器缩放（`max-width:100%`）。
+  4. 媒体查询：按断点切换布局与样式。
+- 技术实现：viewport meta 标签 + `@media` + Flex/Grid + 相对单位（rem、vw、vh）。
+
+```html
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-•
-媒体查询
-：
-@media (min-width: 768px) { ... }
-•
-Flexbox/Grid
-：现代布局技术
-•
-相对单位
-：rem, em, vw, vh等
-回答模板3：最佳实践
-响应式设计的最佳实践：
-1. 从移动端开始设计（移动优先）
-2. 使用流式网格布局
-3. 优化图片和媒体
-4. 设置合适的断点
-5. 测试多种设备和屏幕尺寸
-6. 考虑触摸交互和手势
-32. 如何设置CSS媒体查询？有哪些常见断点？
-中等
-媒体查询
-断点
-响应式
-查看答案
-回答模板1：媒体查询语法
-/* 基础语法 */
-@media media-type and (media-feature) {
-    /* CSS规则 */
-}
+```
 
-/* 示例 */
+> 🎯 关键要点
+> - 响应式 ≠ 单纯缩放，而是「重构布局适配」。
+> - 移动优先能控制 CSS 复杂度与加载成本。
+> - viewport meta 是移动端响应式的前提。
+> - 断点应由内容决定，而非死盯设备尺寸。
+
+> 🔍 追问
+> - 没有 viewport meta，移动端会如何渲染页面？
+> - 为什么强调「内容决定断点」？
+
+### 32. 如何设置CSS媒体查询？有哪些常见断点？｜中级
+
+核心结论：媒体查询用 `@media` 按视口/特性应用样式；推荐「移动优先用 min-width」，断点跟着内容布局走而非设备型号。
+
+- 语法：
+
+```css
+@media (min-width: 768px) { .container { max-width: 720px; } }
+@media (min-width: 768px) and (max-width: 1024px) { /* 平板 */ }
+```
+
+- 常见断点（参考 Bootstrap 体系）：
+  - `≤575px` 手机；`576–767px` 大手机/小平板；`768–991px` 平板；`992–1199px` 小桌面；`≥1200px` 大桌面。
+- 最佳实践：移动优先（min-width 递增）、断点随内容、避免过多断点、别忘 `@media print` 打印样式。
+
+> 🎯 关键要点
+> - `min-width` 是移动优先的写法，`max-width` 是桌面优先。
+> - 多条件用 `and` 连接，支持 `orientation`/`resolution` 等特性。
+> - 断点应落在「布局开始难看」的位置，而非固定设备宽度。
+> - 真实设备测试优于纯模拟器。
+
+> 🔍 追问
+> - `min-width` 与 `max-width` 在层叠顺序上如何叠加？
+> - 如何用 `orientation: portrait` 区分横竖屏？
+
+### 33. 如何实现响应式导航菜单？｜中级
+
+核心结论：响应式导航的移动端用「汉堡菜单（默认隐藏、切换展开）」，桌面端展开为横排；可用纯 CSS（checkbox/`:checked`）或 JS 控制显隐。
+
+- 基础切换：移动端 `.nav-menu { display:none }`，桌面端 `@media (min-width:768px)` 改 `display:flex` 横排；汉堡按钮反之。
+- CSS-only：用隐藏 checkbox + `:checked ~ .nav-menu { max-height: ... }` 做无 JS 展开，过渡 `max-height`。
+- 最佳实践：移动优先设计、触摸目标够大、当前页明确标识、避免依赖 hover（移动端无 hover）、多设备实测。
+
+```css
+.nav-menu { display: none; flex-direction: column; }
 @media (min-width: 768px) {
-    .container {
-        max-width: 720px;
-    }
+  .nav-menu { display: flex; flex-direction: row; }
+  .nav-toggle { display: none; }
 }
+/* 纯 CSS 展开 */
+.nav-toggle:checked ~ .nav-menu { max-height: 300px; }
+```
 
-/* 多条件 */
-@media (min-width: 768px) and (max-width: 1024px) {
-    /* 平板样式 */
-}
-回答模板2：常见断点
-/* 移动设备 */
-@media (max-width: 575px) { ... }
+> 🎯 关键要点
+> - 移动端菜单靠「显隐 + 展开」而非 hover。
+> - 纯 CSS 方案可用 checkbox `:checked` 控制。
+> - 触摸目标要够大，间距合理。
+> - 桌面展开、移动折叠是主流模式。
 
-/* 平板设备 */
-@media (min-width: 576px) and (max-width: 767px) { ... }
+> 🔍 追问
+> - 纯 CSS 菜单用 `:checked` 有什么可访问性短板？
+> - 为什么移动端要避免过度依赖 `:hover`？
 
-/* 小桌面 */
-@media (min-width: 768px) and (max-width: 991px) { ... }
+### 34. 如何优化响应式图片加载？｜高级
 
-/* 大桌面 */
-@media (min-width: 992px) and (max-width: 1199px) { ... }
+核心结论：响应式图片优化 = 「正确尺寸图源 + 现代格式 + 懒加载 + CDN」，核心是 `srcset/sizes` 与 `<picture>` 按设备给图。
 
-/* 超大屏幕 */
-@media (min-width: 1200px) { ... }
-回答模板3：最佳实践
-媒体查询的最佳实践：
-1.
-移动优先
-：使用min-width而不是max-width
-2.
-内容决定断点
-：根据内容布局选择断点，而不是设备
-3.
-保持简单
-：避免过多的断点
-4.
-测试真实设备
-：不要只依赖浏览器工具
-5.
-考虑打印样式
-：使用@media print
-33. 如何实现响应式导航菜单？
-中等
-响应式导航
-菜单
-移动适配
-查看答案
-回答模板1：基础实现
-/* 移动端菜单 */
-.nav-menu {
-    display: none;
-    flex-direction: column;
-    width: 100%;
-}
+- HTML 手段：`srcset`（按 DPR 给多分辨率）+ `sizes`（声明显示宽度）+ `loading="lazy"` 懒加载。
+- `<picture>` 进阶：按 `media` 给不同裁切，并优先 `type="image/webp"`/`avif`，`<img>` 兜底。
+- 性能策略：采用 WebP/AVIF 等现代格式（体积显著小于 JPEG/PNG）；压缩工具处理；图片 CDN 动态优化；关键图预加载、非关键图懒加载；能用 SVG 的图标优先 SVG。
 
-.nav-toggle {
-    display: block;
-}
-
-/* 桌面端菜单 */
-@media (min-width: 768px) {
-    .nav-menu {
-        display: flex;
-        flex-direction: row;
-        width: auto;
-    }
-    
-    .nav-toggle {
-        display: none;
-    }
-}
-回答模板2：CSS-only实现
-/* 使用checkbox实现 */
-.nav-toggle {
-    display: none;
-}
-
-.nav-menu {
-    max-height: 0;
-    overflow: hidden;
-    transition: max-height 0.3s ease;
-}
-
-.nav-toggle:checked ~ .nav-menu {
-    max-height: 300px;
-}
-
-@media (min-width: 768px) {
-    .nav-menu {
-        max-height: none;
-    }
-}
-回答模板3：最佳实践
-响应式导航的最佳实践：
-1.
-移动优先
-：先设计移动端菜单
-2.
-触摸友好
-：按钮足够大，间距合适
-3.
-清晰的视觉层次
-：当前页面明显标识
-4.
-避免悬停菜单
-：移动端没有悬停
-5.
-测试多种设备
-：确保在所有设备上可用
-34. 如何优化响应式图片加载？
-困难
-响应式图片
-性能优化
-图片加载
-查看答案
-回答模板1：HTML方法
-<img 
-    srcset="small.jpg 480w, medium.jpg 800w, large.jpg 1200w"
-    sizes="(max-width: 600px) 480px, (max-width: 1000px) 800px, 1200px"
-    src="medium.jpg"
-    alt="响应式图片"
-    loading="lazy"
->
-回答模板2：picture元素
+```html
 <picture>
-    <source media="(min-width: 1200px)" srcset="large.webp" type="image/webp">
-    <source media="(min-width: 1200px)" srcset="large.jpg">
-    <source media="(min-width: 768px)" srcset="medium.webp" type="image/webp">
-    <source media="(min-width: 768px)" srcset="medium.jpg">
-    <img src="small.jpg" alt="响应式图片" loading="lazy">
+  <source media="(min-width: 1200px)" srcset="large.webp" type="image/webp">
+  <source media="(min-width: 768px)" srcset="medium.webp" type="image/webp">
+  <img src="small.jpg" alt="响应式图片" loading="lazy">
 </picture>
-回答模板3：性能优化
-响应式图片的性能优化：
-1.
-使用现代格式
-：WebP、AVIF等
-2.
-懒加载
-：使用loading="lazy"
-3.
-图片压缩
-：使用工具压缩图片
-4.
-CDN
-：使用图片CDN进行动态优化
-5.
-CSS图片
-：使用背景图片和CSS sprites
-6.
-SVG
-：使用SVG代替位图
-35. 如何创建响应式表格？
-中等
-响应式表格
-数据展示
-移动适配
-查看答案
-回答模板1：水平滚动
-.table-container {
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-}
+```
 
-table {
-    width: 100%;
-    min-width: 600px;
-}
-回答模板2：重排为卡片
-/* 移动端重排 */
+> 🎯 关键要点
+> - `srcset + sizes` 让浏览器按 DPR 选图，避免大图小用。
+> - WebP/AVIF 通常比 JPG 小 25%–50%。
+> - `loading="lazy"` 推迟屏外图片请求。
+> - 图标类优先 SVG，矢量无损且体积小。
+
+> 🔍 追问
+> - AVIF 相比 WebP 的优势与兼容性现状？
+> - `loading="lazy"` 对 LCP（最大内容绘制）有无负面影响？
+
+### 35. 如何创建响应式表格？｜中级
+
+核心结论：窄屏表格常用「横向滚动」「重排为卡片」两类思路；卡片式用 `data-label` + `::before` 把表头信息塞进每格。
+
+- 横向滚动：外层 `overflow-x: auto`，表格 `min-width` 保宽，移动端可滚动查看。
+- 重排为卡片：`@media (max-width:767px)` 把 `table/thead/tbody/tr/td` 全设 `display:block`，隐藏 `thead`，每格用 `td::before { content: attr(data-label) }` 显示字段名。
+- 其他方法：移动端只显示关键列、行可展开看详情、分页/搜索减少数据量、必要时用图表替代表格。
+
+```css
 @media (max-width: 767px) {
-    table, thead, tbody, th, td, tr {
-        display: block;
-    }
-    
-    thead {
-        display: none;
-    }
-    
-    tr {
-        margin-bottom: 1rem;
-        border: 1px solid #ddd;
-    }
-    
-    td {
-        position: relative;
-        padding-left: 50%;
-    }
-    
-    td::before {
-        content: attr(data-label);
-        position: absolute;
-        left: 10px;
-        font-weight: bold;
-    }
+  table, thead, tbody, th, td, tr { display: block; }
+  thead { display: none; }
+  td { position: relative; padding-left: 50%; }
+  td::before { content: attr(data-label); position: absolute; left: 10px; font-weight: bold; }
 }
-回答模板3：其他方法
-响应式表格的其他方法：
-1.
-优先级列
-：在移动端只显示重要列
-2.
-折叠面板
-：每行可展开显示详细信息
-3.
-搜索和筛选
-：减少显示的数据量
-4.
-分页
-：每页显示少量数据
-5.
-图表替代
-：用图表代替数据表格
-36. 什么是移动优先设计？如何实现？
-中等
-移动优先
-设计原则
-响应式
-查看答案
-回答模板1：概念解释
-移动优先是一种网页设计策略，先为移动设备设计和开发，然后逐步增强到更大的屏幕。
-核心原则：
-1.
-内容优先
-：在小屏幕上优先展示核心内容
-2.
-性能优先
-：移动设备性能有限，需要优化
-3.
-触摸友好
-：设计适合触摸操作的界面
-回答模板2：实现方法
-/* 移动优先的CSS */
-.container {
-    padding: 1rem;
-    max-width: 100%;
-}
+```
 
-/* 逐步增强 */
-@media (min-width: 768px) {
-    .container {
-        padding: 2rem;
-        max-width: 720px;
-    }
-}
+> 🎯 关键要点
+> - 简单表格用横向滚动最省事。
+> - 卡片重排依赖 `data-label` 属性携带表头。
+> - 隐藏 `thead` 后必须用 `::before` 补字段名，否则数据无上下文。
+> - 超大数据用分页/搜索而非硬塞进小屏。
 
-@media (min-width: 1024px) {
-    .container {
-        padding: 3rem;
-        max-width: 960px;
-    }
-}
-回答模板3：优势
-移动优先设计的优势：
-1.
-更好的性能
-：先加载核心内容和样式
-2.
-更好的用户体验
-：在移动设备上表现更好
-3.
-更清晰的代码结构
-：CSS更简洁，更容易维护
-4.
-更好的SEO
-：搜索引擎更喜欢移动友好的网站
-5.
-面向未来
-：适应不断增长的移动用户
-37. 如何处理响应式设计中的字体大小？
-中等
-响应式字体
-排版
-可读性
-查看答案
-回答模板1：媒体查询方法
-/* 基础字体大小 */
-html {
-    font-size: 16px;
-}
+> 🔍 追问
+> - 卡片重排后屏幕阅读器如何朗读表头与单元格的对应关系？
+> - 何时应放弃表格改用图表？
 
-/* 平板 */
-@media (min-width: 768px) {
-    html {
-        font-size: 18px;
-    }
-}
+### 36. 什么是移动优先设计？如何实现？｜中级
 
-/* 桌面 */
-@media (min-width: 1024px) {
-    html {
-        font-size: 20px;
-    }
-}
-回答模板2：clamp函数
-/* 使用clamp()实现流式字体 */
-h1 {
-    font-size: clamp(2rem, 5vw, 4rem);
-}
+核心结论：移动优先是先为小屏设计与开发，再用 `min-width` 媒体查询逐步增强到大屏；它带来更好的性能、代码结构与 SEO。
 
-p {
-    font-size: clamp(1rem, 2vw, 1.25rem);
-}
+- 核心原则：内容优先（小屏只放核心）、性能优先（移动端资源受限）、触摸友好（点击目标、手势）。
+- 实现：基础样式面向移动端（小 padding、单列），`@media (min-width:768px)`、`(min-width:1024px)` 逐级增大间距与最大宽度。
 
-/* 或者使用calc() */
-h1 {
-    font-size: calc(1.5rem + 2vw);
-}
-回答模板3：最佳实践
-响应式字体的最佳实践：
-1.
-使用rem单位
-：便于统一缩放
-2.
-设置合理的行高
-：通常1.4-1.6
-3.
-考虑可读性
-：移动端不要小于16px
-4.
-限制最大字体大小
-：避免在大屏幕上过大
-5.
-测试多种设备
-：确保在所有设备上可读
-38. 如何创建响应式布局网格系统？
-困难
-网格系统
-Flexbox
-Grid
-查看答案
-回答模板1：Flexbox网格
-.grid {
-    display: flex;
-    flex-wrap: wrap;
-    margin: -0.5rem;
-}
+```css
+.container { padding: 1rem; max-width: 100%; }   /* 移动端基线 */
+@media (min-width: 768px)  { .container { padding: 2rem; max-width: 720px; } }
+@media (min-width: 1024px) { .container { padding: 3rem; max-width: 960px; } }
+```
 
-.grid-item {
-    flex: 1 1 300px;
-    padding: 0.5rem;
-}
+> 🎯 关键要点
+> - 移动优先 = 先写小屏样式，大屏用 min-width 增强。
+> - 与「桌面优先（max-width）」相比，CSS 更简洁、覆盖更少。
+> - 优先加载核心内容与样式，性能更优。
+> - 触摸交互（足够大的点击区）要提前考虑。
 
-/* 响应式列 */
-@media (min-width: 768px) {
-    .grid-item {
-        flex: 1 1 calc(50% - 1rem);
-    }
-}
+> 🔍 追问
+> - 移动优先相比桌面优先在 CSS 体积上有何优势？
+> - 移动优先如何影响图片与 JS 的资源策略？
 
-@media (min-width: 1024px) {
-    .grid-item {
-        flex: 1 1 calc(33.333% - 1rem);
-    }
-}
-回答模板2：CSS Grid
-.grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-    gap: 1rem;
-}
+### 37. 如何处理响应式设计中的字体大小？｜中级
 
-/* 或者使用minmax和auto-fill */
-.grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-    gap: 2rem;
-}
-回答模板3：自定义断点
-.container {
-    --grid-columns: 1;
-    display: grid;
-    grid-template-columns: repeat(var(--grid-columns), 1fr);
-    gap: 1rem;
-}
+核心结论：响应式字体以 `rem` 为基准、用媒体查询或 `clamp()` 做流式缩放，兼顾可读性与大屏不过大。
 
-@media (min-width: 576px) {
-    .container {
-        --grid-columns: 2;
-    }
-}
+- 媒体查询法：根元素 `font-size` 随断点变化（如 16→18→20px），子元素用 `rem` 联动缩放。
+- 流式法：`clamp(最小, 理想vw, 最大)` 让字号在视口间平滑过渡且有上下界；也可用 `calc(1.5rem + 2vw)`。
+- 最佳实践：用 rem 便于整体缩放；行高 1.4–1.6 较舒适；移动端正文不小于 16px；限制最大字号避免大屏过大。
 
-@media (min-width: 768px) {
-    .container {
-        --grid-columns: 3;
-    }
-}
+```css
+html { font-size: 16px; }
+@media (min-width: 1024px) { html { font-size: 20px; } }
+h1 { font-size: clamp(2rem, 5vw, 4rem); }
+```
 
-@media (min-width: 1024px) {
-    .container {
-        --grid-columns: 4;
-    }
-}
-39. 如何测试响应式设计？
-中等
-响应式测试
-调试
-质量保证
-查看答案
-回答模板1：浏览器工具
-使用浏览器开发者工具：
-1.
-Chrome DevTools
-：设备模拟器（Ctrl+Shift+M）
-2.
-Firefox响应式设计模式
-：Ctrl+Shift+M
-3.
-Safari
-：Develop > Enter Responsive Design Mode
-回答模板2：真实设备测试
-真实设备测试方法：
-1.
-本地网络测试
-：在同一WiFi下测试
-2.
-远程调试
-：使用Chrome Remote Debugging
-3.
-云测试服务
-：BrowserStack、Sauce Labs等
-4.
-物理设备
-：使用真实手机和平板测试
-回答模板3：测试清单
-响应式设计的测试清单：
-1.
-布局测试
-：所有断点下的布局是否正确
-2.
-字体测试
-：字体大小和可读性
-3.
-图片测试
-：图片是否正确缩放
-4.
-交互测试
-：按钮、表单等是否可用
-5.
-性能测试
-：加载速度和流畅度
-6.
-可访问性测试
-：屏幕阅读器支持
-40. 如何优化响应式网站的性能？
-困难
-性能优化
-响应式
-加载速度
-查看答案
-回答模板1：图片优化
-图片优化策略：
-1.
-使用现代格式
-：WebP、AVIF等
-2.
-响应式图片
-：使用srcset和sizes
-3.
-懒加载
-：使用loading="lazy"
-4.
-图片压缩
-：使用工具压缩图片
-回答模板2：CSS优化
-CSS优化策略：
-1.
-关键CSS
-：内联首屏CSS
-2.
-异步加载
-：非关键CSS异步加载
-3.
-CSS压缩
-：压缩CSS文件
-4.
-避免重复
-：减少重复的CSS规则
-5.
-使用变量
-：减少CSS文件大小
-回答模板3：JavaScript优化
-JavaScript优化策略：
-1.
-代码分割
-：按需加载JavaScript
-2.
-延迟加载
-：非关键JavaScript延迟加载
-3.
-减少DOM操作
-：批量操作DOM
-4.
-使用Web Workers
-：将计算密集型任务移至Worker
-5.
-优化事件处理
-：防抖和节流
-🚀 高级特性
-41. 什么是CSS预处理器？它们解决了什么问题？
-中等
-预处理器
-Sass
-Less
-查看答案
-回答模板1：概念解释
-CSS预处理器是扩展CSS语法的工具，添加了变量、混合（mixins）、函数等特性。
-主要解决的问题：
-1.
-代码重复
-：通过变量和混合减少重复
-2.
-维护困难
-：通过模块化提高可维护性
-3.
-功能有限
-：添加编程语言的特性
-回答模板2：常见预处理器
-Sass/SCSS
-：功能最强大，支持嵌套、变量、混合、函数等
-Less
-：语法更接近CSS，学习曲线较平缓
-Stylus
-：语法灵活，支持多种语法风格
-// Sass示例
+> 🎯 关键要点
+> - `rem` 让字号随根元素统一缩放。
+> - `clamp()` 一次实现「流式 + 上下限」，比多断点更顺滑。
+> - 正文别小于 16px，保证移动端可读。
+> - 行高 1.4–1.6 是通用舒适区间。
+
+> 🔍 追问
+> - `clamp()` 的「理想值」用 vw 时，极端窄屏会怎样？
+> - 为什么推荐用 rem 而非 em 控制全局字号？
+
+### 38. 如何创建响应式布局网格系统？｜高级
+
+核心结论：响应式网格可用 Flex 的 `flex-wrap + flex-basis` 或 Grid 的 `auto-fit/minmax`；Grid 的 `repeat(auto-fit, minmax())` 能零媒体查询自适应列数。
+
+- Flexbox 网格：`display:flex; flex-wrap:wrap`，子项 `flex: 1 1 300px`，再用 `min-width` 断点调整每列基准。
+- CSS Grid 自适应：`grid-template-columns: repeat(auto-fit, minmax(300px, 1fr))`，容器变宽时自动增列，无需媒体查询；`auto-fill` 与 `auto-fit` 差异在于空轨道是否折叠。
+- 自定义断点：用 CSS 变量 `--grid-columns` 配 `@media` 逐级设 1/2/3/4 列，兼容性与可控性最佳。
+
+```css
+.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1rem; }
+/* 变量控制 */
+.grid { --cols: 1; display: grid; grid-template-columns: repeat(var(--cols), 1fr); }
+@media (min-width: 768px)  { .grid { --cols: 3; } }
+```
+
+> 🎯 关键要点
+> - `auto-fit + minmax` 是无媒体查询自适应的首选。
+> - `auto-fit` 折叠空轨道，`auto-fill` 保留空轨道占位。
+> - Flex 网格用 `flex-basis` 控制最小列宽。
+> - 变量 + 媒体查询适合需要精确控制列数的场景。
+
+> 🔍 追问
+> - `auto-fit` 与 `auto-fill` 在只有 1 个项目时表现有何不同？
+> - 为什么 `minmax(300px, 1fr)` 比固定列数更稳？
+
+### 39. 如何测试响应式设计？｜中级
+
+核心结论：响应式测试应「开发者工具模拟 + 真机验证 + 清单核对」三结合，模拟器不能替代真实设备与触控。
+
+- 浏览器工具：Chrome DevTools 设备模拟（Ctrl+Shift+M）、Firefox 响应式设计模式、Safari Develop 响应式模式。
+- 真机测试：同 WiFi 局域网访问、Chrome Remote Debugging 远程调试、BrowserStack/Sauce Labs 云真机、物理手机/平板实测。
+- 测试清单：各断点布局、字体可读性、图片缩放、交互（按钮/表单触控）、性能（加载与帧率）、可访问性（屏幕阅读器）。
+
+> 🎯 关键要点
+> - 模拟器只能验证布局，触控/手势必须真机。
+> - 真机覆盖主流 iOS/Android 机型与系统版本。
+> - 性能与可访问性是响应式验收的硬指标。
+> - 云真机服务可弥补设备不足。
+
+> 🔍 追问
+> - 模拟器的 DPR 与真机是否完全一致？
+> - 如何用 Lighthouse 在 CI 中做响应式性能门禁？
+
+### 40. 如何优化响应式网站的性能？｜高级
+
+核心结论：响应式性能优化覆盖「图片、CSS、JS」三线：图片用现代格式 + srcset + 懒加载，CSS 内联关键样式并异步非关键样式，JS 做代码分割与防抖节流。
+
+- 图片优化：WebP/AVIF、`srcset/sizes`、`loading="lazy"`、压缩、CDN。
+- CSS 优化：内联首屏关键 CSS（Critical CSS）、非关键 CSS 异步加载、压缩去重、用变量减体积。
+- JS 优化：代码分割按需加载、非关键脚本延迟、`requestAnimationFrame` 批量 DOM 操作、计算密集任务移入 Web Worker、事件处理防抖/节流。
+
+> 🎯 关键要点
+> - Critical CSS 直出可消除首屏渲染阻塞。
+> - 图片是响应式流量大头，优先级最高。
+> - 防抖/节流避免滚动/缩放时高频回调卡顿。
+> - Web Worker 把重计算移出主线程，保交互流畅。
+
+> 🔍 追问
+> - 如何抽取并内联 Critical CSS 而不阻塞构建？
+> - 防抖与节流的适用场景分别是什么？
+
+## 高级特性（10 题）
+
+### 41. 什么是CSS预处理器？它们解决了什么问题？｜中级
+
+核心结论：CSS 预处理器（Sass/Less/Stylus）通过变量、嵌套、mixin、函数扩展原生 CSS，解决重复代码与可维护性问题。
+
+- 解决的问题：
+  - 代码重复：变量与 mixin 复用样式片段。
+  - 维护困难：模块化/分文件组织样式。
+  - 功能有限：引入条件、循环、函数等编程能力。
+- 常见方案：Sass/SCSS（功能最全，主流）、Less（接近 CSS 语法）、Stylus（语法灵活）。
+
+```scss
 $primary-color: #2196f3;
+@mixin flex-center { display: flex; justify-content: center; align-items: center; }
+.container { @include flex-center; color: $primary-color; }
+```
 
-@mixin flex-center {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-}
+> 🎯 关键要点
+> - 预处理器在「构建期」编译为普通 CSS。
+> - Sass 的嵌套会增加选择器特异性，需克制。
+> - mixin 与函数减少重复，但滥用会膨胀产物。
+> - 新项目也可考虑原生 CSS 变量 + @layer 替代部分能力。
 
-.container {
-    @include flex-center;
-    color: $primary-color;
-}
-回答模板3：选择建议
-选择预处理器的建议：
-•
-新项目
-：推荐Sass/SCSS，功能最完善
-•
-已有Less项目
-：继续使用Less
-•
-简单项目
-：可以使用原生CSS变量
-•
-大型项目
-：考虑CSS-in-JS解决方案
-42. CSS-in-JS有哪些解决方案？各有什么优缺点？
-困难
-CSS-in-JS
-样式方案
-React
-查看答案
-回答模板1：主要方案
-CSS-in-JS的主要解决方案：
-1.
-Styled Components
-：最流行的CSS-in-JS库
-2.
-Emotion
-：性能更好的替代方案
-3.
-Stitches
-：零运行时解决方案
-4.
-CSS Modules
-：局部作用域CSS
-回答模板2：优缺点对比
-优点
-：
-• 样式作用域隔离，避免全局冲突
-• 动态样式支持
-• 组件化开发
-• 服务端渲染支持
-缺点
-：
-• 运行时性能开销
-• 调试困难
-• 学习曲线
-• 打包体积增加
-回答模板3：选择建议
-如何选择CSS-in-JS方案：
-•
-React项目
-：Styled Components或Emotion
-•
-性能要求高
-：零运行时方案如Stitches
-•
-大型项目
-：CSS Modules + 预处理器
-•
-团队熟悉CSS
-：CSS Modules
-•
-需要动态样式
-：CSS-in-JS方案
-43. 什么是CSS Houdini？它能做什么？
-困难
-CSS Houdini
-浏览器API
-扩展CSS
-查看答案
-回答模板1：概念解释
-CSS Houdini是一组浏览器API，允许开发者扩展CSS引擎，自定义CSS解析和渲染行为。
-主要API：
-1.
-Paint API
-：自定义CSS绘制
-2.
-Layout API
-：自定义布局算法
-3.
-Animation Worklet
-：自定义动画
-4.
-Properties and Values API
-：自定义CSS属性
-回答模板2：使用示例
-// 注册Paint Worklet
-CSS.paintWorklet.addModule('my-paint-worklet.js');
+> 🔍 追问
+> - Sass 嵌套过深会带来什么副作用？
+> - 原生 CSS 变量能否完全替代预处理器变量？
 
-// my-paint-worklet.js
+### 42. CSS-in-JS有哪些解决方案？各有什么优缺点？｜高级
+
+核心结论：CSS-in-JS 把样式写进组件（Styled Components/Emotion/Stitches/CSS Modules），换来作用域隔离与动态样式，代价是运行时开销与调试成本。
+
+- 主要方案：Styled Components（最流行）、Emotion（性能更好）、Stitches（零运行时）、CSS Modules（局部作用域、编译期）。
+- 优点：样式作用域隔离避免全局冲突、支持基于 props 的动态样式、组件化、SSR 友好。
+- 缺点：运行时性能开销（除零运行时方案）、调试较难（生成类名）、学习曲线、打包体积增大。
+
+| 方案 | 运行时 | 动态样式 | 适用 |
+| --- | --- | --- | --- |
+| Styled Components | 有 | 强 | React 通用 |
+| Emotion | 有（更轻） | 强 | 性能敏感 React |
+| Stitches | 零运行时 | 强 | 性能优先 |
+| CSS Modules | 编译期 | 弱 | 大型/框架无关 |
+
+> 🎯 关键要点
+> - 运行时方案有开销，零运行时（Stitches/CSS Modules）更轻。
+> - 动态样式是 CSS-in-JS 最大卖点。
+> - SSR 需注意样式提取与 FOUC。
+> - 团队熟悉 CSS 时，CSS Modules + 预处理器也很稳。
+
+> 🔍 追问
+> - 零运行时 CSS-in-JS 如何实现「动态样式」？
+> - CSS-in-JS 在 SSR 下易踩哪些坑？
+
+### 43. 什么是CSS Houdini？它能做什么？｜高级
+
+核心结论：CSS Houdini 是一组暴露 CSS 引擎底层能力的浏览器 API，让开发者用 JS 自定义绘制、布局、动画与属性，突破原生 CSS 的限制。
+
+- 主要 API：
+  - Paint API：自定义 `background`/`border` 等绘制（如棋盘格、波形）。
+  - Layout API：自定义布局算法。
+  - Animation Worklet：在独立线程跑自定义动画，不阻塞主线程。
+  - Properties & Values API：用 `CSS.registerProperty` 注册带类型/默认值的自定义属性，使其可过渡/动画。
+- 示例：注册 Paint Worklet 后 `background-image: paint(checkerboard)` 调用 JS 绘制。
+- 现状：Chrome/Edge 支持较好，Firefox/Safari 覆盖不全；适合实验性特性与高性能绘制。
+
+```js
+CSS.paintWorklet.addModule('checkerboard.js');
+// checkerboard.js
 class CheckerboardPainter {
-    paint(ctx, size, props) {
-        const tileSize = 20;
-        for (let y = 0; y < size.height / tileSize; y++) {
-            for (let x = 0; x < size.width / tileSize; x++) {
-                ctx.fillStyle = (x + y) % 2 ? 'white' : 'black';
-                ctx.fillRect(x * tileSize, y * tileSize, tileSize, tileSize);
-            }
-        }
-    }
+  paint(ctx, size) {
+    const t = 20;
+    for (let y = 0; y * t < size.height; y++)
+      for (let x = 0; x * t < size.width; x++) {
+        ctx.fillStyle = (x + y) % 2 ? 'white' : 'black';
+        ctx.fillRect(x * t, y * t, t, t);
+      }
+  }
 }
-
 registerPaint('checkerboard', CheckerboardPainter);
-回答模板3：实际应用
-CSS Houdini的实际应用：
-1.
-自定义背景
-：创建复杂的CSS背景图案
-2.
-自定义布局
-：实现特殊的布局需求
-3.
-性能优化
-：将计算密集型任务移至GPU
-4.
-工具开发
-：创建CSS开发工具
-5.
-实验性特性
-：测试新的CSS功能
-44. CSS容器查询（Container Queries）是什么？
-困难
-容器查询
-响应式
-现代CSS
-查看答案
-回答模板1：概念解释
-容器查询允许根据容器的大小而不是视口的大小来调整样式，这是响应式设计的重大改进。
-回答模板2：使用方法
-/* 定义容器 */
-.card-container {
-    container-type: inline-size;
-    container-name: card;
-}
+```
 
-/* 容器查询 */
-@container card (min-width: 400px) {
-    .card {
-        display: flex;
-        flex-direction: row;
-    }
-}
+> 🎯 关键要点
+> - Houdini 把 CSS 引擎能力「开放」给 JS。
+> - Properties & Values API 让自定义属性可动画。
+> - Animation Worklet 在独立线程，利于流畅度。
+> - 兼容性仍是落地的主要障碍，宜渐进增强。
 
-@container card (min-width: 800px) {
-    .card {
-        flex-direction: column;
-    }
-}
-回答模板3：实际优势
-容器查询的优势：
-1.
-组件化响应式
-：组件根据自身容器调整
-2.
-更好的复用性
-：组件在不同上下文中表现一致
-3.
-更简洁的代码
-：减少媒体查询的复杂性
-4.
-设计系统支持
-：更容易构建可复用的组件库
-5.
-微前端友好
-：每个微前端可以独立响应
-45. 什么是CSS层叠层（@layer）？如何使用？
-困难
-@layer
-CSS层叠层
-样式优先级
-查看答案
-回答模板1：概念解释
-CSS层叠层（
-@layer
-）是一种新的CSS特性，用于控制样式的层叠顺序，解决第三方样式冲突问题。
-回答模板2：使用方法
-/* 声明层叠层顺序 */
+> 🔍 追问
+> - `CSS.registerProperty` 相比普通自定义属性多了什么能力？
+> - 为什么 Houdini 的 Paint API 比纯 canvas 更适合做背景？
+
+### 44. CSS容器查询（Container Queries）是什么？｜高级
+
+核心结论：容器查询让组件依据「自身容器的尺寸」而非视口来响应，解决组件在不同布局上下文里「无法自适配」的痛点。
+
+- 概念：传统媒体查询看视口，组件被塞进侧栏或主区时表现一样；容器查询看容器宽度，组件可因地制宜。
+- 用法：父容器设 `container-type: inline-size`（或 `size`）+ 可选 `container-name`；子项用 `@container 名称 (min-width: ...)` 写查询。
+- 价值：组件化响应式、复用性更强、减少媒体查询复杂度、利于设计系统与微前端。
+
+```css
+.card-container { container-type: inline-size; container-name: card; }
+@container card (min-width: 400px) { .card { display: flex; flex-direction: row; } }
+@container card (min-width: 800px) { .card { flex-direction: column; } }
+```
+
+> ⚠️ 注意
+> `container-type: size` 会要求容器有确定尺寸，可能触发布局限制；多数场景用 `inline-size` 即可，开销更小。
+
+> 🎯 关键要点
+> - 容器查询的参照是「容器」而非「视口」。
+> - `inline-size` 只测宽度，`size` 测宽高（限制更多）。
+> - 与媒体查询互补：页面级用媒体查询，组件级用容器查询。
+> - 现代 Chromium/Firefox/Safari 均支持，可放心使用。
+
+> 🔍 追问
+> - 容器查询与媒体查询能否混用？优先级如何？
+> - `container-type: size` 为何会限制子元素影响父尺寸？
+
+### 45. 什么是CSS层叠层（@layer）？如何使用？｜高级
+
+核心结论：@layer 的工程价值在于「把第三方/工具类/组件样式分层管理、用声明顺序而非特异性控制优先级」，并要警惕「未分层样式优先级最高」这一常见坑。
+
+- 用法：先声明层顺序 `@layer base, components, utilities`（靠右优先级更高），再分别填充各层；未写入任何层的普通样式优先级高于所有层。
+- 工程落地：
+  - 第三方库入「底层」：把组件库/reset（如 normalize）放进 `base`，让业务 `components` 天然覆盖它，无需 `!important`。
+  - Tailwind 与自定义共存：把 Tailwind 的 `utilities`/`components` 作为层引入，自定义组件写在更高层或同样分层，避免工具类被意外压过。
+  - 坑：未分层样式优先级最高——若你随手写了一条不带层的 `.btn { ... }`，它会盖过 `@layer components` 里的 `.btn`，造成「明明写了层却覆盖不掉」的错觉。
+  - 迁移策略：新增样式优先放进合适的层；存量高特异性选择器可逐步用 `:where()` 降权或移入低层，再删 `!important`。
+- 与 Q10 分工：Q10 讲层叠顺序与 `!important` 反转的原理，本题讲真实项目如何落地与避坑。
+
+```css
 @layer base, components, utilities;
+@layer base { a { color: blue; } }        /* 第三方/reset 底层 */
+@layer components { .btn { color: red; } }/* 业务组件层 */
+/* 未分层：优先级最高，会盖过 components 里的 .btn */
+.btn { color: green; }
+```
 
-/* 定义层 */
-@layer base {
-    body { font-family: sans-serif; }
-}
+> 🎯 关键要点
+> - 层顺序「靠右更高」，用来替代堆特异性。
+> - 未分层样式优先级最高，是常见覆盖失败根源。
+> - 第三方库放底层，业务放高层，天然可覆盖。
+> - 迁移靠 `:where()` 降权 + 分层，逐步清除 `!important`。
 
-@layer components {
-    .button { background: blue; }
-}
+> 🔍 追问
+> - 如何让一条未分层样式「降级」到某层之下？
+> - Tailwind 的 `@layer` 与手写 `@layer` 冲突时如何共存？
 
-@layer utilities {
-    .hidden { display: none; }
-}
+### 46. 如何实现CSS中的深色模式？｜中级
 
-/* 未分层的样式优先级最高 */
-.button {
-    background: red; /* 覆盖components层的样式 */
-}
-回答模板3：实际应用
-层叠层的实际应用：
-1.
-第三方样式管理
-：控制第三方库样式的优先级
-2.
-设计系统
-：为不同类型的样式建立清晰的层次
-3.
-主题系统
-：更容易实现主题切换
-4.
-工具类框架
-：如Tailwind CSS与自定义样式共存
-5.
-大型项目
-：管理复杂的CSS架构
-46. 如何实现CSS中的深色模式？
-中等
-深色模式
-主题
-CSS变量
-查看答案
-回答模板1：CSS变量方法
-:root {
-    --bg-color: #ffffff;
-    --text-color: #000000;
-}
+核心结论：深色模式用 CSS 变量承载配色，靠 `prefers-color-scheme` 自动适配或手动切换 `class` 实现，关键是提供「尊重系统 + 可手动覆盖」双层机制。
 
+- 变量法：在 `:root` 定义浅色变量，`@media (prefers-color-scheme: dark)` 下覆盖为深色变量，业务统一引用 `var()`。
+- 类切换法：`:root.dark` 覆盖变量，JS `document.documentElement.classList.toggle('dark')` 切换，优先级高于媒体查询（用户手动意图优先）。
+- 最佳实践：用变量集中管理、尊重系统偏好、提供手动开关、保证对比度达标（可访问性）、渐进增强先浅后深。
+
+```css
+:root { --bg: #fff; --text: #000; }
 @media (prefers-color-scheme: dark) {
-    :root {
-        --bg-color: #000000;
-        --text-color: #ffffff;
-    }
+  :root { --bg: #000; --text: #fff; }
 }
+:root.dark { --bg: #000; --text: #fff; }
+body { background: var(--bg); color: var(--text); }
+```
 
-body {
-    background: var(--bg-color);
-    color: var(--text-color);
-}
-回答模板2：类切换方法
-:root {
-    --bg-color: #ffffff;
-    --text-color: #000000;
-}
+> 🎯 关键要点
+> - 配色全部走变量，主题切换零改业务样式。
+> - `prefers-color-scheme` 做自动，`class` 做手动且优先级更高。
+> - 深色模式必须保证文本/背景对比度，避免低对比。
+> - 图片/阴影在深色下也需重新评估可见性。
 
-:root.dark {
-    --bg-color: #000000;
-    --text-color: #ffffff;
-}
+> 🔍 追问
+> - 手动 `dark` class 与系统 `prefers-color-scheme` 谁的优先级高？
+> - 深色模式下如何避免纯黑背景导致的眩光？
 
-body {
-    background: var(--bg-color);
-    color: var(--text-color);
-}
+### 47. CSS滚动驱动动画（Scroll-driven Animations）是什么？｜高级
 
-/* JavaScript切换 */
-document.documentElement.classList.toggle('dark');
-回答模板3：最佳实践
-深色模式的最佳实践：
-1.
-使用CSS变量
-：便于主题切换
-2.
-尊重用户偏好
-：使用prefers-color-scheme
-3.
-提供切换选项
-：让用户手动切换
-4.
-测试可访问性
-：确保对比度足够
-5.
-渐进增强
-：先实现浅色模式，再添加深色模式
-47. CSS滚动驱动动画（Scroll-driven Animations）是什么？
-困难
-滚动动画
-CSS动画
-现代CSS
-查看答案
-回答模板1：概念解释
-滚动驱动动画允许开发者基于滚动位置创建动画，而不需要JavaScript的scroll事件监听。
-回答模板2：使用方法
-/* 基于滚动进度的动画 */
+核心结论：滚动驱动动画让动画进度绑定「滚动位置/元素进入视口」，无需 JS 监听 scroll 事件，由浏览器合成线程驱动，性能更好。
+
+- 两种时间线：
+  - `scroll()`：动画进度跟随某滚动容器（默认根滚动条）的滚动量。
+  - `view()`：进度跟随元素「进入/离开视口」的可见程度。
+- 用法：`animation-timeline: scroll()` 或 `view()`，配合普通 `@keyframes`，可设 `animation-range` 限定起止区间。
+- 价值：视差、滚动进度条、元素进入视口的淡入、替代 scroll 事件做性能友好的滚动动画。
+
+```css
 .element {
-    animation: slide-in linear;
-    animation-timeline: scroll();
+  animation: slide-in linear;
+  animation-timeline: scroll();
 }
-
 @keyframes slide-in {
-    from { transform: translateX(-100%); }
-    to { transform: translateX(0); }
+  from { transform: translateX(-100%); }
+  to   { transform: translateX(0); }
 }
+.element { animation: fade-in linear both; animation-timeline: view(); }
+```
 
-/* 基于视口进入的动画 */
-.element {
-    animation: fade-in linear;
-    animation-timeline: view();
-}
+> 🎯 关键要点
+> - `scroll()` 看滚动量，`view()` 看元素进出视口。
+> - 无需 JS scroll 监听，避免主线程抖动。
+> - `animation-range` 可精确控制动画起止区间。
+> - 兼容性以 Chromium 系为主，需为不支持的浏览器保留静止终态。
 
-@keyframes fade-in {
-    from { opacity: 0; }
-    to { opacity: 1; }
-}
-回答模板3：实际应用
-滚动驱动动画的实际应用：
-1.
-视差效果
-：基于滚动位置的视差动画
-2.
-进度指示器
-：页面滚动进度条
-3.
-元素进入
-：元素进入视口时的动画
-4.
-时间线
-：创建基于滚动的时间线
-5.
-性能优化
-：替代JavaScript的scroll事件
-48. 如何创建CSS中的玻璃态效果？
-中等
-玻璃态
-backdrop-filter
-视觉效果
-查看答案
-回答模板1：基础实现
+> 🔍 追问
+> - `scroll()` 与 `view()` 的进度基准有何不同？
+> - 不支持时如何保证内容仍可见（而非停在初始帧）？
+
+### 48. 如何创建CSS中的玻璃态效果？｜中级
+
+核心结论：玻璃态（Glassmorphism）靠半透明背景 + `backdrop-filter: blur()` 模糊底层内容实现，需保证对比度与性能。
+
+- 基础实现：`background: rgba(255,255,255,0.2)` + `backdrop-filter: blur(10px)`（加 `-webkit-` 前缀兼容），配细边框与圆角。
+- 深色玻璃态：背景改 `rgba(0,0,0,0.3)`、文字转白，效果更通透。
+- 注意：`backdrop-filter` 有性能成本（需合成层）；需 `-webkit-` 前缀（Safari）；背后必须有内容才看得出模糊；务必保证文本对比度可访问。
+
+```css
 .glass {
-    background: rgba(255, 255, 255, 0.2);
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
-    border: 1px solid rgba(255, 255, 255, 0.3);
-    border-radius: 10px;
+  background: rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 10px;
 }
-回答模板2：深色玻璃态
-.glass-dark {
-    background: rgba(0, 0, 0, 0.3);
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 10px;
-    color: white;
-}
-回答模板3：注意事项
-玻璃态效果的注意事项：
-1.
-性能考虑
-：backdrop-filter可能影响性能
-2.
-浏览器兼容
-：需要-webkit-前缀
-3.
-可访问性
-：确保足够的对比度
-4.
-背景要求
-：需要有内容在玻璃元素后面
-5.
-使用场景
-：导航栏、模态框、卡片
-49. CSS子网格（Subgrid）是什么？
-困难
-Subgrid
-Grid
-布局
-查看答案
-回答模板1：概念解释
-CSS子网格允许嵌套的网格项继承父网格的网格轨道，解决嵌套网格对齐问题。
-回答模板2：使用方法
-/* 父网格 */
-.parent {
-    display: grid;
-    grid-template-columns: 1fr 2fr 1fr;
-    gap: 1rem;
-}
+```
 
-/* 子网格 */
+> ⚠️ 注意
+> `backdrop-filter` 在部分浏览器/旧版本需 `-webkit-` 前缀；背后无内容时玻璃态「看不见模糊」，且大面积使用会拖慢合成。
+
+> 🎯 关键要点
+> - `backdrop-filter` 是玻璃态核心，模糊「元素背后」内容。
+> - 半透明背景 + 细边框 + 圆角构成典型观感。
+> - 必须有底层内容才显效。
+> - 注意性能与对比度，导航栏/卡片/模态框最常用。
+
+> 🔍 追问
+> - `backdrop-filter` 与 `filter: blur` 作用于什么不同？
+> - 为什么玻璃态在大面积使用时性能下降明显？
+
+### 49. CSS子网格（Subgrid）是什么？｜高级
+
+核心结论：Subgrid 让嵌套网格项「继承父网格的行列轨道」，解决卡片内部元素与父网格对齐的难题，无需重复定义轨道。
+
+- 概念：子网格项设 `display: grid; grid-template-columns: subgrid`（行同理 `grid-template-rows: subgrid`），其轨道直接复用父网格的对应轨道。
+- 用法：子项跨满父网格（`grid-column: 1 / -1`），内部再 `subgrid`，即可让标签、输入框等与父网格列严格对齐。
+- 应用：表单标签/输入对齐、卡片内多块内容对齐、导航项对齐、设计系统统一栅格。
+
+```css
+.parent { display: grid; grid-template-columns: 1fr 2fr 1fr; gap: 1rem; }
 .child {
-    grid-column: 1 / -1;
-    display: grid;
-    grid-template-columns: subgrid;
-    grid-template-rows: subgrid;
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: subgrid;
+  grid-template-rows: subgrid;
 }
-回答模板3：实际应用
-子网格的实际应用：
-1.
-表单布局
-：对齐表单标签和输入框
-2.
-卡片布局
-：对齐卡片内的内容
-3.
-导航菜单
-：对齐导航项
-4.
-复杂布局
-：解决嵌套网格的对齐问题
-5.
-设计系统
-：创建一致的布局系统
-50. 如何实现CSS中的视口单位（vw, vh, vmin, vmax）？
-中等
-视口单位
-响应式
-布局
-查看答案
-回答模板1：基础概念
-视口单位相对于浏览器视口尺寸：
-•
-vw
-：视口宽度的1%
-•
-vh
-：视口高度的1%
-•
-vmin
-：视口宽度和高度中较小值的1%
-•
-vmax
-：视口宽度和高度中较大值的1%
-回答模板2：使用示例
-/* 全屏元素 */
-.hero {
-    width: 100vw;
-    height: 100vh;
-}
+```
 
-/* 响应式字体 */
-h1 {
-    font-size: 5vw;
-}
+> 🎯 关键要点
+> - subgrid 复用父轨道，避免「内外两套栅格对不齐」。
+> - 子项需跨满目标区域（`1 / -1`）才能正确继承轨道。
+> - 行与列都可单独 subgrid。
+> - 现代浏览器（Chromium/Firefox/Safari 16+）已支持。
 
-/* 正方形元素 */
-.square {
-    width: 50vmin;
-    height: 50vmin;
-}
+> 🔍 追问
+> - subgrid 与「再定义一遍同样的 fr 轨道」为何不同？
+> - 父网格改 gap 时，subgrid 子项如何响应？
 
-/* 最大宽度限制 */
-.container {
-    width: min(90vw, 1200px);
-}
-回答模板3：注意事项
-视口单位的注意事项：
-1.
-移动设备
-：100vh可能包含地址栏高度
-2.
-性能考虑
-：频繁使用可能影响性能
-3.
-可访问性
-：字体大小可能过大或过小
-4.
-结合使用
-：与clamp()结合实现响应式
-5.
-测试多种设备
-：确保在所有设备上表现良好
-🏷️ HTML5
-51. HTML5新增了哪些语义化标签？
-简单
-HTML5
-语义化
-标签
-查看答案
-回答模板1：主要标签
-HTML5新增的语义化标签：
-•
-<header>
-：页头
-•
-<nav>
-：导航
-•
+### 50. 如何实现CSS中的视口单位（vw, vh, vmin, vmax）？｜中级
+
+核心结论：视口单位相对浏览器视口尺寸，`vw/vh` 管宽高、`vmin/vmax` 取宽高较小/较大值，适合全屏与流式尺寸，但移动端 `100vh` 有坑。
+
+- 语义：
+  - `vw`：视口宽度的 1%。
+  - `vh`：视口高度的 1%。
+  - `vmin`：视口宽高较小值的 1%。
+  - `vmax`：视口宽高较大值的 1%。
+- 用法：全屏 `.hero { width:100vw; height:100vh }`、响应式 `h1 { font-size:5vw }`、正方形 `50vmin`、结合 `min(90vw, 1200px)` 限宽。
+
+```css
+.hero { width: 100vw; height: 100vh; }
+.square { width: 50vmin; height: 50vmin; }
+.container { width: min(90vw, 1200px); }
+```
+
+> ⚠️ 注意
+> 移动端 `100vh` 常包含地址栏高度，导致全屏元素被地址栏裁切；可用 `100dvh`（动态视口高度）或 `svh/lvh` 解决。
+
+> 🎯 关键要点
+> - `vmin/vmax` 在横竖屏切换时自适应取极值。
+> - `100vh` 移动端含地址栏，推荐 `100dvh`。
+> - 与 `clamp()`/`min()` 配合做流式限宽很实用。
+> - 字体用 vw 需设上下限，避免极端屏过大过小。
+
+> 🔍 追问
+> - `dvh/svh/lvh` 分别解决 100vh 的什么问题？
+> - `vmin` 在横屏与竖屏下分别取宽度还是高度？
+
+## HTML5（10 题）
+
+### 51. HTML5新增了哪些语义化标签？｜初级
+
+核心结论：HTML5 引入 `<header>/<nav>/<main>/<article>/<section>/<aside>/<footer>` 等语义标签，用含义代替无意义的 `<div>`，提升可访问性与 SEO。
+
+- 主要语义标签：
+  - `<header>` 页头、`<nav>` 导航、`<main>` 主要内容、`<article>` 独立文章、`<section>` 章节、`<aside>` 侧边栏、`<footer>` 页脚。
+- 结构示例：`<header><nav>` 内，`<main>` 含 `<article><section>` 与 `<aside>`，最后 `<footer>`。
+- 优势：屏幕阅读器更好理解结构、搜索引擎更易解析、代码更易维护、符合 Web 标准。
+
+```html
+<header><nav>导航菜单</nav></header>
 <main>
-：主要内容
-•
-<article>
-：文章
-•
-<section>
-：章节
-•
-<aside>
-：侧边栏
-•
-<footer>
-：页脚
-回答模板2：使用示例
-<body>
-    <header>
-        <nav>导航菜单</nav>
-    </header>
-    
-    <main>
-        <article>
-            <section>文章内容</section>
-        </article>
-        <aside>侧边栏</aside>
-    </main>
-    
-    <footer>页脚信息</footer>
-</body>
-回答模板3：语义化优势
-语义化标签的优势：
-1.
-可访问性
-：屏幕阅读器能更好地理解页面结构
-2.
-SEO
-：搜索引擎能更好地理解内容
-3.
-可维护性
-：代码更易读和维护
-4.
-标准化
-：遵循Web标准
-5.
-未来兼容
-：为未来功能做好准备
-52. HTML5的Canvas和SVG有什么区别？
-中等
-Canvas
-SVG
-图形
-查看答案
-回答模板1：核心区别
-Canvas
-：基于像素的位图图形，适合复杂动画和游戏
-SVG
-：基于矢量的图形，适合图标和图表
-回答模板2：详细对比
-Canvas
-：
-• 位图图形，缩放会失真
-• 适合复杂动画和游戏
-• 性能更好（大量元素时）
-• 不支持事件处理
-SVG
-：
-• 矢量图形，缩放不失真
-• 适合图标和图表
-• 支持DOM操作和事件
-• 文件通常更小
-回答模板3：选择建议
-如何选择：
-•
-使用Canvas
-：游戏、复杂动画、图像处理
-•
-使用SVG
-：图标、图表、需要缩放的图形
-•
-混合使用
-：复杂图形用Canvas，简单图标用SVG
-•
-性能考虑
-：大量元素时Canvas性能更好
-53. HTML5的表单新增了哪些输入类型？
-简单
-HTML5表单
-输入类型
-表单验证
-查看答案
-回答模板1：新增类型
-HTML5新增的输入类型：
-•
-email
-：电子邮件
-•
-url
-：URL地址
-•
-tel
-：电话号码
-•
-number
-：数字
-•
-range
-：滑块
-•
-date
-：日期选择器
-•
-time
-：时间选择器
-•
-datetime-local
-：日期时间
-•
-month
-：月份
-•
-week
-：周
-•
-color
-：颜色选择器
-•
-search
-：搜索框
-回答模板2：使用示例
+  <article><section>文章内容</section></article>
+  <aside>侧边栏</aside>
+</main>
+<footer>页脚信息</footer>
+```
+
+> 🎯 关键要点
+> - 语义标签替代 `<div>`，让结构「自解释」。
+> - `<main>` 一个页面最好只一个。
+> - 语义化提升无障碍与 SEO。
+> - 不要为样式滥用语义标签当 div 用。
+
+> 🔍 追问
+> - `<section>` 与 `<article>` 如何区分？
+> - `<header>`/`<footer>` 能否出现在 `<article>` 内部？
+
+### 52. HTML5的Canvas和SVG有什么区别？｜中级
+
+核心结论：Canvas 是位图、靠 JS 逐帧绘制，适合游戏/图像；SVG 是矢量、是 DOM 节点，适合图标/图表且可交互。
+
+- Canvas：基于像素的位图，缩放会失真；适合复杂动画、游戏、图像处理；大量元素时性能好；不支持单元素事件（要自己算坐标）。
+- SVG：基于矢量的 DOM，缩放不失真；适合图标、图表；支持 DOM 操作与原生事件；文件通常更小（简单图）。
+- 选择：游戏/复杂动画/图像用 Canvas；图标/图表/需缩放交互用 SVG；复杂图形用 Canvas、简单图标用 SVG。
+
+| 维度 | Canvas | SVG |
+| --- | --- | --- |
+| 本质 | 位图（像素） | 矢量（DOM） |
+| 缩放 | 失真 | 不失真 |
+| 事件 | 需手动命中 | 原生事件 |
+| 适用 | 游戏/影像 | 图标/图表 |
+
+> 🎯 关键要点
+> - Canvas 改一点要整块重绘，SVG 改节点局部更新。
+> - SVG 可被 CSS/JS 直接控制，可访问性更好。
+> - 元素极多时 Canvas 性能更优。
+> - 二者可混合：背景 Canvas + 前景 SVG 图标。
+
+> 🔍 追问
+> - 为什么 Canvas 缩放会模糊而 SVG 不会？
+> - 海量数据点可视化该选 Canvas 还是 SVG？
+
+### 53. HTML5的表单新增了哪些输入类型？｜初级
+
+核心结论：HTML5 新增了 `email/url/tel/number/range/date/time/color` 等输入类型，带来原生校验、合适键盘与更好体验。
+
+- 新增类型：`email`、`url`、`tel`、`number`、`range`（滑块）、`date`、`time`、`datetime-local`、`month`、`week`、`color`、`search`。
+- 优势：内置基础校验（如 email 格式）、移动端弹出合适虚拟键盘、原生日期/颜色选择器、语义更清晰、屏幕阅读器支持更好。
+
+```html
 <form>
-    <input type="email" placeholder="email@example.com">
-    <input type="url" placeholder="https://example.com">
-    <input type="tel" placeholder="123-456-7890">
-    <input type="number" min="0" max="100">
-    <input type="date">
-    <input type="time">
-    <input type="color">
+  <input type="email" placeholder="email@example.com">
+  <input type="url" placeholder="https://example.com">
+  <input type="tel" placeholder="123-456-7890">
+  <input type="number" min="0" max="100">
+  <input type="date"> <input type="color">
 </form>
-回答模板3：优势
-HTML5表单的优势：
-1.
-内置验证
-：无需JavaScript验证
-2.
-更好的用户体验
-：原生日期选择器等
-3.
-移动设备优化
-：合适的虚拟键盘
-4.
-语义化
-：更清晰的代码
-5.
-可访问性
-：更好的屏幕阅读器支持
-54. 什么是HTML5的Web Storage API？
-中等
-Web Storage
-localStorage
-sessionStorage
-查看答案
-回答模板1：概念解释
-Web Storage API提供了两种在客户端存储数据的方式：
-•
-localStorage
-：持久化存储，数据永不过期
-•
-sessionStorage
-：会话存储，关闭浏览器后清除
-回答模板2：使用示例
-// localStorage
+```
+
+> 🎯 关键要点
+> - 类型带来原生校验，减少手写 JS。
+> - `tel/email/url` 在移动端唤出对应键盘。
+> - `date/time/color` 提供原生选择器。
+> - 校验失败可用 `:invalid`/`:valid` 配合样式提示。
+
+> 🔍 追问
+> - `number` 与 `range` 在 UX 上怎么选？
+> - 原生校验失败如何自定义提示文案？
+
+### 54. 什么是HTML5的Web Storage API？｜中级
+
+核心结论：Web Storage 提供 `localStorage`（持久）与 `sessionStorage`（会话）两种客户端键值存储，比 cookie 简单且容量更大，但仅存字符串、同步、有 XSS 风险。
+
+- 两类：
+  - `localStorage`：持久化，关闭浏览器仍保留，同源共享。
+  - `sessionStorage`：会话级，关闭标签页即清，仅当前标签可用。
+- API：`setItem/getItem/removeItem/clear`，值均为字符串，对象需 `JSON.stringify/parse`。
+- 注意：容量通常 5–10MB；只存字符串、需 JSON 转换；勿存敏感信息（同源 JS 可读，XSS 可窃取）；同步操作大量读写可能阻塞；现代浏览器均支持。
+
+```js
 localStorage.setItem('username', 'John');
 const username = localStorage.getItem('username');
 localStorage.removeItem('username');
-localStorage.clear();
-
-// sessionStorage
 sessionStorage.setItem('token', 'abc123');
-const token = sessionStorage.getItem('token');
-回答模板3：注意事项
-Web Storage的注意事项：
-1.
-存储限制
-：通常5-10MB
-2.
-数据类型
-：只支持字符串，需要JSON转换
-3.
-安全性
-：不要存储敏感信息
-4.
-同步操作
-：可能影响性能
-5.
-兼容性
-：现代浏览器都支持
-55. HTML5的Web Workers是什么？如何使用？
-困难
-Web Workers
-多线程
-性能
-查看答案
-回答模板1：概念解释
-Web Workers允许在后台线程中运行JavaScript，不会阻塞主线程，适合执行计算密集型任务。
-回答模板2：使用方法
+```
+
+> ⚠️ 注意
+> Web Storage 是同步 API，存大对象会阻塞主线程；且任何同源 XSS 都能读取，敏感 token 请勿明文存放，必要时用 httpOnly Cookie。
+
+> 🎯 关键要点
+> - localStorage 持久、sessionStorage 会话级。
+> - 仅字符串，复杂数据需 JSON 序列化。
+> - 容量约 5–10MB，远大于 cookie。
+> - 勿存密码/令牌，避免 XSS 泄露。
+
+> 🔍 追问
+> - localStorage 与 sessionStorage 的生命周期与作用域差异？
+> - 为什么敏感信息不适合放 localStorage？
+
+### 55. HTML5的Web Workers是什么？如何使用？｜高级
+
+核心结论：Web Workers 在后台线程运行 JS，不阻塞主线程（UI），适合排序、图像处理、加密等计算密集任务；但不能直接操作 DOM。
+
+- 机制：主线程 `new Worker('worker.js')` 创建线程，通过 `postMessage` 发、`onmessage` 收；Worker 内用 `self.onmessage` 处理。
+- 限制：Worker 中无 `document`/`window`（部分 API 受限），不能直接操作 DOM，需把结果回传主线程渲染。
+- 场景：大数据排序/过滤、图像滤镜/压缩、加密解密、物理模拟、实时数据分析。
+
+```js
 // 主线程
 const worker = new Worker('worker.js');
 worker.postMessage({ data: largeArray });
-worker.onmessage = function(e) {
-    console.log('结果:', e.data);
-};
-
+worker.onmessage = e => console.log('结果:', e.data);
 // worker.js
-self.onmessage = function(e) {
-    const result = processLargeData(e.data);
-    self.postMessage(result);
-};
-回答模板3：使用场景
-Web Workers的使用场景：
-1.
-大数据处理
-：排序、过滤大量数据
-2.
-图像处理
-：滤镜、压缩等
-3.
-加密解密
-：计算密集型加密操作
-4.
-物理模拟
-：游戏物理引擎
-5.
-实时数据处理
-：股票数据分析
-56. 什么是HTML5的地理位置API？
-中等
-地理位置
-Geolocation
-API
-查看答案
-回答模板1：概念解释
-Geolocation API允许网页获取用户的地理位置信息（经度、纬度），需要用户授权。
-回答模板2：使用方法
-// 获取当前位置
+self.onmessage = e => { self.postMessage(processLargeData(e.data)); };
+```
+
+> 🎯 关键要点
+> - Worker 跑在独立线程，保主线程交互流畅。
+> - 无法直接访问 DOM，只能算、不能画。
+> - 通信靠结构化克隆（postMessage），大对象有拷贝成本。
+> - SharedArrayBuffer 可零拷贝共享，但需特定跨域头。
+
+> 🔍 追问
+> - Worker 为何不能直接操作 DOM？如何把计算结果呈现到页面？
+> - `postMessage` 传大数组的性能隐患与解法？
+
+### 56. 什么是HTML5的地理位置API？｜中级
+
+核心结论：Geolocation API 通过 `navigator.geolocation` 获取用户经纬度，必须用户授权，常用于定位、路线、附近服务。
+
+- 用法：`getCurrentPosition(success, error, options)` 取一次位置；`watchPosition` 持续监听；`clearWatch` 停止。
+- 选项：`enableHighAccuracy`（高精度，耗电）、`timeout`（超时毫秒）、`maximumAge`（可复用缓存的时长）。
+- 注意：必须用户授权；涉及隐私勿滥用；注意错误处理（拒绝/超时/不可用）；移动端支持更好。
+
+```js
 navigator.geolocation.getCurrentPosition(
-    (position) => {
-        console.log('纬度:', position.coords.latitude);
-        console.log('经度:', position.coords.longitude);
-    },
-    (error) => {
-        console.error('获取位置失败:', error.message);
-    },
-    {
-        enableHighAccuracy: true,
-        timeout: 5000,
-        maximumAge: 0
-    }
+  pos => console.log(pos.coords.latitude, pos.coords.longitude),
+  err => console.error(err.message),
+  { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
 );
+```
 
-// 持续监听位置变化
-const watchId = navigator.geolocation.watchPosition(callback);
+> 🎯 关键要点
+> - 取位置前必须获得用户明确授权。
+> - `watchPosition` 适合导航类持续定位，记得 `clearWatch`。
+> - 高精度模式更耗电，按需开启。
+> - 务必处理拒绝/失败，避免静默卡死。
 
-// 停止监听
-navigator.geolocation.clearWatch(watchId);
-回答模板3：注意事项
-地理位置API的注意事项：
-1.
-用户授权
-：必须获得用户同意
-2.
-隐私安全
-：不要滥用位置信息
-3.
-精度控制
-：根据需求设置精度
-4.
-错误处理
-：处理各种错误情况
-5.
-兼容性
-：移动设备支持更好
-57. HTML5的WebSocket是什么？与HTTP有何区别？
-困难
-WebSocket
-实时通信
-网络
-查看答案
-回答模板1：概念解释
-WebSocket是一种在单个TCP连接上进行全双工通信的协议，允许服务器主动向客户端推送数据。
-回答模板2：与HTTP的区别
-HTTP
-：
-• 请求-响应模式
-• 无状态协议
-• 每次请求都需要建立连接
-• 不支持服务器推送
-WebSocket
-：
-• 全双工通信
-• 有状态连接
-• 建立连接后保持
-• 支持服务器推送
-回答模板3：使用场景
-WebSocket的使用场景：
-1.
-实时聊天
-：在线聊天应用
-2.
-实时游戏
-：多人在线游戏
-3.
-实时数据
-：股票行情、体育比分
-4.
-协作编辑
-：在线文档协作
-5.
-物联网
-：设备实时通信
-58. 什么是HTML5的Service Worker？
-困难
-Service Worker
-PWA
-离线缓存
-查看答案
-回答模板1：概念解释
-Service Worker是在浏览器后台运行的脚本，可以拦截网络请求、缓存资源，实现离线访问和推送通知。
-回答模板2：使用方法
-// 注册Service Worker
-if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('/sw.js')
-        .then(registration => {
-            console.log('SW registered');
-        });
-}
+> 🔍 追问
+> - `maximumAge` 设为 0 意味着什么？
+> - 后台持续定位在移动端有哪些限制？
 
+### 57. HTML5的WebSocket是什么？与HTTP有何区别？｜高级
+
+核心结论：WebSocket 是基于单条 TCP 连接的全双工协议，连接建立后服务端可主动推送；HTTP 是请求-响应、无状态、默认不由服务端推送。
+
+- 差异对比：
+  - HTTP：请求-响应模式、无状态、每次通信需建/复用连接、服务端不主动推。
+  - WebSocket：全双工、有状态长连接、握手后持续打开、支持服务端主动推送。
+- 握手：WebSocket 借一次 HTTP 升级（Upgrade 头）建立，之后走独立帧协议，开销远低于反复 HTTP 轮询。
+- 场景：实时聊天、多人在线游戏、股票/比分推送、协作编辑、IoT 设备通信。
+
+```js
+const ws = new WebSocket('wss://example.com/socket');
+ws.onmessage = e => console.log(e.data);
+ws.send(JSON.stringify({ type: 'ping' }));
+```
+
+> 🎯 关键要点
+> - WebSocket 是「长连接 + 双向」，HTTP 是「一来一回」。
+> - 建立靠一次 HTTP Upgrade 握手。
+> - 服务端可主动推，省去轮询开销。
+> - 生产用 `wss://`（加密），并自行处理重连与心跳。
+
+> 🔍 追问
+> - WebSocket 握手为何要借 HTTP Upgrade？
+> - 相比 HTTP 长轮询（long-polling），WebSocket 省在哪？
+
+### 58. 什么是HTML5的Service Worker？｜高级
+
+核心结论：Service Worker 是运行在浏览器后台的脚本，能拦截网络请求、缓存资源，实现离线访问、推送与后台同步，是 PWA 的核心。
+
+- 能力：拦截 fetch、缓存静态资源实现离线、接收推送通知、后台同步数据。
+- 生命周期：注册 → `install`（预缓存资源到 Cache Storage）→ `activate`（清理旧缓存）→ `fetch`（决定走缓存还是网络）。
+- 注意：需在 HTTPS（localhost 除外）下运行；作用域受注册路径限制；更新需新 SW 接管并 `skipWaiting`/`clients.claim`。
+
+```js
+// 注册
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js');
 // sw.js
-self.addEventListener('install', (event) => {
-    event.waitUntil(
-        caches.open('v1').then(cache => {
-            return cache.addAll([
-                '/',
-                '/index.html',
-                '/styles.css',
-                '/script.js'
-            ]);
-        })
-    );
+self.addEventListener('install', e => {
+  e.waitUntil(caches.open('v1').then(c => c.addAll(['/', '/index.html', '/styles.css'])));
 });
+self.addEventListener('fetch', e => {
+  e.respondWith(caches.match(e.request).then(r => r || fetch(e.request)));
+});
+```
 
-self.addEventListener('fetch', (event) => {
-    event.respondWith(
-        caches.match(event.request).then(response => {
-            return response || fetch(event.request);
-        })
-    );
-});
-回答模板3：实际应用
-Service Worker的实际应用：
-1.
-离线缓存
-：缓存关键资源
-2.
-推送通知
-：服务器推送消息
-3.
-后台同步
-：在后台同步数据
-4.
-性能优化
-：预缓存常用资源
-5.
-PWA
-：渐进式Web应用的核心技术
-59. HTML5的Web Components是什么？
-困难
-Web Components
-组件化
-自定义元素
-查看答案
-回答模板1：概念解释
-Web Components是一套用于创建可重用、封装的HTML组件的技术，包括Custom Elements、Shadow DOM和HTML Templates。
-回答模板2：使用方法
-// 自定义元素
+> 🎯 关键要点
+> - Service Worker 是 PWA 离线能力的基石。
+> - 缓存策略常见「缓存优先 / 网络优先 /  stale-while-revalidate」。
+> - 必须 HTTPS（本地 localhost 豁免）。
+> - 更新逻辑易踩坑，注意 activate 阶段清理旧缓存。
+
+> 🔍 追问
+> - `stale-while-revalidate` 策略如何兼顾速度与新鲜？
+> - 为什么 Service Worker 更新有时「不生效」需刷新两次？
+
+### 59. HTML5的Web Components是什么？｜高级
+
+核心结论：Web Components 是浏览器原生的组件化方案，由 Custom Elements + Shadow DOM + HTML Templates 组成，样式与逻辑封装、跨框架复用。
+
+- 三大支柱：
+  - Custom Elements：用 `customElements.define` 注册自定义标签（如 `<my-component>`）。
+  - Shadow DOM：为组件创建隔离的 DOM 与样式作用域，外部样式不渗入、内部样式不外泄。
+  - HTML Templates：`<template>`/`<slot>` 提供可复用的标记与内容分发。
+- 优势：强封装、可跨框架（React/Vue/原生皆可）、浏览器原生、无运行时框架依赖。
+
+```js
 class MyComponent extends HTMLElement {
-    constructor() {
-        super();
-        const shadow = this.attachShadow({mode: 'open'});
-        shadow.innerHTML = `
-            <style>
-                p { color: red; }
-            </style>
-            <p>Hello World</p>
-        `;
-    }
+  constructor() {
+    super();
+    const shadow = this.attachShadow({ mode: 'open' });
+    shadow.innerHTML = `<style>p{color:red}</style><p>Hello World</p>`;
+  }
 }
-
 customElements.define('my-component', MyComponent);
+```
 
-// 使用
-<my-component></my-component>
-回答模板3：优势
-Web Components的优势：
-1.
-封装性
-：样式和逻辑隔离
-2.
-可重用性
-：跨框架使用
-3.
-标准化
-：浏览器原生支持
-4.
-框架无关
-：不依赖特定框架
-5.
-未来兼容
-：Web标准的一部分
-60. 如何优化HTML页面的加载性能？
-中等
-性能优化
-加载速度
-最佳实践
-查看答案
-回答模板1：HTML优化
-HTML页面的优化策略：
-1.
-语义化标签
-：使用正确的HTML标签
-2.
-减少DOM
-：减少不必要的嵌套
-3.
-异步加载
-：使用async和defer
-4.
-预加载
-：使用link rel="preload"
-回答模板2：资源优化
-资源优化策略：
-1.
-关键CSS
-：内联首屏CSS
-2.
-异步CSS
-：非关键CSS异步加载
-3.
-图片优化
-：使用现代格式和懒加载
-4.
-字体优化
-：字体子集化和预加载
-5.
-压缩
-：Gzip或Brotli压缩
-回答模板3：最佳实践
-HTML性能优化的最佳实践：
-1.
-减少HTTP请求
-：合并文件、使用雪碧图
-2.
-使用CDN
-：加速资源加载
-3.
-缓存策略
-：设置合适的缓存头
-4.
-代码分割
-：按需加载资源
-5.
-监控性能
-：使用Lighthouse等工具
-📚 CSS与HTML面试题库 - 60道精选题目
-持续更新中... | 支持移动端访问
+> 🎯 关键要点
+> - Shadow DOM 提供「样式隔离」，解决全局污染。
+> - Custom Elements 让标签语义化、可复用。
+> - 与框架无关，适合设计系统/组件库。
+> - `mode: 'open'` 才允许外部访问 shadowRoot。
+
+> 🔍 追问
+> - Shadow DOM 的样式隔离为何有利于设计系统？
+> - `<slot>` 在 Web Components 中解决什么问题？
+
+### 60. 如何优化HTML页面的加载性能？｜中级
+
+核心结论：HTML 加载性能优化贯穿「语义结构、资源加载、关键路径」三线：减少阻塞、预加载关键资源、压缩与缓存并行。
+
+- HTML 结构：用正确语义标签、减少无意义 DOM 嵌套、合理拆分内容。
+- 资源加载：脚本用 `async`（不依赖顺序）或 `defer`（保序、DOM 后执行）；关键 CSS 内联、非关键 CSS 异步；图片用现代格式 + 懒加载；字体子集化并 `preload`。
+- 网络与构建：Gzip/Brotli 压缩、CDN 加速、合理缓存头、代码分割按需加载；用 Lighthouse 持续度量。
+
+```html
+<link rel="preload" href="critical.css" as="style">
+<script src="app.js" defer></script>
+<img src="hero.avif" loading="lazy" alt="">
+```
+
+> 🎯 关键要点
+> - `defer` 保序且不在解析期阻塞，`async` 不保序。
+> - 关键 CSS 内联可消除首屏渲染阻塞。
+> - `preload` 提前获取关键资源，但勿滥用以免争抢带宽。
+> - 压缩（Brotli）+ CDN + 缓存头是通用三板斧。
+
+> 🔍 追问
+> - `async` 与 `defer` 在 DOM 解析期的行为差异？
+> - 字体 `preload` 为何还要 `font-display: swap` 配合？
