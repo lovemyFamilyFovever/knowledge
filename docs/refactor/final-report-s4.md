@@ -70,3 +70,12 @@
 
 > 进度：design-patterns 3/3、developer-skills 2/2 全清；devops 已清 3（含本 API）。
 
+## §S4 · Docker容器化完全指南（枢纽+3 子词条）
+
+**处理篇**：`devops/Docker容器化完全指南.md`（16568字/48围栏/957代码行）。**产物**：枢纽页(1531/0围栏,frontmatter逐字未改)+3 子词条 `Docker 镜像构建与分发`/`容器网络与数据持久化`/`容器运行时安全`；容器vsVM/Dockerfile/Compose 基础双链已 done 的 [[容器与编排技术详解]][[容器化与Docker]]、日志内联，无 pending-merge。**校验**：4 篇 strict 全 PASS(3 处 🎯 曾 >150 已裁)。
+**并发**：本提交曾被并发 s3 的 `database/SQL 基础术语` 在途改动打断共享 test_learn(2 fail)；按 §0.4 等待重试，未 `--no-verify`、未碰他人文件，门转 218/0 后落地。**hash**：
+
+- ec8ea46 docs: 二期拆分[S4]——Docker容器化完全指南 (枢纽+3子词条)
+
+> 进度：devops 已清 Docker/API(+phase1 6 篇 done)；剩 Linux系统管理/Web安全/OS内核/网络渗透/K8s云原生 等 pending。
+
