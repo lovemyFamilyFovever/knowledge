@@ -23,3 +23,30 @@
 
 **本分片剩余 pending（9）**：database 8 篇巨型汇编（Redis深度解析13550、搜索引擎技术详解17928、数据库内核原理深度解析11136、数据库设计术语10034、SQL基础术语8536、事务与并发控制术语9037、NoSQL数据库术语8568、索引与查询优化术语9066）+ middleware 任务调度（6216，中小篇）。
 **下一篇巨型汇编**：content/baike/database/Redis深度解析与实战指南.md（13550 字）。
+
+## 终极包圆轮（2026-09-19）— 完成 1 篇后主动收手（上下文临界）
+
+**预读与隔离**：AGENTS.md / writing-spec-v1.2.md / split-candidates.md 齐全。仅动 `content/baike/database/` + `s3.md` + `split-candidates.md` + 本报告，未碰 final-report.md 或其他子域。
+
+**处理（队列首篇）**：`database/NoSQL 数据库术语.md`（8568 字）→ 枢纽 + 3 族子词条。
+- 概念级查重：Redis→[[Redis深入]]、MongoDB→[[MongoDB实践]]、ES→[[ElasticSearch搜索]] 已有 done 专条 → 删重复段改双链；Memcached/DynamoDB 内联选型；HBase+Cassandra(列族宽列)、Neo4j(图)、InfluxDB(时序) 无专条 → 各 1 族词条（10 库未逐库造薄条，按数据模型聚合）。
+- `列族数据库（HBase 与 Cassandra）.md` 1412/2200、`图数据库 Neo4j.md` 1367/2200、`时序数据库 InfluxDB.md` 1379/2200，均 0 围栏、1def+2trap。
+
+**check_rewrite --strict（4 篇）**：全 PASS / 0 FAIL / 0 warning（双链全部命中、无含 `/` 链名、⑨ ≤150）。
+
+**Stale lock 处理**：一次 `git add` 撞并发 S4 提交持锁（其 design-patterns/* 暂存），按授权等待至锁释放、S4 提交落定后重跑，未删他人在用锁、未动其暂存；最终 §0.1 白名单断言通过、pathspec 提交仅含片内 5 文件。
+
+**本会话提交**：
+- a7fb73f docs: 二期拆分[S3]——NoSQL 数据库术语.md (枢纽+3子词条)
+
+**主动收手原因**：本会话为该数据线第三轮，上下文已近极限；继续拆余下巨型汇编有中途溢出致半成品未提交的风险，故在完成 NoSQL 这一整篇并确认 HEAD 一致后停。
+**本分片剩余 pending（8）**（队列序）：
+- database/Redis深度解析与实战指南.md（13550，巨型）— 下一篇
+- database/SQL 基础术语.md（8536，巨型）
+- database/事务与并发控制术语.md（9037，巨型）
+- database/搜索引擎技术详解.md（17928，巨型）
+- database/数据库内核原理深度解析.md（11136，巨型）
+- database/数据库设计术语.md（10034，巨型）
+- database/索引与查询优化术语.md（9066，巨型）
+- middleware/任务调度（Task Scheduling）.md（6216，中小篇）
+注：algorithms 子域已清空；MySQL 与 NoSQL 两巨型本篇/上轮已拆。
