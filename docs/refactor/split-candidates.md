@@ -79,6 +79,11 @@
 - 预案：轮到拆 `现代前端工程化完全指南.md` 时，其 §1.1/§1.2 Webpack·Vite 两小节与 §4.1 ESLint 小节**删除**、改双链指向 [[JavaScript 构建工具（Webpack 与 Vite）]] 与 [[代码规范与转换工具链（Babel · ESLint · PostCSS）]]；Turbopack/Rspack/Stylelint 与 §2 包管理器对比、§3 Monorepo实践（Turborepo/Nx 实操）为该篇独家素材，届时按各自深度立条或并入，其概念归口仍是已 done 的 [[包管理器与构建工具]] 与 [[前端工程化]]（本汇编拆时未新建、只双链）。
 - 已登记：两条先行立条在 `docs/refactor/status/s5.md` 对应行标 `pending-merge: content/baike/frontend-frameworks/现代前端工程化完全指南.md`；清完前该指南不得判 done。
 
+**11. `programming-languages/函数式编程完全指南.md` 拆出的 基础/Functor·Monad ↔ `programming-languages/函数式编程（Functional Programming）概念.md`（14-def 术语汇编，s4 pending）**（预案：改双链，不新建）
+- 冲突：完全指南拆出 [[函数式编程基础]](纯函数/不可变/高阶/闭包/柯里化)、[[Functor 与 Monad]]，而 `函数式编程（FP）概念.md` 作为同域 14-def 术语汇编亦含 纯函数/不可变/高阶函数/闭包/柯里化/Monad/Functor/Applicative 等条目，术语双归口。
+- 预案：轮到拆 `函数式编程（FP）概念.md` 时，与上述两片重叠的术语节**删除、改双链**指向 [[函数式编程基础]]/[[Functor 与 Monad]]，其余纯概念条目(副作用/声明式/惰性求值等)按其体量并入或立条；两片为归口。
+- 已登记：两条在 s4.md 标 `pending-merge: programming-languages/函数式编程（Functional Programming）概念.md`；拆该汇编前不得清。
+
 ## 待拆清单
 
 | 文件 | 子概念数 | 所属片 | 正文字数 | 子概念预览 | 理由 | 状态 |
@@ -159,7 +164,7 @@
 | content/baike/programming-languages/Rust Web开发实战.md | 6 | s4 | 20339 | Web生态概览、Axum、数据库集成、serde、认证授权、tokio | Web生态概览/Axum/数据库集成/serde/认证授权/tokio 六部分各独立；正文 20339、32 围栏 959 行 → 拆词条 | pending |
 | content/baike/programming-languages/Rust系统编程入门到精通.md | 7 | s4 | 17989 | 所有权、Trait泛型、错误处理、智能指针、并发、异步、Unsafe | 所有权/Trait泛型/错误处理/智能指针/并发/异步/Unsafe 7 大独立主题；正文 17989、24 围栏 1121 行 → 按主题拆词条 | done（2026-09-19 二期拆分：枢纽页 + 4 子词条〔Rust Trait与泛型/Rust 错误处理/Rust 智能指针/Rust 并发与异步〕；所有权/借用/生命周期/unsafe 双链 done 的 Rust编程基础；net-new 无 pending-merge） |
 | content/baike/programming-languages/TypeScript高级编程指南.md | 8 | s4 | 22260 | 类型系统、泛型、类型体操、装饰器、模块、.d.ts、编译器API、框架集成 | 类型系统/泛型/类型体操/装饰器/模块/.d.ts/编译器API/框架集成 8 独立话题；正文 22260、33 围栏 → 拆词条 | done（2026-09-19 二期拆分：枢纽页 + 3 子词条〔高级类型与类型体操/模块与声明文件/装饰器与编译器API〕；类型/泛型基础双链 TypeScript深入·泛型；net-new 无 pending-merge） |
-| content/baike/programming-languages/函数式编程完全指南.md | 10 | s4 | 18943 | FP概念、高阶函数、闭包柯里化、Functor·Monad、Either·Option·IO、不可变、并发、JS·Haskell实践 | FP概念/高阶函数/闭包柯里化/Functor·Monad/Either·Option·IO/不可变/并发/JS·Haskell 实践 10 话题；正文 18943、24 围栏 → 拆词条 | pending |
+| content/baike/programming-languages/函数式编程完全指南.md | 10 | s4 | 18943 | FP概念、高阶函数、闭包柯里化、Functor·Monad、Either·Option·IO、不可变、并发、JS·Haskell实践 | FP概念/高阶函数/闭包柯里化/Functor·Monad/Either·Option·IO/不可变/并发/JS·Haskell 实践 10 话题；正文 18943、24 围栏 → 拆词条 | done（2026-09-19 二期拆分：枢纽页 + 4 子词条〔函数式编程基础/Functor与Monad/函数式错误处理与不可变数据结构/函数式并发与多语言实践〕；基础&Monad 与 pending 的 函数式编程（FP）概念 重叠→pending-merge，见去重队列第 11 对） |
 | content/baike/programming-languages/函数式编程（Functional Programming）概念.md | 14 | s4 | 11638 | 纯函数、副作用、不可变、高阶函数、Lambda、闭包、柯里化、组合、Monad、Functor、Applicative、声明式、惰性求值 | 纯函数/副作用/不可变/高阶函数/Lambda/闭包/柯里化/组合/Monad/Functor/Applicative/声明式/惰性求值 14 词条（14 def）；29 围栏 ≫ 2/20 → 按概念各拆词条 | pending |
 | content/baike/programming-languages/密码学与区块链技术指南.md | 6 | s4 | 16609 | 密码学基础、加密算法、密钥管理、TLS·SSL、区块链原理、比特币 | 密码学基础/加密算法/密钥管理/TLS·SSL/区块链原理/比特币 6 大部分各成体系；正文 16609、10 围栏 584 行 → 拆词条 | pending |
 | content/baike/programming-languages/并发编程模式与实践.md | 8 | s4 | 17776 | 并发vs并行、线程模型、互斥同步、无锁、并发数据结构、协程、Channel·CSP、Actor | 并发vs并行/线程模型/互斥同步/无锁/并发数据结构/协程/Channel·CSP/Actor（枢纽①mermaid②子概念20）；正文 17776、1071 代码行 ≫ 3400 → 拆词条 | pending |
