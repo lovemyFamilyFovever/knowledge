@@ -68,3 +68,38 @@
 - 4a785b1 docs: 二期拆分[S3]——SQL 基础术语.md (枢纽+2子词条)；test_learn 解耦语料夹具
 - 4a2a64d docs: 二期拆分[S3]——Redis深度解析与实战指南.md (枢纽+4子词条)
 - a7fb73f docs: 二期拆分[S3]——NoSQL 数据库术语.md (枢纽+3子词条)
+
+## 终极包圆续·第二轮（2026-09-19）— 分片清空
+
+本轮续拆 6 篇巨型/中小汇编，**s3 分片 pending 已归零**（split-candidates 中 s3 行全 done）。
+
+| 父汇编 | 结构 | 字数 |
+|---|---|---|
+| 数据库设计术语 | 枢纽+3 | 1384/2200 |
+| 搜索引擎技术详解 | 枢纽+4 | 1363/2200 |
+| 数据库内核原理深度解析 | 枢纽+2 | 1591/2200 |
+| 索引与查询优化术语 | 纯索引枢纽+0 | 1406/2200 |
+| 任务调度 | 枢纽+3 | 1559/2200 |
+
+每篇 --strict 全 PASS、1def+2trap、0 悬空链、0 含斜杠链名、⑨ 速答 ≤150。多数既有 done 专条按 §8.1/§8.2 双链去重、族聚合避免薄条。
+
+**并发/环境**：多次 lock 争用与 stale index.lock(前一 MemoryError 崩溃遗留)按授权清理重试；并发会话把 network/machine-learning/s2·s4 文件塞入共享索引，全程用显式 pathspec 保证每提交只含片内文件；实际目录为 middleware(非 messaging-middleware)，pathspec 提交不受白名单影响。
+
+**本分片全部提交（git log）**：
+- bce7126 docs: 二期拆分[S3]——任务调度（Task Scheduling）.md (枢纽+3子词条)
+- e9fb951 docs: 二期拆分[S3]——索引与查询优化术语.md (纯索引枢纽，0子词条)
+- 7573a00 docs: 二期拆分[S3]——数据库内核原理深度解析.md (枢纽+2子词条)
+- 1aad624 docs: 二期拆分[S3]——搜索引擎技术详解.md (枢纽+4子词条)
+- eec75bb docs: 二期拆分[S3]——数据库设计术语.md (枢纽+3子词条)
+- ec0549c docs: 二期拆分[S3] 终极包圆续（NoSQL/Redis/SQL/事务 四篇完成，余5篇）
+- cbe19f1 docs: 二期拆分[S3]——事务与并发控制术语.md (枢纽+4子词条)
+- 4a785b1 docs: 二期拆分[S3]——SQL 基础术语.md (枢纽+2子词条)；test_learn 解耦语料夹具
+- 4a2a64d docs: 二期拆分[S3]——Redis深度解析与实战指南.md (枢纽+4子词条)
+- 78b9c8e docs: 二期拆分[S3] 终极包圆轮收尾报告（NoSQL 枢纽+3子词条，余 8 篇）
+- a7fb73f docs: 二期拆分[S3]——NoSQL 数据库术语.md (枢纽+3子词条)
+- 72a1011 docs: 二期拆分[S3] 第二轮收尾报告（MySQL从入门到架构师 枢纽+3子词条）
+- b65388d docs: 二期拆分[S3]——MySQL从入门到架构师.md (枢纽+3子词条)
+- 455d82f docs: 二期拆分[S3] 收尾报告 §S3（数据分析与可视化实战 枢纽+3子词条）
+- 7eb26c9 docs: 二期拆分[S3]——数据分析与可视化实战.md (枢纽+3子词条)
+
+s3 分片状态：algorithms/database/data-science/middleware 四子域 pending 全部清空。
