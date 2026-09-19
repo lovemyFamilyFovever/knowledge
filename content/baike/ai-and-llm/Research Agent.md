@@ -71,7 +71,7 @@ status: "imported"
 
 ## 面试速答
 
-> 🎯 Research Agent 自动化科研流程：接 arXiv/Semantic Scholar 等学术 API 检索 → 解析 PDF 抽取标题/方法/结果/局限 → 跨篇比较综合成文献综述、指出研究空白，并辅助生成假设与实验设计。
+> 🎯 Research Agent 自动化科研流程：接 arXiv/Semantic Scholar 等学术 API 检索 → 解析 PDF 抽取标题/方法/结果/局限 → 跨篇比较综合成文献综述、指出研究空白，并辅助生成假设与实验设计；但输出会幻觉，引用必须回原文核验。
 > 🔍 追问：它最大的风险是什么？（编造不存在的论文或结论，所有引用与事实需人工核验）
 > 🔍 追问：Research Agent 与 Code Agent 在科研里怎么配合？（前者读文献、提假设、设计实验，后者写代码实现与复现）
 

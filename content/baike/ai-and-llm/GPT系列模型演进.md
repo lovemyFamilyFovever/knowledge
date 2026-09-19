@@ -67,7 +67,7 @@ status: "imported"
 
 ## 面试速答
 
-> 🎯 GPT 系列是 decoder-only"预测下一词"路线的持续放大：GPT-1 立"预训练 + 微调"，GPT-2 显零样本，GPT-3 开 in-context learning，InstructGPT 用 RLHF 做对齐，GPT-4/4o 走向多模态。
+> 🎯 GPT 系列是 decoder-only"预测下一词"路线的持续放大：GPT-1 立"预训练 + 微调"，GPT-2 显零样本，GPT-3 开 in-context learning，InstructGPT 用 RLHF 做对齐，GPT-4/4o 走向多模态；背后是 Scaling Law 与规模涌现，代价是成本与不可控性同涨。
 > 🔍 追问：InstructGPT 的 RLHF 三步分别是什么？（SFT 人工示范微调、训练奖励模型 RM、PPO 据 RM 分数优化）
 > 🔍 追问：Chinchilla 对"越大越好"修正在哪？（最优需参数与数据等比扩展，只堆参数、数据不足并不最优）
 

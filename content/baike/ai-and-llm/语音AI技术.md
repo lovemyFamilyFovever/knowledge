@@ -73,7 +73,7 @@ status: "imported"
 
 ## 面试速答
 
-> 🎯 语音 AI 三件套：ASR 把声音转文本（代表 Whisper：音频→Mel 频谱→Transformer 编解码，越大越准越慢）、TTS 把文本转自然语音（Tacotron2→VITS→XTTS 一路更自然、可声音克隆），以及把二者接上 LLM 的语音 Agent（ASR→LLM 推理→TTS，正朝端到端演进）。
+> 🎯 语音 AI 三件套：ASR 把声音转文本（代表 Whisper：音频→Mel 频谱→Transformer 编解码，越大越准越慢）、TTS 把文本转自然语音（Tacotron2→VITS→XTTS），以及把二者接上 LLM 的语音 Agent（ASR→LLM 推理→TTS，正朝端到端演进）；代价是噪声口音与克隆伦理风险。
 > 🔍 追问：Whisper 选 tiny 还是 large 怎么权衡？（越大越准越占资源，实时 / 边缘选小模型、离线高准选大模型）
 > 🔍 追问：三段串联与端到端语音模型各有何利弊？（三段可控、可换组件但有级联误差与延迟；端到端低延迟更拟人但难控、数据需求大）
 
