@@ -74,7 +74,7 @@
 | content/baike/architecture/微服务架构设计与实践.md | 8+ | s5 | ~5000+ | 服务拆分、网关、通信、容错、数据一致性、部署、监控 | 服务拆分/网关/通信/容错/数据一致性/部署/监控 各独立话题 | done（2026-09-19 巨型专场第 1 篇：枢纽页 + 3 子词条） |
 | content/baike/architecture/性能优化.md | 14 | s5 | ~1500+ | 缓存、CDN、负载均衡、连接池、异步、限流、熔断、降级 | 缓存/CDN/负载均衡/连接池/异步/限流/熔断/降级等14个独立手段 | done（2026-09-19 枢纽页 + 1 子词条：异步处理与线程池；CDN 双链 [[内容分发网络]]） |
 | content/baike/architecture/推荐系统设计与实现.md | 6+ | s5 | ~3500+ | 召回、排序、特征工程、AB测试、冷启动、实时性 | 召回/排序/特征工程/AB测试/冷启动/实时性 各独立子系统 | done（2026-09-19 枢纽页 + 4 子词条：协同过滤与矩阵分解、基于内容推荐与混合策略、多路召回与双塔模型、深度推荐模型；推荐系统本体与算法三代主线归口 data-science/推荐系统.md 金样不重复造条，特征工程/AB测试/ANN 索引/模型上线 全双链 [[特征工程进阶]]·[[A B测试与实验设计]]·[[向量数据库技术]]·[[模型压缩与部署]] 已 done 专条不新建，冷启动与可解释性折进 基于内容推荐与混合策略；原稿实际只有 5 节、候选清单预期的 特征工程/AB测试/冷启动/实时性 无独立小节，§5.3 多路召回代码在 recall_parallel 中断尾，均按 v1.2 §5 不补写）|
-| content/baike/architecture/数据工程完全指南.md | 6+ | s5 | ~4000+ | ETL、数仓、数据湖、流处理、数据质量、治理 | ETL/数仓/数据湖/流处理/数据质量/治理 各独立领域 | pending |
+| content/baike/architecture/数据工程完全指南.md | 6+ | s5 | ~4000+ | ETL、数仓、数据湖、流处理、数据质量、治理 | ETL/数仓/数据湖/流处理/数据质量/治理 各独立领域 | done（2026-09-19 枢纽页 + 2 子词条：流处理与批处理〔§4+§5 合并〕、湖仓一体与开放表格式〔§3 Delta/Iceberg/Hudi 选型〕；数仓/ETL/数据湖/MapReduce/Spark/Kafka 全双链既有 done 专条不新建，数据编排通用机制双链 [[任务调度（Task Scheduling）]]、Dagster 资产导向内联不另立薄条，§6.2 Dagster 代码断尾按 v1.2 §5 不补写、候选预期的数据质量·治理无独立小节一律双链 [[数据清洗实战]]·[[ETL]]）|
 | content/baike/architecture/架构模式.md | 12 | s5 | ~1200+ | 单体、微服务、Serverless、EDA、CQRS、六边形、洋葱 | 单体/微服务/Serverless/EDA/CQRS/六边形/洋葱等12种独立模式 | pending |
 | content/baike/architecture/系统设计.md | 12 | s5 | ~1500+ | CAP、BASE、一致性、分布式ID、分片、读写分离 | CAP/BASE/一致性/分布式ID/分片/读写分离等12个独立话题 | done（2026-09-19 枢纽页 + 1 子词条：数据分片与热点处理） |
 | content/baike/architecture/设计原则.md | 12 | s5 | ~1800+ | SOLID、DRY、KISS、YAGNI、迪米特、组合、接口、IoC、DI | SOLID/DRY/KISS/YAGNI/迪米特/组合/接口/IoC/DI等12个独立原则 | pending |
