@@ -35,7 +35,8 @@
 
 **5. `os/Shell 脚本详解.md` ↔ `os/Shell脚本编程.md`**（预案：合并 + 软删除）
 - 冲突：同一子域两篇 Shell 教程，变量 / 条件 / 循环 / 函数 / grep·sed·awk 全面重叠；`Shell脚本编程.md` 已重写 PASS，`Shell 脚本详解.md` 是 8061 字手册式汇编。
-- 预案：**合并**——保留 `content/baike/os/Shell脚本编程.md` 为唯一 Shell 词条，把 `Shell 脚本详解.md` 独有的语法示例（数组、字符串操作、管道与重定向组合）补进去；随后 `Shell 脚本详解.md` 走软删除进 `content/_trash/`（`/api/delete`，禁直接 rm），并在 `docs/refactor/status/s2.md` 该行备注登记 `merged-into: os/Shell脚本编程.md`。
+- ✅ **已执行**（2026-09-19）：数组/关联数组、字符串参数展开、管道与重定向组合已并入接收方「做法」；原文件 `git mv` 至 `content/_trash/Shell 脚本详解.md`；**并额外重指向 19 篇的入站双链**（预案未提，见 autopilot-log §4.1），否则软删除会造出 22 条悬空链。
+- 预案（原文）：**合并**——保留 `content/baike/os/Shell脚本编程.md` 为唯一 Shell 词条，把 `Shell 脚本详解.md` 独有的语法示例（数组、字符串操作、管道与重定向组合）补进去；随后 `Shell 脚本详解.md` 走软删除进 `content/_trash/`（`/api/delete`，禁直接 rm），并在 `docs/refactor/status/s2.md` 该行备注登记 `merged-into: os/Shell脚本编程.md`。
 
 **6. `testing/01 - 测试基础.md` / `testing/02 - 测试工具.md` ↔ 新建的 `E2E 测试.md` / `Playwright 与 Cypress.md`**（预案：改双链，不新建）
 - 冲突：拆第 1 对时才暴露——`01 - 测试基础.md` 有 `## 端到端测试（E2E）` 节，`02 - 测试工具.md` 有 `## Cypress`、`## Playwright`、`## Selenium WebDriver` 三节及一张 E2E 工具对比表，而这两篇汇编本身仍是 `split` 状态、未收敛。
@@ -111,7 +112,7 @@
 | content/baike/network/网络基础.md | 14 | s2 | 8389 | OSI、TCP-IP、以太网、IP、MAC、子网、CIDR、VLAN | baike B 多定义（OSI/TCP-IP/以太网/IP/MAC/子网/CIDR/VLAN 各带 def）；8389 ≫ 3400、14 围栏 ≫ 2/20，且与 OSI 参考模型/IP 协议 等专文重叠 → 建议去重后按主题拆词条 | pending |
 | content/baike/network/网络安全协议.md | 11 | s2 | 9247 | 防火墙、IDS-IPS、VPN、IPsec、TLS、DDoS、WAF | baike B 多定义（防火墙/IDS-IPS/VPN/IPsec/TLS/DDoS/WAF 各带 def+示例）；9247 ≫ 3400、11 围栏 ≫ 2/20 → 建议按主题各拆词条 | pending |
 | content/baike/os/Linux 命令速查手册.md | 20+ | s2 | 4504 | ls、cd、mkdir、cp·mv·rm、cat·less、grep、find、sed、awk、chmod、ps·top、df·du、netstat、tar | 命令型速查手册：ls/cd/mkdir/cp·mv·rm/cat·less/grep/find/sed/awk/chmod/ps·top/df·du/netstat/tar 等按命令分组，每组带独立示例围栏；无 `## 定义`、15 围栏 ≫ 2/20，压缩会毁掉逐命令用法示例（这是手册的核心价值）→ 建议保留为速查参考或按命令族拆词条 | exempt-reference（已改判，见 `docs/refactor/exempt-reference.md`） |
-| content/baike/os/Shell 脚本详解.md | 8+ | s2 | 8061 | 变量、条件if·case、循环for·while·until、函数、数组、字符串操作、正则grep·sed·awk、管道与重定向 | 教程/手册式汇编：变量/条件 if·case/循环 for·while·until/函数/grep·sed·awk 等多块各带大量代码，无 `## 定义` 单词条结构、正文 8061 ≫ 3400、15 围栏 ≫ 2/20，压缩必毁逐语法示例；与 Shell脚本编程 词条重叠需去重 → 建议按语法主题拆词条 | pending |
+| content/baike/os/Shell 脚本详解.md | 8+ | s2 | 8061 | 变量、条件if·case、循环for·while·until、函数、数组、字符串操作、正则grep·sed·awk、管道与重定向 | 教程/手册式汇编：变量/条件 if·case/循环 for·while·until/函数/grep·sed·awk 等多块各带大量代码，无 `## 定义` 单词条结构、正文 8061 ≫ 3400、15 围栏 ≫ 2/20，压缩必毁逐语法示例；与 Shell脚本编程 词条重叠需去重 → 建议按语法主题拆词条 | done（2026-09-19 合并 + 软删除，见去重队列第 5 对） |
 | content/baike/os/进程管理详解.md | 12+ | s2 | 6581 | ps、top·htop、kill、nohup、systemd、cron、nice、/proc、dmesg、journalctl、systemctl | 命令+概念混合详解：ps/top·htop/kill/nohup/systemd/cron/nice//proc/dmesg/journalctl/systemctl 等 11+ 子块各带 def 与代码，17 围栏 ≫ 2/20、6581 ≫ 3400，压缩会毁掉逐命令实战细节；与 Linux命令速查手册 重叠 → 建议拆命令词条+进程管理枢纽 | pending |
 | content/baike/programming-languages/Flutter跨平台开发实战.md | 5 | s4 | 22743 | Dart精要、Widget体系、布局、路由GoRouter、状态管理 | Dart精要/Widget体系/布局/路由GoRouter/状态管理 各独立且带大量代码；正文 22743、围栏 14 块 1284 行 ≫ 上限 → 按主题拆词条 | pending |
 | content/baike/programming-languages/Go语言系统编程指南.md | 5 | s4 | 18340 | 并发模型、内存模型happens-before、隐式接口、反射、unsafe | 并发模型/内存模型 happens-before/隐式接口/反射/unsafe 各独立话题；正文 18340、1187 代码行 → 拆词条 | pending |
