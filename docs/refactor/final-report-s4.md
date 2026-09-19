@@ -88,3 +88,12 @@
 
 > devops 累计收敛：API/Docker/K8s 三大指南 + phase1；剩 Linux/Web安全/OS内核/网络渗透 4 篇 pending。
 
+## §S4 · Linux系统管理高级指南（枢纽+3 运维子词条）
+
+**产物**：枢纽页(1532)+3 运维层子词条 `Linux 性能分析工具`/`Linux 网络管理`/`Linux 文件系统选型`；内核·进程·内存·VFS 机制双链 [[操作系统内核原理]](不同抽象层，不建重复词条)、Shell 双链 os、容器双链 容器与编排；无 pending-merge。4 篇 strict 全 PASS。
+**hash**：
+
+- 8de359a docs: 二期拆分[S4]——Linux系统管理高级指南 (枢纽+3运维子词条)
+
+> devops 累计清：API/Docker/K8s/Linux 4 大指南 + phase1 6 篇；剩 Web安全攻防/操作系统内核原理/网络安全与渗透测试 3 篇 pending。
+
