@@ -176,3 +176,9 @@
 
 - 769ddc3 docs: 二期拆分[S4]——函数式编程完全指南 (枢纽+4子词条)
 
+## §S4 · 密码学与区块链技术指南（枢纽+2）
+
+枢纽页(1253)+2 子词条 `密码学基础`(对称/非对称/哈希/签名/AES·RSA·ECC·SHA/KMS·HSM/TLS)、`区块链与比特币`(哈希链/PoW-PoS/P2P/UTXO/SegWit)。密码学基础与 s5 pending 的 security/密码学基础篇·加密技术篇·哈希算法篇 跨片重叠→标 pending-merge、新增去重队列第 12 对（归口宜统一 security，待 s5 收敛定夺）；区块链 net-new。踩坑：2 新链悬空(哈希算法与一致性哈希/去中心化身份)改纯文本、2 条 🎯 裁；一处 heredoc 脚本因 ASCII 引号语法错致 split-candidates 首轮未落，改用脚本文件补记。3 篇 strict 全 PASS、0 悬空。提交 CLEAN。**hash**：
+
+- ade354c docs: 二期拆分[S4]——密码学与区块链 台账补记(split-candidates done + 第12对)
+
