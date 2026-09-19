@@ -55,7 +55,7 @@
 | content/baike/architecture/云原生与多云架构实战指南.md | 8+ | s5 | ~4000+ | 容器、K8s、服务网格、多云、CI-CD、GitOps、Serverless、可观测 | 容器/K8s/服务网格/多云/CI-CD/GitOps/Serverless/可观测 多独立子话题 | pending |
 | content/baike/architecture/分布式系统设计完全指南.md | 8+ | s5 | ~4000+ | 一致性、共识、分布式事务、分片、复制、领导者选举 | 一致性/共识/分布式事务/分片/复制/领导者选举等独立子话题 | pending |
 | content/baike/architecture/可观测性工程实战.md | 5+ | s5 | ~4000+ | 日志、指标、链路追踪、APM、告警 | 日志/指标/链路追踪/APM/告警 各独立实践体系 | pending |
-| content/baike/architecture/微服务架构设计与实践.md | 8+ | s5 | ~5000+ | 服务拆分、网关、通信、容错、数据一致性、部署、监控 | 服务拆分/网关/通信/容错/数据一致性/部署/监控 各独立话题 | pending |
+| content/baike/architecture/微服务架构设计与实践.md | 8+ | s5 | ~5000+ | 服务拆分、网关、通信、容错、数据一致性、部署、监控 | 服务拆分/网关/通信/容错/数据一致性/部署/监控 各独立话题 | done（2026-09-19 巨型专场第 1 篇：枢纽页 + 3 子词条） |
 | content/baike/architecture/性能优化.md | 14 | s5 | ~1500+ | 缓存、CDN、负载均衡、连接池、异步、限流、熔断、降级 | 缓存/CDN/负载均衡/连接池/异步/限流/熔断/降级等14个独立手段 | done（2026-09-19 枢纽页 + 1 子词条：异步处理与线程池；CDN 双链 [[内容分发网络]]） |
 | content/baike/architecture/推荐系统设计与实现.md | 6+ | s5 | ~3500+ | 召回、排序、特征工程、AB测试、冷启动、实时性 | 召回/排序/特征工程/AB测试/冷启动/实时性 各独立子系统 | pending |
 | content/baike/architecture/数据工程完全指南.md | 6+ | s5 | ~4000+ | ETL、数仓、数据湖、流处理、数据质量、治理 | ETL/数仓/数据湖/流处理/数据质量/治理 各独立领域 | pending |
