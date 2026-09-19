@@ -59,6 +59,10 @@
 - 冲突：本 devops 汇编的 RESTful/Richardson/HATEOAS、版本、分页、契约 与已 done 的 architecture `RESTful API 设计`/`API 分页与版本控制`/`OpenAPI 规范` 重叠；认证授权(APIKey/OAuth2/JWT/RBAC) 与 security `OAuth 与 JWT`(done) 及 `认证与授权篇`(pending) 重叠。§5 分页在本文原稿已导入截断。
 - 已执行：拆为枢纽页 + 唯一 net-new 子词条 `API 错误处理规范`(RFC 7807)；其余主题全部双链到上述 done 专条、不新建，截断的分页节以 [[API 分页与版本控制]] 为准。未产生新的 pending-merge（所链皆已存在）。
 
+**10. `architecture/架构模式.md` 拆出的 六边形/洋葱 ↔ `architecture/领域驱动设计DDD完全指南.md`（第六部分 CQRS、§14 六边形、§15 洋葱&整洁架构）**（预案：改双链，不新建）
+- 冲突：六边形与洋葱在库内唯一成文归口是仍 pending 的 `领域驱动设计DDD完全指南.md`（`#### 14 六边形架构`、`#### 15 洋葱架构 & 整洁架构` 两小节）与 `设计原则.md`（DIP），双链过去等于指向未拆原料，按 v1.2 §2 第 4 档**先行立条** `architecture/六边形与洋葱架构.md`；CQRS/事件溯源未立条——归口是已 done 的 `事件驱动架构.md`（其核心模式两条即 CQRS 与 Event Sourcing），DDD 完全指南第六/七部分为同源更深阐述、届时自然收敛。
+- 预案：轮到拆 `领域驱动设计DDD完全指南.md` 时**删除** §14/§15 两小节、改双链指向 [[六边形与洋葱架构]]，并清掉 s5.md 该新词条行的 `pending-merge`；清完前该指南不得判 done。
+
 ## 待拆清单
 
 | 文件 | 子概念数 | 所属片 | 正文字数 | 子概念预览 | 理由 | 状态 |
@@ -75,7 +79,7 @@
 | content/baike/architecture/性能优化.md | 14 | s5 | ~1500+ | 缓存、CDN、负载均衡、连接池、异步、限流、熔断、降级 | 缓存/CDN/负载均衡/连接池/异步/限流/熔断/降级等14个独立手段 | done（2026-09-19 枢纽页 + 1 子词条：异步处理与线程池；CDN 双链 [[内容分发网络]]） |
 | content/baike/architecture/推荐系统设计与实现.md | 6+ | s5 | ~3500+ | 召回、排序、特征工程、AB测试、冷启动、实时性 | 召回/排序/特征工程/AB测试/冷启动/实时性 各独立子系统 | done（2026-09-19 枢纽页 + 4 子词条：协同过滤与矩阵分解、基于内容推荐与混合策略、多路召回与双塔模型、深度推荐模型；推荐系统本体与算法三代主线归口 data-science/推荐系统.md 金样不重复造条，特征工程/AB测试/ANN 索引/模型上线 全双链 [[特征工程进阶]]·[[A B测试与实验设计]]·[[向量数据库技术]]·[[模型压缩与部署]] 已 done 专条不新建，冷启动与可解释性折进 基于内容推荐与混合策略；原稿实际只有 5 节、候选清单预期的 特征工程/AB测试/冷启动/实时性 无独立小节，§5.3 多路召回代码在 recall_parallel 中断尾，均按 v1.2 §5 不补写）|
 | content/baike/architecture/数据工程完全指南.md | 6+ | s5 | ~4000+ | ETL、数仓、数据湖、流处理、数据质量、治理 | ETL/数仓/数据湖/流处理/数据质量/治理 各独立领域 | done（2026-09-19 枢纽页 + 2 子词条：流处理与批处理〔§4+§5 合并〕、湖仓一体与开放表格式〔§3 Delta/Iceberg/Hudi 选型〕；数仓/ETL/数据湖/MapReduce/Spark/Kafka 全双链既有 done 专条不新建，数据编排通用机制双链 [[任务调度（Task Scheduling）]]、Dagster 资产导向内联不另立薄条，§6.2 Dagster 代码断尾按 v1.2 §5 不补写、候选预期的数据质量·治理无独立小节一律双链 [[数据清洗实战]]·[[ETL]]）|
-| content/baike/architecture/架构模式.md | 12 | s5 | ~1200+ | 单体、微服务、Serverless、EDA、CQRS、六边形、洋葱 | 单体/微服务/Serverless/EDA/CQRS/六边形/洋葱等12种独立模式 | pending |
+| content/baike/architecture/架构模式.md | 12 | s5 | ~1200+ | 单体、微服务、Serverless、EDA、CQRS、六边形、洋葱 | 单体/微服务/Serverless/EDA/CQRS/六边形/洋葱等12种独立模式 | done（2026-09-19 枢纽页 + 1 子词条：六边形与洋葱架构〔族词条合并 §6+§7，先行立条，见重叠队列第 10 对 pending-merge〕；单体→[[微服务拆分与选型]]、微服务→[[微服务架构]]、Serverless→[[云服务详解]]·[[云原生十二要素]]、EDA 与 CQRS/事件溯源→[[事件驱动架构]]、微前端→[[前端框架核心概念]]（均 done 专条不新建）；Space-Based/管道-过滤器 无归口且原稿内容薄、留枢纽内联；中小汇编（原 3165 字 / 10 围栏 / 61 代码行，ASCII 图全部转表与散文）|
 | content/baike/architecture/系统设计.md | 12 | s5 | ~1500+ | CAP、BASE、一致性、分布式ID、分片、读写分离 | CAP/BASE/一致性/分布式ID/分片/读写分离等12个独立话题 | done（2026-09-19 枢纽页 + 1 子词条：数据分片与热点处理） |
 | content/baike/architecture/设计原则.md | 12 | s5 | ~1800+ | SOLID、DRY、KISS、YAGNI、迪米特、组合、接口、IoC、DI | SOLID/DRY/KISS/YAGNI/迪米特/组合/接口/IoC/DI等12个独立原则 | pending |
 | content/baike/architecture/领域驱动设计DDD完全指南.md | 10 | s5 | ~2500+ | 核心思想、战略设计、战术设计、分层、事件风暴、CQRS、ES、微服务、实战、误区 | 核心思想/战略设计/战术设计/分层/事件风暴/CQRS/ES/微服务/实战/误区 10部分 | pending |
