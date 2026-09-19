@@ -146,3 +146,19 @@ GraphQL → [[GraphQL实践]]、gRPC → [[gRPC深入]]、WebSocket → [[WebSoc
 - **Raft / Paxos / ZAB 未新建**：三者归口 [[一致性算法]]（源汇编自己已如此标注），符合概念级查重结论。
 - **自我纠正两处 ⑩ 缺陷**（详见 final-report §11.1）：排序键与别名档取值都错过，均已修正；这是"warning 若排序错会误导人"的实证。
 - **一次 ⑧ 拦截**：新枢纽页写了不存在的 `[[分布式系统设计模式]]`，提交前删除。
+
+## 8. 第六批会话自决（中小篇高覆盖率专场）
+
+按任务 §2.1 步骤 2 的 30% 阈值做概念级覆盖率普查后，登记四条跳过项（本场终止条件同时满足：low-coverage 累计 ≥2）：
+
+- `low-coverage: security/哈希算法篇.md ｜ 20%(2/10)` —— 10 个算法/机制仅"一致性哈希"有专条，拆它等于从零写 MD5/SHA-1/SHA-256/SHA-512/HMAC/布隆过滤器/校验和/加盐哈希 8 篇。
+- `low-coverage: middleware/任务调度（Task Scheduling）.md ｜ 0%(0/10)` —— XXL-JOB / Elastic-JOB / SchedulerX / 延迟队列 / 优先级队列 / Crontab / 任务编排 / 监控告警 全部无专条。
+- `low-coverage: network/TCP深入.md ｜ 7%(1/14)` —— 仅"拥塞控制"有专条；**注**：⑩ 名称档把"滑动窗口机制"判为未命中，而 `network/滑动窗口协议.md` 其实存在，故真实覆盖约为 14%，⑩ 的阈值是下界。
+- `low-coverage: frontend-concepts/HTML & CSS 核心概念.md ｜ 8%(1/12)` —— 盒模型 / Flexbox / Grid / BFC / 选择器优先级 / 伪类 / CSS 变量 / 动画 / 层叠上下文 全无专条。
+
+**只处理了 `software-engineering/04-CI CD.md`**（29%，接近阈值；3659 字 / 34 行代码，是队列里唯一"小且可控"的一篇），拆为枢纽页 + `CI 与 CD` + `构建流水线与 CI-CD 工具`，并顺带执行去重队列第 3 对（蓝绿/金丝雀/滚动改双链）。
+
+两条工具/流程教训已写进 final-report §12：
+
+1. **文件名里的 `/` 会让双链歧义**：`CI/CD` 作标题时链写作 `[[构建流水线与 CI/CD 工具]]` 与实际文件名 `构建流水线与 CI-CD 工具.md` 不符，⑧ 报悬空、⑩ 指出真身；已统一改用 `CI-CD`。
+2. **拆分提交与台账登记必须有一道断言**：本篇提交 `32bd92c` 时台账脚本因括号笔误抛 SyntaxError 未改账，而 `git add && git commit` 照常执行，产生了一次"账未跟上"的提交（已用 `13ad0fd` 补齐）。建议后续会话固定跑：`git diff --cached --name-only` 必须包含对应 `status/sN.md` 才允许提交。
