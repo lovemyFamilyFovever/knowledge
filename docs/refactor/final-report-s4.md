@@ -140,3 +140,9 @@
 
 > s4 pending 降至 25（programming-languages 剩 ~18：Go系统/Python全栈/Python高级/Rust系统/TS高级/函数式/密码学/并发/数学/音频课×2/通用概念/编译原理/CS图谱/软件测试(已done)/OOP/概念×2；software-engineering 3；testing 3）。
 
+## §S4 · Go语言系统编程指南（枢纽+3）
+
+**产物**：枢纽页(1230)+3 子词条 `Go并发与内存模型`(CSP/happens-before/atomic)、`Go接口与反射`、`Go unsafe与底层`(unsafe.Pointer/cgo)；goroutine/channel/接口基础双链 [[Go语言核心]]；net-new 无 pending-merge。**踩坑**：3 条 🎯 又超150→裁；4 篇 strict 全 PASS、0 悬空。**hash**：
+
+- 06dc2a2 docs: 二期拆分[S4]——Go语言系统编程指南 (枢纽+3子词条)
+
