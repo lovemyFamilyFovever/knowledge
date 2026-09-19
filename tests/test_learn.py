@@ -79,9 +79,27 @@ def test_parse_baike_b() -> None:
     check("B 格式：每个词条 1 张 def + 至多 1 张 trap",
           len(defs) >= len([c for c in cards if c.kind == "baike_trap"]))
     check("B 格式：related 为空数组", all(c.related == "[]" for c in cards))
-    # 冒号在 ** 内部的变体（SQL 基础术语篇）
-    rel2 = "baike/database/SQL 基础术语.md"
-    cards2 = parse_file(rel2, read_sample(rel2))
+    # 冒号在 ** 内部的变体：用内联样本，不依赖真实语料文件
+    # （原先读 baike/database/SQL 基础术语.md，该篇二期拆为枢纽后格式会变，故解耦）
+    _sql_variant = """# SQL 基础术语
+
+## DDL（数据定义语言）
+
+**一句话定义（大白话）：** DDL 用来创建、修改、删除数据库对象的结构定义。
+
+## DML（数据操作语言）
+
+**一句话定义（大白话）：** DML 用来对表中的数据行进行增删改操作。
+
+## DQL（数据查询语言）
+
+**一句话定义（大白话）：** DQL 用 SELECT 从数据库中查询所需的数据。
+
+## TCL（事务控制语言）
+
+**一句话定义（大白话）：** TCL 用来管理事务的提交与回滚边界。
+"""
+    cards2 = parse_file("baike/database/SQL 基础术语.md", _sql_variant)
     terms2 = [c.term for c in cards2 if c.kind == "baike_def"]
     check("B 格式变体（冒号在 ** 内）：也能抽到定义卡", len(terms2) >= 4, f"got {len(terms2)}")
     check("B 格式变体：第一条是 DDL（…）",
