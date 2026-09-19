@@ -2,7 +2,7 @@
 title: "Playwright 与 Cypress"
 tags: [测试与质量, E2E工具, 自动化测试]
 source: "baike"
-source_path: "开发术语 / 测试与质量"
+source_path: "技术文章 / 编程语言"
 collected: "2026-09-05"
 status: "imported"
 ---

@@ -2,7 +2,7 @@
 title: "E2E 测试"
 tags: [测试与质量, 端到端测试, 自动化测试]
 source: "baike"
-source_path: "开发术语 / 测试与质量"
+source_path: "技术文章 / 编程语言"
 collected: "2026-09-05"
 status: "imported"
 ---

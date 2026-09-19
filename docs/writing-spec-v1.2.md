@@ -59,22 +59,22 @@ pending-merge: <父汇编路径>
 
 ## 3. 拆分新产物的 frontmatter 模板（新增条款）
 
-**定案：镜像同子域兄弟条目，不引入新口径。** 由二期拆分/新建的词条，frontmatter 按下列模板生成：
+**定案：一律继承父文档的身世字段，不引入新口径、也不试图"查子域标准值"。** 由二期拆分/新建的词条，frontmatter 按下列模板生成：
 
 | 字段 | 取值 | 理由 |
 |---|---|---|
 | `title` | 新词条名（= 文件名去 `.md`） | — |
 | `source` | `"baike"` | 身世不变，它仍是百科术语；`knowledge`（知识库自产）留给用户自写的长文，不用于拆分产物 |
-| `source_path` | 该子域在 `content/_meta/taxonomy.json` 中的 display path（如 `开发术语 / 测试与质量`） | 与同子域兄弟条目一致，保证分类树聚合 |
+| `source_path` | **继承父文档的 `source_path`** | 2026-09-19 裁决：原口径"取 taxonomy display path"不可执行——`taxonomy.json` 只存子域短标签（`software-engineering: "软件工程"`），没有 `开发术语 / ` 这一级；且同一子域存量稿已分裂成两种 source_path（software-engineering 11 篇 = 5 篇「开发术语 / 软件工程与测试」+ 6 篇「开发术语 / 软件工程」，与导入批次完全同分布），"镜像兄弟条目"不是良定义。继承父文档与 `collected` 同源同策，保证拆分产物与父文档同批次一致 |
 | `collected` | **继承父文档的 `collected`**（不填拆分日） | 保持语料历史一致性；拆分日是工程动作，不是知识获取时间 |
 | `status` | `"imported"` | 与批量重写稿一致，后续统一治理时同批处理 |
 | `tags` | `[]` | 留空，避免从父文档继承造成标签污染；标签治理另走 `scripts/govern_tags.py` 的 dry-run 流程 |
 
-**禁止**：为拆分产物发明新 `source` 值；把 `collected` 填成拆分日；从父文档复制 `tags`。
+**禁止**：为拆分产物发明新 `source` 值；把 `collected` 填成拆分日；从父文档复制 `tags`；**按子域名去 taxonomy 反查 source_path**（已证实查不到可用值）。
 
-**实例**（本轮两篇，均已按此落盘）：`content/baike/testing/E2E 测试.md`、`content/baike/testing/Playwright 与 Cypress.md` 取 `source: "baike"` / `source_path: "开发术语 / 测试与质量"` / `collected: "2026-09-05"`（继承父）/ `status: "imported"`。
+**实例**：`algorithms/时间复杂度.md` 等 10 篇按此落盘。**2 篇已回改**：`testing/E2E 测试.md`、`testing/Playwright 与 Cypress.md` 初版误按"镜像同子域兄弟"取了 `开发术语 / 测试与质量`，2026-09-19 裁决后改回继承父文档的 `技术文章 / 编程语言`（父文档 `programming-languages/软件测试完全指南.md` 即此值）。
 
-> 分类学权威仍是 `content/_meta/taxonomy.json`（AGENTS.md 不变量 5）：本条只规定"取该子域已有的 display path"，不新增或改动子域。
+> **为什么不冲突**：`source_path` 在代码里只作展示用的"原始位置"（`app/app.py`），分类树的权威仍是文件路径 + `content/_meta/taxonomy.json`（AGENTS.md 不变量 5）。所以继承父文档不会把文件放错架子，只是忠实记录身世；本条不新增也不改动任何子域。
 
 ## 4. 面试速答长度：≤150 字 + 机器门⑨（修订 v1.0 §2）
 
