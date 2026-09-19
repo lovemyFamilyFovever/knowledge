@@ -472,3 +472,43 @@ split-candidates 102 行 = done 12 + exempt-reference 1 + pending 89
 2. **`.gitignore` 工作区有一处不属于本会话的改动**（新增 `/.qoder-credits`）。按 AGENTS.md 多会话并发纪律，我未提交、未回退、未触碰。
 3. 本会话其余工作：工具补丁（`bd9a4a0`、`fab0ae5`）、收官报告（`3546950`）、自决登记（`941373a`）。`scripts/agent/check_rewrite.py` 是唯一改动的代码文件，未触碰 `app/`。
 - e591c66 docs: 刷新第七批全库复跑日志（365 PASS / 89 FAIL / 0 悬空）（本行由 git log 生成）
+
+## §S1（二期拆分 · 分片1 AI 线）— 巨型汇编专场：本会话处理 1 篇后收手
+
+- 触发巨型规则：content/baike/machine-learning/AI是否会取代人类辩论.md 正文 13154 字（>8000），按 §1.2 本会话仅此 1 篇。
+- 拆分产出：父文档改写为枢纽页（strict 1547/2200，mermaid 关系图 + 3 子词条索引，信号②b 粗体项内含双链），新建 3 个族词条：
+  - AI 取代就业的正反论据.md（1629，正方四论/反方四论/真正分歧点）
+  - AI 就业影响的实证数据.md（1729，按机构预测/同行评审/个案标注的出处台账）
+  - AI 与人类独特性的哲学概念.md（1699，感质/具身认知/中文房间/阿伦特/康德/本雅明/戈夫曼/罗杰斯/博登 概念词典）
+- 归口与不重复：岗位/行业类型学已有 done 专条《AI时代生存指南》第二章，按 §8.1 双链指向、父枢纽不重复承载；原稿引用数据迁入实证篇，未新增编造数字；原稿质询环节截断，仅据现存文本拆分、未补写。
+- frontmatter：三子词条按 §3 继承父文档 source_path「技术文章 / AI与机器学习」与 collected「2026-09-05」、tags 空、status imported、source baike；父枢纽 frontmatter 逐字未改（⑦ PASS）。
+- 自检：check_rewrite --strict 对本会话 4 文件全 PASS、0 FAIL、0 warning；check_cards 各 1 def + 2 trap。
+- 本分片剩余 pending：9 篇（均 machine-learning）。
+- 下一篇（本会话不再处理，另起会话）：content/baike/machine-learning/LLM应用开发完全指南.md，正文 20257 字、14 围栏 941 行，同为巨型汇编。
+- 本节 commit hash：
+- 6f1538b docs: 二期拆分[S1]——AI是否会取代人类辩论 (枢纽+3子词条)
+
+## §S4（二期拆分 · 工程线，分片4）
+
+**本篇处理（1 篇，巨型汇编收手）**：`content/baike/design-patterns/创建型模式（Creational Patterns）.md`（原 14432 字 ≫ 8000，判为巨型汇编 → 本会话仅此 1 篇）。
+
+**拆分产物**：
+- 父文档 → **枢纽页**：`done-hub`，正文 1609/2200、0 围栏、1 def + 2 trap；核心机制改为「5 子词条索引表 + 选型判据」，§8.1 信息不重复承载（表格载"有什么"、散文载"怎么选/为什么"）；frontmatter 逐字未动。
+- **新建 5 子词条**（§3 继承父 source_path「开发术语 / 设计模式」与 collected「2026-09-05」、tags []）：
+  - `单例模式.md` 1411/1围栏
+  - `工厂模式（工厂方法与抽象工厂）.md` 1686/2围栏（工厂方法+抽象工厂合并为族词条，避免薄条）
+  - `建造者模式.md` 1379/1围栏
+  - `原型模式.md` 1324/1围栏
+  - `对象池模式.md` 1263/1围栏（保留"非 GoF"出身说明）
+
+**概念级查重（§8.2）**：全库无同名/异名 单例·工厂·建造者·原型·对象池 专条，故各新建；唯一重叠为 `programming-languages/编程概念音频课-设计模式.md`（仍 pending）的单例/工厂两节 → 按 §2 第 4 档先行立条：已登记 **去重队列第 7 对**，并在 `单例模式`、`工厂模式` 两条 status 行标 `pending-merge: programming-languages/编程概念音频课-设计模式.md`（拆该音频课前不得清）。本轮无删除/改名文件，不产生悬空链，未重建索引。
+
+**check_rewrite --strict（本分片 6 篇）**：6 篇全 PASS / 0 FAIL；5 条 warning 均为「新文件不在 HEAD」，0 悬空双链、0 处含 `/` 的链名。⑨ 面试速答全部 ≤150 硬判通过。
+
+**本会话提交**（hash 由 `git log` 自动追加，见下）。
+
+**本分片剩余 pending**：37 篇（split-candidates.md 中 s4 行）。**下一篇巨型汇编**：`content/baike/design-patterns/结构型模式（Structural Patterns）.md`（16104 字）。
+
+**commit hash**：
+
+- b30db65 docs: 二期拆分[S4]——创建型模式 (枢纽 + 5 子词条)
