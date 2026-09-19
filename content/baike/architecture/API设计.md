@@ -10,351 +10,103 @@ status: "imported"
 # API设计
 
 
-> 📌 **导航**：本文是 **API设计** 词条，属于 architecture 术语集。相关枢纽：[[SaaS产品技术架构]]、[[事件驱动架构]]、[[云原生与多云架构实战指南]]、[[分布式系统设计完全指南]]、[[微服务架构]]。
+> 📌 **导航**：本文是 **API设计** 枢纽页。REST 语义、分页与版本控制、OpenAPI 契约已各拆为独立词条；GraphQL / gRPC / WebSocket / 幂等 / 状态码本库已有专条，本页只做范式选型与索引。
 
-## 1. RESTful API设计规范
+## 定义
 
-**一句话定义：** 基于HTTP协议，用URL表示资源，用HTTP方法表示操作的设计风格。
+**一句话定义：** API 设计是为系统间协作制定**可长期依赖的契约**的工程：选定交互范式（REST / GraphQL / RPC / 消息），把资源与操作、错误语义、兼容策略、鉴权与限流写成机器可读且可校验的约定。
 
-**通俗类比：** 像图书馆的索书系统，书架号（URL）定位书籍，借/还/查（HTTP方法）操作书籍。
+**通俗类比：** 像两国之间的通用口岸协议：走哪条通道、单据填什么、查验规则与拒入情形都提前写明，双方各自的内部流程再怎么改，都不必让对面重学一遍。
 
-**具体示例：**
-```
-GET    /api/v1/users          # 获取用户列表
-GET    /api/v1/users/1001     # 获取单个用户
-POST   /api/v1/users          # 创建用户
-PUT    /api/v1/users/1001     # 更新用户（全量）
-PATCH  /api/v1/users/1001     # 更新用户（部分）
-DELETE /api/v1/users/1001     # 删除用户
-```
+本页是**枢纽页**：给出"该选哪种接口范式、每范式的取舍与归口"，细节走下表双链。
 
-**为什么需要它：** 统一API设计风格，降低沟通成本，提高开发效率。
+## 为什么需要它
 
-**与GraphQL对比：** REST用多个端点表示不同资源，GraphQL用单个端点按需查询数据。
+接口一旦有第二个团队或第三方依赖，它的形态就不再是实现细节，而是**对外承诺**。承诺没收敛时，动词会被塞进 URL、错误统一塞进 200、字段悄悄改名、一次全量查询拖垮数据库——每个问题单看都小，合起来就是无人敢改的接口酱。API 设计要做的正是把承诺显式化：**语义由协议承担、容量由分页兜底、变更由版本隔离、一致性由契约校验**，从而让系统能各自演进而不互相撞伤。
 
----
+## 核心机制
 
-## 2. HTTP方法语义
+### 先选交互范式
 
-**一句话定义：** 不同HTTP方法代表不同的操作类型，具有特定语义和约束。
+四个问题决定范式：数据形状是"资源"还是"图"？调用方是否需要按需裁剪字段？通信方向是请求-响应、服务端推送还是双向流？调用方是浏览器、公网客户端还是内网服务？
 
-**通俗类比：** 像银行操作，查询（GET）不改变账户，转账（POST/PUT）会改变余额。
+- 资源清晰、要复用 HTTP 生态（缓存 / 网关 / SDK 生成）→ REST；
+- 前端聚合多资源、字段裁剪强烈 → GraphQL；
+- 内网高频、要强类型与流式 → gRPC；
+- 服务端主动推送双向通道 → WebSocket；
+- 只需异步解耦不要求即时应答 → 消息队列（见 [[事件驱动架构]]）。
 
-**具体示例：**
-```
-GET     - 幂等，安全，可缓存    - 查询资源
-POST    - 非幂等，不安全        - 创建资源
-PUT     - 幂等，不安全          - 替换资源
-PATCH   - 非幂等，不安全        - 部分更新
-DELETE  - 幂等，不安全          - 删除资源
-HEAD    - 幂等，安全            - 只获取响应头
-OPTIONS - 幂等，安全            - 获取支持的方法
-```
+### 契约与兼容性
 
-**为什么需要它：** 明确每个方法的语义，让API行为可预期，便于缓存和安全控制。
+接口写进机器可读的契约才谈得上治理：OpenAPI 描述 HTTP 形状、`.proto` 描述 RPC、内省 schema 描述 GraphQL。变更分两类——**兼容变更**（新增可选字段、新增端点）可在同版本内演进；**破坏性变更**（删字段、改类型、改语义）必须升版本并给出下线计划。
 
-**幂等性解释：** 幂等意味着多次执行结果相同，GET/PUT/DELETE天然幂等，POST需要额外设计。
+### 横切面不可省
 
----
+鉴权（谁在调）、限流与配额（能被调多频繁）、错误码与 trace id（出错怎么查）、幂等与重试（超时后敢不敢再发一次）——这些都不属于任何单个端点，却决定接口在生产环境能不能活下来。
 
-## 3. 状态码使用规范
+### 子词条索引
 
-**一句话定义：** 用标准HTTP状态码表示请求处理结果，让客户端快速理解响应。
+| 主题 | 回答什么问题 | 详见 |
+|---|---|---|
+| REST 资源建模与方法语义 | URL/方法/状态码各承担什么 | [[RESTful API 设计]] |
+| 分页方案取舍 | offset 与 cursor 何时换 | [[API 分页与版本控制]] |
+| 版本控制放法 | URL、Header 还是 Query | [[API 分页与版本控制]] |
+| 契约与工具链 | spec 怎么写、生成与校验什么 | [[OpenAPI 规范]] |
+| 按需取字段的接口 | 单端点换往返数、N+1 怎么治 | [[GraphQL实践]] |
+| 强类型 RPC | 服务间调用与流式怎么做 | [[gRPC深入]] |
+| 双向实时通道 | 长连接、心跳与消息顺序 | [[WebSocket]] |
+| 写操作可重试 | 幂等键与去重表怎么配 | [[幂等性]] |
+| HTTP 状态码语义 | 401/403/409/422/429 分别何时 | [[HTTP 状态码]] |
+| 流量护栏 | 配额、突发与降级 | [[限流]] |
 
-**通俗类比：** 像交通信号灯，绿灯（2xx）通行，黄灯（3xx）注意，红灯（4xx/5xx）停止。
+## 具体示例
 
-**具体示例：**
-```
-200 OK                  - 成功
-201 Created             - 创建成功
-204 No Content          - 删除成功，无返回体
-301 Moved Permanently   - 永久重定向
-304 Not Modified        - 缓存未过期
-400 Bad Request         - 请求参数错误
-401 Unauthorized        - 未认证
-403 Forbidden           - 无权限
-404 Not Found           - 资源不存在
-429 Too Many Requests   - 请求过于频繁
-500 Internal Error      - 服务器内部错误
-503 Service Unavailable - 服务不可用
+同一业务动作在不同范式下的形状差别：
+
+```http
+GET    /api/v1/orders?cursor=...&size=20   # REST：服务端决定返回结构
+POST   /graphql  { "query": "{ order(id:1){ user{ name } } }" }   # GraphQL：客户端按需取
+POST   /pb.OrderService/GetOrder           # gRPC：.proto 定契约、二进制高效
 ```
 
-**为什么需要它：** 标准化错误处理，让客户端根据状态码快速判断下一步操作。
+三者都对，错的是混用而不说明：给内网服务暴露公网式 REST 聚合接口，或让公网客户端直连 gRPC。
 
-**常见错误：** 不要所有错误都返回200再在body中标记错误，这违背了HTTP语义。
+## 何时用与何时不用
 
----
+- **必须先立契约**：对外开放、跨语言消费、有多个前端、需要 SDK 生成或契约测试。
+- **可从简**：单一内部消费者且能与调用方同步升级时，类型定义加发布顺序协调就够，别为一堆 `vN` 付出维护面。
+- **别过度设计**：资源模型还没稳定就急着上 HATEOAS 或全套 codegen，常得到一套比业务更难改的框架。
 
-## 4. 资源命名
+## 优劣与代价
 
-**一句话定义：** 用名词复数形式命名资源，用路径层级表示资源关系。
+✅ 收敛语义后，网关、缓存、监控、SDK 与契约测试都能顺着约定自动生效。
+✅ 兼容性显式化让接口能被长期依赖，变更从"赌没事"变成可灰度可回滚。
+⚠️ 多版本与多层抽象会放大测试、文档与沟通面，需配下线计划否则只增不减。
+⚠️ 按需查询与深度嵌套会引入成本不可控（GraphQL 的 N+1、REST 的过度拆分），必须配限深与限流。
 
-**通俗类比：** 像文件系统的目录结构，/动物/猫 表示猫属于动物类别。
+## 与相关概念的区别
 
-**具体示例：**
-```
-/users                          # 用户集合
-/users/1001                     # 单个用户
-/users/1001/orders              # 该用户的订单
-/users/1001/orders/5001         # 该用户的某个订单
-/users/1001/orders/5001/items   # 该订单的商品项
-```
+- **API 设计 vs 接口实现**：设计定契约与语义（对外承诺），实现只是履行承诺；换框架不改契约，用户无感。
+- **契约 vs 文档**：文档描述给人看、易过期；契约可被生成与校验工具消费，能进 CI。
+- **REST vs RPC 风格**：REST 以资源与状态转移为中心；`/user/getUserInfo` 是 RPC 披着 HTTP 外衣。
+- **版本控制 vs 兼容性发布**：前者新旧共存，后者在同版本内向后兼容演进——能用后者就不该动用前者。
 
-**为什么需要它：** 统一的命名规范让API直观易懂，降低学习成本。
+## 常见误区
 
-**常见错误：** 使用动词（如/getUsers）、单数形式（如/user）、层级过深（超过3层）。
+- 接口只要能调通，命名和状态码怎么写无关紧要。
+- 有了 OpenAPI 文档，就等于做完契约治理、不必再写接口测试。
+- 所有系统对外都该用同一套 REST 接口，异构只会增加成本。
 
----
+## 面试速答
 
-## 5. 分页设计（offset/cursor）
-
-**一句话定义：** 将大量数据分批返回，避免一次性加载过多数据。
-
-**通俗类比：** 像翻书，每次只看一页，而不是把整本书摊开。
-
-**具体示例：**
-```
-# Offset分页
-GET /api/users?page=2&size=20
-Response: {
-  "data": [...],
-  "total": 1000,
-  "page": 2,
-  "size": 20
-}
-
-# Cursor分页
-GET /api/users?cursor=eyJpZCI6MTAwMX0&size=20
-Response: {
-  "data": [...],
-  "next_cursor": "eyJpZCI6MTAyMH0",
-  "has_more": true
-}
-```
-
-**为什么需要它：** 减少单次响应数据量，提升性能，避免内存溢出。
-
-**Offset vs Cursor：** Offset简单但大数据集翻页慢且有数据漂移问题，Cursor性能稳定但实现复杂。
-
----
-
-## 6. GraphQL
-
-**一句话定义：** 一种API查询语言，客户端可以精确请求所需的数据结构。
-
-**通俗类比：** 像点餐自助餐，你想要什么菜、多少量，完全自己搭配。
-
-**具体示例：**
-```graphql
-# 查询
-query {
-  user(id: "1001") {
-    name
-    email
-    orders(first: 5) {
-      id
-      total
-      items {
-        product { name }
-        quantity
-      }
-    }
-  }
-}
-
-# 修改
-mutation {
-  createUser(input: { name: "张三", email: "zhang@example.com" }) {
-    id
-    name
-  }
-}
-```
-
-**为什么需要它：** 解决REST的过度获取和不足获取问题，一次请求获取精确需要的数据。
-
-**与REST对比：** REST每个端点返回固定结构，GraphQL单个端点返回任意结构，由客户端决定。
-
----
-
-## 7. gRPC（protobuf/流式调用）
-
-**一句话定义：** 基于HTTP/2和Protocol Buffers的高性能RPC框架。
-
-**通俗类比：** 像对讲机通信，比电话（HTTP）更快更省流量，但需要约定暗号（protobuf）。
-
-**具体示例：**
-```protobuf
-// 用户服务定义
-service UserService {
-  rpc GetUser (GetUserRequest) returns (User);
-  rpc ListUsers (ListUsersRequest) returns (stream User);  // 服务端流
-}
-
-message GetUserRequest {
-  string id = 1;
-}
-
-message User {
-  string id = 1;
-  string name = 2;
-  string email = 3;
-}
-```
-
-**为什么需要它：** 提供比REST更高的性能，强类型契约，支持流式通信。
-
-**与REST对比：** gRPC使用二进制协议更高效，但浏览器支持有限，调试不如REST直观。
-
----
-
-## 8. WebSocket全双工通信
-
-**一句话定义：** 建立持久连接，支持客户端和服务端双向实时通信。
-
-**通俗类比：** 像电话通话，双方可以同时说话和听，而不是像对讲机轮流发言。
-
-**具体示例：**
-```javascript
-// 客户端
-const ws = new WebSocket('ws://localhost:8080/chat');
-ws.onmessage = (event) => {
-  console.log('收到消息:', event.data);
-};
-ws.send('你好服务器');
-
-// 服务端（Node.js）
-wss.on('connection', (ws) => {
-  ws.on('message', (message) => {
-    ws.send(`收到: ${message}`);
-  });
-});
-```
-
-**为什么需要它：** 实现实时通信场景，如聊天、股票行情、在线游戏等。
-
-**与HTTP轮询对比：** 轮询是客户端定时询问，WebSocket是服务端主动推送，延迟更低、效率更高。
-
----
-
-## 9. API版本控制（URL/Header/Query）
-
-**一句话定义：** 当API发生不兼容变更时，通过版本号让新旧版本共存。
-
-**通俗类比：** 像软件版本，Windows 10和Windows 11可以同时使用。
-
-**具体示例：**
-```
-# URL版本（推荐）
-GET /api/v1/users
-GET /api/v2/users
-
-# Header版本
-GET /api/users
-Accept: application/vnd.myapi.v2+json
-
-# Query参数版本
-GET /api/users?version=2
-```
-
-**为什么需要它：** 保证向后兼容，让现有客户端不受新版本影响。
-
-**三种方式对比：** URL最直观易用，Header更RESTful但调试不便，Query参数灵活但不够规范。
-
----
-
-## 10. 幂等性设计
-
-**一句话定义：** 同一个请求执行多次，结果与执行一次相同。
-
-**通俗类比：** 像设置闹钟，设置10次和设置1次效果一样。
-
-**具体示例：**
-```java
-// 幂等性设计示例
-@PostMapping("/orders")
-public Order createOrder(@RequestHeader("Idempotency-Key") String key) {
-    // 检查是否已处理过
-    Order existing = orderService.findByIdempotencyKey(key);
-    if (existing != null) {
-        return existing;  // 直接返回之前的结果
-    }
-    // 首次执行，创建订单
-    return orderService.create(key, orderRequest);
-}
-```
-
-**为什么需要它：** 防止网络重试、消息重复消费导致数据不一致。
-
-**天然幂等的方法：** GET（查询）、PUT（全量替换）、DELETE（删除）天然幂等，POST需要额外设计。
-
----
-
-## 11. HATEOAS
-
-**一句话定义：** 在响应中包含相关操作的链接，客户端通过链接发现可用操作。
-
-**通俗类比：** 像导航网站，每个页面都提供相关页面的链接，你不需要记住所有网址。
-
-**具体示例：**
-```json
-{
-  "id": "1001",
-  "name": "张三",
-  "links": [
-    { "rel": "self", "href": "/users/1001" },
-    { "rel": "orders", "href": "/users/1001/orders" },
-    { "rel": "edit", "href": "/users/1001", "method": "PUT" },
-    { "rel": "delete", "href": "/users/1001", "method": "DELETE" }
-  ]
-}
-```
-
-**为什么需要它：** 让API具有可发现性，客户端不需要硬编码所有URL。
-
-**与普通REST对比：** 普通REST需要客户端知道所有URL，HATEOAS通过响应中的链接引导客户端。
-
----
-
-## 12. OpenAPI/Swagger
-
-**一句话定义：** 用标准化格式描述REST API，便于文档生成、测试和代码生成。
-
-**通俗类比：** 像建筑蓝图，描述API的结构、参数和返回值，施工方按图施工。
-
-**具体示例：**
-```yaml
-openapi: 3.0.0
-info:
-  title: 用户API
-  version: 1.0.0
-paths:
-  /users/{id}:
-    get:
-      summary: 获取用户
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-      responses:
-        '200':
-          description: 成功
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/User'
-```
-
-**为什么需要它：** 自动生成文档、生成客户端SDK、验证API契约是否一致。
-
-**与Postman对比：** OpenAPI是标准规范，Postman是工具；OpenAPI可以作为Postman集合的来源。
+> 🎯 API 设计先选范式再定细节：资源清晰用 REST、字段按需裁剪用 GraphQL、内网强类型流式用 gRPC、双向推送用 WebSocket；随后靠契约（OpenAPI/.proto）+ 分页 + 版本控制 + 幂等 + 限流把接口变成可长期依赖的承诺。
+> 🔍 追问：新增一个可选字段算破坏性变更吗？
+> 🔍 追问：为什么 GraphQL 需要限深与 DataLoader？
 
 ## 相关术语
 
-[[DDD领域驱动设计]]、[[SaaS产品技术架构]]、[[事件驱动架构]]、[[云原生与多云架构实战指南]]、[[分布式系统设计完全指南]]、[[可观测性工程实战]]
+[[RESTful API 设计]]、[[API 分页与版本控制]]、[[OpenAPI 规范]]、[[GraphQL实践]]、[[gRPC深入]]、[[WebSocket]]、[[幂等性]]、[[HTTP 状态码]]、[[限流]]、[[事件驱动架构]]、[[微服务架构设计与实践]]、[[SaaS产品技术架构]]
 
 ## 参考资料
 
-建议人工核验：本词条内容建议对照相关技术官方文档、权威教材与论文做准确性复核；未编造文献编号、标准号或 URL，如需引用请补充具体出处。
+建议人工核验：HTTP 方法与状态码语义见 RFC 9110、REST 约束见 Fielding 博士论文 (2000)、OpenAPI 见 openapis.org 规范正文；GraphQL 见 graphql.org、gRPC 见 grpc.io。原汇编中 GraphQL / gRPC / WebSocket / 幂等 / 状态码 五节已由上述专条覆盖，本页不再重复其定义。
