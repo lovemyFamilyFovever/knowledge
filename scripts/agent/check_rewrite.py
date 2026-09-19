@@ -347,7 +347,7 @@ _title_hay: list[tuple[str, str]] | None = None
 
 
 def title_haystacks() -> list[tuple[str, str, str, str, str]]:
-    """[(括号别名, 名称串, 定义段, 全文段, 相对路径, 文件名长度)]，供概念级分档查重。
+    """[(括号别名, 名称串, 定义段, 全文段, 相对路径, 用于排序的原文)]，供概念级分档查重。
 
     只比文件名会漏掉"概念已有专条但名字不同"（[[CDN]] vs `内容分发网络.md`）。
     分三档是为了压住误报：全文里顺带提过某词的普通词条，不该赢过真正那一篇。
@@ -412,15 +412,39 @@ def concept_match(target: str, exclude: str | None = None) -> str | None:
         # 不能把"自己"当疑似专条推荐：汇编自身常含该词，建议会毫无意义
         return exclude is None or path != exclude
 
-    for tier in ((0, 1, 2, 3) if len(tt) >= 5 else (0, 1)):
+    order = (1, 0, 2, 3) if len(tt) >= 5 else (1, 0)
+    for tier in order:
         hits = [(hay_pos(raw, target), pth) for al, n, h, a, pth, raw in hay
                 if tt in (al, n, h, a)[tier] and keep(pth)]
         if hits:
             return min(hits)[1]
-    near = [(levenshtein(tt, norm_link(pth.rsplit("/", 1)[-1][:-3])), pth)
-            for *_, pth, raw in hay if keep(pth)]
-    near = [(d, pth) for d, pth in near if d <= 2]
+    near = []
+    for *_, pth, raw in hay:
+        if not keep(pth):
+            continue
+        stem = norm_link(pth.rsplit("/", 1)[-1][:-3])
+        # 只看"近似拼写"不够：4 字中文词改两个字就到距离 2（曾把 链路追踪
+        # 误推给 光线追踪、把 重试 推给 死锁）。要求共享前缀或后缀 ≥3 才算笔误。
+        if not (common_prefix(tt, stem) >= 3 or common_suffix(tt, stem) >= 3):
+            continue
+        d = levenshtein(tt, stem)
+        if d <= 2:
+            near.append((d, pth))
     return min(near)[1] if near else None
+
+
+def common_prefix(a: str, b: str) -> int:
+    i = 0
+    while i < len(a) and i < len(b) and a[i] == b[i]:
+        i += 1
+    return i
+
+
+def common_suffix(a: str, b: str) -> int:
+    i = 0
+    while i < len(a) and i < len(b) and a[-1 - i] == b[-1 - i]:
+        i += 1
+    return i
 
 
 def hay_pos(raw_lower: str, target: str) -> int:
