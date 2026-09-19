@@ -1220,16 +1220,7 @@ FAIL baike/software-engineering/02-版本控制.md  (正文 3948/2200 字 / 围�
    ✗ ⑥ 围栏内共 25 行（上限 20）
    ✗ ⑥ 正文 3948 字 > 上限 2200｜未获枢纽豁免（①不满足：无 mermaid 且对比表 <4 数据行 ②不满足：具名子概念 14 <3 且核心机制粗体项 0 <3（粗体项须自身 ≥70 字且内含 [[双链]]））
 PASS baike/software-engineering/03-代码质量.md  (正文 2402/3400 字 / 围栏 1 块 3 行 / 卡 1def+2trap) [枢纽型（①对比表 8 数据行 ②具名子概念 4）]
-FAIL baike/software-engineering/04-CI CD.md  (正文 3659/2200 字 / 围栏 1 块 34 行 / 卡 14def+0trap)
-   ✗ ④ 含弯引号 [“”]（规范 §6 只允许直引号）
-   ✗ ② 未找到与 `**一句话定义：**` 同行且非空的值
-   ✗ ③ 缺少必备 H2：与相关概念的区别、为什么需要它、优劣与代价、何时用与何时不用、具体示例、定义、常见误区、面试速答
-   ✗ ③ 缺少『核心机制』节（可用 §3 变体名：做法、核心机制、核心流程、核心能力、计算逻辑）
-   ✗ ① baike_def 卡数 = 14（需恰好 1）
-   ✗ ① baike_trap 卡数 = 0（需恰好 2）
-   ✗ ① 常见误区列表 0 条（需 2–3 条）
-   ✗ ⑥ 围栏内共 34 行（上限 20）
-   ✗ ⑥ 正文 3659 字 > 上限 2200｜未获枢纽豁免（①不满足：无 mermaid 且对比表 <4 数据行 ②不满足：具名子概念 15 <3 且核心机制粗体项 0 <3（粗体项须自身 ≥70 字且内含 [[双链]]））
+PASS baike/software-engineering/04-CI CD.md  (正文 2098/2200 字 / 围栏 1 块 2 行 / 卡 1def+2trap)
 FAIL baike/software-engineering/05-项目管理.md  (正文 3078/2200 字 / 围栏 1 块 13 行 / 卡 13def+0trap)
    ✗ ④ 含弯引号 [“”]（规范 §6 只允许直引号）
    ✗ ② 未找到与 `**一句话定义：**` 同行且非空的值
@@ -1239,12 +1230,14 @@ FAIL baike/software-engineering/05-项目管理.md  (正文 3078/2200 字 / 围�
    ✗ ① baike_trap 卡数 = 0（需恰好 2）
    ✗ ① 常见误区列表 0 条（需 2–3 条）
    ✗ ⑥ 正文 3078 字 > 上限 2200｜未获枢纽豁免（①不满足：无 mermaid 且对比表 <4 数据行 ②不满足：具名子概念 14 <3 且核心机制粗体项 0 <3（粗体项须自身 ≥70 字且内含 [[双链]]））
+PASS baike/software-engineering/CI 与 CD.md  (正文 1702/2200 字 / 围栏 1 块 9 行 / 卡 1def+2trap)
 PASS baike/software-engineering/Clean Code 原则.md  (正文 1863/2200 字 / 围栏 1 块 7 行 / 卡 1def+2trap)
 PASS baike/software-engineering/UML.md  (正文 1239/2200 字 / 围栏 1 块 4 行 / 卡 1def+2trap)
 PASS baike/software-engineering/代码异味.md  (正文 1637/2200 字 / 围栏 1 块 7 行 / 卡 1def+2trap)
 PASS baike/software-engineering/代码评审.md  (正文 1199/2200 字 / 围栏 1 块 2 行 / 卡 1def+2trap)
 PASS baike/software-engineering/圈复杂度.md  (正文 1536/2200 字 / 围栏 1 块 8 行 / 卡 1def+2trap)
 PASS baike/software-engineering/技术债务.md  (正文 1244/2200 字 / 围栏 0 块 0 行 / 卡 1def+2trap)
+PASS baike/software-engineering/构建流水线与 CI-CD 工具.md  (正文 2038/2200 字 / 围栏 1 块 11 行 / 卡 1def+2trap)
 PASS baike/software-engineering/结对编程.md  (正文 1285/2200 字 / 围栏 0 块 0 行 / 卡 1def+2trap)
 PASS baike/software-engineering/重构.md  (正文 1284/2200 字 / 围栏 1 块 4 行 / 卡 1def+2trap)
 PASS baike/software-engineering/需求工程.md  (正文 1312/2200 字 / 围栏 0 块 0 行 / 卡 1def+2trap)
@@ -1293,4 +1286,4 @@ PASS baike/web-backend/Web框架对比.md  (正文 1835/2200 字 / 围栏 0 块 
 PASS baike/web-backend/缓存策略.md  (正文 1582/2200 字 / 围栏 0 块 0 行 / 卡 1def+2trap)
 PASS baike/web-backend/认证与安全实践.md  (正文 2062/2200 字 / 围栏 0 块 0 行 / 卡 1def+2trap)
 
-450 篇检查 [strict（⑨ 全量硬 FAIL）]：818 项 FAIL，26 项 warning，其中 EXEMPT 1 篇
+452 篇检查 [strict（⑨ 全量硬 FAIL）]：809 项 FAIL，26 项 warning，其中 EXEMPT 1 篇
