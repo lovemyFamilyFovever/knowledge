@@ -74,6 +74,11 @@
 - 预案：轮到拆 `面向对象编程（OOP）概念.md` 时，上述三节**删除**、改双链指向 [[SOLID 五大原则]]（LSP）与 [[复用与解耦原则]]（组合优于继承、面向接口编程），"多态/抽象类/重载重写"等纯语言机制节留在该篇自己的词条里；并清掉 `docs/refactor/status/s5.md` 两条新词条行的 `pending-merge`。清完前该篇不得判 done。
 - 未立条者：IoC/DI 在 design-patterns 侧只有 [[单例模式]]·[[创建型模式（Creational Patterns）]] 顺带提及（且明确建议改走 DI），无归口，故 `architecture/IoC 与依赖注入.md` 属净新立条、不产生 pending-merge；DRY/KISS/YAGNI 的既有归口 [[03-代码质量]] 与 [[Clean Code 原则]] 均已 done 且已把三原则回指本页，无重复承载。
 
+**12. `frontend-concepts/前端工程化核心概念.md` 拆出的 构建工具/工具链 ↔ `frontend-frameworks/现代前端工程化完全指南.md`(s5, split)**（预案：改双链，不新建）
+- 冲突：拆本汇编时需立 `JavaScript 构建工具（Webpack 与 Vite）` 与 `代码规范与转换工具链（Babel · ESLint · PostCSS）`，而 `现代前端工程化完全指南.md`（仍 split、19399 字）已有 `## 1. 构建工具演进`（1.1 Webpack／1.2 Vite／1.3 Turbopack／1.4 Rspack）与 `## 4. 代码规范体系`（4.1 ESLint／4.2 Prettier／4.3 Stylelint）两大块；按原三档判据"已有专条该双链不新建"，但那两处是**未收敛的汇编章节、不是词条**，双链过去等于把枢纽指向一堆待拆原料，故按 v1.2 §2 第 4 档**先行立条**。
+- 预案：轮到拆 `现代前端工程化完全指南.md` 时，其 §1.1/§1.2 Webpack·Vite 两小节与 §4.1 ESLint 小节**删除**、改双链指向 [[JavaScript 构建工具（Webpack 与 Vite）]] 与 [[代码规范与转换工具链（Babel · ESLint · PostCSS）]]；Turbopack/Rspack/Stylelint 与 §2 包管理器对比、§3 Monorepo实践（Turborepo/Nx 实操）为该篇独家素材，届时按各自深度立条或并入，其概念归口仍是已 done 的 [[包管理器与构建工具]] 与 [[前端工程化]]（本汇编拆时未新建、只双链）。
+- 已登记：两条先行立条在 `docs/refactor/status/s5.md` 对应行标 `pending-merge: content/baike/frontend-frameworks/现代前端工程化完全指南.md`；清完前该指南不得判 done。
+
 ## 待拆清单
 
 | 文件 | 子概念数 | 所属片 | 正文字数 | 子概念预览 | 理由 | 状态 |
@@ -121,7 +126,7 @@
 | content/baike/distributed/微服务治理术语百科.md | 10 | s2 | 7925 | 注册发现、负载均衡、熔断、限流、降级、链路追踪、配置中心、API网关、服务网格、灰度发布 | baike B 多定义（注册发现/负载均衡/熔断/限流/降级/链路追踪/配置中心/API网关/服务网格/灰度发布）；正文 7925 字 ≫ 3400、围栏 12 块 ≫ 2/20。负载均衡/服务网格/熔断与降级/限流/服务发现已有专文，但链路追踪/配置中心/API网关/灰度发布含 @FeignClient·Resilience4j·Gateway·Nacos·金丝雀等唯一代码与对比表，压缩必毁 → 建议按治理主题各拆词条 | done（2026-09-19 枢纽页 + 3 子词条：配置中心、API网关、灰度发布；服务发现/负载均衡/熔断与降级/限流/服务网格 双链已有专条，链路追踪双链 architecture/可观测性工程实战） |
 | content/baike/frontend-concepts/HTML & CSS 核心概念.md | 14 | s5 | ~3000+ | HTML语义化标签、CSS盒模型、box-sizing、Flexbox、CSS Grid、响应式设计、BFC、选择器优先级 | 14个独立HTML/CSS概念各带代码，压缩毁面试细节 | done（2026-09-19 枢纽页 + 5 族子词条：CSS 布局（Flexbox 与 Grid）、CSS 盒模型与 BFC 与层叠上下文、CSS 选择器与伪类伪元素、CSS 变量与动画、HTML 语义化；响应式一节双链既有专条 [[响应式设计]]、动效性能双链 [[CSS渲染性能]]、无障碍双链 [[无障碍访问]]；12 节按族合并、不单立薄条） |
 | content/baike/frontend-concepts/JavaScript 基础核心概念.md | 17 | s5 | ~4000+ | var·let·const、闭包、原型链、事件循环与任务队列、Promise、async·await、Generator、作用域与作用域链 | 17个独立JS概念各带示例 | done（2026-09-19 枢纽页 + 6 族子词条：JavaScript 作用域与 this〔var/let/const+作用域链+this 三节一簇〕、原型链与继承、异步编程（事件循环·Promise·async·await·Generator）、模块化（CommonJS·ES Modules·AMD）、现代语法糖（解构·展开·可选链·空值合并）、弱引用（WeakMap 与 WeakRef）；闭包一节双链既有专条 [[闭包]]（done）不新建，协程/垃圾回收/面向对象/OOP 通用概念一律双链；可选链与空值合并等各节 300–400 字单独立条即薄条，故四节合为一族；巨型汇编（原 11507 字 / 16 围栏 / 385 代码行）） |
-| content/baike/frontend-concepts/前端工程化核心概念.md | 14 | s5 | ~4000+ | Webpack、Vite、Babel、ESLint、TypeScript、npm·yarn·pnpm、Monorepo、PostCSS | 14个独立工程化概念 | pending |
+| content/baike/frontend-concepts/前端工程化核心概念.md | 14 | s5 | ~4000+ | Webpack、Vite、Babel、ESLint、TypeScript、npm·yarn·pnpm、Monorepo、PostCSS | 14个独立工程化概念 | done（2026-09-19 枢纽页 + 5 族子词条：JavaScript 构建工具（Webpack 与 Vite）、代码规范与转换工具链（Babel · ESLint · PostCSS）、CSS 预处理与模块化（Sass·Less·CSS Modules）、PWA 渐进式 Web 应用、前端构建优化策略；TypeScript→[[TypeScript深入]]（done）、npm·yarn·pnpm→[[包管理器与构建工具]]（done）、Monorepo→[[前端工程化]]（done）三节一律双链不新建、枢纽只留一行判据；Babel/ESLint/PostCSS 与 Sass/CSS Modules 各节仅 300–450 字，单独立条即薄条故按族合并；两条先行立条与该片仍 pending 的 [[现代前端工程化完全指南]] 重叠，已登记去重队列第 12 对并标 pending-merge；中小汇编（原 11188 字 / 17 围栏 / 477 代码行）） |
 | content/baike/frontend-concepts/前端框架核心概念.md | 12 | s5 | ~3500+ | React、JSX、Hooks、Vue、响应式原理、Composition API、Angular、依赖注入 | 12个独立框架概念 | pending |
 | content/baike/frontend-frameworks/GraphQL从入门到精通.md | 10+ | s5 | ~5000+ | Schema、查询、变更、订阅、解析器、缓存、安全 | Schema/查询/变更/订阅/解析器/缓存/安全等独立话题 | pending |
 | content/baike/frontend-frameworks/Next.js全栈开发实战.md | 10+ | s5 | ~5000+ | 路由、SSR、SSG、API Routes、Middleware、部署 | 路由/SSR/SSG/API Routes/Middleware/部署等独立话题 | pending |
