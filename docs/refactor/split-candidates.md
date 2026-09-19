@@ -55,6 +55,10 @@
 - 裁决：本汇编(敏捷项目管理实战)是这些概念最完整的实操源，故立为**归口**；`01-开发流程`、`05-项目管理` 拆分时**删除**对应重叠节、改双链指向上述 6 条 developer-skills 词条，仅保留各自独有的其余术语(瀑布/里程碑/Jira/OKR/RACI 等)独立成篇或留枢纽。
 - 已登记：6 条先行立条在 `docs/refactor/status/s4.md` 标 `pending-merge: software-engineering/01-开发流程.md`；轮到拆 01-开发流程 时逐条清。
 
+**9. `devops/API设计最佳实践.md` ↔ `architecture/API设计.md`(已 done) 及 `security/OAuth 与 JWT.md`**（预案：改双链，不新建）
+- 冲突：本 devops 汇编的 RESTful/Richardson/HATEOAS、版本、分页、契约 与已 done 的 architecture `RESTful API 设计`/`API 分页与版本控制`/`OpenAPI 规范` 重叠；认证授权(APIKey/OAuth2/JWT/RBAC) 与 security `OAuth 与 JWT`(done) 及 `认证与授权篇`(pending) 重叠。§5 分页在本文原稿已导入截断。
+- 已执行：拆为枢纽页 + 唯一 net-new 子词条 `API 错误处理规范`(RFC 7807)；其余主题全部双链到上述 done 专条、不新建，截断的分页节以 [[API 分页与版本控制]] 为准。未产生新的 pending-merge（所链皆已存在）。
+
 ## 待拆清单
 
 | 文件 | 子概念数 | 所属片 | 正文字数 | 子概念预览 | 理由 | 状态 |
@@ -90,7 +94,7 @@
 | content/baike/design-patterns/行为型模式（Behavioral Patterns）.md | 11 | s4 | 16222 | 策略、观察者、命令、状态、模板方法、迭代器、责任链、中介者、备忘录、访问者、解释器 | 枢纽长文覆盖策略/观察者/命令/状态/模板方法/迭代器/责任链/中介者/备忘录/访问者/解释器 11 种 GoF 行为型模式，各带代码与对比表；正文 16222 字 ≫ 3400、围栏 13 块 361 行 ≫ 2/20，压缩会毁掉逐模式细节 → 建议拆为 11 词条+1 枢纽 | done（2026-09-19 二期拆分：枢纽页 + 7 子词条〔策略/观察者/命令/状态/模板方法/责任链/中介者〕，迭代器/备忘录/访问者/解释器 4 种低频枢纽内联；见去重队列第 7 对） |
 | content/baike/developer-skills/开发者效率工具大全.md | 4 | s4 | 16942 | 终端工具、编辑器与IDE、Git高级用法、命令行工具 | 目录型枢纽：终端工具/编辑器与IDE/Git高级用法/命令行工具 4 个可独立命名工具族，逐工具展开；正文 16942 字 ≫ 3400、围栏 28 块 880 行 ≫ 2/20，压缩会毁掉逐工具细节 → 建议按工具族拆词条 | done（2026-09-19 二期拆分：枢纽页 + 4 工具族子词条〔终端与Shell工作流/编辑器与IDE选型/Git高级用法/命令行效率工具〕，个人 dotfiles 巨块转知识/表格；Git 基础双链版本控制与Git深入不重复） |
 | content/baike/developer-skills/敏捷项目管理实战.md | 10 | s4 | 13106 | 敏捷宣言、Scrum、看板、用户故事、估算、迭代管理、需求管理、技术实践、规模化敏捷、远程敏捷 | 全书式枢纽：敏捷宣言/Scrum/看板/用户故事/估算/迭代管理/需求管理/技术实践/规模化敏捷/远程敏捷 10 个独立子话题，各带流程与示例；正文 13106 字 ≫ 3400、围栏 28 块 567 行 ≫ 2/20 → 建议按方法论拆词条+1 枢纽 | done（2026-09-19 二期拆分：枢纽页 + 7 子词条〔敏捷宣言与原则/Scrum框架/看板方法/用户故事与敏捷估算/需求梳理与优先级/迭代与回顾/规模化敏捷框架〕；TDD/结对/CI-CD 双链已有专条；见去重队列第 8 对） |
-| content/baike/devops/API设计最佳实践.md | 5 | s4 | 14388 | RESTful原则、版本管理、认证授权(OAuth四步)、错误处理、分页过滤排序 | RESTful原则/版本管理/认证授权(OAuth四步)/错误处理/分页过滤排序 各独立话题带示例；正文 14388 ≫ 3400、围栏 35 块 647 行 ≫ 2/20 → 建议按话题拆词条 | pending |
+| content/baike/devops/API设计最佳实践.md | 5 | s4 | 14388 | RESTful原则、版本管理、认证授权(OAuth四步)、错误处理、分页过滤排序 | RESTful原则/版本管理/认证授权(OAuth四步)/错误处理/分页过滤排序 各独立话题带示例；正文 14388 ≫ 3400、围栏 35 块 647 行 ≫ 2/20 → 建议按话题拆词条 | done（2026-09-19 二期拆分：枢纽页 + 1 net-new 子词条〔API 错误处理规范〕；RESTful/分页版本/契约/鉴权 双链 architecture 与 security 已 done 专条，不重复；§5分页原稿截断以 [[API 分页与版本控制]] 为准；见去重队列第 9 对） |
 | content/baike/devops/Docker容器化完全指南.md | 8 | s4 | 16568 | 容器vsVM、镜像构建、网络、数据、Compose、安全、Harbor、日志 | 容器vsVM/镜像构建/网络/数据/Compose/安全/Harbor/日志 8 独立话题；正文 16568、围栏 48 块 957 行 ≫ 上限 → 建议拆词条+1 枢纽 | pending |
 | content/baike/devops/Kubernetes云原生实战指南.md | 3 | s4 | 6644 | 容器基础、K8s核心概念、网络模型 | 容器基础/K8s核心概念/网络模型 3 大独立块，正文 6644 字、代码 416 行 ≫ 3400/20；与 Kubernetes深入 有重叠 → 拆块并按需与深入去重 | pending |
 | content/baike/devops/Linux系统管理高级指南.md | 10 | s4 | 12784 | 内核、进程、内存、文件系统、网络、性能、Shell、systemd、安全、容器运行时 | 内核/进程/内存/文件系统/网络/性能/Shell/systemd/安全/容器运行时 10 独立话题；围栏 36 块 → 建议按主题拆词条 | pending |
@@ -122,7 +126,7 @@
 | content/baike/network/HTTP协议.md | 13 | s2 | 7815 | 方法、状态码、头部、缓存、keep-alive、分块、CORS | baike B 多定义汇编（方法/状态码/头部/缓存/keep-alive/分块/CORS 各带 def+代码）；正文 7815 ≫ 3400、围栏 13 ≫ 2/20，且与 HTTP 状态码 等专文重叠；压缩必毁逐主题细节 → 建议按主题拆词条 | done（2026-09-19 枢纽页 + 3 子词条：HTTP请求方法、HTTP头部与内容协商、Cookie与Session；状态码/缓存/TLS/WebSocket/HTTP3 分别双链 HTTP 状态码·缓存策略·HTTPS 与 TLS·WebSocket·QUIC） |
 | content/baike/network/TCP深入.md | 12 | s2 | 8090 | 三次握手、四次挥手、滑动窗口、拥塞控制、超时重传、Nagle | baike B 多定义（三次握手/四次挥手/滑动窗口/拥塞控制/超时重传/Nagle 各带 def+代码）；8090 ≫ 3400、14 围栏 ≫ 2/20，且与三次握手与四次挥手/滑动窗口/拥塞控制 专文重叠 → 建议去重后按机制拆词条 | done（2026-09-19 枢纽页 + 2 子词条：TIME_WAIT与连接回收、TCP粘包与拆包；三次握手四次挥手/滑动窗口/拥塞控制/UDP对比 双链已有专条，超时重传·Nagle·SYN Flood·Keep-Alive·报文格式收纳入枢纽正文与字段表） |
 | content/baike/network/应用层协议.md | 13 | s2 | 9411 | HTTP、DNS、SMTP、FTP、SSH、DHCP | baike B 多定义（HTTP/DNS/SMTP/FTP/SSH/DHCP 各协议带 def+报文示例）；9411 ≫ 3400、12 围栏 ≫ 2/20 → 建议按协议各拆词条 | done（2026-09-19 枢纽页 + 3 族子词条：邮件协议族、文件传输协议、SSH与远程登录；DNS/DHCP/HTTP/HTTPS 双链已有专条，NTP·SNMP·LDAP·端口速查表收纳入枢纽正文与端口表） |
-| content/baike/network/网络基础.md | 14 | s2 | 8389 | OSI、TCP-IP、以太网、IP、MAC、子网、CIDR、VLAN | baike B 多定义（OSI/TCP-IP/以太网/IP/MAC/子网/CIDR/VLAN 各带 def）；8389 ≫ 3400、14 围栏 ≫ 2/20，且与 OSI 参考模型/IP 协议 等专文重叠 → 建议去重后按主题拆词条 | pending |
+| content/baike/network/网络基础.md | 14 | s2 | 8389 | OSI、TCP-IP、以太网、IP、MAC、子网、CIDR、VLAN | baike B 多定义（OSI/TCP-IP/以太网/IP/MAC/子网/CIDR/VLAN 各带 def）；8389 ≫ 3400、14 围栏 ≫ 2/20，且与 OSI 参考模型/IP 协议 等专文重叠 → 建议去重后按主题拆词条 | done（2026-09-19 枢纽页 + 3 子词条：网络分段与编址、Socket与端口、网络诊断与性能；OSI/IP/DNS/ARP/NAT/TCP/UDP/路由 双链已有专条，以太网·MAC·传输介质等要点并入枢纽与相关专条） |
 | content/baike/network/网络安全协议.md | 11 | s2 | 9247 | 防火墙、IDS-IPS、VPN、IPsec、TLS、DDoS、WAF | baike B 多定义（防火墙/IDS-IPS/VPN/IPsec/TLS/DDoS/WAF 各带 def+示例）；9247 ≫ 3400、11 围栏 ≫ 2/20 → 建议按主题各拆词条 | pending |
 | content/baike/os/Linux 命令速查手册.md | 20+ | s2 | 4504 | ls、cd、mkdir、cp·mv·rm、cat·less、grep、find、sed、awk、chmod、ps·top、df·du、netstat、tar | 命令型速查手册：ls/cd/mkdir/cp·mv·rm/cat·less/grep/find/sed/awk/chmod/ps·top/df·du/netstat/tar 等按命令分组，每组带独立示例围栏；无 `## 定义`、15 围栏 ≫ 2/20，压缩会毁掉逐命令用法示例（这是手册的核心价值）→ 建议保留为速查参考或按命令族拆词条 | exempt-reference（已改判，见 `docs/refactor/exempt-reference.md`） |
 | content/baike/os/Shell 脚本详解.md | 8+ | s2 | 8061 | 变量、条件if·case、循环for·while·until、函数、数组、字符串操作、正则grep·sed·awk、管道与重定向 | 教程/手册式汇编：变量/条件 if·case/循环 for·while·until/函数/grep·sed·awk 等多块各带大量代码，无 `## 定义` 单词条结构、正文 8061 ≫ 3400、15 围栏 ≫ 2/20，压缩必毁逐语法示例；与 Shell脚本编程 词条重叠需去重 → 建议按语法主题拆词条 | done（2026-09-19 合并 + 软删除，见去重队列第 5 对） |
