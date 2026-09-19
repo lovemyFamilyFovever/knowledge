@@ -19,7 +19,15 @@ v1.1 变更：
 - exempt-reference（v1.1 §5）：--exempt 显式豁免，或自动读 docs/refactor/exempt-reference.md
   （一行一路径，# 为注释）；命中者输出 EXEMPT、跳过全部检查、计入 PASS。
 
-注意三处盲区（v1.1 §9 / v1.2 §3）：⑦ frontmatter 比的是 HEAD，分片提交后即空转，收尾须另与批前基线比；
+v1.3 变更：
+- ⑦ 改为**只比六个身世键**（title/source/source_path/collected/status/tags）：阅读器会按
+  AGENTS.md 不变量 1/6 往 frontmatter 写回 favorite 等运行时键，整块比对会把用户的正常
+  收藏操作报成"AI 越权改 frontmatter"（实测假 FAIL 1 篇，且会随使用增长）。非身世键差异
+  降级为 warning 说明，不再 FAIL。
+- 新增 ⑩（warning 级，v1.2 §8.2 概念级查重）：悬空双链若在库内某文件的"括号别名 / 词条名 /
+  定义段 / 正文"里能对上（如 [[CDN]] → network/内容分发网络.md），提示疑似已有专条、应考虑改链。
+
+注意四处盲区（v1.1 §9 / v1.2 §3、§8）：⑦ 比的是 HEAD，分片提交后即空转，收尾须另与批前基线比；
 ⑧ 悬空双链是朴素正则，会误报围栏里的 bash `[[ -f x ]]`，权威口径是 index.db 的 links.resolved；
 ⑨ 是新加的门，对 ⑨ 之前已判 done 的存量稿有追溯力——存量超标只修 🎯 那一行，不要顺手重写全篇。
 """
@@ -326,6 +334,95 @@ def git_head_text(rel_from_root: str) -> str | None:
     return r.stdout.decode("utf-8", errors="replace")
 
 
+# ⑦ 只比这六个身世键；favorite 等由阅读器运行时写回，属 AGENTS.md 不变量 6 允许的路径。
+PROVENANCE_KEYS = ("title", "source", "source_path", "collected", "status", "tags")
+_FM_KEY = re.compile(r"^([A-Za-z_][\w-]*)\s*:\s*(.*)$")
+
+
+def fm_fields(fm: str) -> dict[str, str]:
+    return {m.group(1): m.group(2).strip() for m in _FM_KEY.finditer(fm)}
+
+
+_title_hay: list[tuple[str, str]] | None = None
+
+
+def title_haystacks() -> list[tuple[str, str, str, str, str]]:
+    """[(括号别名, 名称串, 定义段, 全文段, 相对路径, 文件名长度)]，供概念级分档查重。
+
+    只比文件名会漏掉"概念已有专条但名字不同"（[[CDN]] vs `内容分发网络.md`）。
+    分三档是为了压住误报：全文里顺带提过某词的普通词条，不该赢过真正那一篇。
+    """
+    global _title_hay
+    if _title_hay is None:
+        _title_hay = []
+        for q in (ROOT / "content" / "baike").rglob("*.md"):
+            try:
+                txt = q.read_text(encoding="utf-8", errors="replace")
+            except OSError:
+                continue
+            m = re.search(r'^title:\s*"?(.*?)"?\s*$', txt[:600], re.M)
+            nm = re.sub(r"[\s/、，,（）()]+", "",
+                        f"{q.stem} {m.group(1) if m else ''} "
+                        f"{' '.join(re.findall('^# +(.+)$', txt[:400], re.M))}").lower()
+            head = re.sub(r"[\s/、，,（）()]+", "", txt[:1200]).lower()
+            alias = " ".join(re.findall(r"[(（]([^()（）]{0,80})[)）]", txt[:2500]))
+            alias = re.sub(r"[\s/、，,]+", "", alias).lower()
+            tail = re.sub(r"[\s/、，,（）()]+", "", txt[:2500]).lower()
+            _title_hay.append((alias, nm, head, tail,
+                               q.relative_to(ROOT / "content").as_posix(),
+                               txt[:2500].lower()))
+    return _title_hay
+
+
+def norm_link(s: str) -> str:
+    return re.sub(r"[\s/、，,（）()]+", "", s).lower()
+
+
+def levenshtein(a: str, b: str, cap: int = 3) -> int:
+    if abs(len(a) - len(b)) > cap:
+        return cap + 1
+    prev = list(range(len(b) + 1))
+    for i, ca in enumerate(a, 1):
+        cur = [i]
+        for j, cb in enumerate(b, 1):
+            cur.append(min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (ca != cb)))
+        if min(cur) > cap:
+            return cap + 1
+        prev = cur
+    return prev[-1]
+
+
+def concept_match(target: str) -> str | None:
+    """疑似已存在的专条。分档优先级：括号别名 > 词条名 > 定义段 > 正文提及。
+
+    同级按"该词在正文中首次出现的位置"升序——专条会开篇就定义这个概念，
+    只是顺带提一嘴的那篇通常出现在中段。（早先按文件名长度排序会选错：
+    [[CDN]] 被判给 `图片优化.md`，因为它文件名更短、且把 CDN 写在括号里。）
+    """
+    tt = norm_link(target)
+    if len(tt) < 2:
+        return None
+    hay = title_haystacks()
+    for tier in (0, 1, 2, 3):
+        hits = [(hay_pos(raw, target), pth) for al, n, h, a, pth, raw in hay
+                if tt in (al, n, h, a)[tier]]
+        if hits:
+            return min(hits)[1]
+    near = [(levenshtein(tt, norm_link(p.rsplit("/", 1)[-1][:-3])), p) for *_, p, _ in hay]
+    near = [(d, p) for d, p in near if d <= 2]
+    return min(near)[1] if near else None
+
+
+def hay_pos(raw_lower: str, target: str) -> int:
+    """目标词在正文中的首次出现位置；两路探测取更早者，未命中记 9999。"""
+    tl, tn = target.lower(), norm_link(target)
+    compact = raw_lower.replace(" ", "")
+    pos = [raw_lower.find(tl)] if tl else [-1]
+    pos.append(compact.find(tn) if tn else -1)
+    got = [x for x in pos if x >= 0]
+    return min(got) if got else 9999
+
+
 _all_stems: set[str] | None = None
 
 
@@ -421,8 +518,18 @@ def check(path_arg: str, exempt: set[str] | None = None) -> tuple[int, int]:
     if head_raw is None:
         warns.append("⑤⑦ 文件不在 HEAD 中，跳过 arXiv 保留与 frontmatter 比对")
     else:
-        if split_frontmatter(head_raw)[0] != fm:
-            fails.append("⑦ frontmatter 与 HEAD 不一致（批量阶段禁止改动）")
+        h_fm, w_fm = fm_fields(split_frontmatter(head_raw)[0]), fm_fields(fm)
+        changed = [(k, h_fm.get(k), w_fm.get(k)) for k in PROVENANCE_KEYS
+                   if h_fm.get(k) != w_fm.get(k)]
+        if changed:
+            fails.append("⑦ 身世字段被改动（批量阶段禁止）："
+                         + "；".join(f"{k}: {a!r}→{b!r}" for k, a, b in changed))
+        else:
+            extra = sorted(k for k in set(h_fm) | set(w_fm)
+                           if k not in PROVENANCE_KEYS and h_fm.get(k) != w_fm.get(k))
+            if extra:
+                warns.append("⑦ 已忽略非身世键差异（阅读器运行时写回，不判 FAIL）："
+                             + "、".join(extra))
         lost = (set(RE_ARXIV.findall(head_raw)) | set(RE_DOI.findall(head_raw))) - \
                (set(RE_ARXIV.findall(raw)) | set(RE_DOI.findall(raw)))
         if lost:
@@ -433,6 +540,9 @@ def check(path_arg: str, exempt: set[str] | None = None) -> tuple[int, int]:
     dangling = sorted({l.strip() for l in RE_WIKI.findall(body)} - stems)
     for d in dangling:
         warns.append(f"⑧ 悬空双链 [[{d}]]")
+        hit = concept_match(d)
+        if hit:
+            warns.append(f"⑩ 疑似已有专条 {hit}，请确认 [[{d}]] 是否应改链（概念级查重，v1.2 §8.2）")
 
     tag = "FAIL" if fails else "PASS"
     hub = f" [{hub_note}]" if limit == 3400 else ""
