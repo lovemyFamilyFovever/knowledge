@@ -395,7 +395,7 @@ def levenshtein(a: str, b: str, cap: int = 3) -> int:
     return prev[-1]
 
 
-def concept_match(target: str) -> str | None:
+def concept_match(target: str, exclude: str | None = None) -> str | None:
     """疑似已存在的专条。分档优先级：括号别名 > 词条名 > 定义段 > 正文提及。
 
     同级按"该词在正文中首次出现的位置"升序——专条会开篇就定义这个概念，
@@ -408,13 +408,18 @@ def concept_match(target: str) -> str | None:
     hay = title_haystacks()
     # tier 2/3 是"定义段/正文提及"，短词极易误撞（Serverless 撞到不相关长文），
     # 故只在目标名足够长时才启用后两档；前两档（别名/词条名）本就是精确匹配。
+    def keep(path: str) -> bool:
+        # 不能把"自己"当疑似专条推荐：汇编自身常含该词，建议会毫无意义
+        return exclude is None or path != exclude
+
     for tier in ((0, 1, 2, 3) if len(tt) >= 5 else (0, 1)):
         hits = [(hay_pos(raw, target), pth) for al, n, h, a, pth, raw in hay
-                if tt in (al, n, h, a)[tier]]
+                if tt in (al, n, h, a)[tier] and keep(pth)]
         if hits:
             return min(hits)[1]
-    near = [(levenshtein(tt, norm_link(p.rsplit("/", 1)[-1][:-3])), p) for *_, p, _ in hay]
-    near = [(d, p) for d, p in near if d <= 2]
+    near = [(levenshtein(tt, norm_link(pth.rsplit("/", 1)[-1][:-3])), pth)
+            for *_, pth, raw in hay if keep(pth)]
+    near = [(d, pth) for d, pth in near if d <= 2]
     return min(near)[1] if near else None
 
 
@@ -542,10 +547,14 @@ def check(path_arg: str, exempt: set[str] | None = None) -> tuple[int, int]:
 
     # ⑧ 双链可解析（warning 级）
     stems = md_stems()
-    dangling = sorted({l.strip() for l in RE_WIKI.findall(body)} - stems)
+    linked = {l.strip() for l in RE_WIKI.findall(body)}
+    slashed = sorted(x for x in linked if "/" in x)
+    if slashed:
+        fails.append("⑧ 双链目标含斜杠（会与文件名歧义，须改用 `-`）：" + "、".join(slashed))
+    dangling = sorted(linked - stems)
     for d in dangling:
         warns.append(f"⑧ 悬空双链 [[{d}]]")
-        hit = concept_match(d)
+        hit = concept_match(d, exclude=content_rel(p))
         if hit:
             warns.append(f"⑩ 疑似已有专条 {hit}，请确认 [[{d}]] 是否应改链（概念级查重，v1.2 §8.2）")
 
