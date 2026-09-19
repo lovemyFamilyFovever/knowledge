@@ -95,6 +95,11 @@
 - 预案：轮到拆 `并发编程（CP）概念.md` 时，与上述三片重叠的术语节删除、改双链到这三片归口词条；其独有条目(线程池/Future·Promise/事件循环等)按体量并入或另立。三片为归口。
 - 已登记：三条在 s4.md 标 pending-merge: programming-languages/并发编程（Concurrent Programming）概念.md；拆该汇编前不得清。
 
+**14. `security/哈希算法篇.md` 拆出的 `加盐哈希与口令存储.md`(新) ↔ `security/密码学基础篇.md`（s5 pending）**（预案：改双链，不新建）
+- 冲突：按 v1.2 §2 第 4 档先行立条 `security/加盐哈希与口令存储.md`（盐、彩虹表、慢哈希 PBKDF2/bcrypt/Argon2、`$算法$参数$盐$摘要` 存储格式与盐 vs Pepper 已由其完整承载）；而仍 pending 的 `密码学基础篇.md` 含 `## 盐（Salt）`／`## 彩虹表（Rainbow Table）` 两节覆盖同一组概念——双链指向未收敛汇编原料等于把枢纽指向待拆材料，故先行立条。
+- 预案：轮到拆 `密码学基础篇.md` 时，上述两节**删除**、改双链指向 [[加盐哈希与口令存储]]；其独家增量（如 盐 vs IV 对比）届时一句并回新词条或留该篇自己的概念词条；清完前该篇不得判 done。
+- 已登记：`security/加盐哈希与口令存储.md` 在 s5.md 行标 pending-merge: content/baike/security/密码学基础篇.md。
+
 ## 待拆清单
 
 | 文件 | 子概念数 | 所属片 | 正文字数 | 子概念预览 | 理由 | 状态 |
@@ -181,7 +186,7 @@
 | content/baike/programming-languages/并发编程模式与实践.md | 8 | s4 | 17776 | 并发vs并行、线程模型、互斥同步、无锁、并发数据结构、协程、Channel·CSP、Actor | 并发vs并行/线程模型/互斥同步/无锁/并发数据结构/协程/Channel·CSP/Actor（枢纽①mermaid②子概念20）；正文 17776、1071 代码行 ≫ 3400 → 拆词条 | done（2026-09-19 二期拆分：枢纽页 + 3 子词条〔并发与并行及线程模型/同步原语与无锁并发/消息传递并发：CSP与Actor〕；线程/协程/Go/Rust 并发双链既有专条；三条与 pending 的 并发编程（CP）概念 重叠→pending-merge，见去重队列第 13 对） |
 | content/baike/programming-languages/并发编程（Concurrent Programming）概念.md | 14 | s4 | 17338 | 并发vs并行、线程vs进程、锁Mutex、读写锁、信号量、条件变量、死锁、原子、CAS、线程池、协程、消息传递、Future·Promise、事件循环 | 并发vs并行/线程vs进程/锁Mutex/读写锁/信号量/条件变量/死锁/原子/CAS/线程池/协程/消息传递/Future·Promise/事件循环 14 词条（14 def）；40 围栏 ≫ 2/20 → 按概念各拆词条 | pending |
 | content/baike/programming-languages/程序员的数学基础.md | 6 | s4 | 19326 | 集合论、图论、组合数学、逻辑、向量、矩阵、特征值与SVD | 离散数学/线性代数/…多个独立数学分支章节；正文 19326、7 围栏 966 行 ≫ 上限 → 按分支拆词条 | done（2026-09-19 二期拆分：枢纽页 + 2 子词条〔离散数学与组合/线性代数〕；图论/复杂度/ML 双链既有 done 专条；net-new 无 pending-merge） |
-| content/baike/programming-languages/编程概念音频课-数据结构.md | 6 | s4 | 8957 | 数组链表、栈队列、哈希表、树二叉树、图、堆 | 数组链表/栈队列/哈希表/树二叉树/图/堆 6 站各独立数据结构主题；正文 8957、8 围栏 178 行 → 按结构拆词条 | pending |
+| content/baike/programming-languages/编程概念音频课-数据结构.md | 6 | s4 | 8957 | 数组链表、栈队列、哈希表、树二叉树、图、堆 | 数组链表/栈队列/哈希表/树二叉树/图/堆 6 站各独立数据结构主题；正文 8957、8 围栏 178 行 → 按结构拆词条 | done（2026-09-19 二期拆分：枢纽页 + 2 net-new 子词条〔数组与链表/栈与队列〕；哈希/树/图/堆 双链 algorithms 已 done 专条；无 pending-merge） |
 | content/baike/programming-languages/编程概念音频课-设计模式.md | 8 | s4 | 10591 | 单例、工厂、观察者、策略、装饰器、适配器、代理、模板方法 | 单例/工厂/观察者/策略/装饰器/适配器/代理/模板方法 8 模式各独立；正文 10591、8 围栏 328 行 → 按模式拆词条 | pending |
 | content/baike/programming-languages/编程语言通用概念.md | 11 | s4 | 7301 | 变量、常量、基本类型、引用值类型、运算符、控制流、循环、函数、递归、作用域、命名 | 变量/常量/基本类型/引用值类型/运算符/控制流/循环/函数/递归/作用域/命名 11 词条（11 def 卡）；多定义汇编不符单词条契约，30 围栏 ≫ 2/20 → 按概念各拆词条 | pending |
 | content/baike/programming-languages/编译原理与解释器实现.md | 10 | s4 | 16339 | 编译器架构、词法、语法、语义、IR、优化、代码生成、GC、实战构建语言、LLVM | 编译器架构/词法/语法/语义/IR/优化/代码生成/GC/实战构建语言/LLVM 十部分；正文 16339、501 代码行 → 按阶段拆词条 | pending |
@@ -189,7 +194,7 @@
 | content/baike/programming-languages/软件测试完全指南.md | 6 | s4 | 20441 | 测试金字塔、TDD·BDD·ATDD、单元、集成、E2E·Playwright·Cypress、性能 | 测试金字塔/TDD·BDD·ATDD/单元/集成/E2E·Playwright·Cypress/性能 各独立体系；正文 20441、20 围栏 937 行 → 拆词条（与 testing 子域去重） | done（2026-09-19 枢纽页 + 2 子词条，见去重队列第 1 对） |
 | content/baike/programming-languages/面向对象编程（OOP）概念.md | 13 | s4 | 10181 | 类、对象、封装、继承、多态、抽象、接口、抽象类、构造析构、重载重写、访问修饰符、组合vs继承、LSP | 类/对象/封装/继承/多态/抽象/接口/抽象类/构造析构/重载重写/访问修饰符/组合vs继承/LSP 13 词条（13 def）；32 围栏 ≫ 2/20 → 按概念各拆词条 | pending |
 | content/baike/security/加密技术篇.md | 14 | s5 | ~3000+ | 3DES、RSA、ElGamal、国密SM2·SM3·SM4、密钥交换、混合加密、数字信封 | 14种加密技术独立话题 | done（2026-09-19 二期拆分：枢纽页 + 4 子词条〔常见对称加密算法（AES·DES·3DES）/常见非对称加密算法（RSA·ECC·ElGamal）/国密算法（SM2·SM3·SM4）/密钥交换与混合加密与数字信封〕；对称/非对称总述双链已有 done 专条 [[对称加密与非对称加密]] 不重复立条，具体算法按族合并新建，密钥交换+混合加密+数字信封+Diffie-Hellman（库内无独立条）族合并为一条；TLS/PKI/哈希/签名/端到端/密码学实用指南 全双链既有 done 专条；194 行算法代码全收敛为散文与表、枢纽 0 围栏；无 pending-merge） |
-| content/baike/security/哈希算法篇.md | 12 | s5 | ~2500+ | MD5、SHA-256、SHA-512、哈希表原理、布隆过滤器、一致性哈希、校验和、加盐哈希 | 12种哈希算法独立对比 | pending |
+| content/baike/security/哈希算法篇.md | 12 | s5 | ~2500+ | MD5、SHA-256、SHA-512、哈希表原理、布隆过滤器、一致性哈希、校验和、加盐哈希 | 12种哈希算法独立对比 | done（2026-09-19 二期拆分：枢纽页 + 4 子词条〔密码学哈希函数（MD5·SHA-1·SHA-256·SHA-512）/HMAC 与校验和/布隆过滤器/加盐哈希与口令存储〕；哈希表原理→[[哈希表]]、一致性哈希→[[一致性哈希]] 双链既有 done 专条不新建，HMAC+校验和与四大摘要算法按族合并；加盐哈希与口令存储 与仍 pending 的 密码学基础篇 盐/彩虹表两节重叠→pending-merge，见去重队列第 14 对；121 行代码全收敛为散文与表、全产物 0 围栏） |
 | content/baike/security/密码学基础篇.md | 14 | s5 | ~3500+ | 盐、彩虹表、密钥、密钥对、公钥、私钥、证书链、密钥管理 | 14个密码学基础概念 | pending |
 | content/baike/security/网络安全篇.md | 16 | s5 | ~3500+ | TLS·SSL握手、数字证书、数字签名、SQL注入、CC攻击 | 16个网络安全独立话题 | pending |
 | content/baike/security/认证与授权篇.md | 14 | s5 | ~3000+ | OAuth 2.0、JWT、Session、Cookie、SSO、API Key、Bearer Token、OIDC | 14个认证授权独立话题 | pending |
