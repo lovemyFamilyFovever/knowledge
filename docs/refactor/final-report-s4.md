@@ -79,3 +79,12 @@
 
 > 进度：devops 已清 Docker/API(+phase1 6 篇 done)；剩 Linux系统管理/Web安全/OS内核/网络渗透/K8s云原生 等 pending。
 
+## §S4 · Kubernetes云原生实战指南（枢纽+2）
+
+**产物**：枢纽页(1606)+2 子词条 `Kubernetes 工作负载（StatefulSet 与 DaemonSet）`/`Kubernetes 网络（Service 与 Ingress）`；容器基础/Pod/Deployment 双链已 done 专条；Ingress 原稿末尾导入截断按 §5 以官方为准。3 篇 strict 全 PASS(🎯 多次超 150 已裁)。
+**hash**：
+
+- c8ad47b docs: 二期拆分[S4]——Kubernetes云原生实战指南 (枢纽+2子词条)
+
+> devops 累计收敛：API/Docker/K8s 三大指南 + phase1；剩 Linux/Web安全/OS内核/网络渗透 4 篇 pending。
+
