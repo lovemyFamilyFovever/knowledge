@@ -365,7 +365,10 @@ def title_haystacks() -> list[tuple[str, str, str, str, str]]:
                         f"{q.stem} {m.group(1) if m else ''} "
                         f"{' '.join(re.findall('^# +(.+)$', txt[:400], re.M))}").lower()
             head = re.sub(r"[\s/、，,（）()]+", "", txt[:1200]).lower()
-            alias = " ".join(re.findall(r"[(（]([^()（）]{0,80})[)）]", txt[:2500]))
+            # 别名只取开篇定义区、且剔除含双链的括号——否则"（见 [[X]]）"会让
+            # 引用方 X 的那篇反而抢走 X 的专条（实测 concept_match(事件驱动架构) 误报 API设计）。
+            alias = " ".join(x for x in re.findall(r"[(（]([^()（）]{1,60})[)）]", txt[:800])
+                             if "[[" not in x and "：" not in x and ":" not in x or re.fullmatch(r"[A-Za-z ,/.\-]{2,60}", x))
             alias = re.sub(r"[\s/、，,]+", "", alias).lower()
             tail = re.sub(r"[\s/、，,（）()]+", "", txt[:2500]).lower()
             _title_hay.append((alias, nm, head, tail,
@@ -403,7 +406,9 @@ def concept_match(target: str) -> str | None:
     if len(tt) < 2:
         return None
     hay = title_haystacks()
-    for tier in (0, 1, 2, 3):
+    # tier 2/3 是"定义段/正文提及"，短词极易误撞（Serverless 撞到不相关长文），
+    # 故只在目标名足够长时才启用后两档；前两档（别名/词条名）本就是精确匹配。
+    for tier in ((0, 1, 2, 3) if len(tt) >= 5 else (0, 1)):
         hits = [(hay_pos(raw, target), pth) for al, n, h, a, pth, raw in hay
                 if tt in (al, n, h, a)[tier]]
         if hits:

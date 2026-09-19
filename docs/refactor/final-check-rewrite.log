@@ -239,9 +239,9 @@ FAIL baike/data-science/数据分析与可视化实战.md  (正文 17377/2200 �
    · ⑧ 悬空双链 [['姓名', '年龄']]
    · ⑩ 疑似已有专条 baike/data-science/数据分析与可视化实战.md，请确认 [['姓名', '年龄']] 是否应改链（概念级查重，v1.2 §8.2）
    · ⑧ 悬空双链 [[1, 2]]
-   · ⑩ 疑似已有专条 baike/graphics-multimedia/图像压缩.md，请确认 [[1, 2]] 是否应改链（概念级查重，v1.2 §8.2）
+   · ⑩ 疑似已有专条 baike/data-science/数据分析与可视化实战.md，请确认 [[1, 2]] 是否应改链（概念级查重，v1.2 §8.2）
    · ⑧ 悬空双链 [[5, 6]]
-   · ⑩ 疑似已有专条 baike/security/密码学基础篇.md，请确认 [[5, 6]] 是否应改链（概念级查重，v1.2 §8.2）
+   · ⑩ 疑似已有专条 baike/security/数字签名.md，请确认 [[5, 6]] 是否应改链（概念级查重，v1.2 §8.2）
 PASS baike/data-science/数据增强技术.md  (正文 1851/2200 字 / 围栏 2 块 11 行 / 卡 1def+2trap)
 PASS baike/data-science/数据湖.md  (正文 1647/2200 字 / 围栏 0 块 0 行 / 卡 1def+2trap)
 PASS baike/data-science/时间序列分析.md  (正文 2009/2200 字 / 围栏 2 块 3 行 / 卡 1def+2trap)
@@ -744,7 +744,6 @@ FAIL baike/machine-learning/强化学习从入门到实践.md  (正文 17879/220
    ✗ ⑥ 正文 17879 字 > 上限 2200｜未获枢纽豁免（①不满足：无 mermaid 且对比表 <4 数据行 ②不满足：具名子概念 17 <3 且核心机制粗体项 0 <3（粗体项须自身 ≥70 字且内含 [[双链]]））
    · ⑧ 悬空双链 [['.' for _ in range(self.grid_size)]]
    · ⑧ 悬空双链 [[0, 1, -1]]
-   · ⑩ 疑似已有专条 baike/machine-learning/MLOps机器学习工程化.md，请确认 [[0, 1, -1]] 是否应改链（概念级查重，v1.2 §8.2）
    · ⑧ 悬空双链 [[1, 1]]
    · ⑩ 疑似已有专条 baike/hci/无障碍访问.md，请确认 [[1, 1]] 是否应改链（概念级查重，v1.2 §8.2）
 PASS baike/machine-learning/批归一化.md  (正文 1551/2200 字 / 围栏 0 块 0 行 / 卡 1def+2trap)
@@ -766,9 +765,9 @@ FAIL baike/machine-learning/深度学习从零到精通.md  (正文 17075/2200 �
    ✗ ⑥ 正文 17075 字 > 上限 2200｜未获枢纽豁免（①不满足：无 mermaid 且对比表 <4 数据行 ②不满足：具名子概念 8 <3 且核心机制粗体项 0 <3（粗体项须自身 ≥70 字且内含 [[双链]]））
    · ⑧ 悬空双链 [[0]]
    · ⑧ 悬空双链 [[0, 0]]
-   · ⑩ 疑似已有专条 baike/developer-skills/敏捷项目管理实战.md，请确认 [[0, 0]] 是否应改链（概念级查重，v1.2 §8.2）
+   · ⑩ 疑似已有专条 baike/software-engineering/Clean Code 原则.md，请确认 [[0, 0]] 是否应改链（概念级查重，v1.2 §8.2）
    · ⑧ 悬空双链 [[1, 2, 3, 4]]
-   · ⑩ 疑似已有专条 baike/security/密码学基础篇.md，请确认 [[1, 2, 3, 4]] 是否应改链（概念级查重，v1.2 §8.2）
+   · ⑩ 疑似已有专条 baike/data-science/数据分析与可视化实战.md，请确认 [[1, 2, 3, 4]] 是否应改链（概念级查重，v1.2 §8.2）
 PASS baike/machine-learning/混淆矩阵.md  (正文 1469/2200 字 / 围栏 0 块 0 行 / 卡 1def+2trap)
 PASS baike/machine-learning/激活函数.md  (正文 1554/2200 字 / 围栏 0 块 0 行 / 卡 1def+2trap)
 PASS baike/machine-learning/特征缩放.md  (正文 1560/2200 字 / 围栏 0 块 0 行 / 卡 1def+2trap)
@@ -1016,7 +1015,7 @@ FAIL baike/programming-languages/函数式编程完全指南.md  (正文 18943/2
    ✗ ⑥ 围栏内共 995 行（上限 20）
    ✗ ⑥ 正文 18943 字 > 上限 2200｜未获枢纽豁免（①不满足：无 mermaid 且对比表 <4 数据行 ②不满足：具名子概念 21 <3 且核心机制粗体项 0 <3（粗体项须自身 ≥70 字且内含 [[双链]]））
    · ⑧ 悬空双链 [[1, 2]]
-   · ⑩ 疑似已有专条 baike/graphics-multimedia/图像压缩.md，请确认 [[1, 2]] 是否应改链（概念级查重，v1.2 §8.2）
+   · ⑩ 疑似已有专条 baike/data-science/数据分析与可视化实战.md，请确认 [[1, 2]] 是否应改链（概念级查重，v1.2 §8.2）
 FAIL baike/programming-languages/函数式编程（Functional Programming）概念.md  (正文 11638/2200 字 / 围栏 29 块 459 行 / 卡 14def+0trap)
    ✗ ③ 缺少必备 H2：与相关概念的区别、为什么需要它、优劣与代价、何时用与何时不用、具体示例、定义、常见误区、面试速答
    ✗ ③ 缺少『核心机制』节（可用 §3 变体名：做法、核心机制、核心流程、核心能力、计算逻辑）
@@ -1299,5 +1298,5 @@ PASS baike/web-backend/Web框架对比.md  (正文 1835/2200 字 / 围栏 0 块 
 PASS baike/web-backend/缓存策略.md  (正文 1582/2200 字 / 围栏 0 块 0 行 / 卡 1def+2trap)
 PASS baike/web-backend/认证与安全实践.md  (正文 2062/2200 字 / 围栏 0 块 0 行 / 卡 1def+2trap)
 
-448 篇检查 [strict（⑨ 全量硬 FAIL）]：825 项 FAIL，27 项 warning，其中 EXEMPT 1 篇
-SUMMARY {'PASS': 355, 'FAIL': 92, 'EXEMPT': 1} files 448 FAIL-⑦ 0 FAIL-⑨ 0 ⑩warn 10 ⑧warn 17
+448 篇检查 [strict（⑨ 全量硬 FAIL）]：825 项 FAIL，26 项 warning，其中 EXEMPT 1 篇
+# {'PASS': 355, 'FAIL': 92, 'EXEMPT': 1} ⑩warn 9
