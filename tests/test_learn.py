@@ -69,9 +69,51 @@ def test_parse_baike_a() -> None:
     check("A 格式：trap back 带正解", bool(traps) and traps[0].back.startswith("✗ 这是常见误区。正解："))
 
 
+# B 格式术语汇编夹具（内联，不依赖真实语料文件）：原样本 baike/security/哈希算法篇.md
+# 二期拆分为枢纽页后已转 A 格式、随拆分持续演化；解耦先例见 4a785b1（SQL 基础术语）。
+_B_FIXTURE_MD = """---
+title: "哈希算法夹具"
+tags: []
+source: "baike"
+---
+
+# 哈希算法夹具
+
+## MD5（Message Digest 5）
+
+**一句话定义（大白话）：** MD5 把任意长度数据压成 128 位定长指纹，用于快速比对内容是否一致。
+
+**通俗类比（生活场景）：** 像给每本书编一个唯一书号，凭号即可判断两本书是否同一本。
+
+**与相关术语的对比和区分**
+- MD5 输出 128 位摘要，SHA-256 输出 256 位摘要。
+
+## SHA-1（Secure Hash Algorithm 1）
+
+**一句话定义（大白话）：** SHA-1 输出 160 位哈希值，2017 年被实测构造出碰撞，正从安全场景退役。
+
+**与相关术语的对比和区分**
+- SHA-1 比 MD5 难碰撞，但不敌 SHA-256，新场景不再首选。
+
+## SHA-256
+
+**一句话定义（大白话）：** SHA-256 属 SHA-2 家族，256 位摘要，是当下抗碰撞哈希的默认选择。
+
+**与相关术语的对比和区分**
+- 相比 MD5，摘要更长、构造碰撞的算力成本高到不可行。
+
+## HMAC（Hash-based Message Authentication Code）
+
+**一句话定义（大白话）：** HMAC 是带密钥的哈希，同时证明数据未被篡改与发送方身份。
+
+**与相关术语的对比和区分**
+- 普通哈希谁都能重算只防意外，HMAC 无密钥者算不出、防对手。
+"""
+
+
 def test_parse_baike_b() -> None:
-    rel = "baike/security/哈希算法篇.md"
-    cards = parse_file(rel, read_sample(rel))
+    rel = "baike/security/哈希算法夹具.md"
+    cards = parse_file(rel, _B_FIXTURE_MD)
     defs = [c for c in cards if c.kind == "baike_def"]
     terms = [c.term for c in defs]
     check("B 格式：抽出 ≥4 张 def", len(defs) >= 4, f"got {len(defs)}")
@@ -391,12 +433,17 @@ def test_sm2() -> None:
 # ---------------------------------------------------------------- ③ 卡片库
 def _seed_mini_corpus(root: Path) -> Path:
     content = root / "content"
-    for rel in ("baike/algorithms/KMP 算法.md", "baike/security/哈希算法篇.md",
+    for rel in ("baike/algorithms/KMP 算法.md",
                 "interview/css-html/CSS与HTML面试题库 - 60道精选题目.md"):
         src = CONTENT / rel
         dst = content / rel
         dst.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy(src, dst)
+    # security 侧 B 格式样本改用内联夹具：真实的 哈希算法篇.md 二期已转 A 格式枢纽页，
+    # 术语会随拆分持续漂移（解耦先例见 4a785b1）；候选文件数保持 4 不变。
+    d_sec = content / "baike" / "security"
+    d_sec.mkdir(parents=True, exist_ok=True)
+    (d_sec / "哈希算法夹具.md").write_text(_B_FIXTURE_MD, encoding="utf-8")
     # 一篇 longer tutorial（无定义小节）→ 应记为 skipped
     d = content / "baike" / "algorithms"
     (d / "教程长文.md").write_text(
