@@ -27,7 +27,8 @@
 
 **3. `software-engineering/04-CI CD.md` ↔ `devops/蓝绿部署与灰度发布.md`**（预案：改双链，不新建）
 - 冲突：蓝绿 / 金丝雀 / 滚动更新 三种发布策略，`content/baike/devops/蓝绿部署与灰度发布.md` 已重写完成并 PASS。
-- 预案：发布策略三条**不新建**，改双链指向 devops 专文；`CI`、`持续交付`、`持续部署`、`流水线`、`制品`、`特性开关` 与 `Jenkins·GitHubActions·GitLabCI` 工具族可独立成篇。
+- ✅ **已执行**（2026-09-19，中小篇专场）：拆 `04-CI CD` 时蓝绿/金丝雀/滚动更新三条已删除并改双链 [[蓝绿部署与灰度发布]]；CI、持续交付、持续部署合成 [[CI 与 CD]]，流水线与三工具合成 [[构建流水线与 CI-CD 工具]]；制品 / 环境 / 特性开关留枢纽内联。
+- 预案（原文）：发布策略三条**不新建**，改双链指向 devops 专文；`CI`、`持续交付`、`持续部署`、`流水线`、`制品`、`特性开关` 与 `Jenkins·GitHubActions·GitLabCI` 工具族可独立成篇。
 
 **4. `programming-languages/编译原理与解释器实现.md` ↔ 已重写的编译叶子词条**（预案：改双链，不新建）
 - 冲突：词法 / 语法 / AST 三阶段，`content/baike/programming-languages/词法分析.md`、`语法分析.md`、`抽象语法树.md` 已重写完成并 PASS。
@@ -143,7 +144,7 @@
 | content/baike/software-engineering/01-开发流程.md | 13 | s4 | 3855 | 瀑布、敏捷、Scrum、Kanban、Sprint、用户故事、验收标准、故事点、计划扑克、站会、回顾、产品待办、冲刺待办 | 术语汇编（13 def 卡）：瀑布/敏捷/Scrum/Kanban/Sprint/用户故事/验收标准/故事点/计划扑克/站会/回顾/产品待办/冲刺待办，各带独立定义，不符单词条 1def+2trap 契约 → 按术语各拆词条 | pending |
 | content/baike/software-engineering/02-版本控制.md | 14 | s4 | 3948 | 三区模型、add·commit·push、分支、merge、rebase、冲突、PR·MR、CodeReview、Hooks、GitFlow、主干开发、cherry-pick、stash | 术语汇编（14 def 卡、9 围栏）：三区模型/add·commit·push/分支/merge/rebase/冲突/PR·MR/CodeReview/Hooks/GitFlow/主干开发/cherry-pick/stash，与 Git 词条重叠 → 按命令与概念各拆词条 | pending |
 | content/baike/software-engineering/03-代码质量.md | 13 | s4 | 3282 | 规范、linter、CodeReview、重构、技术债、圈复杂度、SOLID、DRY、KISS、YAGNI、CleanCode、代码异味 | 术语汇编（13 def 卡）：规范/linter/CodeReview/重构/技术债/圈复杂度/SOLID/DRY/KISS/YAGNI/CleanCode/代码异味，重构·技术债务·代码评审已有专文需去重 → 按主题各拆词条 | done（2026-09-19 枢纽页 + 圈复杂度/代码异味/Clean Code 原则 3 子词条，见去重队列第 2 对） |
-| content/baike/software-engineering/04-CI CD.md | 14 | s4 | 3659 | CI、持续交付、持续部署、流水线、自动化测试、Jenkins、GitHubActions、GitLabCI、制品、环境、蓝绿、金丝雀、滚动更新、特性开关 | 术语汇编（14 def 卡）：CI/持续交付/持续部署/流水线/自动化测试/Jenkins/GitHubActions/GitLabCI/制品/环境/蓝绿/金丝雀/滚动更新/特性开关，与 devops 蓝绿部署重叠 → 按主题各拆词条 | pending |
+| content/baike/software-engineering/04-CI CD.md | 14 | s4 | 3659 | CI、持续交付、持续部署、流水线、自动化测试、Jenkins、GitHubActions、GitLabCI、制品、环境、蓝绿、金丝雀、滚动更新、特性开关 | 术语汇编（14 def 卡）：CI/持续交付/持续部署/流水线/自动化测试/Jenkins/GitHubActions/GitLabCI/制品/环境/蓝绿/金丝雀/滚动更新/特性开关，与 devops 蓝绿部署重叠 → 按主题各拆词条 | done（2026-09-19 枢纽页 + 2 子词条：CI 与 CD、构建流水线与 CI-CD 工具） |
 | content/baike/software-engineering/05-项目管理.md | 13 | s4 | 3078 | Jira、看板、燃尽图、燃起图、里程碑、需求管理、Bug生命周期、发布计划、风险管理、干系人、RACI、OKR、KPI | 术语汇编（13 def 卡）：Jira/看板/燃尽图/燃起图/里程碑/需求管理/Bug生命周期/发布计划/风险管理/干系人/RACI/OKR/KPI → 按术语各拆词条 | pending |
 | content/baike/testing/01 - 测试基础.md | 12 | s4 | 10044 | 测试金字塔、单元、集成、E2E、冒烟、回归、探索性、验收、断言、覆盖率、测试替身、TDD | 术语汇编：测试金字塔/单元/集成/E2E/冒烟/回归/探索性/验收/断言/覆盖率/测试替身/TDD 12 个独立测试概念（枢纽①对比表14行②子概念7），0 def 卡；正文 10044 ≫ 3400、21 围栏 ≫ 2/20 → 按概念各拆词条 | pending |
 | content/baike/testing/02 - 测试工具.md | 12 | s4 | 14217 | pytest、JUnit5、Jest、Mocha·Chai、Selenium、Cypress、Playwright、Postman、JMeter、Mockito、测试数据、环境管理 | 工具汇编：pytest/JUnit5/Jest/Mocha·Chai/Selenium/Cypress/Playwright/Postman/JMeter/Mockito/测试数据/环境管理 12 独立工具（①对比表7行②子概念5）；正文 14217、24 围栏 ≫ 上限 → 按工具各拆词条 | pending |
