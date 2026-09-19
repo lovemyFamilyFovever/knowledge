@@ -164,3 +164,9 @@
 
 - 55c78c0 docs: 二期拆分[S4]——Rust系统编程入门到精通 (枢纽+4子词条)
 
+## §S4 · TypeScript高级编程指南（枢纽+3）
+
+枢纽页(1309)+3 子词条 `TypeScript 高级类型与类型体操`/`模块与声明文件`/`装饰器与编译器API`；类型/泛型基础双链 [[TypeScript深入]][[泛型]]；net-new 无 pending-merge。踩坑：4 条 🎯 均超150 逐裁、一处不相关 [[MVC 与 MVVM]] 链删除；4 篇 strict 全 PASS、0 悬空。提交 CLEAN。**hash**：
+
+- 3cf8ede docs: 二期拆分[S4]——TypeScript高级编程指南 (枢纽+3子词条)
+
