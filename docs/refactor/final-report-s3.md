@@ -50,3 +50,21 @@
 - database/索引与查询优化术语.md（9066，巨型）
 - middleware/任务调度（Task Scheduling）.md（6216，中小篇）
 注：algorithms 子域已清空；MySQL 与 NoSQL 两巨型本篇/上轮已拆。
+
+## 终极包圆·续（2026-09-19，用户选 A 后继续）
+
+**本轮完成（均 --strict 全 PASS / 1def+2trap / 0 悬空链）**：
+- NoSQL 数据库术语 → 枢纽+3（列族HBase&Cassandra、图Neo4j、时序InfluxDB）
+- Redis深度解析与实战指南 → 枢纽+4（数据结构与底层实现、持久化与内存管理、高可用、分布式锁）
+- SQL 基础术语 → 枢纽+2（SQL语言分类、SQL查询与连接）；并改 test_learn 把 B 格式夹具从语料文件解耦为内联样本（用户批准 A）
+- 事务与并发控制术语 → 枢纽+4（事务与ACID、并发读异常、乐观锁与悲观锁、Redo&Undo Log）
+
+**剩余 pending（5）**：database/搜索引擎技术详解(17928)、数据库内核原理深度解析(11136)、数据库设计术语(10034)、索引与查询优化术语(9066)；middleware/任务调度(6216)。
+
+**隐患提示**：任务 §0.1 白名单与 §1 物理隔离写的是 messaging-middleware，但本仓实际目录为 middleware —— 拆 任务调度(middleware/任务调度) 时若用该白名单断言会被判片外。下一会话按实际路径 middleware 处理或先对齐白名单。
+
+**本会话提交**：
+- cbe19f1 docs: 二期拆分[S3]——事务与并发控制术语.md (枢纽+4子词条)
+- 4a785b1 docs: 二期拆分[S3]——SQL 基础术语.md (枢纽+2子词条)；test_learn 解耦语料夹具
+- 4a2a64d docs: 二期拆分[S3]——Redis深度解析与实战指南.md (枢纽+4子词条)
+- a7fb73f docs: 二期拆分[S3]——NoSQL 数据库术语.md (枢纽+3子词条)
