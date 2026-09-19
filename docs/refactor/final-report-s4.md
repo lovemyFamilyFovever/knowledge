@@ -130,3 +130,13 @@
 
 > s4 剩约 26（programming-languages ~19、software-engineering 01/02/05、testing 01/02/03）。
 
+## §S4 · Flutter跨平台开发实战（枢纽+5；programming-languages 起）
+
+**产物**：枢纽页(1494)+5 子词条 `Dart语言精要`/`Flutter Widget体系`/`Flutter布局系统`/`Flutter路由与导航`(GoRouter)/`Flutter状态管理`(Provider/Riverpod/Bloc)；全 net-new、无 pending-merge；mobile/移动开发概览 作概览双链。
+**踩坑**：又漏 `## 优劣与代价` 与 4 条 🎯 超长(hub 233)，均补/裁；终 6 篇 strict 全 PASS、0 悬空。
+**hash**：
+
+- 62a8b59 docs: 二期拆分[S4]——Flutter跨平台开发实战 (枢纽+5子词条)
+
+> s4 pending 降至 25（programming-languages 剩 ~18：Go系统/Python全栈/Python高级/Rust系统/TS高级/函数式/密码学/并发/数学/音频课×2/通用概念/编译原理/CS图谱/软件测试(已done)/OOP/概念×2；software-engineering 3；testing 3）。
+
