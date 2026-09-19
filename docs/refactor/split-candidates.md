@@ -43,6 +43,11 @@
 - 冲突：拆第 1 对时才暴露——`01 - 测试基础.md` 有 `## 端到端测试（E2E）` 节，`02 - 测试工具.md` 有 `## Cypress`、`## Playwright`、`## Selenium WebDriver` 三节及一张 E2E 工具对比表，而这两篇汇编本身仍是 `split` 状态、未收敛。
 - 预案：拆 `01 - 测试基础.md` 时**删除**其 E2E 节、改双链指向 `[[E2E 测试]]`；拆 `02 - 测试工具.md` 时把 Cypress/Playwright 两节合并改双链指向 `[[Playwright 与 Cypress]]`，Selenium 归入该页对比表，E2E 工具对比表（已作为素材并入新词条那张 7 行表）删除。**这两篇汇编拆完前，E2E 主题在库内有两处归口**，双链体检时按新词条为准。
 
+**7. `design-patterns/创建型模式.md` 拆出的 单例/工厂 vs `programming-languages/编程概念音频课-设计模式.md`**（预案：改双链，不新建）
+- 冲突：二期拆 `创建型模式` 时新立 [[单例模式]]、[[工厂模式（工厂方法与抽象工厂）]]；而 `编程概念音频课-设计模式.md`（仍 pending）含 `### 1. 单例模式`、`### 2. 工厂模式` 两节（音频课比喻体）。两概念在库内暂有双归口。
+- 预案：轮到拆 `编程概念音频课-设计模式.md` 时，**删除**其单例、工厂两节、改双链指向 `[[单例模式]]`、`[[工厂模式（工厂方法与抽象工厂）]]`（该汇编其余模式节另按结构/行为族对齐）。
+- 已登记：两条先行立条已在 `docs/refactor/status/s4.md` 对应新词条行标 `pending-merge: programming-languages/编程概念音频课-设计模式.md`；拆该音频课前不得清。
+
 ## 待拆清单
 
 | 文件 | 子概念数 | 所属片 | 正文字数 | 子概念预览 | 理由 | 状态 |
@@ -73,7 +78,7 @@
 | content/baike/database/数据库内核原理深度解析.md | 8 | s3 | 11136 | 存储引擎、索引、查询优化器、事务、并发控制、日志恢复、分布式、实战对比 | 内核原理全书：存储引擎/索引/查询优化器/事务/并发控制/日志恢复/分布式/实战对比 8 大主题、35 节、0 def 卡。含 CBO、ARIES、列存、TSO/OCC/2PC、InnoDB·PG·TiDB 对比等本文独有的深度子题，多数无对应专文，压到 3400 必毁面试级内核细节；应按主题拆分，末尾对比表可留作内核枢纽 | pending |
 | content/baike/database/数据库设计术语.md | 15 | s3 | 10034 | 主键、外键、候选键、超键、1NF、2NF、3NF、BCNF | 术语汇编实为 15 个独立词条(各带 def+示例、17 围栏、0 trap)，无法并入单条上限；应按术语各拆独立词条，并与 数据库范式/数据库设计 相关专文去重后统一收敛 | pending |
 | content/baike/database/索引与查询优化术语.md | 12 | s3 | 9066 | 聚簇、非聚簇、B+树、哈希、全文、联合、覆盖索引、最左前缀、ICP、EXPLAIN、慢查询优化、索引失效场景 | 术语汇编实为 12 个独立词条(各带 def+示例、13 围栏、0 trap)：聚簇/非聚簇/B+树/哈希/全文/联合/覆盖索引、最左前缀、ICP、EXPLAIN、慢查询优化、索引失效场景，均面试必备且各自独立，压入 3400 必毁；应各拆词条，B+树索引段与 B+树 专文去重 | pending |
-| content/baike/design-patterns/创建型模式（Creational Patterns）.md | 6 | s4 | 14432 | 单例、工厂方法、抽象工厂、建造者、原型、对象池 | 枢纽长文覆盖单例/工厂方法/抽象工厂/建造者/原型/对象池 6 个可独立命名子模式，各带代码示例与深浅拷贝、DCL+volatile、OCP 权衡等面试细节；正文 14432 字 ≫ 枢纽预算 3400、围栏 12 块 239 行 ≫ 上限 2/20，压缩至合规会毁掉逐模式机制 → 建议拆为 6 词条+1 枢纽 | pending |
+| content/baike/design-patterns/创建型模式（Creational Patterns）.md | 6 | s4 | 14432 | 单例、工厂方法、抽象工厂、建造者、原型、对象池 | 枢纽长文覆盖单例/工厂方法/抽象工厂/建造者/原型/对象池 6 个可独立命名子模式，各带代码示例与深浅拷贝、DCL+volatile、OCP 权衡等面试细节；正文 14432 字 ≫ 枢纽预算 3400、围栏 12 块 239 行 ≫ 上限 2/20，压缩至合规会毁掉逐模式机制 → 建议拆为 6 词条+1 枢纽 | done（2026-09-19 二期拆分：枢纽页 + 5 子词条〔单例 / 工厂方法与抽象工厂 / 建造者 / 原型 / 对象池〕，工厂合并为族词条；见去重队列第 7 对） |
 | content/baike/design-patterns/结构型模式（Structural Patterns）.md | 10 | s4 | 16104 | 适配器、桥接、组合、装饰器、外观、享元、代理、过滤器、MVC、MVVM | 枢纽长文覆盖适配器/桥接/组合/装饰器/外观/享元/代理 7 种 GoF + 过滤器/MVC/MVVM，共 10 个可独立命名子概念，各带代码与对比表；正文 16104 字 ≫ 3400、围栏 15 块 311 行 ≫ 2/20，压缩会毁掉逐模式细节 → 建议拆为多词条+1 枢纽 | pending |
 | content/baike/design-patterns/行为型模式（Behavioral Patterns）.md | 11 | s4 | 16222 | 策略、观察者、命令、状态、模板方法、迭代器、责任链、中介者、备忘录、访问者、解释器 | 枢纽长文覆盖策略/观察者/命令/状态/模板方法/迭代器/责任链/中介者/备忘录/访问者/解释器 11 种 GoF 行为型模式，各带代码与对比表；正文 16222 字 ≫ 3400、围栏 13 块 361 行 ≫ 2/20，压缩会毁掉逐模式细节 → 建议拆为 11 词条+1 枢纽 | pending |
 | content/baike/developer-skills/开发者效率工具大全.md | 4 | s4 | 16942 | 终端工具、编辑器与IDE、Git高级用法、命令行工具 | 目录型枢纽：终端工具/编辑器与IDE/Git高级用法/命令行工具 4 个可独立命名工具族，逐工具展开；正文 16942 字 ≫ 3400、围栏 28 块 880 行 ≫ 2/20，压缩会毁掉逐工具细节 → 建议按工具族拆词条 | pending |
@@ -96,7 +101,7 @@
 | content/baike/frontend-frameworks/Next.js全栈开发实战.md | 10+ | s5 | ~5000+ | 路由、SSR、SSG、API Routes、Middleware、部署 | 路由/SSR/SSG/API Routes/Middleware/部署等独立话题 | pending |
 | content/baike/frontend-frameworks/WebAssembly完全指南.md | 8+ | s5 | ~4000+ | 编译、内存模型、JS互操作、SIMD、线程 | 编译/内存模型/JS互操作/SIMD/线程等独立话题 | pending |
 | content/baike/frontend-frameworks/现代前端工程化完全指南.md | 10+ | s5 | ~5000+ | 构建工具、模块、包管理、CI-CD、测试 | 构建工具/模块/包管理/CI-CD/测试等独立话题 | pending |
-| content/baike/machine-learning/AI是否会取代人类辩论.md | 约4组独立子论(正方论据体系/反方论据体系/案例数据/哲学概念) | s1 | >5000(264行) | 正方论据体系、反方论据体系、案例数据、哲学概念 | 本质是一场六人模拟辩论长文，非单一面试术语；含大量可核验引用(麦肯锡2017/高盛2023/OpenAI2023/DeepMind Nature2020/IBM Watson等)，压到2200会毁掉论据链；≥3独立子块→建议按"正方论/反方论/关键数据案例"拆分 | pending |
+| content/baike/machine-learning/AI是否会取代人类辩论.md | 约4组独立子论(正方论据体系/反方论据体系/案例数据/哲学概念) | s1 | >5000(264行) | 正方论据体系、反方论据体系、案例数据、哲学概念 | 本质是一场六人模拟辩论长文，非单一面试术语；含大量可核验引用(麦肯锡2017/高盛2023/OpenAI2023/DeepMind Nature2020/IBM Watson等)，压到2200会毁掉论据链；≥3独立子块→建议按"正方论/反方论/关键数据案例"拆分 | done（2026-09-19 枢纽页 + 3 子词条：AI 取代就业的正反论据、AI 就业影响的实证数据、AI 与人类独特性的哲学概念） |
 | content/baike/machine-learning/LLM应用开发完全指南.md | 约7章独立子块(架构演进/Tokenization/MoE/Prompt/FunctionCalling/RAG/Agent) | s1 | 约1000+行(被截断) | 架构演进、Tokenization、MoE、Prompt、FunctionCalling、RAG、Agent | 多章实战教程、含十余段大段代码与2026前瞻技术(FlashAttention-3/RoPE2.0等)，非单一术语卡片；压到2200会毁掉动手细节；且原文明显未写完→建议按章拆分为独立教程/词条 | pending |
 | content/baike/machine-learning/MLOps机器学习工程化.md | 约5块独立子主题(成熟度0-1-2/CI-CD-CT自动化/实验管理MLflow·W&B/监控漂移/测试套件) | s1 | 约970行 | 成熟度0-1-2、CI-CD-CT自动化、实验管理MLflow·W&B、监控漂移、测试套件 | 工程实战教程、十余段大段代码(Mlflow/W&B/GH Actions yaml/pytest/监控)，非单一术语卡片；压缩会毁掉可复现实现；建议按主题拆成教程子文档 | pending |
 | content/baike/machine-learning/Prompt Engineering高级指南.md | 约8块独立how-to(提示结构四要素/样本策略/CoT·SC·ToT/ReAct/结构化输出/注入防御/自动优化APE·OPRO/模板版本管理·各模型差异·50模板) | s1 | 约363行 | 提示结构四要素、样本策略、CoT·SC·ToT、ReAct、结构化输出、注入防御、自动优化APE·OPRO、模板版本管理 | 深度方法论长指南、非单一术语卡；多数小节(APE/OPRO/模板管理/各模型最佳实践)无专条归口、压缩会毁掉实操信息；建议按主题拆分或并入 ai-and-llm 提示工程枢纽后再拆 | pending |
