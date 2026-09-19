@@ -158,3 +158,9 @@
 
 - a75cb55 docs: 二期拆分[S4]——Python高级编程完全指南 (枢纽+3子词条)
 
+## §S4 · Rust系统编程入门到精通（枢纽+4）
+
+枢纽页(1413)+4 子词条 `Rust Trait与泛型`/`Rust 错误处理`/`Rust 智能指针`/`Rust 并发与异步`；所有权/借用/生命周期/unsafe 双链 done 的 [[Rust编程基础]]；net-new 无 pending-merge。踩坑：2 条 🎯 超150 裁；5 篇 strict 全 PASS、0 悬空。提交 CLEAN。**hash**：
+
+- 55c78c0 docs: 二期拆分[S4]——Rust系统编程入门到精通 (枢纽+4子词条)
+
