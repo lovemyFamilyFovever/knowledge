@@ -512,3 +512,27 @@ split-candidates 102 行 = done 12 + exempt-reference 1 + pending 89
 **commit hash**：
 
 - b30db65 docs: 二期拆分[S4]——创建型模式 (枢纽 + 5 子词条)
+
+## §S3（二期拆分 · 数据线，分片3）— 巨型汇编专场：本会话处理 1 篇后收手
+
+**预读与隔离**：AGENTS.md / writing-spec-v1.2.md / split-candidates.md 三件套齐全。本会话仅动 `content/baike/data-science/` 下文件 + `s3.md` + `split-candidates.md`，未碰其他子域。
+
+**队列调度**：split-candidates 按字母序（data-science < database）排，本分片首个 pending = `data-science/数据分析与可视化实战.md`，17377 字（>8000 巨型汇编）→ 按 §1.2 本会话只处理这一篇后即收手。
+
+**概念级查重（§8.2）**：NumPy/Pandas/Polars、数据清洗、缺失/异常/重复值、EDA/探索性数据分析 全库无同名或异名专条（"EDA" 命中均为 Event-Driven Architecture 假阳性）；概念层 [[数据分析与可视化]] 已存在 → 父枢纽双链承载、不新建。
+
+**拆分产物（枢纽 + 3 子词条，族词条优先）**：
+- 父 → 枢纽页 `数据分析与可视化实战.md` 1482/2200、0 围栏（索引表 + 子词条双链，§8.1 不重复承载）
+- `Python 数据分析工具链.md` 1793/2200、1 围栏（核心能力变体）
+- `数据清洗实战.md` 1706/2200、1 围栏（做法变体）
+- `探索性数据分析.md` 1481/2200、0 围栏（做法变体）
+- 原稿 EDA 节在"目标变量可视化"处抓取截断 → 按 §5 不补写、参考资料已注明。
+
+**check_rewrite --strict（本会话 4 篇）**：全 PASS / 0 FAIL；warning 均为「新文件不在 HEAD」；0 悬空双链、0 处含 `/` 的链名；⑨ 速答全部 ≤150 硬判通过。check_cards 各 1 def + 2 trap。
+
+**台账**：`s3.md` 追加 done-hub + 3 子词条行；`split-candidates.md` 本行改 done。§9.1 暂存断言通过（commit 前 s3.md 已在暂存区）。
+
+**本分片剩余 pending（10）**：data-science 已清空；database 9 篇全为 >8000 巨型汇编；middleware `任务调度`（6216，中小篇）。**下一篇巨型汇编**：`content/baike/database/MySQL从入门到架构师.md`（11081 字）。
+
+**本会话提交**：
+- 7eb26c9 docs: 二期拆分[S3]——数据分析与可视化实战.md (枢纽+3子词条)
