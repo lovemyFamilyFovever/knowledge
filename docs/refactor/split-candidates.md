@@ -68,6 +68,11 @@
 - 预案：轮到 s5 拆 `网络安全篇` 时，其注入/XSS 重叠节**删除、改双链**指向本两片 devops 词条（[[注入类漏洞]]/[[XSS 与内容安全]]）；CSRF/SSRF/上传/反序列化 已在 devops 立条。
 - 已登记：两条先行立条在 `docs/refactor/status/s4.md` 标 `pending-merge: security/网络安全篇.md`（跨片，s5 拆该篇时清）。若 s5 已抢先立同名条，则本两片与之合并、择一为归口。
 
+**11. `architecture/设计原则.md` 拆出的 SOLID/组合/接口 ↔ `programming-languages/面向对象编程（OOP）概念.md`(s4, split)**（预案：改双链，不新建）
+- 冲突：库内 SOLID/DRY/KISS/YAGNI/迪米特/组合/接口/IoC/DI 的唯二成文处，一是本汇编（已收敛为枢纽页 + 4 子词条），二是仍 pending 的 `面向对象编程（OOP）概念.md`（10181 字、13 def，含 `## 里氏替换原则（Liskov Substitution Principle, LSP）`、`## 组合 vs 继承（Composition vs Inheritance）`、`## 接口（Interface）` 三节）。双链指向后者等于指向未拆原料，按 v1.2 §2 第 4 档**先行立条** `architecture/SOLID 五大原则.md`、`architecture/复用与解耦原则.md`。
+- 预案：轮到拆 `面向对象编程（OOP）概念.md` 时，上述三节**删除**、改双链指向 [[SOLID 五大原则]]（LSP）与 [[复用与解耦原则]]（组合优于继承、面向接口编程），"多态/抽象类/重载重写"等纯语言机制节留在该篇自己的词条里；并清掉 `docs/refactor/status/s5.md` 两条新词条行的 `pending-merge`。清完前该篇不得判 done。
+- 未立条者：IoC/DI 在 design-patterns 侧只有 [[单例模式]]·[[创建型模式（Creational Patterns）]] 顺带提及（且明确建议改走 DI），无归口，故 `architecture/IoC 与依赖注入.md` 属净新立条、不产生 pending-merge；DRY/KISS/YAGNI 的既有归口 [[03-代码质量]] 与 [[Clean Code 原则]] 均已 done 且已把三原则回指本页，无重复承载。
+
 ## 待拆清单
 
 | 文件 | 子概念数 | 所属片 | 正文字数 | 子概念预览 | 理由 | 状态 |
@@ -86,7 +91,7 @@
 | content/baike/architecture/数据工程完全指南.md | 6+ | s5 | ~4000+ | ETL、数仓、数据湖、流处理、数据质量、治理 | ETL/数仓/数据湖/流处理/数据质量/治理 各独立领域 | done（2026-09-19 枢纽页 + 2 子词条：流处理与批处理〔§4+§5 合并〕、湖仓一体与开放表格式〔§3 Delta/Iceberg/Hudi 选型〕；数仓/ETL/数据湖/MapReduce/Spark/Kafka 全双链既有 done 专条不新建，数据编排通用机制双链 [[任务调度（Task Scheduling）]]、Dagster 资产导向内联不另立薄条，§6.2 Dagster 代码断尾按 v1.2 §5 不补写、候选预期的数据质量·治理无独立小节一律双链 [[数据清洗实战]]·[[ETL]]）|
 | content/baike/architecture/架构模式.md | 12 | s5 | ~1200+ | 单体、微服务、Serverless、EDA、CQRS、六边形、洋葱 | 单体/微服务/Serverless/EDA/CQRS/六边形/洋葱等12种独立模式 | done（2026-09-19 枢纽页 + 1 子词条：六边形与洋葱架构〔族词条合并 §6+§7，先行立条，见重叠队列第 10 对 pending-merge〕；单体→[[微服务拆分与选型]]、微服务→[[微服务架构]]、Serverless→[[云服务详解]]·[[云原生十二要素]]、EDA 与 CQRS/事件溯源→[[事件驱动架构]]、微前端→[[前端框架核心概念]]（均 done 专条不新建）；Space-Based/管道-过滤器 无归口且原稿内容薄、留枢纽内联；中小汇编（原 3165 字 / 10 围栏 / 61 代码行，ASCII 图全部转表与散文）|
 | content/baike/architecture/系统设计.md | 12 | s5 | ~1500+ | CAP、BASE、一致性、分布式ID、分片、读写分离 | CAP/BASE/一致性/分布式ID/分片/读写分离等12个独立话题 | done（2026-09-19 枢纽页 + 1 子词条：数据分片与热点处理） |
-| content/baike/architecture/设计原则.md | 12 | s5 | ~1800+ | SOLID、DRY、KISS、YAGNI、迪米特、组合、接口、IoC、DI | SOLID/DRY/KISS/YAGNI/迪米特/组合/接口/IoC/DI等12个独立原则 | pending |
+| content/baike/architecture/设计原则.md | 12 | s5 | ~1800+ | SOLID、DRY、KISS、YAGNI、迪米特、组合、接口、IoC、DI | SOLID/DRY/KISS/YAGNI/迪米特/组合/接口/IoC/DI等12个独立原则 | done（2026-09-19 枢纽页 + 4 族子词条：SOLID 五大原则、DRY、KISS 与 YAGNI、复用与解耦原则〔高内聚低耦合+迪米特+组合优于继承+面向接口编程〕、IoC 与依赖注入；十条准则在枢纽页速查表统一索引，14 块 Java 对照代码按"原则零代码"删除；SOLID/组合/接口 与仍 pending 的 `programming-languages/面向对象编程（OOP）概念.md` 重叠，按去重队列第 11 对先行立条并标 pending-merge）|
 | content/baike/architecture/领域驱动设计DDD完全指南.md | 10 | s5 | ~2500+ | 核心思想、战略设计、战术设计、分层、事件风暴、CQRS、ES、微服务、实战、误区 | 核心思想/战略设计/战术设计/分层/事件风暴/CQRS/ES/微服务/实战/误区 10部分 | pending |
 | content/baike/data-science/数据分析与可视化实战.md | 3 | s3 | 17377 | Python工具链、数据清洗实战、EDA方法论 | 实战手册：Python工具链/数据清洗实战/EDA方法论 3 大主题、0 def 卡、8 围栏 784 代码行，远超上限。概念词条已由"数据分析与可视化"承载，本文是代码级实操详解，压入 3400 必毁实操细节；应拆为三篇实操子文档或并入 ETL/EDA 专题 | done（2026-09-19 枢纽页 + 3 子词条：Python 数据分析工具链、数据清洗实战、探索性数据分析） |
 | content/baike/database/MySQL从入门到架构师.md | 5 | s3 | 11081 | 存储引擎、索引优化、MVCC、锁、查询优化 | 全书式枢纽：存储引擎/索引优化/MVCC/锁/查询优化 5 个独立子概念，正文 11081 字、42 个代码块，压到 3400 仍毁掉面试级细节；与 MySQL深入 / 索引与查询优化术语 / 事务与并发控制术语 等专文高度重叠，宜拆为子文档 | done（2026-09-19 枢纽页 + 3 子词条：InnoDB 存储引擎结构、MySQL 索引类型与优化、MySQL 锁机制；MVCC/隔离/B+树双链既有专条） |
