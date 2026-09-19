@@ -486,6 +486,7 @@ FAIL baike/devops/网络安全与渗透测试.md  (正文 17171/2200 字 / 围�
 PASS baike/devops/蓝绿部署与灰度发布.md  (正文 1473/2200 字 / 围栏 0 块 0 行 / 卡 1def+2trap)
 PASS baike/distributed/BASE 理论.md  (正文 1011/2200 字 / 围栏 0 块 0 行 / 卡 1def+2trap)
 PASS baike/distributed/CAP 定理.md  (正文 1001/2200 字 / 围栏 0 块 0 行 / 卡 1def+2trap)
+PASS baike/distributed/Gossip 协议.md  (正文 1955/2200 字 / 围栏 1 块 4 行 / 卡 1def+2trap)
 PASS baike/distributed/MapReduce.md  (正文 1221/2200 字 / 围栏 0 块 0 行 / 卡 1def+2trap)
 PASS baike/distributed/Saga 与 TCC.md  (正文 1144/2200 字 / 围栏 0 块 0 行 / 卡 1def+2trap)
 PASS baike/distributed/一致性哈希.md  (正文 1022/2200 字 / 围栏 0 块 0 行 / 卡 1def+2trap)
@@ -503,14 +504,7 @@ FAIL baike/distributed/分布式ID与缓存术语百科.md  (正文 11611/3400 �
    ✗ ⑥ 正文 11611 字 > 上限 3400｜枢纽型（①对比表 5 数据行 ②具名子概念 12）
 PASS baike/distributed/分布式事务.md  (正文 1704/2200 字 / 围栏 0 块 0 行 / 卡 1def+2trap)
 PASS baike/distributed/分布式基础术语百科.md  (正文 1116/2200 字 / 围栏 0 块 0 行 / 卡 1def+2trap)
-FAIL baike/distributed/分布式存储术语百科.md  (正文 3827/3400 字 / 围栏 4 块 18 行 / 卡 3def+0trap) [枢纽型（①对比表 5 数据行 ②具名子概念 11）]
-   ✗ ③ 缺少必备 H2：与相关概念的区别、为什么需要它、优劣与代价、何时用与何时不用、具体示例、定义、常见误区、面试速答
-   ✗ ③ 缺少『核心机制』节（可用 §3 变体名：做法、核心机制、核心流程、核心能力、计算逻辑）
-   ✗ ① baike_def 卡数 = 3（需恰好 1）
-   ✗ ① baike_trap 卡数 = 0（需恰好 2）
-   ✗ ① 常见误区列表 0 条（需 2–3 条）
-   ✗ ⑥ 代码围栏 4 块（上限 2）
-   ✗ ⑥ 正文 3827 字 > 上限 3400｜枢纽型（①对比表 5 数据行 ②具名子概念 11）
+PASS baike/distributed/分布式存储术语百科.md  (正文 2186/2200 字 / 围栏 1 块 3 行 / 卡 1def+2trap)
 PASS baike/distributed/分布式缓存.md  (正文 1400/2200 字 / 围栏 0 块 0 行 / 卡 1def+2trap)
 PASS baike/distributed/分布式锁.md  (正文 1337/2200 字 / 围栏 0 块 0 行 / 卡 1def+2trap)
 PASS baike/distributed/幂等性.md  (正文 1134/2200 字 / 围栏 0 块 0 行 / 卡 1def+2trap)
@@ -525,6 +519,7 @@ FAIL baike/distributed/微服务治理术语百科.md  (正文 7538/3400 字 / �
    ✗ ⑥ 围栏内共 133 行（上限 20）
    ✗ ⑥ 正文 7538 字 > 上限 3400｜枢纽型（①对比表 4 数据行 ②具名子概念 14）
 PASS baike/distributed/心跳检测.md  (正文 1011/2200 字 / 围栏 0 块 0 行 / 卡 1def+2trap)
+PASS baike/distributed/数据复制与 Quorum.md  (正文 2048/2200 字 / 围栏 1 块 3 行 / 卡 1def+2trap)
 PASS baike/distributed/最终一致性.md  (正文 1136/2200 字 / 围栏 0 块 0 行 / 卡 1def+2trap)
 PASS baike/distributed/服务发现.md  (正文 1179/2200 字 / 围栏 0 块 0 行 / 卡 1def+2trap)
 PASS baike/distributed/服务网格.md  (正文 1312/2200 字 / 围栏 0 块 0 行 / 卡 1def+2trap)
@@ -1298,5 +1293,4 @@ PASS baike/web-backend/Web框架对比.md  (正文 1835/2200 字 / 围栏 0 块 
 PASS baike/web-backend/缓存策略.md  (正文 1582/2200 字 / 围栏 0 块 0 行 / 卡 1def+2trap)
 PASS baike/web-backend/认证与安全实践.md  (正文 2062/2200 字 / 围栏 0 块 0 行 / 卡 1def+2trap)
 
-448 篇检查 [strict（⑨ 全量硬 FAIL）]：825 项 FAIL，26 项 warning，其中 EXEMPT 1 篇
-# {'PASS': 355, 'FAIL': 92, 'EXEMPT': 1} ⑩warn 9
+450 篇检查 [strict（⑨ 全量硬 FAIL）]：818 项 FAIL，26 项 warning，其中 EXEMPT 1 篇
