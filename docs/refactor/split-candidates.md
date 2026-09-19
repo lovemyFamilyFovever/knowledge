@@ -59,7 +59,7 @@
 | content/baike/architecture/推荐系统设计与实现.md | 6+ | s5 | ~3500+ | 召回、排序、特征工程、AB测试、冷启动、实时性 | 召回/排序/特征工程/AB测试/冷启动/实时性 各独立子系统 | pending |
 | content/baike/architecture/数据工程完全指南.md | 6+ | s5 | ~4000+ | ETL、数仓、数据湖、流处理、数据质量、治理 | ETL/数仓/数据湖/流处理/数据质量/治理 各独立领域 | pending |
 | content/baike/architecture/架构模式.md | 12 | s5 | ~1200+ | 单体、微服务、Serverless、EDA、CQRS、六边形、洋葱 | 单体/微服务/Serverless/EDA/CQRS/六边形/洋葱等12种独立模式 | pending |
-| content/baike/architecture/系统设计.md | 12 | s5 | ~1500+ | CAP、BASE、一致性、分布式ID、分片、读写分离 | CAP/BASE/一致性/分布式ID/分片/读写分离等12个独立话题 | pending |
+| content/baike/architecture/系统设计.md | 12 | s5 | ~1500+ | CAP、BASE、一致性、分布式ID、分片、读写分离 | CAP/BASE/一致性/分布式ID/分片/读写分离等12个独立话题 | done（2026-09-19 枢纽页 + 1 子词条：数据分片与热点处理） |
 | content/baike/architecture/设计原则.md | 12 | s5 | ~1800+ | SOLID、DRY、KISS、YAGNI、迪米特、组合、接口、IoC、DI | SOLID/DRY/KISS/YAGNI/迪米特/组合/接口/IoC/DI等12个独立原则 | pending |
 | content/baike/architecture/领域驱动设计DDD完全指南.md | 10 | s5 | ~2500+ | 核心思想、战略设计、战术设计、分层、事件风暴、CQRS、ES、微服务、实战、误区 | 核心思想/战略设计/战术设计/分层/事件风暴/CQRS/ES/微服务/实战/误区 10部分 | pending |
 | content/baike/data-science/数据分析与可视化实战.md | 3 | s3 | 17377 | Python工具链、数据清洗实战、EDA方法论 | 实战手册：Python工具链/数据清洗实战/EDA方法论 3 大主题、0 def 卡、8 围栏 784 代码行，远超上限。概念词条已由"数据分析与可视化"承载，本文是代码级实操详解，压入 3400 必毁实操细节；应拆为三篇实操子文档或并入 ETL/EDA 专题 | pending |
