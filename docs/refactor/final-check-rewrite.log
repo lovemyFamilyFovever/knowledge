@@ -89,16 +89,11 @@ PASS baike/algorithms/红黑树.md  (正文 1593/2200 字 / 围栏 0 块 0 行 /
 PASS baike/algorithms/贪心算法.md  (正文 1429/2200 字 / 围栏 0 块 0 行 / 卡 1def+2trap)
 PASS baike/algorithms/递归.md  (正文 1616/2200 字 / 围栏 0 块 0 行 / 卡 1def+2trap)
 PASS baike/algorithms/高级数据结构.md  (正文 2179/2200 字 / 围栏 2 块 7 行 / 卡 1def+2trap)
-FAIL baike/architecture/API设计.md  (正文 4769/2200 字 / 围栏 12 块 149 行 / 卡 12def+0trap)
-   ✗ ③ 缺少必备 H2：与相关概念的区别、为什么需要它、优劣与代价、何时用与何时不用、具体示例、定义、常见误区、面试速答
-   ✗ ③ 缺少『核心机制』节（可用 §3 变体名：做法、核心机制、核心流程、核心能力、计算逻辑）
-   ✗ ① baike_def 卡数 = 12（需恰好 1）
-   ✗ ① baike_trap 卡数 = 0（需恰好 2）
-   ✗ ① 常见误区列表 0 条（需 2–3 条）
-   ✗ ⑥ 代码围栏 12 块（上限 2）
-   ✗ ⑥ 围栏内共 149 行（上限 20）
-   ✗ ⑥ 正文 4769 字 > 上限 2200｜未获枢纽豁免（①不满足：无 mermaid 且对比表 <4 数据行 ②不满足：具名子概念 12 <3 且核心机制粗体项 0 <3（粗体项须自身 ≥70 字且内含 [[双链]]））
+PASS baike/architecture/API 分页与版本控制.md  (正文 2028/2200 字 / 围栏 1 块 5 行 / 卡 1def+2trap)
+PASS baike/architecture/API设计.md  (正文 2360/3400 字 / 围栏 1 块 3 行 / 卡 1def+2trap) [枢纽型（①对比表 10 数据行 ②具名子概念 3）]
 PASS baike/architecture/DDD领域驱动设计.md  (正文 1308/2200 字 / 围栏 0 块 0 行 / 卡 1def+2trap)
+PASS baike/architecture/OpenAPI 规范.md  (正文 2196/2200 字 / 围栏 1 块 11 行 / 卡 1def+2trap)
+PASS baike/architecture/RESTful API 设计.md  (正文 2151/2200 字 / 围栏 1 块 6 行 / 卡 1def+2trap)
 FAIL baike/architecture/SaaS产品技术架构.md  (正文 21641/2200 字 / 围栏 19 块 1069 行 / 卡 0def+0trap)
    ✗ ② 未找到与 `**一句话定义：**` 同行且非空的值
    ✗ ③ 缺少必备 H2：与相关概念的区别、为什么需要它、优劣与代价、何时用与何时不用、具体示例、定义、常见误区、面试速答
@@ -1308,4 +1303,6 @@ PASS baike/web-backend/Web框架对比.md  (正文 1835/2200 字 / 围栏 0 块 
 PASS baike/web-backend/缓存策略.md  (正文 1582/2200 字 / 围栏 0 块 0 行 / 卡 1def+2trap)
 PASS baike/web-backend/认证与安全实践.md  (正文 2062/2200 字 / 围栏 0 块 0 行 / 卡 1def+2trap)
 
-443 篇检查 [strict（⑨ 全量硬 FAIL）]：849 项 FAIL，17 项 warning，其中 EXEMPT 1 篇
+446 篇检查 [strict（⑨ 全量硬 FAIL）]：841 项 FAIL，17 项 warning，其中 EXEMPT 1 篇
+
+#SUMMARY {'PASS': 351, 'FAIL': 94, 'EXEMPT': 1} files 446 ⑨items 0
