@@ -188,7 +188,7 @@
 | content/baike/programming-languages/计算机科学完整知识图谱.md | 5 | s4 | 14109 | 数据结构算法、操作系统、计算机网络、数据库、编译原理 | 数据结构算法/操作系统/计算机网络/数据库/编译原理 多子系统图谱（枢纽①对比表8行②子概念20）；正文 14109、30 围栏 ≫ 3400/20 → 按子系统拆词条+枢纽 | pending |
 | content/baike/programming-languages/软件测试完全指南.md | 6 | s4 | 20441 | 测试金字塔、TDD·BDD·ATDD、单元、集成、E2E·Playwright·Cypress、性能 | 测试金字塔/TDD·BDD·ATDD/单元/集成/E2E·Playwright·Cypress/性能 各独立体系；正文 20441、20 围栏 937 行 → 拆词条（与 testing 子域去重） | done（2026-09-19 枢纽页 + 2 子词条，见去重队列第 1 对） |
 | content/baike/programming-languages/面向对象编程（OOP）概念.md | 13 | s4 | 10181 | 类、对象、封装、继承、多态、抽象、接口、抽象类、构造析构、重载重写、访问修饰符、组合vs继承、LSP | 类/对象/封装/继承/多态/抽象/接口/抽象类/构造析构/重载重写/访问修饰符/组合vs继承/LSP 13 词条（13 def）；32 围栏 ≫ 2/20 → 按概念各拆词条 | pending |
-| content/baike/security/加密技术篇.md | 14 | s5 | ~3000+ | 3DES、RSA、ElGamal、国密SM2·SM3·SM4、密钥交换、混合加密、数字信封 | 14种加密技术独立话题 | pending |
+| content/baike/security/加密技术篇.md | 14 | s5 | ~3000+ | 3DES、RSA、ElGamal、国密SM2·SM3·SM4、密钥交换、混合加密、数字信封 | 14种加密技术独立话题 | done（2026-09-19 二期拆分：枢纽页 + 4 子词条〔常见对称加密算法（AES·DES·3DES）/常见非对称加密算法（RSA·ECC·ElGamal）/国密算法（SM2·SM3·SM4）/密钥交换与混合加密与数字信封〕；对称/非对称总述双链已有 done 专条 [[对称加密与非对称加密]] 不重复立条，具体算法按族合并新建，密钥交换+混合加密+数字信封+Diffie-Hellman（库内无独立条）族合并为一条；TLS/PKI/哈希/签名/端到端/密码学实用指南 全双链既有 done 专条；194 行算法代码全收敛为散文与表、枢纽 0 围栏；无 pending-merge） |
 | content/baike/security/哈希算法篇.md | 12 | s5 | ~2500+ | MD5、SHA-256、SHA-512、哈希表原理、布隆过滤器、一致性哈希、校验和、加盐哈希 | 12种哈希算法独立对比 | pending |
 | content/baike/security/密码学基础篇.md | 14 | s5 | ~3500+ | 盐、彩虹表、密钥、密钥对、公钥、私钥、证书链、密钥管理 | 14个密码学基础概念 | pending |
 | content/baike/security/网络安全篇.md | 16 | s5 | ~3500+ | TLS·SSL握手、数字证书、数字签名、SQL注入、CC攻击 | 16个网络安全独立话题 | pending |
