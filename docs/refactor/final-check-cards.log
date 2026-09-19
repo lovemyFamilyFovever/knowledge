@@ -1,10 +1,10 @@
-== baike/network/用户数据报协议.md -> 3 张卡
-   [baike_def] 「用户数据报协议」是什么？用一句话说清楚。
-       back: 用户数据报协议（UDP，User Datagram Protocol）是 TCP/IP 传输层的一种无连接协议，它在 I
-   [baike_trap] 判断正误：UDP 不可靠所以没什么用。
-       back: ✗ 这是常见误区。正解：用户数据报协议（UDP，User Datagram Protocol）是 TCP/IP 传输层的
-   [baike_trap] 判断正误：UDP 完全没有差错校验。
-       back: ✗ 这是常见误区。正解：用户数据报协议（UDP，User Datagram Protocol）是 TCP/IP 传输层的
+== baike/network/拥塞控制.md -> 3 张卡
+   [baike_def] 「拥塞控制」是什么？用一句话说清楚。
+       back: 拥塞控制（Congestion Control）是网络（尤其 TCP）为防止过多数据注入导致路由器过载、丢包甚至"拥塞崩
+   [baike_trap] 判断正误：拥塞控制和流量控制是一回事。
+       back: ✗ 这是常见误区。正解：拥塞控制（Congestion Control）是网络（尤其 TCP）为防止过多数据注入导致路由
+   [baike_trap] 判断正误：只要丢包就一定是网络拥塞。
+       back: ✗ 这是常见误区。正解：拥塞控制（Congestion Control）是网络（尤其 TCP）为防止过多数据注入导致路由
 == baike/ai-and-llm/联邦学习.md -> 3 张卡
    [baike_def] 「联邦学习」是什么？用一句话说清楚。
        back: 联邦学习是一种"数据不动、模型动"的分布式训练范式——各方在本地数据上训练、只上传模型更新到中心聚合，在不共享原始数据的
@@ -12,125 +12,105 @@
        back: ✗ 这是常见误区。正解：联邦学习是一种"数据不动、模型动"的分布式训练范式——各方在本地数据上训练、只上传模型更新到中心
    [baike_trap] 判断正误：FedAvg 只是把所有客户端参数取算术平均，与各客户端数据量无关。
        back: ✗ 这是常见误区。正解：联邦学习是一种"数据不动、模型动"的分布式训练范式——各方在本地数据上训练、只上传模型更新到中心
-== baike/software-engineering/02-版本控制.md -> 14 张卡
-   [baike_def] 「Git工作区/暂存区/仓库」是什么？用一句话说清楚。
-       back: Git有三个主要区域：工作区（Working Directory）、暂存区（Staging Area）和仓库（Repos
-   [baike_def] 「git add/commit/push/pull/fetch」是什么？用一句话说清楚。
-       back: 这些是Git的核心命令，用于管理变更：`add`添加到暂存区，`commit`保存到本地仓库，`push`推送到远程，`
-   [baike_def] 「分支（branch）」是什么？用一句话说清楚。
-       back: 分支是独立的代码开发线，允许你在不影响主线的情况下进行开发。
-   [baike_def] 「合并（merge）」是什么？用一句话说清楚。
-       back: 合并是将一个分支的变更整合到另一个分支的操作。
-   [baike_def] 「变基（rebase）」是什么？用一句话说清楚。
-       back: 变基是将一个分支的提交重新应用到另一个分支顶部，创造线性历史。
-   [baike_def] 「冲突解决」是什么？用一句话说清楚。
-       back: 冲突解决是当两个分支修改同一文件的同一部分时，手动选择保留哪个变更的过程。
-   [baike_def] 「Pull Request/Merge Request」是什么？用一句话说清楚。
-       back: Pull Request（GitHub）或Merge Request（GitLab）是请求将分支变更合并到主分支的机制，
-   [baike_def] 「Code Review流程」是什么？用一句话说清楚。
-       back: 代码审查是团队成员在代码合并前检查代码质量、设计和安全性的过程。
-   [baike_def] 「Git Hooks」是什么？用一句话说清楚。
-       back: Git Hooks是在Git操作前后自动执行的脚本，用于自动化代码检查和工作流。
-   [baike_def] 「Git Flow」是什么？用一句话说清楚。
-       back: Git Flow是一种分支管理模型，定义了main、develop、feature、release和hotfix分支的用
-   [baike_def] 「Trunk Based Development」是什么？用一句话说清楚。
-       back: Trunk Based Development是一种开发实践，团队在主干（trunk）上频繁集成代码，使用短生命周期的分
-   [baike_def] 「Cherry-pick」是什么？用一句话说清楚。
-       back: Cherry-pick是将特定提交从一个分支应用到另一个分支的操作。
-   [baike_def] 「Stash」是什么？用一句话说清楚。
-       back: Stash是临时保存工作区变更的操作，允许你切换分支而不提交未完成的工作。
-   [baike_def] 「.gitignore」是什么？用一句话说清楚。
-       back: .gitignore是一个文件，指定Git应该忽略的文件和目录，如编译产物、日志和本地配置。
-== baike/devops/网络安全与渗透测试.md -> 0 张卡
-== baike/algorithms/堆排序.md -> 3 张卡
-   [baike_def] 「堆排序」是什么？用一句话说清楚。
-       back: 堆排序（Heap Sort）是一种基于二叉堆（通常是大顶堆）的比较排序算法：先把待排序数组构建成堆，再反复取出堆顶（最大
-   [baike_trap] 判断正误：堆排序是稳定的排序算法，相等元素一定保持原顺序。
-       back: ✗ 这是常见误区。正解：堆排序（Heap Sort）是一种基于二叉堆（通常是大顶堆）的比较排序算法：先把待排序数组构建成
-   [baike_trap] 判断正误：对 n 个元素建堆需要 O(n log n) 的时间。
-       back: ✗ 这是常见误区。正解：堆排序（Heap Sort）是一种基于二叉堆（通常是大顶堆）的比较排序算法：先把待排序数组构建成
-== baike/security/端到端加密.md -> 3 张卡
-   [baike_def] 「端到端加密」是什么？用一句话说清楚。
-       back: 端到端加密(End-to-End Encryption, E2EE)是一种通信安全机制:数据在发送方加密、只有预期的接收
-   [baike_trap] 判断正误：用了 TLS/HTTPS,这个 IM 就是端到端加密的。
-       back: ✗ 这是常见误区。正解：端到端加密(End-to-End Encryption, E2EE)是一种通信安全机制:数据在发
-   [baike_trap] 判断正误：开了端到端加密,连谁在什么时候给谁发了消息也一并被保护。
-       back: ✗ 这是常见误区。正解：端到端加密(End-to-End Encryption, E2EE)是一种通信安全机制:数据在发
-== baike/os/信号量与互斥锁.md -> 3 张卡
-   [baike_def] 「信号量与互斥锁」是什么？用一句话说清楚。
-       back: 信号量与互斥锁是并发编程中协调多个线程 / 进程访问共享资源的同步原语——互斥锁保证同一时刻只有一个线程进入临界区，信号
-   [baike_trap] 判断正误：二值信号量和互斥锁完全等价。
-       back: ✗ 这是常见误区。正解：信号量与互斥锁是并发编程中协调多个线程 / 进程访问共享资源的同步原语——互斥锁保证同一时刻只有
-   [baike_trap] 判断正误：信号量只能用来做互斥。
-       back: ✗ 这是常见误区。正解：信号量与互斥锁是并发编程中协调多个线程 / 进程访问共享资源的同步原语——互斥锁保证同一时刻只有
-== baike/programming-languages/词法分析.md -> 3 张卡
-   [baike_def] 「词法分析」是什么？用一句话说清楚。
-       back: 词法分析（Lexical Analysis，又称扫描 scanning）是编译的第一阶段，它把源代码的字符流按语言的词法
-   [baike_trap] 判断正误：词法分析能判断括号是否配对、语句结构是否合法。
-       back: ✗ 这是常见误区。正解：词法分析（Lexical Analysis，又称扫描 scanning）是编译的第一阶段，它把源
-   [baike_trap] 判断正误：词法规则一般用上下文无关文法描述、由下推自动机识别。
-       back: ✗ 这是常见误区。正解：词法分析（Lexical Analysis，又称扫描 scanning）是编译的第一阶段，它把源
-== baike/software-engineering/UML.md -> 3 张卡
-   [baike_def] 「UML」是什么？用一句话说清楚。
-       back: UML（Unified Modeling Language，统一建模语言）是一种通用的、可视化的建模语言，用一组标准的图
-   [baike_trap] 判断正误：UML 是一套软件开发方法或流程，规定了该怎么开发。
-       back: ✗ 这是常见误区。正解：UML（Unified Modeling Language，统一建模语言）是一种通用的、可视化的
-   [baike_trap] 判断正误：用 UML 就等于只画类图。
-       back: ✗ 这是常见误区。正解：UML（Unified Modeling Language，统一建模语言）是一种通用的、可视化的
-== baike/security/中间人攻击.md -> 3 张卡
-   [baike_def] 「中间人攻击」是什么？用一句话说清楚。
-       back: 中间人攻击(Man-in-the-Middle Attack, MITM)是攻击者秘密介入通信双方之间,分别与他们建立连
-   [baike_trap] 判断正误：网站用了 HTTPS,就不可能被中间人攻击。
-       back: ✗ 这是常见误区。正解：中间人攻击(Man-in-the-Middle Attack, MITM)是攻击者秘密介入通信双
-   [baike_trap] 判断正误：中间人攻击只能发生在同一个局域网内。
-       back: ✗ 这是常见误区。正解：中间人攻击(Man-in-the-Middle Attack, MITM)是攻击者秘密介入通信双
-== baike/devops/Web安全攻防实战指南.md -> 0 张卡
-== baike/frontend-concepts/JavaScript 基础核心概念.md -> 15 张卡
-   [baike_def] 「var / let / const 区别」是什么？用一句话说清楚。
-       back: 三种变量声明方式，在作用域、提升行为和可变性上各有不同。
-   [baike_def] 「闭包（Closure）」是什么？用一句话说清楚。
-       back: 函数能"记住"并访问它被创建时所在的词法作用域，即使这个函数在其他地方被调用。
-   [baike_def] 「原型链（Prototype Chain）」是什么？用一句话说清楚。
-       back: JS 对象通过 `__proto__` 指向另一个对象，层层向上查找属性和方法，直到 `null`，这条链路就是原型链。
-   [baike_def] 「事件循环（Event Loop）与任务队列」是什么？用一句话说清楚。
-       back: JS 引擎用事件循环协调同步代码、异步回调和微任务的执行顺序。
-   [baike_def] 「Promise」是什么？用一句话说清楚。
-       back: 表示一个异步操作的最终结果（成功或失败），用链式调用替代回调地狱。
-   [baike_def] 「async / await」是什么？用一句话说清楚。
-       back: 基于 Promise 的语法糖，让异步代码用同步的写法来表达。
-   [baike_def] 「Generator 函数」是什么？用一句话说清楚。
-       back: 可以暂停执行、分段返回值的特殊函数，用 `function*` 声明，用 `yield` 暂停。
-   [baike_def] 「模块化（CommonJS / ES Modules / AMD）」是什么？用一句话说清楚。
-       back: 把 JavaScript 代码拆分成独立的、可复用的模块，每个模块有自己的作用域。
-   [baike_def] 「作用域与作用域链」是什么？用一句话说清楚。
-       back: 作用域决定变量的可见范围，作用域链是从当前作用域逐层向外查找变量的路径。
-   [baike_def] 「this 指向」是什么？用一句话说清楚。
-       back: `this` 是函数执行时的上下文对象，指向谁取决于函数的调用方式，而非定义位置。
-   [baike_def] 「解构赋值」是什么？用一句话说清楚。
-       back: 从数组或对象中快速提取值并赋给变量的简洁语法。
-   [baike_def] 「展开运算符（...）」是什么？用一句话说清楚。
-       back: 将数组/对象"展开"为独立的元素/属性，或收集剩余参数。
-   [baike_def] 「可选链（?.）」是什么？用一句话说清楚。
-       back: 安全地访问嵌套对象的属性，如果中间环节是 `null`/`undefined`，直接返回 `undefined`，不会报
-   [baike_def] 「空值合并（??）」是什么？用一句话说清楚。
-       back: 只有当左侧值为 `null` 或 `undefined` 时，才使用右侧的默认值。
-   [baike_def] 「WeakMap 与 WeakRef」是什么？用一句话说清楚。
-       back: WeakMap 的键必须是对象且为弱引用（不阻止垃圾回收）；WeakRef 是对对象的弱引用，不会阻止垃圾回收。
-== baike/programming-languages/即时编译.md -> 3 张卡
-   [baike_def] 「即时编译」是什么？用一句话说清楚。
-       back: 即时编译（Just-In-Time Compilation, JIT）是一种在程序运行时把中间代码（如字节码）动态编译为
-   [baike_trap] 判断正误：JIT 就是解释器，只是解释得比较快。
-       back: ✗ 这是常见误区。正解：即时编译（Just-In-Time Compilation, JIT）是一种在程序运行时把中间代
-   [baike_trap] 判断正误：JIT 程序没有启动开销，开箱即达峰值性能。
-       back: ✗ 这是常见误区。正解：即时编译（Just-In-Time Compilation, JIT）是一种在程序运行时把中间代
-== baike/machine-learning/深度学习从零到精通.md -> 0 张卡
-== baike/database/MongoDB实践.md -> 3 张卡
-   [baike_def] 「MongoDB实践」是什么？用一句话说清楚。
-       back: MongoDB 是以**文档（BSON）**为数据模型的 NoSQL 数据库，Schema 灵活、支持嵌套与数组、原生提
-   [baike_trap] 判断正误：MongoDB 完全没有 Schema，怎么存都行、不需要设计文档结构。
-       back: ✗ 这是常见误区。正解：MongoDB 是以**文档（BSON）**为数据模型的 NoSQL 数据库，Schema 灵活
-   [baike_trap] 判断正误：把评论、日志这类可能无限增长的数据一律内嵌进父文档最方便。
-       back: ✗ 这是常见误区。正解：MongoDB 是以**文档（BSON）**为数据模型的 NoSQL 数据库，Schema 灵活
+== baike/software-engineering/01-开发流程.md -> 13 张卡
+   [baike_def] 「瀑布模型」是什么？用一句话说清楚。
+       back: 瀑布模型是一种线性的、阶段性的软件开发方法，每个阶段必须完成才能进入下一个阶段。
+   [baike_def] 「敏捷开发（Agile）」是什么？用一句话说清楚。
+       back: 敏捷开发是一种以人为本、迭代、增量的软件开发方法，强调快速响应变化和持续交付价值。
+   [baike_def] 「Scrum框架」是什么？用一句话说清楚。
+       back: Scrum是一种轻量级的敏捷开发框架，通过固定的时间盒、角色和工件来管理复杂的产品开发。
+   [baike_def] 「Kanban看板」是什么？用一句话说清楚。
+       back: Kanban是一种可视化的工作流管理方法，通过限制在制品数量来优化工作流程。
+   [baike_def] 「Sprint迭代」是什么？用一句话说清楚。
+       back: Sprint是Scrum中的一个固定时间段（通常2-4周），在此期间团队完成一组预定的工作。
+   [baike_def] 「用户故事（User Story）」是什么？用一句话说清楚。
+       back: 用户故事是从用户角度描述功能需求的简短、简单的语句，通常遵循“作为[角色]，我想要[功能]，以便[价值]”的格式。
+   [baike_def] 「验收标准（Acceptance Criteria）」是什么？用一句话说清楚。
+       back: 验收标准是定义用户故事完成所需满足的具体条件，用于验证功能是否按预期工作。
+   [baike_def] 「故事点（Story Points）」是什么？用一句话说清楚。
+       back: 故事点是一个相对的估算单位，用于衡量用户故事的复杂度、工作量和风险。
+   [baike_def] 「计划扑克」是什么？用一句话说清楚。
+       back: 计划扑克是一种基于共识的估算技术，团队成员使用卡片估算用户故事的故事点。
+   [baike_def] 「站会（Daily Standup）」是什么？用一句话说清楚。
+       back: 站会是Scrum中每天举行的短会（通常15分钟），团队成员同步工作进展、计划和障碍。
+   [baike_def] 「回顾会议（Retrospective）」是什么？用一句话说清楚。
+       back: 回顾会议是Sprint结束时举行的会议，团队反思过去Sprint的做得好、需要改进的地方，并制定改进计划。
+   [baike_def] 「产品待办列表（Product Backlog）」是什么？用一句话说清楚。
+       back: 产品待办列表是一个动态的、优先级排序的需求列表，包含所有已知的产品功能、改进和修复。
+   [baike_def] 「冲刺待办列表（Sprint Backlog）」是什么？用一句话说清楚。
+       back: 冲刺待办列表是Sprint计划会上从产品待办列表中选出的一组用户故事，是当前Sprint要完成的工作。
+== baike/devops/操作系统内核原理.md -> 0 张卡
+== baike/algorithms/基础数据结构.md -> 3 张卡
+   [baike_def] 「基础数据结构」是什么？用一句话说清楚。
+       back: 基础数据结构指数组、链表、栈、队列等以线性方式组织数据的基本结构，各自在随机访问、插入删除和顺序约束上做出不同权衡，是构
+   [baike_trap] 判断正误：链表的插入和删除永远是 O(1)，与在哪个位置无关。
+       back: ✗ 这是常见误区。正解：基础数据结构指数组、链表、栈、队列等以线性方式组织数据的基本结构，各自在随机访问、插入删除和顺序
+   [baike_trap] 判断正误：哈希表的查找永远是 O(1)，任何情况下都不会退化。
+       back: ✗ 这是常见误区。正解：基础数据结构指数组、链表、栈、队列等以线性方式组织数据的基本结构，各自在随机访问、插入删除和顺序
+== baike/security/数字证书.md -> 3 张卡
+   [baike_def] 「数字证书」是什么？用一句话说清楚。
+       back: 数字证书(Digital Certificate)是由证书颁发机构(CA)签发的、把一个公钥与其持有者身份绑定在一起的电
+   [baike_trap] 判断正误：数字证书就是公钥,拿到证书和拿到公钥是一回事。
+       back: ✗ 这是常见误区。正解：数字证书(Digital Certificate)是由证书颁发机构(CA)签发的、把一个公钥与其
+   [baike_trap] 判断正误：证书没过期就一定可信,不必再看别的。
+       back: ✗ 这是常见误区。正解：数字证书(Digital Certificate)是由证书颁发机构(CA)签发的、把一个公钥与其
+== baike/os/中断.md -> 3 张卡
+   [baike_def] 「中断」是什么？用一句话说清楚。
+       back: 中断是硬件或软件向 CPU 发出的异步信号，提示有事件需要立即处理；CPU 收到后暂停当前执行流、保存现场、转去执行对应
+   [baike_trap] 判断正误：中断就是靠 CPU 不断轮询外设来实现的。
+       back: ✗ 这是常见误区。正解：中断是硬件或软件向 CPU 发出的异步信号，提示有事件需要立即处理；CPU 收到后暂停当前执行流
+   [baike_trap] 判断正误：中断只可能来自外部硬件。
+       back: ✗ 这是常见误区。正解：中断是硬件或软件向 CPU 发出的异步信号，提示有事件需要立即处理；CPU 收到后暂停当前执行流
+== baike/programming-languages/计算机科学完整知识图谱.md -> 0 张卡
+== baike/software-engineering/Clean Code 原则.md -> 3 张卡
+   [baike_def] 「Clean Code 原则」是什么？用一句话说清楚。
+       back: Clean Code 原则是 Robert C. Martin 在《Clean Code》(2008) 中整理的一组实践
+   [baike_trap] 判断正误：遵循 Clean Code 就是把函数拆得越短越好，越短越高级。
+       back: ✗ 这是常见误区。正解：Clean Code 原则是 Robert C. Martin 在《Clean Code》(20
+   [baike_trap] 判断正误：代码写得足够整洁，就不需要写测试也不需要再重构了。
+       back: ✗ 这是常见误区。正解：Clean Code 原则是 Robert C. Martin 在《Clean Code》(20
+== baike/security/Web安全攻防.md -> 3 张卡
+   [baike_def] 「Web安全攻防」是什么？用一句话说清楚。
+       back: Web 安全攻防是围绕浏览器与服务端之间那条 HTTP 通道展开的持续对抗:攻击者寻找"输入未分离、信任未收敛、状态未校
+   [baike_trap] 判断正误：装了 WAF,就不必在代码里修注入漏洞了。
+       back: ✗ 这是常见误区。正解：Web 安全攻防是围绕浏览器与服务端之间那条 HTTP 通道展开的持续对抗:攻击者寻找"输入未分
+   [baike_trap] 判断正误：网站上了 HTTPS,就能防住 SQL 注入和 XSS。
+       back: ✗ 这是常见误区。正解：Web 安全攻防是围绕浏览器与服务端之间那条 HTTP 通道展开的持续对抗:攻击者寻找"输入未分
+== baike/devops/Kubernetes深入.md -> 3 张卡
+   [baike_def] 「Kubernetes深入」是什么？用一句话说清楚。
+       back: Kubernetes（K8s）是容器编排平台，自动管理跨主机容器的部署、扩缩容、自愈与运维。
+   [baike_trap] 判断正误：Kubernetes 就是 Docker 的另一个名字，用了 K8s 就不用理解容器运行时。
+       back: ✗ 这是常见误区。正解：Kubernetes（K8s）是容器编排平台，自动管理跨主机容器的部署、扩缩容、自愈与运维。
+   [baike_trap] 判断正误：任何项目哪怕单机跑一个服务也应该上 Kubernetes。
+       back: ✗ 这是常见误区。正解：Kubernetes（K8s）是容器编排平台，自动管理跨主机容器的部署、扩缩容、自愈与运维。
+== baike/distributed/限流.md -> 3 张卡
+   [baike_def] 「限流」是什么？用一句话说清楚。
+       back: 限流通过控制单位时间内允许通过的请求数量（速率）来保护系统免受突发流量 / 过载冲击，超过阈值的请求被拒绝、排队或降级处
+   [baike_trap] 判断正误：限流和熔断是一回事。
+       back: ✗ 这是常见误区。正解：限流通过控制单位时间内允许通过的请求数量（速率）来保护系统免受突发流量 / 过载冲击，超过阈值的
+   [baike_trap] 判断正误：单机限流在多实例部署下就能控住全局总量。
+       back: ✗ 这是常见误区。正解：限流通过控制单位时间内允许通过的请求数量（速率）来保护系统免受突发流量 / 过载冲击，超过阈值的
+== baike/programming-languages/协程.md -> 3 张卡
+   [baike_def] 「协程」是什么？用一句话说清楚。
+       back: 协程（Coroutine）是一种可以主动暂停（挂起）并在之后恢复执行的程序组件，它由用户态调度、以协作方式在多个执行流之
+   [baike_trap] 判断正误：协程就是更轻的线程，能自动利用多核。
+       back: ✗ 这是常见误区。正解：协程（Coroutine）是一种可以主动暂停（挂起）并在之后恢复执行的程序组件，它由用户态调度、
+   [baike_trap] 判断正误：在 async 函数里直接调用同步阻塞 I/O 也没关系。
+       back: ✗ 这是常见误区。正解：协程（Coroutine）是一种可以主动暂停（挂起）并在之后恢复执行的程序组件，它由用户态调度、
+== baike/machine-learning/梯度提升树.md -> 3 张卡
+   [baike_def] 「梯度提升树」是什么？用一句话说清楚。
+       back: 梯度提升树（GBDT）是一种 Boosting 集成方法，它串行训练多棵决策树（通常是 CART 回归树），每棵新树去拟
+   [baike_trap] 判断正误：梯度提升树和随机森林是同一类方法，都是并行训练多棵树再投票。
+       back: ✗ 这是常见误区。正解：梯度提升树（GBDT）是一种 Boosting 集成方法，它串行训练多棵决策树（通常是 CART
+   [baike_trap] 判断正误：GBDT 做分类任务时，它的基学习器一定是分类树。
+       back: ✗ 这是常见误区。正解：梯度提升树（GBDT）是一种 Boosting 集成方法，它串行训练多棵决策树（通常是 CART
+== baike/database/ElasticSearch搜索.md -> 3 张卡
+   [baike_def] 「ElasticSearch搜索」是什么？用一句话说清楚。
+       back: Elasticsearch（ES）是基于 Lucene 的分布式搜索与分析引擎，以**倒排索引**为核心，提供近实时的全
+   [baike_trap] 判断正误：Elasticsearch 事务与强一致性足够好，可以直接替换 MySQL 当主库。
+       back: ✗ 这是常见误区。正解：Elasticsearch（ES）是基于 Lucene 的分布式搜索与分析引擎，以**倒排索引*
+   [baike_trap] 判断正误：对 text 字段用 term 查询和 match 查询效果一样。
+       back: ✗ 这是常见误区。正解：Elasticsearch（ES）是基于 Lucene 的分布式搜索与分析引擎，以**倒排索引*
 == baike/ai-and-llm/RAG 检索增强生成.md -> 3 张卡
    [baike_def] 「RAG 检索增强生成」是什么？用一句话说清楚。
        back: RAG（检索增强生成）把外部知识检索与大模型生成结合，用"先查后答"缓解知识过时与幻觉，本词条聚焦其基础范式、Advan
@@ -145,13 +125,7 @@
        back: ✗ 这是常见误区。正解：Transformer 是 Google 于 2017 年在《Attention Is All 
    [baike_trap] 判断正误：RoPE 是一种只能靠学习、无法外推的位置编码方案。
        back: ✗ 这是常见误区。正解：Transformer 是 Google 于 2017 年在《Attention Is All 
-== baike/frontend-frameworks/图片优化.md -> 3 张卡
-   [baike_def] 「图片优化」是什么？用一句话说清楚。
-       back: 在不损失可感知画质的前提下，把图片字节压到最小，并按设备送达"合适的格式与尺寸"。
-   [baike_trap] 判断正误：WebP/AVIF 是无损压缩。
-       back: ✗ 这是常见误区。正解：在不损失可感知画质的前提下，把图片字节压到最小，并按设备送达"合适的格式与尺寸"。
-   [baike_trap] 判断正误：所有图片都 lazy 一定赚。
-       back: ✗ 这是常见误区。正解：在不损失可感知画质的前提下，把图片字节压到最小，并按设备送达"合适的格式与尺寸"。
+== baike/frontend-frameworks/WebAssembly完全指南.md -> 0 张卡
 == baike/ai-and-llm/注意力机制.md -> 3 张卡
    [baike_def] 「注意力机制」是什么？用一句话说清楚。
        back: 注意力机制是让模型在处理序列或集合时，动态地为不同输入位置分配不同权重、聚焦最相关部分的技术，核心是用 Query-Ke
@@ -159,13 +133,13 @@
        back: ✗ 这是常见误区。正解：注意力机制是让模型在处理序列或集合时，动态地为不同输入位置分配不同权重、聚焦最相关部分的技术，核
    [baike_trap] 判断正误：注意力机制本身自带词序信息，无需再额外加位置编码。
        back: ✗ 这是常见误区。正解：注意力机制是让模型在处理序列或集合时，动态地为不同输入位置分配不同权重、聚焦最相关部分的技术，核
-== baike/machine-learning/交叉验证.md -> 3 张卡
-   [baike_def] 「交叉验证」是什么？用一句话说清楚。
-       back: 交叉验证（Cross-Validation）是一种模型评估与选择技术，把数据集分成若干折、轮流用其中一部分做验证、其余做
-   [baike_trap] 判断正误：交叉验证得到的平均分数可以直接当最终测试成绩，不再需要独立测试集。
-       back: ✗ 这是常见误区。正解：交叉验证（Cross-Validation）是一种模型评估与选择技术，把数据集分成若干折、轮流用
-   [baike_trap] 判断正误：只要在整个数据集上统一做完预处理再分折，就不会有数据泄露。
-       back: ✗ 这是常见误区。正解：交叉验证（Cross-Validation）是一种模型评估与选择技术，把数据集分成若干折、轮流用
+== baike/machine-learning/《AI时代生存指南》第二章.md -> 3 张卡
+   [baike_def] 「《AI时代生存指南》第二章」是什么？用一句话说清楚。
+       back: 本文是《AI 时代生存指南》第二章——剖析 AI 对医疗、教育、金融、创意四大行业的渗透与重塑，并讨论"哪些工作会被取代
+   [baike_trap] 判断正误：本章结论认为 AI 将完全取代所有医疗诊断、教师与创作者，人类在这些领域无事可做。
+       back: ✗ 这是常见误区。正解：本文是《AI 时代生存指南》第二章——剖析 AI 对医疗、教育、金融、创意四大行业的渗透与重塑，
+   [baike_trap] 判断正误：AI 量化交易一旦用上深度学习，就绝不会再出现过拟合或收益衰减问题。
+       back: ✗ 这是常见误区。正解：本文是《AI 时代生存指南》第二章——剖析 AI 对医疗、教育、金融、创意四大行业的渗透与重塑，
 == baike/ai-and-llm/Code Agent.md -> 3 张卡
    [baike_def] 「Code Agent」是什么？用一句话说清楚。
        back: Code Agent 是专注软件工程任务的 Agent，把大模型的代码理解与沙箱执行、Linter、测试等工程工具结合，
@@ -173,21 +147,27 @@
        back: ✗ 这是常见误区。正解：Code Agent 是专注软件工程任务的 Agent，把大模型的代码理解与沙箱执行、Linte
    [baike_trap] 判断正误：Code Agent 和 Copilot 的自动补全是同一回事，只是名字不同。
        back: ✗ 这是常见误区。正解：Code Agent 是专注软件工程任务的 Agent，把大模型的代码理解与沙箱执行、Linte
-== baike/database/读写分离.md -> 3 张卡
-   [baike_def] 「读写分离」是什么？用一句话说清楚。
-       back: 读写分离是一种数据库架构方案，把写操作（增删改）路由到主库、读操作（查询）分发到一个或多个只读从库，通过主从复制同步数据
-   [baike_trap] 判断正误：读写分离能同时解决读和写的扩展瓶颈。
-       back: ✗ 这是常见误区。正解：读写分离是一种数据库架构方案，把写操作（增删改）路由到主库、读操作（查询）分发到一个或多个只读从
-   [baike_trap] 判断正误：配了读写分离后，从库读到的数据一定和主库完全一致。
-       back: ✗ 这是常见误区。正解：读写分离是一种数据库架构方案，把写操作（增删改）路由到主库、读操作（查询）分发到一个或多个只读从
-== baike/middleware/gRPC深入.md -> 3 张卡
-   [baike_def] 「gRPC深入」是什么？用一句话说清楚。
-       back: gRPC 是 Google 开源的高性能**远程过程调用（RPC）**框架，基于 HTTP/2 传输、以 Protoco
-   [baike_trap] 判断正误：gRPC 在任何场景下都比 REST 快 5–10 倍。
-       back: ✗ 这是常见误区。正解：gRPC 是 Google 开源的高性能**远程过程调用（RPC）**框架，基于 HTTP/2 
-   [baike_trap] 判断正误：浏览器可以直接调用 gRPC 服务，无需任何额外组件。
-       back: ✗ 这是常见误区。正解：gRPC 是 Google 开源的高性能**远程过程调用（RPC）**框架，基于 HTTP/2 
-== baike/programming-languages/Flutter跨平台开发实战.md -> 0 张卡
+== baike/database/数据库连接池.md -> 3 张卡
+   [baike_def] 「数据库连接池」是什么？用一句话说清楚。
+       back: 数据库连接池（Database Connection Pool）是一种在应用启动时预先创建并复用一批数据库连接、按需借出
+   [baike_trap] 判断正误：连接池最大连接数设得越大，系统并发能力就越强。
+       back: ✗ 这是常见误区。正解：数据库连接池（Database Connection Pool）是一种在应用启动时预先创建并复用
+   [baike_trap] 判断正误：用完连接忘了归还没关系，反正会被自动回收。
+       back: ✗ 这是常见误区。正解：数据库连接池（Database Connection Pool）是一种在应用启动时预先创建并复用
+== baike/middleware/Kafka深入.md -> 3 张卡
+   [baike_def] 「Kafka深入」是什么？用一句话说清楚。
+       back: Kafka 是一个分布式、可持久化、可水平扩展的**流处理平台/消息系统**，以"分区日志（partitioned lo
+   [baike_trap] 判断正误：Kafka 能保证所有消息在全局范围内严格有序。
+       back: ✗ 这是常见误区。正解：Kafka 是一个分布式、可持久化、可水平扩展的**流处理平台/消息系统**，以"分区日志（pa
+   [baike_trap] 判断正误：在同一个消费者组里，消费者数量越多，消费就一定越快。
+       back: ✗ 这是常见误区。正解：Kafka 是一个分布式、可持久化、可水平扩展的**流处理平台/消息系统**，以"分区日志（pa
+== baike/os/页面置换算法.md -> 3 张卡
+   [baike_def] 「页面置换算法」是什么？用一句话说清楚。
+       back: 页面置换算法（Page Replacement Algorithm）是虚拟内存管理中，当发生缺页中断且物理内存已满时，操
+   [baike_trap] 判断正误：OPT 是最优的，所以实际系统都优先用 OPT。
+       back: ✗ 这是常见误区。正解：页面置换算法（Page Replacement Algorithm）是虚拟内存管理中，当发生缺页
+   [baike_trap] 判断正误：给进程分配的物理帧越多，缺页一定越少。
+       back: ✗ 这是常见误区。正解：页面置换算法（Page Replacement Algorithm）是虚拟内存管理中，当发生缺页
 == baike/ai-and-llm/Computer Use Agent.md -> 3 张卡
    [baike_def] 「Computer Use Agent」是什么？用一句话说清楚。
        back: Computer Use Agent 是能"看屏幕、动鼠标键盘"操作图形界面的 Agent，把视觉理解与 GUI 自动化
@@ -195,11 +175,13 @@
        back: ✗ 这是常见误区。正解：Computer Use Agent 是能"看屏幕、动鼠标键盘"操作图形界面的 Agent，把视
    [baike_trap] 判断正误：因为直接看截图定位，Computer Use 的坐标永远精确、界面改版也不受影响。
        back: ✗ 这是常见误区。正解：Computer Use Agent 是能"看屏幕、动鼠标键盘"操作图形界面的 Agent，把视
-== baike/distributed/微服务治理术语百科.md -> 2 张卡
-   [baike_def] 「负载均衡（客户端 / 服务端 / 代理）」是什么？用一句话说清楚。
-       back: 将请求按策略分发到多个服务实例，以提升整体吞吐与可用性、避免单实例过载。
-   [baike_def] 「服务网格（Service Mesh / Istio / Envoy）」是什么？用一句话说清楚。
-       back: 处理服务间通信的**基础设施层**，通过 Sidecar 代理把流量治理、安全与可观测性从业务代码下沉到基础设施。
+== baike/distributed/幂等性.md -> 3 张卡
+   [baike_def] 「幂等性」是什么？用一句话说清楚。
+       back: 幂等性指同一操作执行一次与执行多次对系统状态产生的影响相同；在分布式网络里，它保证因重试、超时或消息重复投递而多次执行同
+   [baike_trap] 判断正误：幂等就是"请求只会被执行一次"。
+       back: ✗ 这是常见误区。正解：幂等性指同一操作执行一次与执行多次对系统状态产生的影响相同；在分布式网络里，它保证因重试、超时或
+   [baike_trap] 判断正误：GET 幂等意味着每次返回的内容完全相同。
+       back: ✗ 这是常见误区。正解：幂等性指同一操作执行一次与执行多次对系统状态产生的影响相同；在分布式网络里，它保证因重试、超时或
 == baike/ai-and-llm/AI Agent 概述与核心架构.md -> 3 张卡
    [baike_def] 「AI Agent 概述与核心架构」是什么？用一句话说清楚。
        back: AI Agent 是能感知环境、自主推理并调用工具采取行动，以持续交互完成复杂目标的智能系统。
@@ -214,150 +196,106 @@
        back: ✗ 这是常见误区。正解：LLM 微调是在预训练模型之上用领域数据继续训练以适配下游任务，主流已从全量微调转向 LoRA 
    [baike_trap] 判断正误：DPO 相比 RLHF 的简化，在于它还要额外训练一个奖励模型。
        back: ✗ 这是常见误区。正解：LLM 微调是在预训练模型之上用领域数据继续训练以适配下游任务，主流已从全量微调转向 LoRA 
-== baike/os/虚拟内存.md -> 3 张卡
-   [baike_def] 「虚拟内存」是什么？用一句话说清楚。
-       back: 虚拟内存（Virtual Memory）是操作系统提供的内存管理技术，它为每个进程提供独立、连续的虚拟地址空间，由硬件（
-   [baike_trap] 判断正误：虚拟内存就是磁盘上的交换空间。
-       back: ✗ 这是常见误区。正解：虚拟内存（Virtual Memory）是操作系统提供的内存管理技术，它为每个进程提供独立、连续
-   [baike_trap] 判断正误：虚拟内存设置得越大越好。
-       back: ✗ 这是常见误区。正解：虚拟内存（Virtual Memory）是操作系统提供的内存管理技术，它为每个进程提供独立、连续
-== baike/os/容器运行时.md -> 3 张卡
-   [baike_def] 「容器运行时」是什么？用一句话说清楚。
-       back: 容器运行时（Container Runtime）是负责实际运行容器的软件，底层依赖 Linux 内核的 namespac
-   [baike_trap] 判断正误：容器本质上就是一个轻量级虚拟机。
-       back: ✗ 这是常见误区。正解：容器运行时（Container Runtime）是负责实际运行容器的软件，底层依赖 Linux 
-   [baike_trap] 判断正误：Docker 直接调用内核来运行容器。
-       back: ✗ 这是常见误区。正解：容器运行时（Container Runtime）是负责实际运行容器的软件，底层依赖 Linux 
-== baike/hci/心智模型.md -> 3 张卡
-   [baike_def] 「心智模型」是什么？用一句话说清楚。
-       back: 心智模型(Mental Model)是用户基于经验与观察,在头脑中形成的关于"某系统如何工作"的内在简化认知;当用户的心
-   [baike_trap] 判断正误：用户的心智模型和设计师的一致,不需要额外验证。
-       back: ✗ 这是常见误区。正解：心智模型(Mental Model)是用户基于经验与观察,在头脑中形成的关于"某系统如何工作"的
-   [baike_trap] 判断正误：产品难用是因为用户不肯学习正确的系统原理。
-       back: ✗ 这是常见误区。正解：心智模型(Mental Model)是用户基于经验与观察,在头脑中形成的关于"某系统如何工作"的
-== baike/tools/版本控制与Git深入.md -> 3 张卡
-   [baike_def] 「版本控制与Git深入」是什么？用一句话说清楚。
-       back: Git 是分布式版本控制系统，每个克隆都持有完整历史，以快照方式记录文件的每次变更，支持廉价分支与多人并行协作。
-   [baike_trap] 判断正误：git reset --hard 只是撤销一次 commit，工作区的改动还会保留。
-       back: ✗ 这是常见误区。正解：Git 是分布式版本控制系统，每个克隆都持有完整历史，以快照方式记录文件的每次变更，支持廉价分支
-   [baike_trap] 判断正误：把已提交的 .env 加进 .gitignore，就能把密钥从仓库历史里抹掉。
-       back: ✗ 这是常见误区。正解：Git 是分布式版本控制系统，每个克隆都持有完整历史，以快照方式记录文件的每次变更，支持廉价分支
-== baike/network/WebSocket.md -> 3 张卡
-   [baike_def] 「WebSocket」是什么？用一句话说清楚。
-       back: WebSocket 是一种在单个 TCP 连接上进行全双工通信的应用层协议，允许服务器与客户端（如浏览器）建立持久连接后
-   [baike_trap] 判断正误：WebSocket 就是 HTTP 长轮询的高级说法。
-       back: ✗ 这是常见误区。正解：WebSocket 是一种在单个 TCP 连接上进行全双工通信的应用层协议，允许服务器与客户端（
-   [baike_trap] 判断正误：握手成功后传输的仍然是 HTTP 报文。
-       back: ✗ 这是常见误区。正解：WebSocket 是一种在单个 TCP 连接上进行全双工通信的应用层协议，允许服务器与客户端（
-== baike/cs-basics/计算理论.md -> 3 张卡
-   [baike_def] 「计算理论」是什么？用一句话说清楚。
-       back: 计算理论（Theory of Computation）用严格的数学模型研究"什么问题能被计算解决""用什么抽象机器计算"
-   [baike_trap] 判断正误：NP 是"非多项式（Non-Polynomial）"的意思。
-       back: ✗ 这是常见误区。正解：计算理论（Theory of Computation）用严格的数学模型研究"什么问题能被计算解决
-   [baike_trap] 判断正误：NP-hard 就是不可判定问题。
-       back: ✗ 这是常见误区。正解：计算理论（Theory of Computation）用严格的数学模型研究"什么问题能被计算解决
-== baike/machine-learning/《AI时代生存指南》第二章.md -> 3 张卡
-   [baike_def] 「《AI时代生存指南》第二章」是什么？用一句话说清楚。
-       back: 本文是《AI 时代生存指南》第二章——剖析 AI 对医疗、教育、金融、创意四大行业的渗透与重塑，并讨论"哪些工作会被取代
-   [baike_trap] 判断正误：本章结论认为 AI 将完全取代所有医疗诊断、教师与创作者，人类在这些领域无事可做。
-       back: ✗ 这是常见误区。正解：本文是《AI 时代生存指南》第二章——剖析 AI 对医疗、教育、金融、创意四大行业的渗透与重塑，
-   [baike_trap] 判断正误：AI 量化交易一旦用上深度学习，就绝不会再出现过拟合或收益衰减问题。
-       back: ✗ 这是常见误区。正解：本文是《AI 时代生存指南》第二章——剖析 AI 对医疗、教育、金融、创意四大行业的渗透与重塑，
-== baike/data-science/深度学习基础.md -> 3 张卡
-   [baike_def] 「深度学习基础」是什么？用一句话说清楚。
-       back: 深度学习是用多层神经网络自动从数据中逐层学习表征的方法，靠前向计算、反向传播梯度和优化器更新权重来最小化损失，无需手工设
-   [baike_trap] 判断正误：深度学习的核心优势，是需要为每个任务精心设计手工特征。
-       back: ✗ 这是常见误区。正解：深度学习是用多层神经网络自动从数据中逐层学习表征的方法，靠前向计算、反向传播梯度和优化器更新权重
-   [baike_trap] 判断正误：神经网络层数越多、参数越大，性能就一定越好。
-       back: ✗ 这是常见误区。正解：深度学习是用多层神经网络自动从数据中逐层学习表征的方法，靠前向计算、反向传播梯度和优化器更新权重
-== baike/software-engineering/结对编程.md -> 3 张卡
-   [baike_def] 「结对编程」是什么？用一句话说清楚。
-       back: 结对编程（Pair Programming）是一种敏捷开发实践：两名开发者共用一台电脑协作编程，一人担任"驾驶员"（Dr
-   [baike_trap] 判断正误：结对编程就是一人敲代码、另一人在旁边干看着。
-       back: ✗ 这是常见误区。正解：结对编程（Pair Programming）是一种敏捷开发实践：两名开发者共用一台电脑协作编程，
-   [baike_trap] 判断正误：结对等于把开发效率砍半，纯属浪费人力。
-       back: ✗ 这是常见误区。正解：结对编程（Pair Programming）是一种敏捷开发实践：两名开发者共用一台电脑协作编程，
-== baike/machine-learning/支持向量机.md -> 3 张卡
-   [baike_def] 「支持向量机」是什么？用一句话说清楚。
-       back: 支持向量机（SVM）是一种监督学习模型，在特征空间中寻找一个最大化两类样本间隔（margin）的最优分类超平面，且该超平
-   [baike_trap] 判断正误：SVM 只能处理线性可分的数据，无法分类非线性边界。
-       back: ✗ 这是常见误区。正解：支持向量机（SVM）是一种监督学习模型，在特征空间中寻找一个最大化两类样本间隔（margin）的
-   [baike_trap] 判断正误：SVM 训练前不必做特征缩放，因为它和决策树一样对量纲不敏感。
-       back: ✗ 这是常见误区。正解：支持向量机（SVM）是一种监督学习模型，在特征空间中寻找一个最大化两类样本间隔（margin）的
-== baike/algorithms/算法思想.md -> 0 张卡
-== baike/programming-languages/Rust系统编程入门到精通.md -> 0 张卡
-== baike/algorithms/哈希表.md -> 3 张卡
-   [baike_def] 「哈希表」是什么？用一句话说清楚。
-       back: 哈希表（Hash Table，又称散列表）是一种通过哈希函数把键映射到存储桶位置、以支持快速按键存取的数据结构，平均情况
-   [baike_trap] 判断正误：哈希表的查找永远是 O(1)，不会退化。
-       back: ✗ 这是常见误区。正解：哈希表（Hash Table，又称散列表）是一种通过哈希函数把键映射到存储桶位置、以支持快速按键
-   [baike_trap] 判断正误：哈希表默认就能按插入顺序或键顺序遍历。
-       back: ✗ 这是常见误区。正解：哈希表（Hash Table，又称散列表）是一种通过哈希函数把键映射到存储桶位置、以支持快速按键
-== baike/developer-skills/开发者效率工具大全.md -> 0 张卡
-== baike/hardware/冯·诺依曼结构.md -> 3 张卡
-   [baike_def] 「冯·诺依曼结构」是什么？用一句话说清楚。
-       back: 冯·诺依曼结构（Von Neumann Architecture）是一种计算机体系结构设计，其核心是"存储程序"——程序
-   [baike_trap] 判断正误：冯·诺依曼结构和哈佛结构是一回事。
-       back: ✗ 这是常见误区。正解：冯·诺依曼结构（Von Neumann Architecture）是一种计算机体系结构设计，其核
-   [baike_trap] 判断正误：现代 CPU 都是纯粹的冯·诺依曼结构。
-       back: ✗ 这是常见误区。正解：冯·诺依曼结构（Von Neumann Architecture）是一种计算机体系结构设计，其核
-== baike/security/网络安全篇.md -> 28 张卡
-   [baike_def] 「HTTPS（HyperText Transfer Protocol Secure）」是什么？用一句话说清楚。
-       back: HTTPS 是 HTTP 的加密版本，在 HTTP 和 TCP 之间加了一层 TLS/SSL 加密层，保证数据传输的安全
-   [baike_trap] 判断正误：HTTPS vs HTTP：HTTPS = HTTP + TLS 加密
-       back: 对比要点：HTTPS vs HTTP：HTTPS = HTTP + TLS 加密。定义：HTTPS 是 HTTP 的加密
-   [baike_def] 「TLS/SSL 握手过程」是什么？用一句话说清楚。
-       back: TLS 握手是客户端和服务器在建立安全连接前的一系列消息交换过程，用于协商加密算法、交换密钥、验证身份。
-   [baike_trap] 判断正误：TLS 1.2 vs TLS 1.3：1.3 更快更安全，减少了握手往返
-       back: 对比要点：TLS 1.2 vs TLS 1.3：1.3 更快更安全，减少了握手往返。定义：TLS 握手是客户端和服务器在
-   [baike_def] 「数字证书（Digital Certificate）」是什么？用一句话说清楚。
-       back: 数字证书是由证书颁发机构（CA）签发的电子文档，用于证明公钥持有者的身份。
-   [baike_trap] 判断正误：数字证书 vs 数字签名：证书包含公钥，签名验证数据完整性
-       back: 对比要点：数字证书 vs 数字签名：证书包含公钥，签名验证数据完整性。定义：数字证书是由证书颁发机构（CA）签发的电子文
-   [baike_def] 「数字签名（Digital Signature）」是什么？用一句话说清楚。
-       back: 数字签名是用私钥加密的数据摘要，任何人可以用公钥验证签名，确保数据的完整性和来源真实性。
-   [baike_trap] 判断正误：数字签名 vs HMAC：签名用非对称密钥，HMAC 用对称密钥
-       back: 对比要点：数字签名 vs HMAC：签名用非对称密钥，HMAC 用对称密钥。定义：数字签名是用私钥加密的数据摘要，任何人
-   [baike_def] 「CA 机构（Certificate Authority）」是什么？用一句话说清楚。
-       back: CA 是受信任的证书颁发机构，负责签发和管理数字证书，是 PKI 体系的核心。
-   [baike_trap] 判断正误：CA vs 自签名证书：CA 证书被浏览器信任，自签名证书会弹出警告
-       back: 对比要点：CA vs 自签名证书：CA 证书被浏览器信任，自签名证书会弹出警告。定义：CA 是受信任的证书颁发机构，负责
-   [baike_def] 「中间人攻击（Man-in-the-Middle Attack, MITM）」是什么？用一句话说清楚。
-       back: 中间人攻击是攻击者秘密插入通信双方之间，拦截、篡改或窃听通信内容。
-   [baike_trap] 判断正误：MITM vs DoS：MITM 是窃听/篡改，DoS 是使服务不可用
-       back: 对比要点：MITM vs DoS：MITM 是窃听/篡改，DoS 是使服务不可用。定义：中间人攻击是攻击者秘密插入通信双
-   [baike_def] 「XSS（Cross-Site Scripting，跨站脚本攻击）」是什么？用一句话说清楚。
-       back: XSS 是攻击者将恶意脚本注入到网页中，当其他用户浏览时在他们浏览器中执行。
-   [baike_trap] 判断正误：XSS vs CSRF：XSS 在客户端执行恶意脚本，CSRF 利用用户身份发起请求
-       back: 对比要点：XSS vs CSRF：XSS 在客户端执行恶意脚本，CSRF 利用用户身份发起请求。定义：XSS 是攻击者将
-   [baike_def] 「CSRF（Cross-Site Request Forgery，跨站请求伪造）」是什么？用一句话说清楚。
-       back: CSRF 是攻击者诱导已登录用户在不知情的情况下，向目标网站发送恶意请求。
-   [baike_trap] 判断正误：CSRF vs XSS：CSRF 利用用户身份，XSS 执行恶意脚本
-       back: 对比要点：CSRF vs XSS：CSRF 利用用户身份，XSS 执行恶意脚本。定义：CSRF 是攻击者诱导已登录用户在
-   [baike_def] 「SQL 注入（SQL Injection）」是什么？用一句话说清楚。
-       back: SQL 注入是攻击者在输入中插入恶意 SQL 代码，欺骗数据库执行非预期操作。
-   [baike_trap] 判断正误：SQL 注入 vs XSS：SQL 注入针对数据库，XSS 针对用户浏览器
-       back: 对比要点：SQL 注入 vs XSS：SQL 注入针对数据库，XSS 针对用户浏览器。定义：SQL 注入是攻击者在输入中
-   [baike_def] 「DDoS 攻击（Distributed Denial of Service）」是什么？用一句话说清楚。
-       back: DDoS 是攻击者控制大量计算机（僵尸网络）同时向目标服务器发送请求，使其资源耗尽无法响应正常用户。
-   [baike_trap] 判断正误：DDoS vs DoS：DDoS 来自多个源，DoS 来自单个源
-       back: 对比要点：DDoS vs DoS：DDoS 来自多个源，DoS 来自单个源。定义：DDoS 是攻击者控制大量计算机（僵尸
-   [baike_def] 「CC 攻击（Challenge Collapsar）」是什么？用一句话说清楚。
-       back: CC 攻击是针对 Web 应用的 DDoS 攻击，通过大量消耗服务器资源（如数据库查询）使服务不可用。
-   [baike_trap] 判断正误：CC 攻击 vs DDoS：CC 是应用层，DDoS 可以是网络层或应用层
-       back: 对比要点：CC 攻击 vs DDoS：CC 是应用层，DDoS 可以是网络层或应用层。定义：CC 攻击是针对 Web 应
-   [baike_def] 「WAF（Web Application Firewall）」是什么？用一句话说清楚。
-       back: WAF 是专门保护 Web 应用的防火墙，可以识别和拦截恶意 HTTP 请求。
-   [baike_trap] 判断正误：WAF vs 网络防火墙：WAF 防应用层攻击，网络防火墙防网络层攻击
-       back: 对比要点：WAF vs 网络防火墙：WAF 防应用层攻击，网络防火墙防网络层攻击。定义：WAF 是专门保护 Web 应用
-   [baike_def] 「CORS（Cross-Origin Resource Sharing）」是什么？用一句话说清楚。
-       back: CORS 是浏览器的安全机制，控制哪些外部网站可以访问你的网站资源。
-   [baike_trap] 判断正误：CORS vs JSONP：CORS 更安全灵活，JSONP 只支持 GET
-       back: 对比要点：CORS vs JSONP：CORS 更安全灵活，JSONP 只支持 GET。定义：CORS 是浏览器的安全机
-   [baike_def] 「CSP（Content Security Policy）」是什么？用一句话说清楚。
-       back: CSP 是一个 HTTP 安全头，定义了浏览器可以加载哪些资源，有效防御 XSS 和数据注入攻击。
-   [baike_trap] 判断正误：CSP vs WAF：CSP 在浏览器端执行，WAF 在服务器端拦截
-       back: 对比要点：CSP vs WAF：CSP 在浏览器端执行，WAF 在服务器端拦截。定义：CSP 是一个 HTTP 安全头，
+== baike/os/线程.md -> 3 张卡
+   [baike_def] 「线程」是什么？用一句话说清楚。
+       back: 线程（Thread）是操作系统能够进行调度的最小执行单元，它存在于进程之内、与同进程的其他线程共享该进程的地址空间和资源
+   [baike_trap] 判断正误：线程就是进程，二者是一回事。
+       back: ✗ 这是常见误区。正解：线程（Thread）是操作系统能够进行调度的最小执行单元，它存在于进程之内、与同进程的其他线程共
+   [baike_trap] 判断正误：多线程一定比单线程更快。
+       back: ✗ 这是常见误区。正解：线程（Thread）是操作系统能够进行调度的最小执行单元，它存在于进程之内、与同进程的其他线程共
+== baike/os/实时操作系统.md -> 3 张卡
+   [baike_def] 「实时操作系统」是什么？用一句话说清楚。
+       back: 实时操作系统（RTOS）是能在确定的时间约束内对外部事件作出响应、保证任务在规定截止期限（deadline）前完成的操作
+   [baike_trap] 判断正误：实时操作系统就是运行速度最快的系统。
+       back: ✗ 这是常见误区。正解：实时操作系统（RTOS）是能在确定的时间约束内对外部事件作出响应、保证任务在规定截止期限（dea
+   [baike_trap] 判断正误：软实时偶尔错过截止期也会导致系统失败。
+       back: ✗ 这是常见误区。正解：实时操作系统（RTOS）是能在确定的时间约束内对外部事件作出响应、保证任务在规定截止期限（dea
+== baike/hci/可用性.md -> 3 张卡
+   [baike_def] 「可用性」是什么？用一句话说清楚。
+       back: 可用性(Usability)指特定用户在特定使用情境下,使用某产品达成既定目标的**有效性(effectiveness)
+   [baike_trap] 判断正误：界面做得漂亮,可用性自然就好了。
+       back: ✗ 这是常见误区。正解：可用性(Usability)指特定用户在特定使用情境下,使用某产品达成既定目标的**有效性(ef
+   [baike_trap] 判断正误：监控里"99.9% 可用性"说的就是界面好不好用。
+       back: ✗ 这是常见误区。正解：可用性(Usability)指特定用户在特定使用情境下,使用某产品达成既定目标的**有效性(ef
+== baike/tools/容器化与Docker.md -> 3 张卡
+   [baike_def] 「容器化与Docker」是什么？用一句话说清楚。
+       back: Docker 用镜像把应用连同其依赖打包成标准化容器，保证"在我机器上能跑"在任何装了 Docker 的地方都能一致运行
+   [baike_trap] 判断正误：容器就是轻量虚拟机，也有自己的操作系统内核。
+       back: ✗ 这是常见误区。正解：Docker 用镜像把应用连同其依赖打包成标准化容器，保证"在我机器上能跑"在任何装了 Dock
+   [baike_trap] 判断正误：改 Dockerfile 任意一行，都会导致整个镜像所有层重新构建。
+       back: ✗ 这是常见误区。正解：Docker 用镜像把应用连同其依赖打包成标准化容器，保证"在我机器上能跑"在任何装了 Dock
+== baike/network/QUIC.md -> 3 张卡
+   [baike_def] 「QUIC」是什么？用一句话说清楚。
+       back: QUIC 是一种基于 UDP 的现代传输层协议（为 HTTP/3 设计），它在用户态实现了可靠传输、多路复用、内建 TL
+   [baike_trap] 判断正误：QUIC 只是对 TCP 做了一点小改动。
+       back: ✗ 这是常见误区。正解：QUIC 是一种基于 UDP 的现代传输层协议（为 HTTP/3 设计），它在用户态实现了可靠传
+   [baike_trap] 判断正误：HTTP/2 和 HTTP/3 在队头阻塞上没有区别。
+       back: ✗ 这是常见误区。正解：QUIC 是一种基于 UDP 的现代传输层协议（为 HTTP/3 设计），它在用户态实现了可靠传
+== baike/cs-basics/正则表达式.md -> 3 张卡
+   [baike_def] 「正则表达式」是什么？用一句话说清楚。
+       back: 正则表达式（Regular Expression，regex / regexp）是用一串符号来描述、匹配字符串中符合某种
+   [baike_trap] 判断正误：正则表达式什么字符串模式都能匹配。
+       back: ✗ 这是常见误区。正解：正则表达式（Regular Expression，regex / regexp）是用一串符号来描
+   [baike_trap] 判断正误：`.*`（贪婪）和 `.*?`（懒惰）的匹配结果总是一样的。
+       back: ✗ 这是常见误区。正解：正则表达式（Regular Expression，regex / regexp）是用一串符号来描
+== baike/machine-learning/《AI时代生存指南》第一章.md -> 3 张卡
+   [baike_def] 「《AI时代生存指南》第一章」是什么？用一句话说清楚。
+       back: 本文是科普书《AI 时代生存指南》第一章——面向零基础读者的 AI 通识导论，用故事串起从图灵之问、两次寒冬到机器学习、
+   [baike_trap] 判断正误：本章观点认为当前的大语言模型（如 ChatGPT）已具备真正的理解、意识与情感。
+       back: ✗ 这是常见误区。正解：本文是科普书《AI 时代生存指南》第一章——面向零基础读者的 AI 通识导论，用故事串起从图灵之
+   [baike_trap] 判断正误：按本章所述，深度学习在 1943 年提出人工神经元后就立刻变强，与大数据、GPU 无关。
+       back: ✗ 这是常见误区。正解：本文是科普书《AI 时代生存指南》第一章——面向零基础读者的 AI 通识导论，用故事串起从图灵之
+== baike/data-science/时间序列分析.md -> 3 张卡
+   [baike_def] 「时间序列分析」是什么？用一句话说清楚。
+       back: 时间序列分析是对按时间有序采样的数据建模，捕捉其中的趋势、季节、周期与自相关，以进行预测和异常检测的方法体系。
+   [baike_trap] 判断正误：做时序预测时，把数据随机打乱后再切分训练集和测试集是安全的。
+       back: ✗ 这是常见误区。正解：时间序列分析是对按时间有序采样的数据建模，捕捉其中的趋势、季节、周期与自相关，以进行预测和异常检
+   [baike_trap] 判断正误：ARIMA 的差分阶 d 取得越大，模型预测就越准。
+       back: ✗ 这是常见误区。正解：时间序列分析是对按时间有序采样的数据建模，捕捉其中的趋势、季节、周期与自相关，以进行预测和异常检
+== baike/software-engineering/技术债务.md -> 3 张卡
+   [baike_def] 「技术债务」是什么？用一句话说清楚。
+       back: 技术债务（Technical Debt）是软件工程中的一种隐喻，指为了短期快速交付而采用的次优设计或实现；它虽然当下更快
+   [baike_trap] 判断正误：技术债就是 bug，修完 bug 债就清了。
+       back: ✗ 这是常见误区。正解：技术债务（Technical Debt）是软件工程中的一种隐喻，指为了短期快速交付而采用的次优设
+   [baike_trap] 判断正误：欠了技术债就必须立刻停下来、把它全部还清。
+       back: ✗ 这是常见误区。正解：技术债务（Technical Debt）是软件工程中的一种隐喻，指为了短期快速交付而采用的次优设
+== baike/machine-learning/批归一化.md -> 3 张卡
+   [baike_def] 「批归一化」是什么？用一句话说清楚。
+       back: 批归一化（Batch Normalization, BN）在深度学习中对每层输入用小批量数据的均值与方差做标准化、再经可
+   [baike_trap] 判断正误：批归一化在推理阶段仍使用当前测试批的均值和方差来归一化。
+       back: ✗ 这是常见误区。正解：批归一化（Batch Normalization, BN）在深度学习中对每层输入用小批量数据的均
+   [baike_trap] 判断正误：批归一化和 LayerNorm 完全相同，都是沿特征维做归一化。
+       back: ✗ 这是常见误区。正解：批归一化（Batch Normalization, BN）在深度学习中对每层输入用小批量数据的均
+== baike/algorithms/查找算法.md -> 3 张卡
+   [baike_def] 「查找算法」是什么？用一句话说清楚。
+       back: 查找算法是在一组记录中定位满足条件的元素的算法族——线性、[[二分查找]]、插值、二叉搜索树、哈希——区别只在**对数据
+   [baike_trap] 判断正误：二分查找一定比线性查找快，所以任何时候都该用它。
+       back: ✗ 这是常见误区。正解：查找算法是在一组记录中定位满足条件的元素的算法族——线性、[[二分查找]]、插值、二叉搜索树、哈
+   [baike_trap] 判断正误：哈希表查找是 O(1)，所以它比平衡树在任何场景都更优。
+       back: ✗ 这是常见误区。正解：查找算法是在一组记录中定位满足条件的元素的算法族——线性、[[二分查找]]、插值、二叉搜索树、哈
+== baike/programming-languages/Rust Web开发实战.md -> 0 张卡
+== baike/algorithms/动态规划.md -> 3 张卡
+   [baike_def] 「动态规划」是什么？用一句话说清楚。
+       back: 动态规划（Dynamic Programming，DP）是把问题拆成**重叠子问题**、通过**保存子问题的解**避免重
+   [baike_trap] 判断正误：动态规划就等于"递归加缓存"，会写记忆化搜索就算掌握了 DP。
+       back: ✗ 这是常见误区。正解：动态规划（Dynamic Programming，DP）是把问题拆成**重叠子问题**、通过**
+   [baike_trap] 判断正误：0-1 背包做一维空间优化时，容量应当正序遍历。
+       back: ✗ 这是常见误区。正解：动态规划（Dynamic Programming，DP）是把问题拆成**重叠子问题**、通过**
+== baike/design-patterns/结构型模式（Structural Patterns）.md -> 0 张卡
+== baike/hardware/内存与存储系统.md -> 3 张卡
+   [baike_def] 「内存与存储系统」是什么？用一句话说清楚。
+       back: 内存（RAM）是 CPU 可直接寻址、存放正在运行的程序与数据的易失性高速存储；存储系统则是由寄存器、缓存、内存到外存（
+   [baike_trap] 判断正误：内存和硬盘是一回事，都叫"存储"。
+       back: ✗ 这是常见误区。正解：内存（RAM）是 CPU 可直接寻址、存放正在运行的程序与数据的易失性高速存储；存储系统则是由寄
+   [baike_trap] 判断正误：给电脑加内存条就一定变快。
+       back: ✗ 这是常见误区。正解：内存（RAM）是 CPU 可直接寻址、存放正在运行的程序与数据的易失性高速存储；存储系统则是由寄
+== baike/security/缓冲区溢出.md -> 3 张卡
+   [baike_def] 「缓冲区溢出」是什么？用一句话说清楚。
+       back: 缓冲区溢出(Buffer Overflow)是一类常见软件漏洞:程序向固定大小的缓冲区写入的数据超出其容量,溢出部分覆盖
+   [baike_trap] 判断正误：缓冲区溢出最坏也就是让程序崩一下,重启就好。
+       back: ✗ 这是常见误区。正解：缓冲区溢出(Buffer Overflow)是一类常见软件漏洞:程序向固定大小的缓冲区写入的数据
+   [baike_trap] 判断正误：开了 DEP/ASLR/canary,就不存在缓冲区溢出漏洞了。
+       back: ✗ 这是常见误区。正解：缓冲区溢出(Buffer Overflow)是一类常见软件漏洞:程序向固定大小的缓冲区写入的数据
 == baike/ai-and-llm/词向量.md -> 3 张卡
    [baike_def] 「词向量」是什么？用一句话说清楚。
        back: 词向量（Word Embedding / Word Vector）是用稠密低维实数向量表示词的技术，使语义或语法相近的词
@@ -372,6 +310,13 @@
        back: ✗ 这是常见误区。正解：本词条梳理大语言模型的架构演进——以 Transformer 为共同底座，沿规模、对齐、效率、多
    [baike_trap] 判断正误：现代大模型已纷纷抛弃 Transformer、改用全新的非注意力架构。
        back: ✗ 这是常见误区。正解：本词条梳理大语言模型的架构演进——以 Transformer 为共同底座，沿规模、对齐、效率、多
+== baike/web-backend/认证与安全实践.md -> 3 张卡
+   [baike_def] 「认证与安全实践」是什么？用一句话说清楚。
+       back: 认证（Authentication）是确认"你是谁"，授权（Authorization）是确认"你能做什么"；Web 安
+   [baike_trap] 判断正误：JWT 可以在服务端随时作废，所以不必设短过期时间。
+       back: ✗ 这是常见误区。正解：认证（Authentication）是确认"你是谁"，授权（Authorization）是确认"
+   [baike_trap] 判断正误：密码只要用 MD5 或 SHA256 哈希过，就不算明文泄露。
+       back: ✗ 这是常见误区。正解：认证（Authentication）是确认"你是谁"，授权（Authorization）是确认"
 == baike/ai-and-llm/AI 应用详解.md -> 3 张卡
    [baike_def] 「AI 应用详解」是什么？用一句话说清楚。
        back: AI 应用是把大模型的理解、生成与跨模态能力封装成具体功能的产品形态，覆盖对话、文本理解、内容生成、语音与知识增强等族。
@@ -386,11 +331,24 @@
        back: ✗ 这是常见误区。正解：Agent 规划与推理是把复杂目标拆解为可执行子步骤、在多条候选路径中搜索决策、并依反馈修正的思
    [baike_trap] 判断正误：MCTS 通过反向传播更新大模型的权重来提升规划能力。
        back: ✗ 这是常见误区。正解：Agent 规划与推理是把复杂目标拆解为可执行子步骤、在多条候选路径中搜索决策、并依反馈修正的思
-== baike/architecture/高并发系统设计.md -> 3 张卡
-   [baike_def] 「高并发系统设计」是什么？用一句话说清楚。
-       back: 高并发系统设计是在有限资源下通过限流、降级、水平扩展与多级缓存保障系统在峰值流量下可用和响应可控的工程方法。
-   [baike_trap] 判断正误：水平加机器一定能解决高并发问题。
-       back: ✗ 这是常见误区。正解：高并发系统设计是在有限资源下通过限流、降级、水平扩展与多级缓存保障系统在峰值流量下可用和响应可控
-   [baike_trap] 判断正误：限流阈值设好之后就不用再调整了。
-       back: ✗ 这是常见误区。正解：高并发系统设计是在有限资源下通过限流、降级、水平扩展与多级缓存保障系统在峰值流量下可用和响应可控
-== baike/testing/02 - 测试工具.md -> 0 张卡
+== baike/architecture/设计原则.md -> 10 张卡
+   [baike_def] 「SOLID五大原则」是什么？用一句话说清楚。
+       back: 一个类只负责一项职责，只因一个原因而变化。
+   [baike_def] 「DRY（不要重复自己）」是什么？用一句话说清楚。
+       back: 每一段知识在系统中应该只有一个明确的表示。
+   [baike_def] 「KISS（保持简单）」是什么？用一句话说清楚。
+       back: 尽量保持代码简单直观，避免不必要的复杂设计。
+   [baike_def] 「YAGNI（你不会需要它）」是什么？用一句话说清楚。
+       back: 不要添加当前不需要的功能，等真正需要时再实现。
+   [baike_def] 「高内聚低耦合」是什么？用一句话说清楚。
+       back: 模块内部功能紧密相关，模块之间依赖尽量减少。
+   [baike_def] 「迪米特法则（最少知识原则）」是什么？用一句话说清楚。
+       back: 一个对象应该对其他对象有最少的了解，只与直接朋友通信。
+   [baike_def] 「组合优于继承」是什么？用一句话说清楚。
+       back: 优先使用对象组合而非类继承来实现代码复用。
+   [baike_def] 「面向接口编程」是什么？用一句话说清楚。
+       back: 依赖于抽象而非具体实现，通过接口定义行为契约。
+   [baike_def] 「控制反转（IoC）」是什么？用一句话说清楚。
+       back: 将对象创建和依赖管理的控制权从程序代码转移到外部容器。
+   [baike_def] 「依赖注入（DI）」是什么？用一句话说清楚。
+       back: 对象不自己创建依赖，而是通过外部注入获得依赖对象。

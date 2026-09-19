@@ -15,19 +15,19 @@ PASS baike/ai-and-llm/CrewAI 多 Agent 框架.md  (正文 1663/2200 字 / 围栏
 PASS baike/ai-and-llm/Diffusion扩散模型.md  (正文 1628/2200 字 / 围栏 1 块 6 行 / 卡 1def+2trap)
 PASS baike/ai-and-llm/Embedding 技术详解.md  (正文 1776/2200 字 / 围栏 0 块 0 行 / 卡 1def+2trap)
 PASS baike/ai-and-llm/Function Calling 与 Tool Use.md  (正文 1789/2200 字 / 围栏 0 块 0 行 / 卡 1def+2trap)
-PASS baike/ai-and-llm/GPT系列模型演进.md  (正文 1625/2200 字 / 围栏 0 块 0 行 / 卡 1def+2trap)
+PASS baike/ai-and-llm/GPT系列模型演进.md  (正文 1657/2200 字 / 围栏 0 块 0 行 / 卡 1def+2trap)
 PASS baike/ai-and-llm/LLM 微调技术.md  (正文 1721/2200 字 / 围栏 1 块 5 行 / 卡 1def+2trap)
 PASS baike/ai-and-llm/LLM 推理优化.md  (正文 2011/2200 字 / 围栏 0 块 0 行 / 卡 1def+2trap)
 PASS baike/ai-and-llm/LangChain 框架全解析.md  (正文 2061/2200 字 / 围栏 1 块 2 行 / 卡 1def+2trap)
-PASS baike/ai-and-llm/LlamaIndex 框架指南.md  (正文 1816/2200 字 / 围栏 0 块 0 行 / 卡 1def+2trap)
-PASS baike/ai-and-llm/MCP（Model Context Protocol）.md  (正文 1802/2200 字 / 围栏 0 块 0 行 / 卡 1def+2trap)
+PASS baike/ai-and-llm/LlamaIndex 框架指南.md  (正文 1842/2200 字 / 围栏 0 块 0 行 / 卡 1def+2trap)
+PASS baike/ai-and-llm/MCP（Model Context Protocol）.md  (正文 1793/2200 字 / 围栏 0 块 0 行 / 卡 1def+2trap)
 PASS baike/ai-and-llm/MoE 混合专家模型.md  (正文 1816/2200 字 / 围栏 0 块 0 行 / 卡 1def+2trap)
 PASS baike/ai-and-llm/NeRF与3D生成.md  (正文 1501/2200 字 / 围栏 0 块 0 行 / 卡 1def+2trap)
 PASS baike/ai-and-llm/Prompt Engineering 高级技巧.md  (正文 1724/2200 字 / 围栏 0 块 0 行 / 卡 1def+2trap)
 PASS baike/ai-and-llm/Prompt 工程与 Agent 详解.md  (正文 2042/2200 字 / 围栏 1 块 6 行 / 卡 1def+2trap)
 PASS baike/ai-and-llm/RAG 与检索技术详解.md  (正文 2082/2200 字 / 围栏 1 块 6 行 / 卡 1def+2trap)
 PASS baike/ai-and-llm/RAG 检索增强生成.md  (正文 1933/2200 字 / 围栏 0 块 0 行 / 卡 1def+2trap)
-PASS baike/ai-and-llm/Research Agent.md  (正文 1363/2200 字 / 围栏 0 块 0 行 / 卡 1def+2trap)
+PASS baike/ai-and-llm/Research Agent.md  (正文 1380/2200 字 / 围栏 0 块 0 行 / 卡 1def+2trap)
 PASS baike/ai-and-llm/Scaling Law.md  (正文 1689/2200 字 / 围栏 0 块 0 行 / 卡 1def+2trap)
 PASS baike/ai-and-llm/Tokenizer 技术.md  (正文 1575/2200 字 / 围栏 0 块 0 行 / 卡 1def+2trap)
 PASS baike/ai-and-llm/Transformer架构深度解析.md  (正文 1905/2200 字 / 围栏 0 块 0 行 / 卡 1def+2trap)
@@ -47,11 +47,11 @@ PASS baike/ai-and-llm/微调与训练技术详解.md  (正文 1978/2200 字 / �
 PASS baike/ai-and-llm/机器学习基础.md  (正文 1418/2200 字 / 围栏 0 块 0 行 / 卡 1def+2trap)
 PASS baike/ai-and-llm/注意力机制.md  (正文 1604/2200 字 / 围栏 0 块 0 行 / 卡 1def+2trap)
 PASS baike/ai-and-llm/深度强化学习.md  (正文 1388/2200 字 / 围栏 0 块 0 行 / 卡 1def+2trap)
-PASS baike/ai-and-llm/知识图谱与 LLM 结合.md  (正文 1432/2200 字 / 围栏 0 块 0 行 / 卡 1def+2trap)
+PASS baike/ai-and-llm/知识图谱与 LLM 结合.md  (正文 1448/2200 字 / 围栏 0 块 0 行 / 卡 1def+2trap)
 PASS baike/ai-and-llm/联邦学习.md  (正文 1522/2200 字 / 围栏 0 块 0 行 / 卡 1def+2trap)
 PASS baike/ai-and-llm/词向量.md  (正文 1658/2200 字 / 围栏 0 块 0 行 / 卡 1def+2trap)
 PASS baike/ai-and-llm/词袋模型.md  (正文 1387/2200 字 / 围栏 0 块 0 行 / 卡 1def+2trap)
-PASS baike/ai-and-llm/语音AI技术.md  (正文 1453/2200 字 / 围栏 0 块 0 行 / 卡 1def+2trap)
+PASS baike/ai-and-llm/语音AI技术.md  (正文 1457/2200 字 / 围栏 0 块 0 行 / 卡 1def+2trap)
 PASS baike/ai-and-llm/长上下文技术.md  (正文 1723/2200 字 / 围栏 0 块 0 行 / 卡 1def+2trap)
 PASS baike/algorithms/AVL 树.md  (正文 1567/2200 字 / 围栏 0 块 0 行 / 卡 1def+2trap)
 PASS baike/algorithms/KMP 算法.md  (正文 1695/2200 字 / 围栏 0 块 0 行 / 卡 1def+2trap)
@@ -60,8 +60,10 @@ PASS baike/algorithms/二分查找.md  (正文 1648/2200 字 / 围栏 0 块 0 �
 PASS baike/algorithms/二叉搜索树.md  (正文 1541/2200 字 / 围栏 0 块 0 行 / 卡 1def+2trap)
 PASS baike/algorithms/位运算.md  (正文 1679/2200 字 / 围栏 0 块 0 行 / 卡 1def+2trap)
 PASS baike/algorithms/分治算法.md  (正文 1525/2200 字 / 围栏 0 块 0 行 / 卡 1def+2trap)
+PASS baike/algorithms/前缀和与差分.md  (正文 1899/2200 字 / 围栏 1 块 11 行 / 卡 1def+2trap)
 PASS baike/algorithms/前缀树.md  (正文 1554/2200 字 / 围栏 0 块 0 行 / 卡 1def+2trap)
 PASS baike/algorithms/动态规划.md  (正文 1831/2200 字 / 围栏 2 块 11 行 / 卡 1def+2trap)
+PASS baike/algorithms/双指针与滑动窗口.md  (正文 1775/2200 字 / 围栏 1 块 14 行 / 卡 1def+2trap)
 PASS baike/algorithms/哈希表.md  (正文 1596/2200 字 / 围栏 0 块 0 行 / 卡 1def+2trap)
 PASS baike/algorithms/回溯算法.md  (正文 1448/2200 字 / 围栏 0 块 0 行 / 卡 1def+2trap)
 PASS baike/algorithms/图(数据结构).md  (正文 1448/2200 字 / 围栏 0 块 0 行 / 卡 1def+2trap)
@@ -82,17 +84,7 @@ PASS baike/algorithms/最小生成树.md  (正文 1561/2200 字 / 围栏 0 块 0
 PASS baike/algorithms/最短路径算法.md  (正文 1743/2200 字 / 围栏 0 块 0 行 / 卡 1def+2trap)
 PASS baike/algorithms/查找算法.md  (正文 1710/2200 字 / 围栏 1 块 2 行 / 卡 1def+2trap)
 PASS baike/algorithms/空间复杂度.md  (正文 1472/2200 字 / 围栏 1 块 8 行 / 卡 1def+2trap)
-FAIL baike/algorithms/算法思想.md  (正文 6781/3400 字 / 围栏 12 块 192 行 / 卡 0def+0trap) [枢纽型（①对比表 12 数据行 ②具名子概念 11）]
-   ✗ ② 未找到与 `**一句话定义：**` 同行且非空的值
-   ✗ ③ 缺少必备 H2：与相关概念的区别、为什么需要它、优劣与代价、何时用与何时不用、具体示例、定义、常见误区、面试速答
-   ✗ ③ 缺少『核心机制』节（可用 §3 变体名：做法、核心机制、核心流程、核心能力、计算逻辑）
-   ✗ ① baike_def 卡数 = 0（需恰好 1）
-   ✗ ① baike_trap 卡数 = 0（需恰好 2）
-   ✗ ① 常见误区列表 0 条（需 2–3 条）
-   ✗ ⑥ 代码围栏 12 块（上限 2）
-   ✗ ⑥ 围栏内共 192 行（上限 20）
-   ✗ ⑥ 正文 6781 字 > 上限 3400｜枢纽型（①对比表 12 数据行 ②具名子概念 11）
-   · ⑧ 悬空双链 [['.' for _ in range(n)]]
+PASS baike/algorithms/算法思想.md  (正文 2157/2200 字 / 围栏 1 块 3 行 / 卡 1def+2trap)
 PASS baike/algorithms/红黑树.md  (正文 1593/2200 字 / 围栏 0 块 0 行 / 卡 1def+2trap)
 PASS baike/algorithms/贪心算法.md  (正文 1429/2200 字 / 围栏 0 块 0 行 / 卡 1def+2trap)
 PASS baike/algorithms/递归.md  (正文 1616/2200 字 / 围栏 0 块 0 行 / 卡 1def+2trap)
@@ -908,24 +900,7 @@ FAIL baike/network/网络安全协议.md  (正文 8899/3400 字 / 围栏 11 块 
    ✗ ⑥ 正文 8899 字 > 上限 3400｜枢纽型（①对比表 5 数据行 ②具名子概念 10）
 PASS baike/network/路由协议.md  (正文 1297/2200 字 / 围栏 0 块 0 行 / 卡 1def+2trap)
 EXEMPT baike/os/Linux 命令速查手册.md  （v1.1 §5 exempt-reference：原样保留，跳过检查）
-FAIL baike/os/Shell 脚本详解.md  (正文 7816/2200 字 / 围栏 15 块 475 行 / 卡 2def+0trap)
-   ✗ ③ 缺少必备 H2：与相关概念的区别、为什么需要它、优劣与代价、何时用与何时不用、具体示例、定义、面试速答
-   ✗ ③ 缺少『核心机制』节（可用 §3 变体名：做法、核心机制、核心流程、核心能力、计算逻辑）
-   ✗ ① baike_def 卡数 = 2（需恰好 1）
-   ✗ ① baike_trap 卡数 = 0（需恰好 2）
-   ✗ ① 常见误区列表 4 条（需 2–3 条）
-   ✗ ⑥ 代码围栏 15 块（上限 2）
-   ✗ ⑥ 围栏内共 475 行（上限 20）
-   ✗ ⑥ 正文 7816 字 > 上限 2200｜未获枢纽豁免（①不满足：无 mermaid 且对比表 <4 数据行 ②不满足：具名子概念 16 <3 且核心机制粗体项 0 <3（粗体项须自身 ≥70 字且内含 [[双链]]））
-   · ⑧ 悬空双链 [[]]
-   · ⑧ 悬空双链 [[! -f file.txt]]
-   · ⑧ 悬空双链 [["$email" =~ ^[a-zA-Z0-9]]
-   · ⑧ 悬空双链 [["$file" == *.log]]
-   · ⑧ 悬空双链 [["${3:-}" == "-y"]]
-   · ⑧ 悬空双链 [[$]]
-   · ⑧ 悬空双链 [[$a -eq 1]]
-   · ⑧ 悬空双链 [[$a -gt 10 && $b -lt 20]]
-PASS baike/os/Shell脚本编程.md  (正文 1433/2200 字 / 围栏 1 块 11 行 / 卡 1def+2trap)
+PASS baike/os/Shell脚本编程.md  (正文 2003/2200 字 / 围栏 2 块 17 行 / 卡 1def+2trap)
    · ⑧ 悬空双链 [[]]
    · ⑧ 悬空双链 [[-d "$file"]]
    · ⑧ 悬空双链 [[-f "$file"]]
@@ -1333,4 +1308,4 @@ PASS baike/web-backend/Web框架对比.md  (正文 1835/2200 字 / 围栏 0 块 
 PASS baike/web-backend/缓存策略.md  (正文 1582/2200 字 / 围栏 0 块 0 行 / 卡 1def+2trap)
 PASS baike/web-backend/认证与安全实践.md  (正文 2062/2200 字 / 围栏 0 块 0 行 / 卡 1def+2trap)
 
-442 篇检查 [strict（⑨ 全量硬 FAIL）]：866 项 FAIL，26 项 warning，其中 EXEMPT 1 篇
+443 篇检查 [strict（⑨ 全量硬 FAIL）]：849 项 FAIL，17 项 warning，其中 EXEMPT 1 篇
