@@ -89,6 +89,11 @@
 - 预案：密码学原语归口宜统一到 security 子域（更贴合安全语义）；s5 拆 密码学基础篇/加密技术篇/哈希算法篇 时，与本 [[密码学基础]] 择一定归口、删重叠改双链，清 pending-merge。devops 侧 [[区块链与比特币]] 为 net-new 不受影响。
 - 已登记：[[密码学基础]] 在 s4.md 标 pending-merge: security/密码学基础篇.md（跨片，s5 收敛时清）。
 
+**13. `programming-languages/并发编程模式与实践.md` 拆出的 模型/同步/消息传递 ↔ `programming-languages/并发编程（Concurrent Programming）概念.md`（14-def 术语汇编，s4 pending）**（预案：改双链，不新建）
+- 冲突：本汇编拆出 [[并发与并行及线程模型]][[同步原语与无锁并发]][[消息传递并发：CSP 与 Actor]]；同片 pending 的 `并发编程（Concurrent Programming）概念.md` 含 并发vs并行/线程vs进程/锁/读写锁/信号量/条件变量/死锁/原子/CAS/线程池/协程/消息传递/Future·Promise/事件循环 等 14 术语，多归口重叠。
+- 预案：轮到拆 `并发编程（CP）概念.md` 时，与上述三片重叠的术语节删除、改双链到这三片归口词条；其独有条目(线程池/Future·Promise/事件循环等)按体量并入或另立。三片为归口。
+- 已登记：三条在 s4.md 标 pending-merge: programming-languages/并发编程（Concurrent Programming）概念.md；拆该汇编前不得清。
+
 ## 待拆清单
 
 | 文件 | 子概念数 | 所属片 | 正文字数 | 子概念预览 | 理由 | 状态 |
@@ -172,7 +177,7 @@
 | content/baike/programming-languages/函数式编程完全指南.md | 10 | s4 | 18943 | FP概念、高阶函数、闭包柯里化、Functor·Monad、Either·Option·IO、不可变、并发、JS·Haskell实践 | FP概念/高阶函数/闭包柯里化/Functor·Monad/Either·Option·IO/不可变/并发/JS·Haskell 实践 10 话题；正文 18943、24 围栏 → 拆词条 | done（2026-09-19 二期拆分：枢纽页 + 4 子词条〔函数式编程基础/Functor与Monad/函数式错误处理与不可变数据结构/函数式并发与多语言实践〕；基础&Monad 与 pending 的 函数式编程（FP）概念 重叠→pending-merge，见去重队列第 11 对） |
 | content/baike/programming-languages/函数式编程（Functional Programming）概念.md | 14 | s4 | 11638 | 纯函数、副作用、不可变、高阶函数、Lambda、闭包、柯里化、组合、Monad、Functor、Applicative、声明式、惰性求值 | 纯函数/副作用/不可变/高阶函数/Lambda/闭包/柯里化/组合/Monad/Functor/Applicative/声明式/惰性求值 14 词条（14 def）；29 围栏 ≫ 2/20 → 按概念各拆词条 | pending |
 | content/baike/programming-languages/密码学与区块链技术指南.md | 6 | s4 | 16609 | 密码学基础、加密算法、密钥管理、TLS·SSL、区块链原理、比特币 | 密码学基础/加密算法/密钥管理/TLS·SSL/区块链原理/比特币 6 大部分各成体系；正文 16609、10 围栏 584 行 → 拆词条 | done（2026-09-19 二期拆分：枢纽页 + 2 子词条〔密码学基础/区块链与比特币〕；密码学基础 与 s5 pending 的 security 密码学基础篇·加密技术篇·哈希算法篇 重叠→pending-merge，见去重队列第 12 对；区块链/比特币 net-new） |
-| content/baike/programming-languages/并发编程模式与实践.md | 8 | s4 | 17776 | 并发vs并行、线程模型、互斥同步、无锁、并发数据结构、协程、Channel·CSP、Actor | 并发vs并行/线程模型/互斥同步/无锁/并发数据结构/协程/Channel·CSP/Actor（枢纽①mermaid②子概念20）；正文 17776、1071 代码行 ≫ 3400 → 拆词条 | pending |
+| content/baike/programming-languages/并发编程模式与实践.md | 8 | s4 | 17776 | 并发vs并行、线程模型、互斥同步、无锁、并发数据结构、协程、Channel·CSP、Actor | 并发vs并行/线程模型/互斥同步/无锁/并发数据结构/协程/Channel·CSP/Actor（枢纽①mermaid②子概念20）；正文 17776、1071 代码行 ≫ 3400 → 拆词条 | done（2026-09-19 二期拆分：枢纽页 + 3 子词条〔并发与并行及线程模型/同步原语与无锁并发/消息传递并发：CSP与Actor〕；线程/协程/Go/Rust 并发双链既有专条；三条与 pending 的 并发编程（CP）概念 重叠→pending-merge，见去重队列第 13 对） |
 | content/baike/programming-languages/并发编程（Concurrent Programming）概念.md | 14 | s4 | 17338 | 并发vs并行、线程vs进程、锁Mutex、读写锁、信号量、条件变量、死锁、原子、CAS、线程池、协程、消息传递、Future·Promise、事件循环 | 并发vs并行/线程vs进程/锁Mutex/读写锁/信号量/条件变量/死锁/原子/CAS/线程池/协程/消息传递/Future·Promise/事件循环 14 词条（14 def）；40 围栏 ≫ 2/20 → 按概念各拆词条 | pending |
 | content/baike/programming-languages/程序员的数学基础.md | 6 | s4 | 19326 | 集合论、图论、组合数学、逻辑、向量、矩阵、特征值与SVD | 离散数学/线性代数/…多个独立数学分支章节；正文 19326、7 围栏 966 行 ≫ 上限 → 按分支拆词条 | pending |
 | content/baike/programming-languages/编程概念音频课-数据结构.md | 6 | s4 | 8957 | 数组链表、栈队列、哈希表、树二叉树、图、堆 | 数组链表/栈队列/哈希表/树二叉树/图/堆 6 站各独立数据结构主题；正文 8957、8 围栏 178 行 → 按结构拆词条 | pending |
