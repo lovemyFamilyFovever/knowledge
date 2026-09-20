@@ -14,6 +14,8 @@
   --kb-measure:none;
   --kb-font:var(--f-body);
   --kb-line:1.75;
+  --kb-h1-size:1.55rem; --kb-h2-size:1.3rem; --kb-h3-size:1.12rem;
+  --kb-code-size:13px; --kb-h1-align:center;
 }
 
 /* [2] 正文排版覆盖：`html ` 前缀提特异性，压过 style.css 里的 .article-inner / .a-body，
@@ -26,7 +28,12 @@ html .a-body{
 }
 html .a-body p,
 html .a-body li{line-height:var(--kb-line)}
-html .a-body h1,html .a-body h2{font-size:calc(var(--fs-h2) * var(--kb-fs-scale))}
+/* 标题分级字号（2026-09-20 设置弹窗精细化）：h1/h2 不再共用 --fs-h2，
+   各随 --kb-h1-size / --kb-h2-size（prefs 滑杆写入），并仍乘正文字号缩放系数 */
+html .a-body h1{font-size:calc(var(--kb-h1-size,1.55rem) * var(--kb-fs-scale))}
+html .a-body h2{font-size:calc(var(--kb-h2-size,1.3rem) * var(--kb-fs-scale))}
+html .a-body h3{font-size:calc(var(--kb-h3-size,1.12rem) * var(--kb-fs-scale))}
+html .a-body pre code{font-size:calc(var(--kb-code-size,13px) * var(--kb-fs-scale))}
 
 /* 读进度 / 元信息行跟随字号缩放，避免标题变大后 chip 显得过小 */
 html .a-body .chip,

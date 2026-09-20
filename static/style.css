@@ -115,7 +115,7 @@
   /* 7 域色相（taxonomy.json 权威 · oklch 派生） */
   --dh-baike:oklch(58% .10 158); --dh-articles:oklch(58% .10 200); --dh-interview:oklch(58% .10 340);
   --dh-projects:oklch(58% .10 22); --dh-handbook:oklch(58% .10 96); --dh-career:oklch(58% .10 42); --dh-ai:oklch(58% .10 262);
-  /* 阅读偏好默认值（kb 排印，[8] 区引用） */
+  /* 阅读偏好默认值（kb 排印，[8] 区引用；标题/代码字号见 kb-core.css [1]） */
   --kb-fs-scale:1; --kb-measure:none; --kb-font:var(--f-body); --kb-line:1.75;
 }
 /* [3] 暗色 patch ===== 仪表 Dark ===== */
@@ -454,12 +454,12 @@ h1.a-title{font-family:var(--f-disp);font-weight:700;font-size:28px;line-height:
 .a-rule{height:1px;margin:18px 0 26px;background:var(--c-line)}
 .a-body{font-size:16px;line-height:1.95;color:var(--c-ink);font-family:Consolas,"梦源黑体 CN","Microsoft YaHei",sans-serif}
 /* 标题：h1 居中主题色下划线；h2 整条渐变主题条（--gh/--gh2 由 JS 按标题 hash 注入）；h3 主题色+左竖条 */
-.a-body h1{font-size:1.55rem;font-weight:700;text-align:center;line-height:1.4;padding:.9rem 0;margin:0 0 1.4rem;border-bottom:3px solid var(--c-acc)}
+.a-body h1{font-size:var(--kb-h1-size,1.55rem);font-weight:700;text-align:var(--kb-h1-align,center);line-height:1.4;padding:.9rem 0;margin:0 0 1.4rem;border-bottom:3px solid var(--c-acc)}
 .a-body h1:first-child{margin-top:0}
-.a-body h2{font-size:1.3rem;font-weight:700;margin:.2rem 0 1.2rem;padding:.7rem 1.1rem;letter-spacing:.01em;border-bottom:none;border-left:4px solid var(--c-acc);
+.a-body h2{font-size:var(--kb-h2-size,1.3rem);font-weight:700;margin:.2rem 0 1.2rem;padding:.7rem 1.1rem;letter-spacing:.01em;border-bottom:none;border-left:4px solid var(--c-acc);
   color:var(--bar-fg);border-radius:9px;
   background:linear-gradient(135deg,hsl(var(--gh,160) var(--bar-s) var(--bar-l)),hsl(var(--gh2,200) var(--bar-s) var(--bar-l)))}
-.a-body h3{font-size:1.12rem;font-weight:700;margin:1.6rem 0 .8rem;letter-spacing:.01em;
+.a-body h3{font-size:var(--kb-h3-size,1.12rem);font-weight:700;margin:1.6rem 0 .8rem;letter-spacing:.01em;
   display:flex;justify-content:space-between;align-items:center;gap:.6rem;flex-wrap:wrap;
   color:var(--c-acc);border-left:4px solid var(--c-acc);padding-left:.8rem}
 .a-body h4{font-size:15px;margin:20px 0 8px;color:var(--muted);letter-spacing:.02em}
@@ -488,7 +488,7 @@ h1.a-title{font-family:var(--f-disp);font-weight:700;font-size:28px;line-height:
 .a-body code{font-family:Consolas,"梦源黑体 CN","Microsoft YaHei",monospace;font-size:.85em;color:var(--c-acc);background:var(--acc-soft);border:1px solid var(--acc-line);border-radius:var(--rd-ctl);padding:1px 5px}
 /* 代码块随主题：浅色浅底、暗色深底（token 见 [2]/[3]）；克制单色高亮压过 hljs-github-dark */
 .a-body pre{background:var(--code-bg);border:1px solid var(--c-line);border-radius:var(--rd-card);padding:16px 18px;margin:16px 0;overflow-x:auto}
-.a-body pre code{background:none;border:none;color:var(--code-fg);font-family:Consolas,monospace;font-size:13px;line-height:1.75}
+.a-body pre code{background:none;border:none;color:var(--code-fg);font-family:Consolas,monospace;font-size:var(--kb-code-size,13px);line-height:1.75}
 .a-body pre code.hljs{background:transparent;padding:0}
 .a-body pre code span[class]{color:inherit;font-style:normal;font-weight:inherit}
 .a-body pre code span[class].hljs-comment,.a-body pre code span[class].hljs-quote,.a-body pre code span[class].hljs-doctag{color:var(--code-com);font-style:italic}

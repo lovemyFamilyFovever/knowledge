@@ -242,30 +242,39 @@
      ================================================================== */
   var LS_PREF = "kb-readpref";
   /* 行宽限宽已取消（用户要求正文撑满）——measure 保留为 null 仅作旧 localStorage 兼容，
-     get()/set()/apply() 均忽略它，--kb-measure 恒为 none。 */
-  var PREF_DEF = { scale: 1.0, font: "sans", line: 1.75 };
+     get()/set()/apply() 均忽略它，--kb-measure 恒为 none。
+     2026-09-20 扩容（用户要求设置弹窗精细化）：新增标题字号 h1s/h2s/h3s（rem）、
+     代码字号 code（px）、一级标题对齐 halign；默认值与 style.css [8] 区原始硬值一致，
+     不动偏好时渲染零变化。 */
+  var PREF_DEF = { scale: 1.0, font: "sans", line: 1.75, h1s: 1.55, h2s: 1.3, h3s: 1.12, code: 13, halign: "center" };
+  var NUM_RANGE = { scale: [0.85, 1.6], line: [1.3, 2.4], h1s: [1.2, 2.4], h2s: [1.0, 1.8], h3s: [0.9, 1.5], code: [11, 17] };
   var FONT_MAP = { sans: "var(--f-body)", serif: "var(--f-disp)", mono: "var(--f-mono)" };
+
+  function prefNum(v, key) {
+    var r = NUM_RANGE[key];
+    return (v == null || v === "" || isNaN(v)) ? PREF_DEF[key] : util.clamp(Number(v), r[0], r[1]);
+  }
 
   var prefs = (KB.prefs = {
     LS: LS_PREF,
-    def: function () { return { scale: 1.0, font: "sans", line: 1.75 }; },
+    def: function () { return Object.assign({}, PREF_DEF); },
     get: function () {
       var v = util.getJSON(LS_PREF, null) || {};
       /* 注意：字段缺失时必须显式回落到 PREF_DEF。
          不能写成 `clamp(v.scale, 0.85, 1.6) || PREF_DEF.scale` —— clamp 对 undefined 返回 lo（0.85），
          而 0.85 是 truthy，|| 永远不生效，会导致首次访问的用户拿到 0.85 倍字号 / 520px 行宽。 */
-      return {
-        scale: (v.scale == null || v.scale === "") ? PREF_DEF.scale : util.clamp(v.scale, 0.85, 1.6),
-        font: FONT_MAP[v.font] ? v.font : PREF_DEF.font,
-        line: (v.line == null || v.line === "") ? PREF_DEF.line : util.clamp(v.line, 1.3, 2.4)
-      };
+      var out = {};
+      Object.keys(NUM_RANGE).forEach(function (k) { out[k] = prefNum(v[k], k); });
+      out.font = FONT_MAP[v.font] ? v.font : PREF_DEF.font;
+      out.halign = (v.halign === "left" || v.halign === "center") ? v.halign : PREF_DEF.halign;
+      return out;
     },
     set: function (patch) {
       var cur = prefs.get();
       Object.keys(patch || {}).forEach(function (k) { cur[k] = patch[k]; });
-      cur.scale = util.clamp(cur.scale, 0.85, 1.6);
-      cur.line = util.clamp(cur.line, 1.3, 2.4);
+      Object.keys(NUM_RANGE).forEach(function (k) { cur[k] = prefNum(cur[k], k); });
       if (!FONT_MAP[cur.font]) cur.font = PREF_DEF.font;
+      if (cur.halign !== "left" && cur.halign !== "center") cur.halign = PREF_DEF.halign;
       util.setJSON(LS_PREF, cur);
       prefs.apply();
       return cur;
@@ -275,7 +284,7 @@
       prefs.apply();
       return prefs.get();
     },
-    /** 只写 3 个 CSS 变量到 documentElement.style（内联优先级最高，不用 !important）。
+    /** 只写 CSS 变量到 documentElement.style（内联优先级最高，不用 !important）。
         行宽限宽已取消：--kb-measure 恒为 none（正文撑满），不再由偏好控制。 */
     apply: function () {
       var p = prefs.get(), s = document.documentElement.style;
@@ -283,57 +292,118 @@
       s.setProperty("--kb-measure", "none");
       s.setProperty("--kb-font", FONT_MAP[p.font] || FONT_MAP.sans);
       s.setProperty("--kb-line", String(p.line));
+      s.setProperty("--kb-h1-size", p.h1s + "rem");
+      s.setProperty("--kb-h2-size", p.h2s + "rem");
+      s.setProperty("--kb-h3-size", p.h3s + "rem");
+      s.setProperty("--kb-code-size", p.code + "px");
+      s.setProperty("--kb-h1-align", p.halign);
       return p;
     },
-    /** 阅读偏好面板（命令面板内的一小组控件，不开新页面） */
+    /** 设置面板 HTML：界面风格（皮肤格）→ 阅读排版 → 标题与代码 → 恢复默认 */
     panelHTML: function () {
       var p = prefs.get();
       var opt = function (v, label) {
         return '<option value="' + v + '"' + (p.font === v ? " selected" : "") + ">" + util.esc(label) + "</option>";
       };
-      return '' +
+      var skinSec = "";
+      if (window.KB_SKINS && window.applySkin) {
+        var curSkin = window.applySkin && (function () { try { return localStorage.getItem("kb-skin") || "celadon"; } catch (e) { return "celadon"; } })();
+        skinSec = '<div class="kb-pref-head">' + util.icon("i-palette", 14) + "界面风格<span class=\"kb-pref-kbd-hint\">深浅色用顶栏太阳按钮切换</span></div>" +
+          '<div class="kb-skin-grid kb-pref-skins">' + window.KB_SKINS.map(function (s) {
+            // 双色点用模板字面量整段注入（check_dangling_tokens 的正则不识别跨字符串拼接的 style 值）
+            return `<button type="button" class="kb-skin-card${s.id === curSkin ? " on" : ""}" data-skin="${util.esc(s.id)}">
+              <span class="kb-skin-dot" style="--sd-a:${s.a};--sd-b:${s.b}"></span>
+              <span><b>${util.esc(s.name)}</b><i>${util.esc(s.desc)}</i></span></button>`;
+          }).join("") + "</div>";
+      }
+      var row = function (id, label, min, max, step, val, fmt) {
+        return '<div class="kb-pref-row">' +
+          '<label for="kb-pref-' + id + '">' + label + "</label>" +
+          '<input type="range" id="kb-pref-' + id + '" min="' + min + '" max="' + max + '" step="' + step + '" value="' + val + '">' +
+          '<output id="kb-pref-' + id + '-o">' + fmt(val) + "</output></div>";
+      };
+      var f2 = function (v) { return Number(v).toFixed(2); };
+      var px = function (v) { return v + "px"; };
+      return skinSec +
+        '<div class="kb-pref-head">' + util.icon("i-toc-list", 14) + "阅读排版</div>" +
         '<div class="kb-pref-row">' +
         '  <label for="kb-pref-scale">正文字号</label>' +
         '  <input type="range" id="kb-pref-scale" min="0.85" max="1.6" step="0.05" value="' + p.scale + '">' +
-        '  <output id="kb-pref-scale-o">' + p.scale.toFixed(2) + '×</output>' +
+        '  <output id="kb-pref-scale-o">' + f2(p.scale) + '×</output>' +
         "</div>" +
         '<div class="kb-pref-row">' +
         '  <label for="kb-pref-line">行高</label>' +
         '  <input type="range" id="kb-pref-line" min="1.3" max="2.4" step="0.05" value="' + p.line + '">' +
-        '  <output id="kb-pref-line-o">' + p.line.toFixed(2) + "</output>" +
+        '  <output id="kb-pref-line-o">' + f2(p.line) + "</output>" +
         "</div>" +
         '<div class="kb-pref-row">' +
         '  <label for="kb-pref-font">正文字体</label>' +
         '  <select id="kb-pref-font">' + opt("sans", "无衬线（默认）") + opt("serif", "衬线 Georgia") + opt("mono", "等宽") + "</select>" +
         '  <output aria-hidden="true"></output>' +
         "</div>" +
+        '<div class="kb-pref-head">' + util.icon("i-md-h1", 14) + "标题与代码</div>" +
+        row("h1s", "一级标题", 1.2, 2.4, 0.05, p.h1s, f2) +
+        row("h2s", "二级标题", 1.0, 1.8, 0.05, p.h2s, f2) +
+        row("h3s", "三级标题", 0.9, 1.5, 0.02, p.h3s, f2) +
+        row("code", "代码字号", 11, 17, 1, p.code, px) +
+        '<div class="kb-pref-row">' +
+        '  <label for="kb-pref-halign">一级标题</label>' +
+        '  <select id="kb-pref-halign">' +
+        '<option value="center"' + (p.halign === "center" ? " selected" : "") + ">居中</option>" +
+        '<option value="left"' + (p.halign === "left" ? " selected" : "") + ">居左</option></select>" +
+        '  <output aria-hidden="true"></output>' +
+        "</div>" +
         '<div class="kb-pref-foot">' +
         '  <button type="button" class="mbtn ghost" id="kb-pref-reset">恢复默认</button>' +
-        '  <span class="kb-pref-note">只影响正文排版；主题仍走右上角的白天 / 夜间切换</span>' +
+        '  <span class="kb-pref-note">偏好存 localStorage，不写语料文件</span>' +
         "</div>";
     },
     /** 绑定面板内控件（每次显示面板时调用一次，幂等） */
     bindPanel: function (root) {
       if (!root || root.dataset.bound) return;
       root.dataset.bound = "1";
-      var scale = root.querySelector("#kb-pref-scale");
-      var line = root.querySelector("#kb-pref-line");
+      var slider = function (id, key, fmt) {
+        var el = root.querySelector("#kb-pref-" + id);
+        if (!el) return;
+        el.addEventListener("input", function () {
+          var o = root.querySelector("#kb-pref-" + id + "-o");
+          if (o) o.textContent = fmt(el.value);
+          var patch = {}; patch[key] = Number(el.value);
+          prefs.set(patch);
+        });
+      };
+      slider("scale", "scale", function (v) { return Number(v).toFixed(2) + "×"; });
+      slider("line", "line", function (v) { return Number(v).toFixed(2); });
+      slider("h1s", "h1s", function (v) { return Number(v).toFixed(2); });
+      slider("h2s", "h2s", function (v) { return Number(v).toFixed(2); });
+      slider("h3s", "h3s", function (v) { return Number(v).toFixed(2); });
+      slider("code", "code", function (v) { return v + "px"; });
       var font = root.querySelector("#kb-pref-font");
-      if (scale) scale.addEventListener("input", function () {
-        root.querySelector("#kb-pref-scale-o").textContent = Number(scale.value).toFixed(2) + "×";
-        prefs.set({ scale: Number(scale.value) });
-      });
-      if (line) line.addEventListener("input", function () {
-        root.querySelector("#kb-pref-line-o").textContent = Number(line.value).toFixed(2);
-        prefs.set({ line: Number(line.value) });
-      });
       if (font) font.addEventListener("change", function () { prefs.set({ font: font.value }); });
+      var halign = root.querySelector("#kb-pref-halign");
+      if (halign) halign.addEventListener("change", function () { prefs.set({ halign: halign.value }); });
+      var skins = root.querySelector(".kb-pref-skins");
+      if (skins) skins.addEventListener("click", function (e) {
+        var card = e.target.closest(".kb-skin-card");
+        if (!card || !window.applySkin) return;
+        window.applySkin(card.dataset.skin);
+        skins.querySelectorAll(".kb-skin-card").forEach(function (x) { x.classList.toggle("on", x === card); });
+      });
       var reset = root.querySelector("#kb-pref-reset");
       if (reset) reset.addEventListener("click", function () {
         var d = prefs.reset();
-        if (scale) { scale.value = d.scale; root.querySelector("#kb-pref-scale-o").textContent = d.scale.toFixed(2) + "×"; }
-        if (line) { line.value = d.line; root.querySelector("#kb-pref-line-o").textContent = d.line.toFixed(2); }
-        if (font) font.value = d.font;
+        root.querySelectorAll("input[type=range]").forEach(function (el) {
+          var key = el.id.replace("kb-pref-", "");
+          if (d[key] != null) el.value = d[key];
+        });
+        var so = root.querySelector("#kb-pref-scale-o"); if (so) so.textContent = d.scale.toFixed(2) + "×";
+        var lo = root.querySelector("#kb-pref-line-o"); if (lo) lo.textContent = d.line.toFixed(2);
+        var h1 = root.querySelector("#kb-pref-h1s-o"); if (h1) h1.textContent = d.h1s.toFixed(2);
+        var h2 = root.querySelector("#kb-pref-h2s-o"); if (h2) h2.textContent = d.h2s.toFixed(2);
+        var h3 = root.querySelector("#kb-pref-h3s-o"); if (h3) h3.textContent = d.h3s.toFixed(2);
+        var co = root.querySelector("#kb-pref-code-o"); if (co) co.textContent = d.code + "px";
+        var f = root.querySelector("#kb-pref-font"); if (f) f.value = d.font;
+        var ha = root.querySelector("#kb-pref-halign"); if (ha) ha.value = d.halign;
         util.toast("阅读偏好已恢复默认");
       });
     }
@@ -474,7 +544,8 @@
     root.classList.toggle("mode-pref", palette.mode === "readpref");
     if (pref) pref.hidden = palette.mode !== "readpref";
     if (palette.mode === "readpref") {
-      pref.innerHTML = '<div class="kb-pref-head">' + util.icon("i-palette", 14) + "阅读偏好</div>" + prefs.panelHTML()
+      /* 2026-09-20：设置面板扩容，各分区标题（界面风格/阅读排版/标题与代码）由 panelHTML 自带 */
+      pref.innerHTML = prefs.panelHTML()
         + '<div class="kb-pref-head">' + util.icon("i-kbd-cmd", 14) + '快捷键<span class="kb-pref-kbd-hint">随时按 ? 唤出完整帮助</span></div>'
         + '<div class="kb-keys-list">' + HELP_HTML.map(function (r) {
             return '<div class="kb-help-row"><kbd>' + util.esc(r[0]) + "</kbd><span>" + util.esc(r[1]) + "</span></div>";
