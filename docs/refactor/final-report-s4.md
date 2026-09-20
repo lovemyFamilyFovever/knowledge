@@ -276,3 +276,9 @@
 
 - 6d3ee72 docs: 二期拆分[S4]——01-测试基础 (枢纽+5子词条)
 
+## §S4 · 02-测试工具（枢纽+3子词条 · 清 Playwright/Cypress pending-merge）
+
+工具选型枢纽(1745，"工具→用途→归口"表)+3 net-new 子词条 `单元测试框架`(pytest·JUnit5·Jest·Mocha+Chai/发现·断言·fixture·参数化·mock·CI)/`Postman 与接口测试`(Collection·Tests脚本·Environment·Runner+Newman CI·只验接口形状)/`测试数据与环境管理`(夹具·工厂·种子·隔离重置脱敏·本地/CI/临时容器/类生产·治 flaky 地基)；浏览器工具(Selenium/Cypress/Playwright)归口 [[Playwright 与 Cypress]][[E2E 测试]]、JMeter 归口 [[性能测试]]、Mockito/Mock.js 归口 [[断言与测试替身]]——均双链不重复。**清 [[Playwright 与 Cypress]] 行 pending-merge**(02 三节已删)。踩坑：4 条🎯(198/179/183/162)全需精简；提交首跑 pre-commit 崩在 OpenBLAS 内存分配失败(RAG 模型加载 OOM、非代码失败)，**未 --no-verify**、文件仍暂存，原样重试一次即全绿落库。6 篇 strict 全 PASS、0 悬空。提交 CLEAN。**hash**：
+
+- 55c68cb docs: 二期拆分[S4]——02-测试工具 (枢纽+3子词条，清 Playwright/Cypress pending-merge)
+
