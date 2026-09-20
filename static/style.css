@@ -400,8 +400,8 @@ main.single{display:flex;flex-direction:column}
   font-family:var(--f-mono);font-size:11px;color:var(--muted);flex-wrap:wrap;row-gap:6px}
 .crumb b{color:var(--c-acc);font-weight:600;flex:0 1 auto;min-width:0;letter-spacing:.02em}
 .crumb .sep{color:var(--faint)}
-/* crumb 右端标签行（2026-09-20 头部瘦身：元信息 chips 撤下，标签并入按钮组前） */
-.crumb-tags{display:flex;align-items:center;gap:6px;flex-wrap:nowrap;min-width:0;max-width:42vw;overflow-x:auto;scrollbar-width:none;margin-right:10px}
+/* crumb 左端标签行（2026-09-20：标签簇放最左，操作组靠右） */
+.crumb-tags{display:flex;align-items:center;gap:6px;flex-wrap:nowrap;min-width:0;max-width:42vw;overflow-x:auto;scrollbar-width:none}
 .crumb-tags::-webkit-scrollbar{display:none}
 .crumb-tags .chip,.crumb-tags .chips-in{flex:0 0 auto}
 .crumb .spacer{flex:1}

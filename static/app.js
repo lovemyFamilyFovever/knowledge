@@ -1318,8 +1318,7 @@ function renderCrumb() {
     `<button class="seg-btn danger" onclick="deleteDoc()" title="移入 content/_trash/">${icon("trash",13)} 删除</button>`,
     `<button class="seg-btn" onclick="jumpToTagEdit()" title="编辑本篇标签（右栏信息·标签页）">${icon("tag-outline",13)} 标签</button>`);
   if (libExt) segs.push(`<a class="seg-btn" id="kb-lib-dl" href="${rawUrl(DOC.rel)}" download="${esc(DOC.name || "文件")}" title="下载原文件">${icon("download", 13)} 下载</a>`);
-  crumb.innerHTML = `<span class="spacer"></span>
-    <span class="crumb-tags" id="crumb-tags"></span>
+  crumb.innerHTML = `<span class="crumb-tags" id="crumb-tags"></span><span class="spacer"></span>
     ${segs.length ? `<span class="seg-group">${segs.join("")}</span>` : ""}
     <button class="iconbtn primary ${DOC.favorite ? "faved" : ""}" id="fav-btn" onclick="toggleFav()">${icon("star",13)} ${DOC.favorite ? "已收藏" : "收藏"}</button>`;
   renderHeadChips();

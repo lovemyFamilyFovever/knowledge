@@ -41,8 +41,8 @@
     {# ============ 读数头（方案 B，2026-09-20 用户拍板：次级动作合并进白底分段药丸组，
        收藏独立为主按钮；标签 chips 由 JS renderHeadChips 填 #crumb-tags） ============ #}
     <div class="crumb" id="crumb">
-      <span class="spacer"></span>
       <span class="crumb-tags" id="crumb-tags"></span>
+      <span class="spacer"></span>
       <span class="seg-group">
       {% if doc.has_html and not doc.is_html %}<button class="seg-btn" id="kb-md-src-btn" onclick="toggleMdSource()" title="在美化版 / Markdown 源之间切换"><svg class="i i-12"><use href="#i-file-md"/></svg> Markdown 源</button>{% endif %}
       {% if doc.has_html %}<a class="seg-btn" href="/raw/{{ doc.html_rel }}" target="_blank" title="新标签页打开美化版"><svg class="i i-12"><use href="#i-external-link"/></svg> 新标签页</a>{% endif %}
