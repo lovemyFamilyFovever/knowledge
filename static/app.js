@@ -1307,16 +1307,21 @@ function renderCrumb() {
   /* 书库格式（txt/pdf/xlsx/epub）：下载按钮统一并入本行最右（用户要求） */
   const libExt = (DOC.name || "").match(/\.(txt|pdf|xlsx|epub)$/i);
   /* 用户要求（2026-09-20 头部瘦身）：crumb 左端分类徽章/状态/收录/体积 chips 全部撤下——
-     分类路径与元信息统一并入底部状态栏（updateStatusBarPath），标签 chips 并入本行右端按钮组前。 */
+     分类路径与元信息统一并入底部状态栏（updateStatusBarPath），标签 chips 并入本行右端按钮组前。
+     方案 B（用户拍板）：次级动作（Markdown 源/新标签页/编辑/删除/标签/下载）合并进一个
+     白底分段药丸组，收藏作为唯一实心主按钮独立在外。 */
+  const segs = [];
+  if (canSwitchToMd) segs.push(`<button class="seg-btn" id="kb-md-src-btn" onclick="toggleMdSource()" title="在美化版 / Markdown 源之间切换">${MD_SRC_ON ? icon("preview-eye", 13) + " 美化版" : icon("file-md", 13) + " Markdown 源"}</button>`);
+  if (DOC.has_html) segs.push(`<a class="seg-btn" href="${rawUrl(DOC.is_html ? DOC.rel : DOC.html_rel)}" target="_blank" title="新标签页打开美化版">${icon("external-link", 13)} 新标签页</a>`);
+  if (!DOC.is_html) segs.push(
+    `<button class="seg-btn" onclick="openEditor()">${icon("edit",13)} 编辑</button>`,
+    `<button class="seg-btn danger" onclick="deleteDoc()" title="移入 content/_trash/">${icon("trash",13)} 删除</button>`,
+    `<button class="seg-btn" onclick="jumpToTagEdit()" title="编辑本篇标签（右栏信息·标签页）">${icon("tag-outline",13)} 标签</button>`);
+  if (libExt) segs.push(`<a class="seg-btn" id="kb-lib-dl" href="${rawUrl(DOC.rel)}" download="${esc(DOC.name || "文件")}" title="下载原文件">${icon("download", 13)} 下载</a>`);
   crumb.innerHTML = `<span class="spacer"></span>
     <span class="crumb-tags" id="crumb-tags"></span>
-    ${canSwitchToMd ? `<button class="iconbtn" id="kb-md-src-btn" onclick="toggleMdSource()" title="在美化版 / Markdown 源之间切换">${MD_SRC_ON ? icon("preview-eye", 13) + " 美化版" : icon("file-md", 13) + " Markdown 源"}</button>` : ""}
-    ${DOC.has_html ? `<a class="iconbtn" href="${rawUrl(DOC.is_html ? DOC.rel : DOC.html_rel)}" target="_blank" title="新标签页打开美化版">${icon("external-link", 13)} 新标签页</a>` : ""}
-    ${!DOC.is_html ? `<button class="iconbtn" onclick="openEditor()">${icon("edit",13)} 编辑</button>
-    <button class="iconbtn" onclick="deleteDoc()" title="移入 content/_trash/">${icon("trash",13)} 删除</button>
-    <button class="iconbtn" onclick="jumpToTagEdit()" title="编辑本篇标签（右栏信息·标签页）">${icon("tag-outline",13)} 标签</button>` : ""}
-    <button class="iconbtn primary ${DOC.favorite ? "faved" : ""}" id="fav-btn" onclick="toggleFav()">${icon("star",13)} ${DOC.favorite ? "已收藏" : "收藏"}</button>
-    ${libExt ? `<a class="iconbtn" id="kb-lib-dl" href="${rawUrl(DOC.rel)}" download="${esc(DOC.name || "文件")}" title="下载原文件">${icon("download", 13)} 下载</a>` : ""}`;
+    ${segs.length ? `<span class="seg-group">${segs.join("")}</span>` : ""}
+    <button class="iconbtn primary ${DOC.favorite ? "faved" : ""}" id="fav-btn" onclick="toggleFav()">${icon("star",13)} ${DOC.favorite ? "已收藏" : "收藏"}</button>`;
   renderHeadChips();
 }
 
@@ -1425,7 +1430,7 @@ function buildChipsRow() {
     : ""}</span>`).join("");
   return [
     tagChips,
-    editable ? `<button type="button" class="iconbtn chips-add" onclick="chipsAddToggle()" title="添加标签">${icon("tag-outline", 13)} + 标签</button>` : "",
+    editable ? `<button type="button" class="chips-add" onclick="chipsAddToggle()" title="添加标签">＋ 标签</button>` : "",
   ].filter(Boolean).join("");
 }
 
@@ -2023,7 +2028,7 @@ async function deleteDoc() {
   });
   if (!c) return;
   // 问题2：悲观更新——先等 /api/delete 落盘，成功后才动 UI 与树缓存；失败保持原状。
-  const delBtns = [...document.querySelectorAll("#crumb .iconbtn, #ed-del")].filter(b => b.textContent.includes("删除") || b.id === "ed-del");
+  const delBtns = [...document.querySelectorAll("#crumb .iconbtn, #crumb .seg-btn, #ed-del")].filter(b => b.textContent.includes("删除") || b.id === "ed-del");
   delBtns.forEach(b => { b.disabled = true; });
   let r;
   try {
