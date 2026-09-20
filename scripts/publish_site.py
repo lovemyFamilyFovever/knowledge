@@ -1,6 +1,6 @@
 """把 content/ 白名单子集同步到公开站仓（Quartz）的 content/ 目录。
 
-发布契约：仅排除 漫画/ 与 projects/ 两棵目录（外加 _ 前缀系统目录），
+发布契约：排除 漫画/、projects/、小说/ 三棵目录（外加 _ 前缀系统目录），
 其余语料一律公开。同步为镜像式（多余文件会被清除），并对排除目录做
 双重断言——任何情况下排除项不得出现在目标仓。
 
@@ -19,7 +19,8 @@ ROOT = Path(__file__).resolve().parents[1]
 SRC = ROOT / "content"
 DEFAULT_DEST = ROOT.parent / "knowledge-site" / "content"
 
-EXCLUDE_DIRS = {"漫画", "projects"}
+# 小说/ 实为盗版 epub/txt 书库与成人同人（2026-09-20 发布核查发现），公开 = DMCA 风险，禁发
+EXCLUDE_DIRS = {"漫画", "projects", "小说"}
 PUBLISH_SUFFIXES = {".md", ".html"}
 ASSET_SUFFIXES = {
     ".png",
@@ -89,7 +90,7 @@ def main() -> int:
         for src, rel in files.items()
         if rel in existing and src.stat().st_mtime > (dest / rel).stat().st_mtime
     }
-    to_prune = sorted(existing - rels)
+    to_prune = sorted(existing - rels - {Path("index.md")})  # index.md 为脚本自管的落地页
 
     print(f"目标: {dest}")
     print(f"源文件 {len(files)}｜新增 {len(to_copy)}｜刷新 {len(to_refresh)}｜清除 {len(to_prune)}")

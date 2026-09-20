@@ -28,7 +28,10 @@ python tests\test_learn.py                     # 学习系统 smoke（203 断言
 python tests\test_rag.py                       # RAG smoke（缺依赖自动 SKIP）
 python scripts\rag_search.py "查询" --json     # 语义检索 CLI / Agent 入口
 python scripts\govern_tags.py census|similar|merge|rename-sub   # 标签治理（merge/rename-sub 先预览后 --apply；详见 --help）
+python scripts\publish_site.py [--dry-run]   # 发布管线：白名单同步 content/ → 本地 Quartz 站仓（E:\GitHub\knowledge-site），排除 漫画/projects/小说
 ```
+
+> 站仓本地预览：`cd E:\GitHub\knowledge-site && npx quartz build --serve`；站仓是公开面，动它之前先读 `scripts/publish_site.py` 的排除契约（小说/=盗版书库，永不发布）。
 
 > 历史脚本 `start-rag.bat` / `start-dev.bat` 已于 2026-09-13 并入 `start.bat`
 
