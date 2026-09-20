@@ -45,9 +45,9 @@ python scripts\publish_site.py [--dry-run]   # 发布管线：白名单同步 co
 - 设计基准与决策：渐变条按标题 hash 稳定取色、代码浅底+单色高亮、`##` 分组（原 docs 渲染重构落地方案已执行完毕并删除，决策记录在本节与 git 历史）。
 > （RAG 依赖装进哪个解释器，哪个解释器启动就带语义检索；开发模式走 `--dev` 参数）。
 
-## 工具与临时产物（`scripts/agent/` 进 git；`.workbuddy/` 不进 git）
+## 工具与临时产物（`scripts/agent/` 进 git；`.qa/` 不进 git）
 
-Agent 的**常驻工具脚本**统一收在 `scripts/agent/`（2026-09-18 从 `.workbuddy/` 收编，进 git、跨机器复用；旧 handoff 里出现的 `.workbuddy/shot.mjs` 等路径一律按新位置理解）。`.workbuddy/` 从此只放**一次性诊断产物**，不进 git，用完即删（约定：验证类脚本不要落盘 txt 输出，直接看 stdout）。
+Agent 的**常驻工具脚本**统一收在 `scripts/agent/`（2026-09-18 从旧临时目录收编，进 git、跨机器复用；旧 handoff 里出现的 `.workbuddy/shot.mjs` 等路径一律按新位置理解）。`.qa/`（2026-09-20 由 `.workbuddy/` 改名——旧名带别家产品色彩，用户要求中性命名）只放**一次性诊断产物与 QA 存档**，不进 git，一次性 txt 用完即删（约定：验证类脚本不要落盘 txt 输出，直接看 stdout）。
 
 | 常驻工具 | 用途 |
 |------|------|
@@ -61,14 +61,15 @@ Agent 的**常驻工具脚本**统一收在 `scripts/agent/`（2026-09-18 从 `.
 两个 scan 脚本的扫描根默认按脚本位置推导到仓库根下的 `content/`（不再写死盘符），传 argv[1] 可覆盖。
 
 **UI 回归纪律（2026-09-18 起，ImageMagick 已装）**：改动 UI（css/js 模板/渲染逻辑）后，除 smoke 截图外，对受影响页面执行
-1. 改前基线已留在 `.workbuddy/qa-shots/` 时：`node scripts/agent/imgdiff.mjs 基线.png 新.png`（默认 2% 容差）；
+1. 改前基线已留在 `.qa/qa-shots/` 时：`node scripts/agent/imgdiff.mjs 基线.png 新.png`（默认 2% 容差）；
 2. 无基线则先 `shot.mjs` 补拍明暗两态入档；
 3. 差异热图里出现**不该变的区域变红** = 改 A 崩 B，修完再交。动效/图表时序造成的细碎噪点用调大 fuzz 抑制（如 `imgdiff a b 5%`），不要为过 diff 把真回归糊掉。
 
-| 临时产物（`.workbuddy/`） | 用途 |
+| 临时产物（`.qa/`） | 用途 |
 |------|------|
-| `.workbuddy/qa-shots/` | QA 截图存档（编号递增，对照 UI 改动历史） |
-| `.workbuddy/memory/` | 跨会话工作日志：日期命名的坑与结论，接手前先读最新一篇 |
+| `.qa/qa-shots/` | QA 截图存档（编号递增，对照 UI 改动历史） |
+| `.qa/ui-demo/` | UI 改版多方案 demo 稿（HTML 可交互 + 整页截图） |
+| `.qa/memory/` | 跨会话工作日志：日期命名的坑与结论，接手前先读最新一篇 |
 
 注意：**bat 脚本一律全英文**（cmd 对 UTF-8 中文 rem/echo 会切碎执行）；**测 bat 必须用干净 PowerShell**，Agent 的 bash shim 会污染 PATH 导致误判。
 
