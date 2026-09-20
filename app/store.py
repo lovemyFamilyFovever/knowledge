@@ -313,7 +313,9 @@ def _tree_sig(content: Path) -> str:
     """仅 stat 不读内容的树签名：毫秒级，作为扫描/索引缓存的失效依据。
     含文件清单（含删除），比单纯 max(mtime) 更可靠：删除也能立即感知。
     第三轮 #6：目录也纳入签名 —— 此前只计文件，新建空目录签名不变，
-    scan 缓存不失效，导致新建子目录后左侧树不显示、删除空目录后树仍残留。"""
+    scan 缓存不失效，导致新建子目录后左侧树不显示、删除空目录后树仍残留。
+    taxonomy.json 的 mtime 同样并入：walk 跳过 _ 前缀目录，外部改分类 JSON
+    （如删显示别名）若不进签名，运行中的服务器会一直吐旧 label 的树。"""
     parts = []
     for dirpath, dirnames, filenames in os.walk(content):
         dirnames[:] = [d for d in dirnames if d not in SKIP_DIRS and not d.startswith("_")]
@@ -326,6 +328,10 @@ def _tree_sig(content: Path) -> str:
             if fn.endswith((".md", ".html")):
                 p = Path(dirpath) / fn
                 parts.append(f"{p.relative_to(content).as_posix()}:{p.stat().st_mtime_ns}")
+    try:
+        parts.append(f"_tax:{(content / '_meta' / 'taxonomy.json').stat().st_mtime_ns}")
+    except OSError:
+        pass
     return "|".join(parts)
 
 

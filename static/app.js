@@ -2953,11 +2953,14 @@ async function renameSubPrompt(dom, sub) {
   });
   if (!res || !res.nm) return;
   const nn = res.nm.trim();
-  if (nn === sub) return;
   const r = await fetch("/api/rename-sub", { method: "POST", headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ domain: dom, sub, new: nn }) });
   const d = await r.json().catch(() => ({}));
   if (!r.ok || !d.ok) { toast("重命名失败：" + (d.error || r.status)); return; }
+  if (d.alias_only) {
+    toast(`已清除显示别名「${esc(d.dropped_alias)}」，目录改以本名 <span class='mono'>${esc(nn)}</span> 显示`);
+    await afterMutation(); return;
+  }
   toast(`已重命名为 <span class='mono'>${esc(dom)}/${esc(nn)}</span> · 索引已级联更新`);
   if (CUR && CUR.domain === dom && CUR.sub === sub) {
     invalidate("all"); location.href = `/browse/${encodeURIComponent(dom)}/${encodeURIComponent(nn)}`; return;

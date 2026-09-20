@@ -265,6 +265,30 @@ def api_rmdir():
     return jsonify({"ok": True, "removed": f"{dom}/{sub}"})
 
 
+def _drop_sub_alias(content, dom: str, sub: str):
+    """new==sub 的改名请求：删掉 taxonomy.json 里该子域的显示别名（scoped 与
+    普通键都清），侧栏随即回显目录本名。无别名可删时维持旧 400 语义。"""
+    from app.store import sub_label, load_taxonomy
+    tax_path = content / "_meta" / "taxonomy.json"
+    label = sub_label(load_taxonomy(content), dom, sub)
+    if label == sub or not tax_path.is_file():
+        return jsonify({"ok": False, "error": "新旧目录名相同"}), 400
+    try:
+        tax = json.loads(tax_path.read_text(encoding="utf-8"))
+        subs = tax.get("subs", {})
+        subs.pop(f"{dom}/{sub}", None)
+        subs.pop(sub, None)
+        tax["subs"] = subs
+        tax_path.write_text(json.dumps(tax, ensure_ascii=False, indent=2) + "\n",
+                            encoding="utf-8")
+    except (OSError, ValueError) as e:
+        return jsonify({"ok": False, "error": f"taxonomy 写入失败：{e}"}), 500
+    from app.store import _TAX_CACHE
+    _TAX_CACHE.clear()
+    return jsonify({"ok": True, "renamed": f"{dom}/{sub}", "to": f"{dom}/{sub}",
+                    "alias_only": True, "dropped_alias": label, "n_docs": 0})
+
+
 @files_bp.post("/api/rename-sub")
 def api_rename_sub():
     """第三轮 #1：目录重命名（含 _root 收拢）。store.rename_sub 逐文档搬移
@@ -284,7 +308,10 @@ def api_rename_sub():
     if not new:
         return jsonify({"ok": False, "error": "新目录名不能为空"}), 400
     if new == sub:
-        return jsonify({"ok": False, "error": "新旧目录名相同"}), 400
+        # 改名到目录自身名字 = 清除 taxonomy 显示别名，让侧栏回显目录名。
+        # 旧行为是直接 400（前端还会静默 return），用户在显示名≠目录名时
+        # （如 projects/AI金 别名"项目复盘"）永远改不动名。
+        return _drop_sub_alias(content, dom, sub)
     src_dir = content / dom / (sub if sub != "_root" else "")
     dst_dir = content / dom / new
     if not src_dir.is_dir():
