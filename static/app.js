@@ -577,11 +577,11 @@ function renderArticle(forceMd) {
     mountHtmlDoc(el.querySelector("#html-render"), rawHref, DOC.title).then(() => buildToc());
   } else {
     /* 2026-09-20 头部瘦身：.a-chips 元信息行撤销（标签已并入 crumb 右端）；
-       正文自带 H1 时不再重复渲染 .a-title 小标题。 */
+       正文自带 H1 时不再重复渲染 .a-title 小标题——.a-rule 分隔线同批撤掉
+       （它是配小标题用的，正文 H1 自带绿色下划线，留着就是凭空多一条灰线）。 */
     const bodyHtml = DOMPurify.sanitize(renderMarkdownSafe(DOC.md), { FORBID_TAGS: ['style', 'iframe', 'form', 'script'], ADD_ATTR: ['target'] });
     const hasH1 = /^\s*<h1[\s>]/i.test(bodyHtml);
-    el.innerHTML = `${hasH1 ? "" : `<h1 class="a-title">${esc(DOC.title)}</h1>`}
-      <div class="a-rule"></div>
+    el.innerHTML = `${hasH1 ? "" : `<h1 class="a-title">${esc(DOC.title)}</h1><div class="a-rule"></div>`}
       <div class="a-body">${bodyHtml}</div>
       <div class="kb-finish-bar" id="kb-finish-bar">
         <span class="kb-finish-q">读完这篇了？</span>
