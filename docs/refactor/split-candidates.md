@@ -51,7 +51,7 @@
 - 本轮再扩展到行为型：二期拆 `行为型模式` 时新立 [[观察者模式]]、[[策略模式]]、[[模板方法模式]]，与音频课 `### 3 观察者 / ### 4 策略 / ### 8 模板方法` 三节重叠，一并改双链。
 - 已登记：共八条先行立条已在 `docs/refactor/status/s4.md` 对应新词条行标 `pending-merge: programming-languages/编程概念音频课-设计模式.md`（单例、工厂、装饰器、适配器、代理、观察者、策略、模板方法）；该音频课恰好覆盖这 8 个 GoF 模式，拆分时全部改双链、不新建，pending-merge 清完前该音频课不得判 done。
 
-**8. `developer-skills/敏捷项目管理实战.md` 拆出的敏捷术语 ↔ `software-engineering/01-开发流程.md`、`05-项目管理.md`**（预案：改双链，不新建）✅01 部分已执行（2026-09-20），05 待拆
+**8. `developer-skills/敏捷项目管理实战.md` 拆出的敏捷术语 ↔ `software-engineering/01-开发流程.md`、`05-项目管理.md`**（预案：改双链，不新建）✅已执行（2026-09-20，01 与 05 两侧均收敛，本对整体闭环）
 - 冲突：敏捷实战拆出 [[敏捷宣言与原则]][[Scrum框架]][[看板方法]][[用户故事与敏捷估算]][[需求梳理与优先级]][[迭代与回顾]]；而 pending 的 `01-开发流程.md` 有 敏捷/Scrum/Kanban/Sprint/用户故事/验收/故事点/计划扑克/站会/回顾/产品待办 诸节、`05-项目管理.md` 有 看板/需求管理 等节——同一批敏捷/管理概念三处归口。
 - 裁决：本汇编(敏捷项目管理实战)是这些概念最完整的实操源，故立为**归口**；`01-开发流程`、`05-项目管理` 拆分时**删除**对应重叠节、改双链指向上述 6 条 developer-skills 词条，仅保留各自独有的其余术语(瀑布/里程碑/Jira/OKR/RACI 等)独立成篇或留枢纽。
 - 已登记：6 条先行立条在 `docs/refactor/status/s4.md` 标 `pending-merge: software-engineering/01-开发流程.md`；轮到拆 01-开发流程 时逐条清。
@@ -209,7 +209,7 @@
 | content/baike/software-engineering/02-版本控制.md | 14 | s4 | 3948 | 三区模型、add·commit·push、分支、merge、rebase、冲突、PR·MR、CodeReview、Hooks、GitFlow、主干开发、cherry-pick、stash | 术语汇编（14 def 卡、9 围栏）：三区模型/add·commit·push/分支/merge/rebase/冲突/PR·MR/CodeReview/Hooks/GitFlow/主干开发/cherry-pick/stash，与 Git 词条重叠 → 按命令与概念各拆词条 | done（2026-09-20 二期拆分：纯收敛枢纽页 0 新子词条——14 术语全双链既有 done 专条 [[版本控制与Git深入]][[Git高级用法]][[代码评审]]，无独立未承载概念故不新建，避免薄词条） |
 | content/baike/software-engineering/03-代码质量.md | 13 | s4 | 3282 | 规范、linter、CodeReview、重构、技术债、圈复杂度、SOLID、DRY、KISS、YAGNI、CleanCode、代码异味 | 术语汇编（13 def 卡）：规范/linter/CodeReview/重构/技术债/圈复杂度/SOLID/DRY/KISS/YAGNI/CleanCode/代码异味，重构·技术债务·代码评审已有专文需去重 → 按主题各拆词条 | done（2026-09-19 枢纽页 + 圈复杂度/代码异味/Clean Code 原则 3 子词条，见去重队列第 2 对） |
 | content/baike/software-engineering/04-CI CD.md | 14 | s4 | 3659 | CI、持续交付、持续部署、流水线、自动化测试、Jenkins、GitHubActions、GitLabCI、制品、环境、蓝绿、金丝雀、滚动更新、特性开关 | 术语汇编（14 def 卡）：CI/持续交付/持续部署/流水线/自动化测试/Jenkins/GitHubActions/GitLabCI/制品/环境/蓝绿/金丝雀/滚动更新/特性开关，与 devops 蓝绿部署重叠 → 按主题各拆词条 | done（2026-09-19 枢纽页 + 2 子词条：CI 与 CD、构建流水线与 CI-CD 工具） |
-| content/baike/software-engineering/05-项目管理.md | 13 | s4 | 3078 | Jira、看板、燃尽图、燃起图、里程碑、需求管理、Bug生命周期、发布计划、风险管理、干系人、RACI、OKR、KPI | 术语汇编（13 def 卡）：Jira/看板/燃尽图/燃起图/里程碑/需求管理/Bug生命周期/发布计划/风险管理/干系人/RACI/OKR/KPI → 按术语各拆词条 | pending |
+| content/baike/software-engineering/05-项目管理.md | 13 | s4 | 3078 | Jira、看板、燃尽图、燃起图、里程碑、需求管理、Bug生命周期、发布计划、风险管理、干系人、RACI、OKR、KPI | 术语汇编（13 def 卡）：Jira/看板/燃尽图/燃起图/里程碑/需求管理/Bug生命周期/发布计划/风险管理/干系人/RACI/OKR/KPI → 按术语各拆词条 | done（2026-09-20 二期拆分：枢纽页 + 5 net-new 子词条〔燃尽图与燃起图/OKR与KPI/里程碑与发布计划/缺陷生命周期与风险管理/干系人管理与RACI〕；看板/需求管理改双链归口 developer-skills [[看板方法]][[需求梳理与优先级]]→闭环去重第8对之05侧；Jira 作工具速览不立条） |
 | content/baike/testing/01 - 测试基础.md | 12 | s4 | 10044 | 测试金字塔、单元、集成、E2E、冒烟、回归、探索性、验收、断言、覆盖率、测试替身、TDD | 术语汇编：测试金字塔/单元/集成/E2E/冒烟/回归/探索性/验收/断言/覆盖率/测试替身/TDD 12 个独立测试概念（枢纽①对比表14行②子概念7），0 def 卡；正文 10044 ≫ 3400、21 围栏 ≫ 2/20 → 按概念各拆词条 | pending |
 | content/baike/testing/02 - 测试工具.md | 12 | s4 | 14217 | pytest、JUnit5、Jest、Mocha·Chai、Selenium、Cypress、Playwright、Postman、JMeter、Mockito、测试数据、环境管理 | 工具汇编：pytest/JUnit5/Jest/Mocha·Chai/Selenium/Cypress/Playwright/Postman/JMeter/Mockito/测试数据/环境管理 12 独立工具（①对比表7行②子概念5）；正文 14217、24 围栏 ≫ 上限 → 按工具各拆词条 | pending |
 | content/baike/testing/03 - 性能测试.md | 12 | s4 | 11513 | 性能测试类型、QPS、TPS、并发用户、响应时间百分位、吞吐量、JMeter、K6、Locust、报告解读、瓶颈分析、优化思路 | 性能主题汇编：性能测试类型/QPS/TPS/并发用户/响应时间百分位/吞吐量/JMeter/K6/Locust/报告解读/瓶颈分析/优化思路 12 子话题（①对比表12行②子概念6）；正文 11513、18 围栏 ≫ 3400 → 按主题各拆词条 | pending |
