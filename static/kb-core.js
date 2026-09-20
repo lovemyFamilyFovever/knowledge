@@ -347,7 +347,7 @@
         row("h3s", "三级标题", 0.9, 1.5, 0.02, p.h3s, f2) +
         row("code", "代码字号", 11, 17, 1, p.code, px) +
         '<div class="kb-pref-row">' +
-        '  <label for="kb-pref-halign">一级标题</label>' +
+        '  <label for="kb-pref-halign">标题对齐</label>' +
         '  <select id="kb-pref-halign">' +
         '<option value="center"' + (p.halign === "center" ? " selected" : "") + ">居中</option>" +
         '<option value="left"' + (p.halign === "left" ? " selected" : "") + ">居左</option></select>" +
@@ -428,9 +428,7 @@
     flat: [],          // 当前可见的扁平结果（供 ↑↓ 选择）
     sel: 0,
     open: false,
-    loading: false,
-    mode: "palette",   // 'palette' | 'readpref'
-    viaSettings: false // readpref 模式的来源：齿轮入口 true（ESC 直接关），命令面板内进入 false（ESC 回列表）
+    loading: false
   });
 
   function palRoot() { return document.getElementById("kb-palette"); }
@@ -507,7 +505,6 @@
   }
 
   function palHTML(items, q) {
-    if (palette.mode === "readpref") return "";
     if (!items.length) {
       return '<div class="kb-pal-empty">' + util.icon("i-search-magnifier", 18) +
         "<div>没有匹配「" + util.esc(q) + "」的术语 / 文档 / 命令</div></div>";
@@ -536,26 +533,10 @@
     var box = root.querySelector(".kb-pal-box");
     var input = root.querySelector("#kb-pal-input");
     var body = root.querySelector("#kb-pal-body");
-    var pref = root.querySelector("#kb-pref");
     if (!box || !body) return;
     var q = input ? input.value.trim() : "";
     root.classList.toggle("show", palette.open);
     box.setAttribute("aria-hidden", palette.open ? "false" : "true");
-    root.classList.toggle("mode-pref", palette.mode === "readpref");
-    if (pref) pref.hidden = palette.mode !== "readpref";
-    if (palette.mode === "readpref") {
-      /* 2026-09-20：设置面板扩容，各分区标题（界面风格/阅读排版/标题与代码）由 panelHTML 自带 */
-      pref.innerHTML = prefs.panelHTML()
-        + '<div class="kb-pref-head">' + util.icon("i-kbd-cmd", 14) + '快捷键<span class="kb-pref-kbd-hint">随时按 ? 唤出完整帮助</span></div>'
-        + '<div class="kb-keys-list">' + HELP_HTML.map(function (r) {
-            return '<div class="kb-help-row"><kbd>' + util.esc(r[0]) + "</kbd><span>" + util.esc(r[1]) + "</span></div>";
-          }).join("") + "</div>";
-      prefs.bindPanel(pref);
-      body.innerHTML = "";
-      var cnt = root.querySelector("#kb-pal-count");
-      if (cnt) cnt.textContent = "";
-      return;
-    }
     var items = filterItems(q);
     if (palette.sel >= items.length) palette.sel = items.length - 1;
     if (palette.sel < 0) palette.sel = items.length ? 0 : -1;
@@ -569,21 +550,11 @@
     }
   }
 
-  /* ESC 统一收口。同一事件会被 document 捕获层（keys.handle）与 input 的 keydown 各吃一次：
-     不去重时行为随焦点位置漂移——齿轮→ESC 恰好“先换列表再关闭”看起来正常；
-     齿轮→点空白（焦点落到 BODY）→ESC 只剩第一半，面板原地变成命令列表（用户报“凭空多出弹窗”，2026-09-17）。
-     语义：齿轮打开的设置面板 ESC 直接关；从命令面板执行「阅读偏好」进来的 ESC 退回命令列表。 */
+  /* ESC 统一收口（readpref 模式已随设置抽屉重构移除：命令面板只剩结果列表一种形态）。 */
   function palEscape(e) {
     if (e && e.__kbPalEsc) return;
     if (e) e.__kbPalEsc = true;
     if (!palette.open) return;
-    if (palette.mode === "readpref" && !palette.viaSettings) {
-      palette.mode = "palette";
-      palRender();
-      var inp = document.querySelector("#kb-pal-input");
-      if (inp) inp.focus();
-      return;
-    }
     palette.close();
   }
 
@@ -613,9 +584,8 @@
         return true;
       }
       if (key === "readpref") {
-        palette.mode = "readpref";
-        palRender();
-        return false; // 留在面板里
+        KB.settings.open();
+        return true; // 关命令面板，露出右侧设置抽屉
       }
       util.toast("未识别的命令：" + util.esc(key));
       return false;
@@ -670,7 +640,6 @@
       '    <kbd>Esc</kbd>' +
       "  </div>" +
       '  <div class="kb-pal-body" id="kb-pal-body" role="listbox" aria-label="命令面板结果"></div>' +
-      '  <div class="kb-pal-panel" id="kb-pref" hidden></div>' +
       '  <div class="kb-pal-foot"><span>↑↓ 选择 · Enter 执行 · Esc 关闭</span><span class="kb-pal-count" id="kb-pal-count"></span></div>' +
       "</div>";
     var input = root.querySelector("#kb-pal-input");
@@ -696,8 +665,6 @@
     palette.build();
     if (!palette.data) palLoad();
     palette.open = true;
-    palette.mode = "palette";
-    palette.viaSettings = false;
     palette.sel = 0;
     palRender();
     var input = document.querySelector("#kb-pal-input");
@@ -705,8 +672,6 @@
   };
   palette.close = function () {
     palette.open = false;
-    palette.mode = "palette";
-    palette.viaSettings = false;
     var root = palRoot();
     if (root) root.classList.remove("show");
     var input = document.querySelector("#kb-pal-input");
@@ -722,18 +687,50 @@
     try { localStorage.removeItem(LS_PAL); } catch (e) {}
   };
 
-  /* settings —— 顶栏齿轮按钮的全局设置入口：阅读偏好 + 快捷键速查。
-     复用命令面板的 readpref 模式，不另起一套弹层。 */
-  KB.settings = {
+  /* settings —— 右侧设置抽屉（2026-09-20 重构，参考 draw.io 属性面板形态）：
+     不再借命令面板的 readpref 模式；从右缘滑入、遮罩点击 / Esc / × 关闭。
+     分区（界面风格 / 阅读排版 / 标题与代码 / 快捷键）由 prefs.panelHTML 提供。 */
+  var settings = (KB.settings = {
+    _ov: null,
+    isOpen: false,
+    el: function () {
+      if (settings._ov) return settings._ov;
+      var ov = document.createElement("div");
+      ov.className = "kb-set-ov";
+      ov.innerHTML = '<aside class="kb-set-drawer" role="dialog" aria-modal="true" aria-label="设置">' +
+        '<div class="kb-set-h">' + util.icon("i-palette", 15) + "<b>设置</b>" +
+        '<button type="button" class="kb-set-x" aria-label="关闭设置">' + util.icon("i-cancel-x", 13) + "</button></div>" +
+        '<div class="kb-set-b" id="kb-set-body"></div></aside>';
+      document.body.appendChild(ov);
+      ov.addEventListener("click", function (e) {
+        if (e.target === ov) { settings.close(); return; }
+        if (e.target.closest && e.target.closest(".kb-set-x")) settings.close();
+      });
+      settings._ov = ov;
+      return ov;
+    },
     open: function () {
-      palette.show();
-      palette.viaSettings = true;  // 齿轮入口：ESC 直接关闭，不退回命令列表
-      palette.mode = "readpref";
-      palRender();
-      var input = document.querySelector("#kb-pal-input");
-      if (input) input.blur();
+      var ov = settings.el();
+      var body = ov.querySelector("#kb-set-body");
+      body.innerHTML = prefs.panelHTML()
+        + '<div class="kb-pref-head">' + util.icon("i-kbd-cmd", 14) + '快捷键<span class="kb-pref-kbd-hint">随时按 ? 唤出完整帮助</span></div>'
+        + '<div class="kb-keys-list">' + HELP_HTML.map(function (r) {
+            return '<div class="kb-help-row"><kbd>' + util.esc(r[0]) + "</kbd><span>" + util.esc(r[1]) + "</span></div>";
+          }).join("") + "</div>";
+      body.dataset.bound = ""; // 每次 open 都重建 DOM，绑定标记随之重置
+      prefs.bindPanel(body);
+      /* 强制回流让首帧停在 translateX(103%)，再加 .show 触发滑入过渡。
+         不用 requestAnimationFrame：后台标签页 rAF 被节流，抽屉会永远停在关闭态。 */
+      ov.classList.remove("show");
+      void ov.offsetWidth;
+      ov.classList.add("show");
+      settings.isOpen = true;
+    },
+    close: function () {
+      if (settings._ov) settings._ov.classList.remove("show");
+      settings.isOpen = false;
     }
-  };
+  });
 
   /* ==================================================================
      [5] keys —— 需求7 键盘导航（单一 keydown 捕获阶段分发器）
@@ -821,10 +818,11 @@
     var soOpenState = !!(soOv && soOv.classList.contains("show"));
     var soTarget = soOpenState && (e.target === soOv || !soOv.querySelector(".kb-search-box").contains(e.target));
     if (!soTarget && KB.overlay && KB.overlay.openCount > 0) return false;
-    /* ② Escape：关补全 → 关搜索浮层 → 关面板 → 关帮助 → 关编辑器（保留 app.js 原有行为） */
+    /* ② Escape：关补全 → 关搜索浮层 → 关设置抽屉 → 关面板 → 关帮助 → 关编辑器（保留 app.js 原有行为） */
     if (e.key === "Escape") {
       if (KB.wl && KB.wl.suggestOpen && KB.wl.suggestOpen()) { KB.wl.hideSuggest(); e.preventDefault(); return true; }
       if (soOpenState) { soOv.classList.remove("show"); soOv.hidden = true; e.preventDefault(); return true; }
+      if (KB.settings.isOpen) { KB.settings.close(); e.preventDefault(); return true; }
       if (palette.isOpen()) { palEscape(e); e.preventDefault(); return true; }
       var helpEl = document.getElementById("kb-help");
       if (helpEl && helpEl.classList.contains("show")) { toggleHelp(false); e.preventDefault(); return true; }

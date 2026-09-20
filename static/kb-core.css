@@ -176,11 +176,24 @@ html [hidden]{display:none}
   font-family:var(--f-mono);font-size:10.5px;color:var(--faint);
 }
 .kb-pal-foot .kb-pal-count{margin-left:auto}
-#kb-palette.mode-pref .kb-pal-body{display:none}
-#kb-palette.mode-pref .kb-pal-head{opacity:.55;pointer-events:none}
 
-/* [5] 阅读偏好面板（命令面板内） ===== */
-.kb-pal-panel{padding:4px 22px 16px;max-height:78vh;overflow-y:auto}
+/* [5] 设置抽屉（2026-09-20 重构：右侧滑入，参考 draw.io 属性面板） ===== */
+.kb-set-ov{position:fixed;inset:0;z-index:950;background:rgba(24,26,20,.22);opacity:0;pointer-events:none;transition:opacity .22s ease}
+.kb-set-ov.show{opacity:1;pointer-events:auto}
+.kb-set-drawer{position:fixed;top:0;right:0;bottom:0;width:400px;max-width:94vw;display:flex;flex-direction:column;
+  background:var(--c-panel);border-left:1px solid var(--c-line);box-shadow:-16px 0 44px rgba(24,26,20,.16);
+  transform:translateX(103%);transition:transform .26s cubic-bezier(.2,.8,.3,1)}
+.kb-set-ov.show .kb-set-drawer{transform:none}
+.kb-set-h{flex:none;display:flex;align-items:center;gap:8px;padding:14px 18px;border-bottom:1px solid var(--c-line);
+  font-family:var(--f-disp);font-size:15px;font-weight:700;color:var(--c-ink)}
+.kb-set-h svg{color:var(--c-acc)}
+.kb-set-h b{letter-spacing:.02em}
+.kb-set-x{margin-left:auto;width:26px;height:26px;display:inline-flex;align-items:center;justify-content:center;
+  border:1px solid transparent;border-radius:var(--rd-ctl);background:transparent;color:var(--muted);cursor:pointer}
+.kb-set-x:hover{background:var(--c-sunk);color:var(--c-ink);border-color:var(--c-line)}
+.kb-set-b{flex:1;overflow-y:auto;padding:4px 18px 26px;overscroll-behavior:contain}
+.kb-set-b .kb-pref-head{position:sticky;top:0;z-index:1;background:var(--c-panel);border-bottom:1px solid var(--c-line);padding:12px 0 8px;margin-bottom:4px}
+.kb-set-b .kb-pref-head:first-child{position:static}
 .kb-pref-head{display:flex;align-items:center;gap:8px;font-family:var(--f-disp);font-size:14.5px;font-weight:600;padding:8px 0 12px}
 .kb-pref-head svg{color:var(--c-acc)}
 .kb-pref-row{display:grid;grid-template-columns:64px minmax(0,1fr) 56px;align-items:center;gap:12px;padding:7px 0}
@@ -194,22 +207,16 @@ html [hidden]{display:none}
 .kb-pref-foot{display:flex;align-items:center;gap:10px;padding:12px 0 2px;border-top:1px solid var(--c-line);margin-top:8px}
 /* 设置面板里的快捷键速查区（顶栏齿轮按钮 = 阅读偏好 + 快捷键） */
 .kb-pref-kbd-hint{margin-left:auto;font:400 11px/1.4 var(--f-body);color:var(--faint)}
-/* 需求 #6：去内层滚动条 —— 快捷键区不再自身限高滚动，全部展开由面板统一滚动 */
-.kb-keys-list{display:grid;grid-template-columns:1fr 1fr;column-gap:18px;
-  align-items:start}
-/* 两列内每行再开子网格：键帽列固定宽 → 中英文键位名宽度不一也能对齐；描述列自适应 */
+/* 需求 #6：去内层滚动条 —— 快捷键区不再自身限高滚动，全部展开由抽屉统一滚动。
+   2026-09-20 设置改右侧抽屉后宽度 400px，多列排布作废，回归单列。 */
+.kb-keys-list{display:grid;grid-template-columns:1fr;align-items:start}
+/* 每行子网格：键帽列固定宽 → 中英文键位名宽度不一也能对齐；描述列自适应 */
 .kb-keys-list .kb-help-row{display:grid;grid-template-columns:88px minmax(0,1fr);align-items:center;column-gap:8px;
   padding:6px 5px;border-top:1px solid var(--c-line);font-size:12px;color:var(--muted);min-height:38px}
 .kb-keys-list .kb-help-row kbd{min-width:0;width:100%;box-sizing:border-box;font:500 10.5px/1.3 var(--f-mono);color:var(--c-acc);
   background:var(--acc-soft);border:1px solid var(--acc-line);border-radius:4px;padding:5px 6px;text-align:center;
   white-space:normal;word-break:break-word}
 .kb-keys-list .kb-help-row span{line-height:1.45}
-@media (max-width:720px){.kb-keys-list{grid-template-columns:1fr;max-height:none}}
-#kb-palette.mode-pref .kb-pal-panel{max-height:none;overflow:visible}
-/* 需求 #6：设置面板加宽加高 —— 快捷键三列全展示，无内外滚动条 */
-#kb-palette.mode-pref .kb-pal-box{width:min(980px,calc(100vw - 32px));max-height:92vh}
-#kb-palette.mode-pref .kb-pal-box{top:4vh;transform:translateX(-50%)}
-.kb-keys-list{grid-template-columns:repeat(3,1fr);column-gap:12px}
 .kb-pref-note{font-size:11px;color:var(--faint);line-height:1.6}
 /* 设置面板对齐微调（截图问题③④）：脚注行基线、快捷键标题行居中、
    键帽行 hover 可感知性 */
