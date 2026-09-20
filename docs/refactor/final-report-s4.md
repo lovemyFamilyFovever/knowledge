@@ -234,3 +234,9 @@
 
 - 2d77163 docs: 二期拆分[S4]——React Native移动应用开发 (枢纽+4子词条)
 
+## §S4 · Rust Web开发实战（枢纽+5子词条）
+
+枢纽页(1798，五块技术栈索引表+框架选型 Actix/Axum/Rocket)+5 net-new 子词条 `Axum 路由与中间件`(类型安全 Router/extractor·tower layer·with_state·IntoResponse)/`Rust Web 数据库集成`(SQLx 编译期校验·Diesel·SeaORM·池·事务·migrate)/`serde 序列化与反序列化`(derive 解耦·rename/skip/default/with·Json<T>)/`Rust Web 认证与授权`(JWT 签验+Bearer 中间件·OAuth2 授权码+CSRF state)/`tokio 异步运行时实战`(工作窃取·spawn_blocking·信号量·通道)；原计划6块、框架选型入枢纽故落5子词条。语言层双链 done 的 [[Rust编程基础]][[Rust 错误处理]][[Rust 并发与异步]]，避免与系统层重复承载。踩坑：认证页误链[[API 鉴权与授权（…）]]→改[[API 错误处理规范]]；4 条🎯(Axum175/serde168/认证156/tokio188，英文标识符计入致估长)逐行裁至≤150。6 篇 strict 全 PASS、0 悬空。提交 CLEAN。**hash**：
+
+- b4055af docs: 二期拆分[S4]——Rust Web开发实战 (枢纽+5子词条)
+
