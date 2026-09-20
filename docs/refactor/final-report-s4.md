@@ -282,3 +282,9 @@
 
 - 55c68cb docs: 二期拆分[S4]——02-测试工具 (枢纽+3子词条，清 Playwright/Cypress pending-merge)
 
+## §S4 · Python全栈开发教程（纯收敛枢纽，0 新子词条）
+
+各技术层均已存在 done 专条（[[Web框架对比]] 含 FastAPI/SQLAlchemy、[[PostgreSQL高级特性]]、[[React深入]]、[[Python高级特性]]、API 系列），按 §8.2 全部改双链、不新建；本页收敛为全栈接线枢纽。**hash**：
+
+- 93646c3 docs: 二期拆分[S4]——Python全栈开发教程 (纯收敛枢纽，0 新子词条)
+
