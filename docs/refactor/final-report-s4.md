@@ -258,3 +258,9 @@
 
 - acff229 docs: 二期拆分[S4]——01-开发流程 (收敛枢纽+瀑布模型，闭环去重第8对之01侧)
 
+## §S4 · 02-版本控制（纯收敛枢纽页，0 新条）
+
+原 14-def 汇编收敛为纯索引枢纽(1735)：三区模型/add·commit·push·pull·fetch/分支·merge·rebase·冲突/cherry·stash·.gitignore/分支策略 全双链 [[版本控制与Git深入]]，Hooks·rebase-i 归 [[Git高级用法]]，PR·MR·CodeReview 归 [[代码评审]]——无一条未被既有 done 专条承载、故 0 net-new（避免造薄词条）。核心机制为"术语→专条"归属表(6 行)。踩坑：🎯152→去"暂存区→仓库"冗余括注+缩"择规模"两步裁至≤150。1 篇 strict PASS、0 悬空。提交 CLEAN。**hash**：
+
+- 6d9e45f docs: 二期拆分[S4]——02-版本控制 (纯收敛枢纽页，0新条)
+
