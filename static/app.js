@@ -1414,20 +1414,18 @@ async function apiTags(payload) {
 }
 
 /* Story 4（2026-09-20 头部瘦身后）：crumb 标签行只留标签本体 + 就地编辑入口；
-   来源/路径/收录日期 chips 随头部瘦身撤销。标签 chip 就地可编辑：× 删除
-   复用现有 removeTag（按钮自带 data-tag），+ 展开就地输入框回车添加；
-   html 美化版语料不可写，保持只读。 */
+   来源/路径/收录日期 chips 随头部瘦身撤销。无标签时不显示占位（用户要求：
+   没标签就别显示）。标签 chip 就地可编辑：× 删除复用现有 removeTag（按钮自带
+   data-tag），+ 展开就地输入框回车添加；html 美化版语料不可写，保持只读。 */
 function buildChipsRow() {
   const editable = !DOC.is_html;
   const tags = (DOC.fm && Array.isArray(DOC.fm.tags)) ? DOC.fm.tags : [];
-  const tagChips = tags.length
-    ? tags.map(t => `<span class="chip acc tag-chip">${esc(t)}${editable
-        ? `<button type="button" class="chip-x" data-tag="${esc(t)}" title="移除标签「${esc(t)}」" aria-label="移除标签 ${esc(t)}" onclick="removeTag(this)">${icon("cancel-x", 9)}</button>`
-        : ""}</span>`).join("")
-    : (editable ? `<span class="chip warn">tags 未打标</span>` : "");
+  const tagChips = tags.map(t => `<span class="chip acc tag-chip">${esc(t)}${editable
+    ? `<button type="button" class="chip-x" data-tag="${esc(t)}" title="移除标签「${esc(t)}」" aria-label="移除标签 ${esc(t)}" onclick="removeTag(this)">${icon("cancel-x", 9)}</button>`
+    : ""}</span>`).join("");
   return [
     tagChips,
-    editable ? `<button type="button" class="chip chip-btn chips-add" onclick="chipsAddToggle()" title="添加标签">+ 标签</button>` : "",
+    editable ? `<button type="button" class="iconbtn chips-add" onclick="chipsAddToggle()" title="添加标签">${icon("tag-outline", 13)} + 标签</button>` : "",
   ].filter(Boolean).join("");
 }
 
