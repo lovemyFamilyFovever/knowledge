@@ -4,14 +4,13 @@
 
 ## 待办
 
-- [ ] **阅读统计增强（统计 v1 已上线后按需）**：finish 事件自动判定（字数/400 阈值已定义，
-  前端未接）；断点续读；月度对比视图。
+- [ ] **阅读统计增强（统计 v1 已上线后按需）**：仅剩两项——① finish 事件自动判定
+  （字数/400 阈值已定义，前端现仍为手动"读完这篇了？"条，app.js kb-finish-bar）；
+  ② 月度对比视图（reading.py::monthly 只有单月报表，无跨月环比）。
+  ~~断点续读~~ 已实现：localStorage `kb-readpos` per-doc scrollTop 存/恢复（app.js:1582 起，2026-09-20 核对）。
 - [ ] **每日自动备份计划任务**（2026-09-08 用户指示押后）：脚本已就绪且 2026-09-09 升级 v2
   （根路径自动推导，任意克隆可用；注册命令见 `scripts/daily_backup.ps1` 头注释）；
-  等用户在现场监督时再注册 schtasks。
-- [ ] **Git 提交规范沉淀**（2026-09-09 从 HANDOFF 移入）：用户 2026-09-08 全局指令
-  "每开发一部分就自动 commit、信息写详细、用户统一手动 pull"——已在执行（95ec573 起遵循），
-  待用户批准后写入 AGENTS.md 常驻规则。
+  等用户在现场监督时再注册 schtasks。（2026-09-20 复核：脚本在、schtasks 仍无已注册任务）
 
 ## 已延后（按用户决定排序）
 
@@ -21,15 +20,20 @@
 - [ ] 静态发布管线（VitePress / Quartz 导出，公开分享用）。
 - [ ] **GitHub 仓库可见性确认**（2026-09-09 审读新增，用户指示放最后）：语料含简历/面试/复盘等
   敏感材料，需确认远端为 Private；若为 Public 则与 README"语料不出网"承诺冲突。
-- [ ] **_inbox 冷备份**（2026-09-09 审读新增，用户指示放最后）：391 份暂存 md
-  （desktop 280 + repos 108 + 3 份清单）被 .gitignore 排除，git 与每日备份均不覆盖，
+  （2026-09-20 复核：本机网络访问 github.com 超时，无法程序化确认，需用户在浏览器登录核实
+  https://github.com/lovemyFamilyFovever/knowledge 的可见性设置）
+- [ ] **_inbox 冷备份**（2026-09-09 审读新增，用户指示放最后）：352 份暂存 md（desktop + repos
+  + 清单，2026-09-20 实测计数；原记 391）被 .gitignore 排除，git 与每日备份均不覆盖，
   需压缩/镜像到另一块盘。
-- [ ] **本机开发护栏启用**（2026-09-09 审读新增，用户指示放最后）：
-  `git config core.hooksPath .githooks`（恢复 pre-commit 测试护栏）；
-  如需语义检索再补装 `requirements/requirements-rag.txt` 并首跑拉取模型。
 
 ## 已完成
 
+- [x] **本机开发护栏启用**（2026-09-20 核对补记）：`core.hooksPath=.githooks` 已生效（pre-commit
+  护栏在跑）；语义检索已上线，`indexes/rag.db` 存在，requirements-rag 依赖早已装好。
+- [x] **Git 提交规范沉淀**（2026-09-20 核对补记）：「适时提交 + 消息说人话 + 只提交自己改过的
+  文件（显式 pathspec）」已写入 AGENTS.md「提交纪律」成为常驻规则，本条待办闭环。
+- [x] **断点续读**（2026-09-20 核对补记）：localStorage `kb-readpos` per-doc 滚动位置存/恢复
+  （static/app.js:1582 起），阅读统计增强三件事之一提前完成。
 - [x] **右键菜单三期**（2026-09-08，commit 6e24a91）：`/api/move/batch` 批量归档
   （逐条级联索引、部分失败不回滚、per-item 报错）、`/tags` 多选批量合并（两段确认）、
   `/api/substats` 目录级统计（workbench 子目录右键弹窗：篇数/字数/标签分布/最近更新）。
