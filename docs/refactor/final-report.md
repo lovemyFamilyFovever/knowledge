@@ -578,3 +578,643 @@ PASS content/baike/architecture/SaaS 计费系统设计.md  (正文 1330/2200 �
 
 **本会话提交（git log 机器追加，含被并发扫入的 f8fdd48）**：
 - f8fdd48 docs: 二期拆分[S2]——分布式ID与缓存术语百科 (枢纽+2子词条)
+
+
+---
+
+## § 终极包圆收官汇总
+
+> 以下为二期拆分五个分片（S1–S5）终极包圆收尾报告按序合并归档。
+
+### 分片 S1（AI 线）
+
+# 二期拆分 · 分片1（AI 线）收尾报告
+
+## §S1 · 第二轮 — LLM应用开发完全指南（巨型汇编专场，处理 1 篇后收手）
+
+- 触发巨型规则：content/baike/machine-learning/LLM应用开发完全指南.md 正文 20257 字（>8000），按 §1.2 本会话仅此 1 篇。
+- 产出：父文档改写为「五层装配」枢纽页（strict 1942/2200，mermaid + 逐层双链指向已有专条）；新建子词条 0 个。
+- 0 子词条依据（⑩ 概念级查重）：五章（架构/分词/MoE/Prompt/FunctionCalling/RAG/Agent）概念全部归口已有 done 专条 → 双链不重复建；实现级 RAG / 提示细节将分别归 RAG系统工程化实践.md、Prompt Engineering高级指南.md（仍 pending）各自收敛；原文 2026 前瞻伪代码（FlashAttention-3 / RoPE2.0 / 动态词表 / 表格结构嵌入）不作事实断言、不据以建条；第五章原文截断，未据推测补写。
+- 自检：check_rewrite --strict 对本篇 1 文件 PASS、0 FAIL、0 warning；check_cards 1 def + 2 trap；frontmatter 逐字未改（⑦ PASS）。双链名无斜杠、目标均存在。
+- 本分片剩余 pending：8 篇（均 machine-learning）。
+- 下一篇（本会话不再处理，另起会话）：content/baike/machine-learning/MLOps机器学习工程化.md，正文 19857 字、7 围栏 849 行，仍为巨型汇编。
+
+- 本节 commit hash：
+- 96d8fc6 docs: 二期拆分[S1]——LLM应用开发完全指南 (枢纽页, 0子词条)
+
+## §S1 · 终极包圆第一轮 — 处理 3 篇（MLOps / Prompt 高级指南 / RAG 工程化）后收手
+
+- 本篇拆分 3 篇，均"巨型/大教程→枢纽页 + 1 子词条"：
+  - MLOps机器学习工程化 → 枢纽(成熟度0-1-2内联) + 子词条 MLflow 与 W&B 实验跟踪；CI/CD-CT 双链[[构建流水线与 CI-CD 工具]]、总纲[[MLOps实践]]。
+  - Prompt Engineering高级指南 → 枢纽(按环节索引既有专条) + 子词条 自动提示优化 APE 与 OPRO；CoT/ToT/ReAct/结构化输出/注入 双链。
+  - RAG系统工程化实践 → 枢纽(落地链装配图) + 子词条 Modular RAG 与 Agentic RAG；解析/分块/Embedding/向量库 双链已有专条。
+- 新建子词条合计：3。所有子词条 frontmatter 继承父(source_path 技术文章 / AI与机器学习、collected 2026-09-05、tags []、source baike、status imported)；枢纽页 frontmatter 逐字未改。
+- 自检：本会话 6 个文件(3 枢纽 + 3 子词条) check_rewrite --strict 全 PASS、0 FAIL(仅未入库子条 ⑤⑦ warning)；check_cards 各 1 def + 2 trap；双链名无斜杠、目标均 ls 核实存在。
+- 本分片剩余 pending：5 篇（《AI时代生存指南》第三章 / 强化学习从入门到实践 / 深度学习从零到精通 / 自然语言处理NLP完全指南 / 计算机视觉入门到实战）。
+- 主动收手原因：上下文逼近极限，宁在"每篇完整提交、索引干净"的安全点停止，也不冒中途半提交之险。
+- 下一会话建议队首：machine-learning/强化学习从入门到实践.md（926行·30围栏，实现级；概念多归口[[强化学习基础]][[深度强化学习]]）。
+- 踩坑记录：并发分片会在我 add/commit 间抢占 index.lock 并向共享 index 塞入片外文件；已用"仅 pathspec 提交 + 核验暂存清单"确保只提本片文件，未误删他片(其工作树改动不丢)。
+- 本节 commit hash：
+- 5ffdf7d docs: 二期拆分[S1]——RAG系统工程化实践 (枢纽+1子词条)
+- bacd968 docs: 二期拆分[S1]——Prompt Engineering高级指南 (枢纽+1子词条)
+- 12a4f4a docs: 二期拆分[S1]——MLOps机器学习工程化 (枢纽+1子词条)
+
+## §S1 · 终极包圆第二轮 — 收尾 5 篇，本分片 pending 归零
+
+- 本轮处理第一轮遗留的全部 5 篇（均 machine-learning），拆法按教义"概念归口双链、无归口实现级独立成条、软性指南不造薄条"：
+  - 《AI时代生存指南》第三章 → 章节枢纽页 + 0 子词条（同第一章体例；面向普通人的工具目录+方法论，工具更迭快、方法论无归口不造薄条，表格+双链归口 Prompt/Agent/多模态/LLM应用开发）。
+  - 强化学习从入门到实践 → 枢纽页(12章路线图，正文实展至第4章截断) + 1 子词条 值迭代与策略迭代；概念双链[[强化学习基础]][[深度强化学习]][[LLM 微调技术]]，仅 MDP 动态规划求解无归口→独立成条。
+  - 深度学习从零到精通 → 枢纽页 + 0 子词条；神经网络基础全归口[[激活函数]][[反向传播]][[梯度消失与梯度爆炸]][[梯度下降]][[过拟合与正则化]][[批归一化]]，CNN 归口 data-science[[卷积神经网络(CNN)]]；正文止于 ResNet 标题截断。
+  - 自然语言处理NLP完全指南 → 枢纽页 + 4 子词条（文本预处理与中文分词、命名实体识别与序列标注、文本分类与主题模型、序列到序列与神经机器翻译）；词向量与语言模型演进双链归口[[词向量]][[Embedding 技术详解]][[大语言模型架构演进]][[Transformer架构深度解析]][[注意力机制]]；正文止于第6章注意力截断。
+  - 计算机视觉入门到实战 → 枢纽页 + 3 子词条（目标检测（YOLO 与 R-CNN 家族）、图像分割（语义·实例·全景）、图像基础与经典视觉算法）；CNN演进/GAN/扩散双链归口[[卷积神经网络(CNN)]][[生成对抗网络(GAN)]][[Diffusion扩散模型]]，OCR·人脸·视频内联；删开头 LLM 寒暄噪声；正文止于第9章视频理解截断。
+- 新建子词条合计：8（值迭代与策略迭代 1 + NLP 4 + CV 3）。全部 frontmatter 继承父(source_path 技术文章 / AI与机器学习、collected 2026-09-05、tags []、source baike、status imported)；5 个枢纽页 frontmatter 逐字未改(⑦)。
+- 自检：本轮 13 个文件(5 枢纽 + 8 子词条) check_rewrite --strict 全 PASS、0 FAIL(新子条仅未入库 ⑤⑦ warning)；check_cards 各 1 def + 2 trap；双链名无斜杠、目标均 find 核实存在。🎯 一处(图像基础 175 字)按 ⑨ 精简至 ≤150 后 PASS。
+- 卡点与处置：提交期间并发 database 分片把 B 格式多定义半成品(SQL 语言分类…)落入工作树，致共享 tests/test_learn.py 门禁对所有分片全红(216 passed, 2 failed)，RL 首提被挡。严守契约未绕钩子/未碰他片文件与测试，改用"锁门控 + 有界退避重试环"合法重投；对方约 3 分钟内自修后门禁转绿(218 passed)，RL 随即落库，后续 3 篇一次通过。
+- 本分片剩余 pending：0（machine-learning 与 ai-and-llm 全清）。
+- 本节 commit hash：
+- f2ceb06 docs: 二期拆分[S1]——计算机视觉入门到实战 (枢纽+3子词条)
+- 49ecf8b docs: 二期拆分[S1]——自然语言处理NLP完全指南 (枢纽+4子词条)
+- c04ad4a docs: 二期拆分[S1]——深度学习从零到精通 (枢纽，0子词条)
+- ff8bf36 docs: 二期拆分[S1]——强化学习从入门到实践 (枢纽+值迭代与策略迭代)
+- 406d632 docs: 二期拆分[S1]——《AI时代生存指南》第三章 (章节枢纽，0子词条)
+
+
+### 分片 S2（系统线）
+
+# baike 二期拆分 · 分片 2/5（系统线）收尾报告
+
+规范依据 `docs/writing-spec-v1.2.md`。物理隔离：只处理 distributed/os/network/hardware/cs-basics 5 子域；台账只改 `s2.md`、`split-candidates.md`；报告只写本文件。
+
+## 第二轮（本次）
+
+队首为中小型（≤8000 字）→ 按规则最多处理 3 篇；遇下一篇巨型即停手。本轮完成 2 篇，停在巨型 `network/TCP深入.md`(8090字) 前。
+
+### 1. network/HTTP协议.md（7815 字 / 13 围栏，中小）
+- 父 → 枢纽页：§8.1 索引（5 条粗体子概念各含 [[双链]] 满足②b收紧 + 版本对比表满足① + 三版演进散文），1863 字，1 def + 2 trap，保留 RFC 9110–9114 / MDN 与原有全部双链。
+- 新建 3 子词条：`HTTP请求方法`、`HTTP头部与内容协商`、`Cookie与Session`。
+- §8.2 去重：状态码→[[HTTP 状态码]]、缓存→[[缓存策略]]、TLS→[[HTTPS 与 TLS]]、长连接→[[WebSocket]]、HTTP/3→[[QUIC]]，均双链不重复立条。
+
+### 2. distributed/微服务治理术语百科.md（7925 字 / 12 围栏，中小）
+- 父 → 枢纽页：§8.1 索引表 + mermaid 请求生命周期图，1446 字，1 def + 2 trap。
+- 新建 3 子词条：`配置中心`、`API网关`、`灰度发布`。
+- 去重：服务发现 / 负载均衡 / 熔断与降级 / 限流 / 服务网格 双链已有专条；链路追踪双链 architecture/可观测性工程实战（他片，不重复立条）。
+
+### check_rewrite --strict（本轮新建/改写共 8 篇）：全 PASS，0 FAIL。
+（唯一 warning 为新文件"⑤⑦ 不在 HEAD"，提交后自动消；HTTP头部 🎯 曾 195 字按 §4 压缩该行至 ≤150 后 PASS。）
+
+### 剩余本分片 pending
+- 巨型（各需独占一会话）：network/TCP深入.md(8090)、network/应用层协议.md(9411)、network/网络基础.md(8389)、network/网络安全协议.md(9247)
+- 中小：os/进程管理详解.md(6581)
+- 已排除：os/Linux 命令速查手册.md（改判 exempt-reference）
+- **下一篇建议：network/TCP深入.md（8090 字 / 14 围栏，巨型 → 独占一会话）**
+
+### 并发纪律复盘
+本轮改用 `git commit -- <显式 pathspec>`（含先 `git add` 新文件），规避了上一轮"裸 commit 扫入他片暂存内容"的事故。提交前 §0.1 断言发现共享 index 中另有 database/*、s3.md、final-report-s4 等他片暂存项，遂不提交它们；另遇他片崩溃遗留的 ~19 分钟陈旧 index.lock（确认无 git.exe 持有后按 git 自身提示移除）。
+
+**本会话 S2 拆分提交（git log 机器追加）：**
+- 68fa370 docs: 二期拆分[S2]——HTTP协议 (枢纽+3子词条)
+- a123657 docs: 二期拆分[S2]——微服务治理术语百科 (枢纽+3子词条)
+- f8fdd48 docs: 二期拆分[S2]——分布式ID与缓存术语百科 (枢纽+2子词条)
+
+## 终极包圆轮（本轮，续）
+
+规则：循环直到 pending 清空或上下文将满。本轮完成 2 篇后接近上下文上限，主动停在巨型 `网络基础` 之前以保证留干净已提交状态。
+
+### 3. network/TCP深入.md（8090 字 / 14 围栏，巨型）
+- 枢纽页：6 粗体子概念各含双链(②b)+报文首部字段表(①)+机制综述，1611 字，保留 RFC 9293/6298/5681、Stevens。
+- 新建 2 子词条：TIME_WAIT与连接回收、TCP粘包与拆包。三次握手四次挥手/滑动窗口/拥塞控制/UDP 双链已有专条。
+
+### 4. network/应用层协议.md（9411 字 / 12 围栏，巨型）
+- 枢纽页：6 粗体子概念含双链(②b)+端口速查表(①)，1447 字，保留各协议 RFC 与《TCP/IP 详解》。
+- 新建 3 族子词条：邮件协议族(SMTP/POP3/IMAP)、文件传输协议(FTP/SFTP/SCP/FTPS)、SSH与远程登录(SSH/Telnet)。DNS/DHCP/HTTP/HTTPS/TCP 双链已有专条，NTP/SNMP/LDAP 正文收录。
+
+### check_rewrite --strict（本轮 6 文件）：全 PASS、0 FAIL。
+
+### 剩余本分片 pending（交下一轮/新会话）
+- network/网络基础.md（8389 字，巨型；OSI/TCP-IP/以太网/IP/MAC/子网/CIDR/VLAN，与 OSI 参考模型/IP 协议/网络地址转换 重叠，去重后拆）
+- network/网络安全协议.md（9247 字，巨型；防火墙/IDS-IPS/VPN/IPsec/TLS/DDoS/WAF）
+- os/进程管理详解.md（6581 字，中小；命令族，与 Linux命令速查手册(已 exempt) 重叠）
+
+**本轮 S2 拆分提交（git log 机器追加）：**
+- b8b5dfa docs: 二期拆分[S2]——应用层协议 (枢纽+3族子词条)
+- 889dfe0 docs: 二期拆分[S2]——TCP深入 (枢纽+2子词条)
+- e92329d docs: 二期拆分[S2] 第二轮收尾报告 (HTTP协议 + 微服务治理 各枢纽+3子词条)
+- 68fa370 docs: 二期拆分[S2]——HTTP协议 (枢纽+3子词条)
+- a123657 docs: 二期拆分[S2]——微服务治理术语百科 (枢纽+3子词条)
+- f8fdd48 docs: 二期拆分[S2]——分布式ID与缓存术语百科 (枢纽+2子词条)
+
+### 终极包圆续（接上文，smoke 转绿后补交）
+s3 的 `SQL 基础术语` 在途改写转绿后，补交：
+- 网络基础 → 枢纽 + 网络分段与编址 / Socket与端口 / 网络诊断与性能
+- 网络安全协议 → 枢纽 + VPN与隧道加密 / 防火墙与WAF / 代理与正向反向代理 / DDoS攻击与防护
+- 进程管理详解 → 收敛为枢纽页（去重优先，0 新薄命令条；概念→操作系统核心·线程·进程调度，命令→Linux命令速查手册(exempt)）
+
+**分片 2/5 拆分队列（split-candidates s2 行）已全部 done/exempt，pending = 0。**
+本轮 S2 相关提交（git log 机器追加）：
+- b979a96 docs: 二期拆分[S2]——进程管理详解 (收敛为枢纽页，0新子词条)
+- 4720c6b docs: 二期拆分[S2]——网络安全协议 (枢纽+4族子词条)
+- b05064a docs: 二期拆分[S2]——网络基础 (枢纽+3子词条)
+- af0dab8 docs: 二期拆分[S2] 终极包圆收尾报告 (TCP深入 + 应用层协议 各枢纽+子词条；剩 3 pending)
+- b8b5dfa docs: 二期拆分[S2]——应用层协议 (枢纽+3族子词条)
+- 889dfe0 docs: 二期拆分[S2]——TCP深入 (枢纽+2子词条)
+
+
+### 分片 S3（数据线）
+
+# 二期拆分 · 分片3（数据线）收尾报告
+
+## 第二轮（2026-09-19）— 巨型汇编专场：处理 1 篇后收手
+
+**预读与隔离**：AGENTS.md / writing-spec-v1.2.md / split-candidates.md 三件套齐全。本会话仅动 `content/baike/database/` 下文件 + `s3.md` + `split-candidates.md` + 本报告，未碰其他子域或 final-report.md。
+
+**队列调度**：本分片首个 pending（algorithms/data-science 已清空）= `database/MySQL从入门到架构师.md`，11081 字（>8000 巨型汇编）→ 按 §1.2 只处理这一篇后收手。
+
+**概念级查重（§8.2 / ⑩）**：MySQL 三大内部件——InnoDB 存储引擎组件（Buffer Pool/Change Buffer/Redo/Undo/Binlog）、索引类型与优化（聚簇/二级/覆盖/ICP/MRR/EXPLAIN）、锁机制（行锁/间隙/Next-Key/意向/MDL/死锁）在全库无同名或异名 done 专条，仅散见于 3 篇 pending 汇编 → 各建 1 个族词条；MVCC→[[多版本并发控制]]、隔离级别→[[事务隔离级别]]、B+树→[[B+树]]、原理速览→[[MySQL深入]] 均为 done 专条 → 只双链不新建。
+
+**拆分产物（枢纽 + 3 子词条，42 代码块压缩为散文）**：
+- `MySQL从入门到架构师.md`（枢纽）1534/2200、0 围栏：五主题全景导航表 + 阶段串联，§8.1 信息不重复承载
+- `InnoDB 存储引擎结构.md` 1979/2200、0 围栏：核心机制变体，Buffer Pool/Change Buffer/三日志/刷盘/WAL/两阶段提交
+- `MySQL 索引类型与优化.md` 1597/2200、0 围栏：核心机制变体，聚簇/二级/覆盖/最左前缀/ICP/MRR
+- `MySQL 锁机制.md` 1703/2200、0 围栏：核心机制变体，表/行锁+S/X+Next-Key+意向锁+MDL+死锁
+
+**check_rewrite --strict（本会话 4 篇）**：全 PASS / 0 FAIL；3 warning 均为「新文件不在 HEAD」；0 悬空双链、0 处含 `/` 链名；⑨ 速答全部 ≤150 硬判通过。check_cards 各 1 def + 2 trap。
+
+**台账**：`s3.md` 追加 done-hub + 3 子词条行；`split-candidates.md` 本行改 done。§0.1 暂存白名单断言通过（并发会话曾把片外 final-report-s4.md 混入共享暂存区，已用显式 pathspec 提交规避、未纳入本次提交、亦未清理他人暂存）。
+
+**本会话提交**：
+- b65388d docs: 二期拆分[S3]——MySQL从入门到架构师.md (枢纽+3子词条)
+
+**本分片剩余 pending（9）**：database 8 篇巨型汇编（Redis深度解析13550、搜索引擎技术详解17928、数据库内核原理深度解析11136、数据库设计术语10034、SQL基础术语8536、事务与并发控制术语9037、NoSQL数据库术语8568、索引与查询优化术语9066）+ middleware 任务调度（6216，中小篇）。
+**下一篇巨型汇编**：content/baike/database/Redis深度解析与实战指南.md（13550 字）。
+
+## 终极包圆轮（2026-09-19）— 完成 1 篇后主动收手（上下文临界）
+
+**预读与隔离**：AGENTS.md / writing-spec-v1.2.md / split-candidates.md 齐全。仅动 `content/baike/database/` + `s3.md` + `split-candidates.md` + 本报告，未碰 final-report.md 或其他子域。
+
+**处理（队列首篇）**：`database/NoSQL 数据库术语.md`（8568 字）→ 枢纽 + 3 族子词条。
+- 概念级查重：Redis→[[Redis深入]]、MongoDB→[[MongoDB实践]]、ES→[[ElasticSearch搜索]] 已有 done 专条 → 删重复段改双链；Memcached/DynamoDB 内联选型；HBase+Cassandra(列族宽列)、Neo4j(图)、InfluxDB(时序) 无专条 → 各 1 族词条（10 库未逐库造薄条，按数据模型聚合）。
+- `列族数据库（HBase 与 Cassandra）.md` 1412/2200、`图数据库 Neo4j.md` 1367/2200、`时序数据库 InfluxDB.md` 1379/2200，均 0 围栏、1def+2trap。
+
+**check_rewrite --strict（4 篇）**：全 PASS / 0 FAIL / 0 warning（双链全部命中、无含 `/` 链名、⑨ ≤150）。
+
+**Stale lock 处理**：一次 `git add` 撞并发 S4 提交持锁（其 design-patterns/* 暂存），按授权等待至锁释放、S4 提交落定后重跑，未删他人在用锁、未动其暂存；最终 §0.1 白名单断言通过、pathspec 提交仅含片内 5 文件。
+
+**本会话提交**：
+- a7fb73f docs: 二期拆分[S3]——NoSQL 数据库术语.md (枢纽+3子词条)
+
+**主动收手原因**：本会话为该数据线第三轮，上下文已近极限；继续拆余下巨型汇编有中途溢出致半成品未提交的风险，故在完成 NoSQL 这一整篇并确认 HEAD 一致后停。
+**本分片剩余 pending（8）**（队列序）：
+- database/Redis深度解析与实战指南.md（13550，巨型）— 下一篇
+- database/SQL 基础术语.md（8536，巨型）
+- database/事务与并发控制术语.md（9037，巨型）
+- database/搜索引擎技术详解.md（17928，巨型）
+- database/数据库内核原理深度解析.md（11136，巨型）
+- database/数据库设计术语.md（10034，巨型）
+- database/索引与查询优化术语.md（9066，巨型）
+- middleware/任务调度（Task Scheduling）.md（6216，中小篇）
+注：algorithms 子域已清空；MySQL 与 NoSQL 两巨型本篇/上轮已拆。
+
+## 终极包圆·续（2026-09-19，用户选 A 后继续）
+
+**本轮完成（均 --strict 全 PASS / 1def+2trap / 0 悬空链）**：
+- NoSQL 数据库术语 → 枢纽+3（列族HBase&Cassandra、图Neo4j、时序InfluxDB）
+- Redis深度解析与实战指南 → 枢纽+4（数据结构与底层实现、持久化与内存管理、高可用、分布式锁）
+- SQL 基础术语 → 枢纽+2（SQL语言分类、SQL查询与连接）；并改 test_learn 把 B 格式夹具从语料文件解耦为内联样本（用户批准 A）
+- 事务与并发控制术语 → 枢纽+4（事务与ACID、并发读异常、乐观锁与悲观锁、Redo&Undo Log）
+
+**剩余 pending（5）**：database/搜索引擎技术详解(17928)、数据库内核原理深度解析(11136)、数据库设计术语(10034)、索引与查询优化术语(9066)；middleware/任务调度(6216)。
+
+**隐患提示**：任务 §0.1 白名单与 §1 物理隔离写的是 messaging-middleware，但本仓实际目录为 middleware —— 拆 任务调度(middleware/任务调度) 时若用该白名单断言会被判片外。下一会话按实际路径 middleware 处理或先对齐白名单。
+
+**本会话提交**：
+- cbe19f1 docs: 二期拆分[S3]——事务与并发控制术语.md (枢纽+4子词条)
+- 4a785b1 docs: 二期拆分[S3]——SQL 基础术语.md (枢纽+2子词条)；test_learn 解耦语料夹具
+- 4a2a64d docs: 二期拆分[S3]——Redis深度解析与实战指南.md (枢纽+4子词条)
+- a7fb73f docs: 二期拆分[S3]——NoSQL 数据库术语.md (枢纽+3子词条)
+
+## 终极包圆续·第二轮（2026-09-19）— 分片清空
+
+本轮续拆 6 篇巨型/中小汇编，**s3 分片 pending 已归零**（split-candidates 中 s3 行全 done）。
+
+| 父汇编 | 结构 | 字数 |
+|---|---|---|
+| 数据库设计术语 | 枢纽+3 | 1384/2200 |
+| 搜索引擎技术详解 | 枢纽+4 | 1363/2200 |
+| 数据库内核原理深度解析 | 枢纽+2 | 1591/2200 |
+| 索引与查询优化术语 | 纯索引枢纽+0 | 1406/2200 |
+| 任务调度 | 枢纽+3 | 1559/2200 |
+
+每篇 --strict 全 PASS、1def+2trap、0 悬空链、0 含斜杠链名、⑨ 速答 ≤150。多数既有 done 专条按 §8.1/§8.2 双链去重、族聚合避免薄条。
+
+**并发/环境**：多次 lock 争用与 stale index.lock(前一 MemoryError 崩溃遗留)按授权清理重试；并发会话把 network/machine-learning/s2·s4 文件塞入共享索引，全程用显式 pathspec 保证每提交只含片内文件；实际目录为 middleware(非 messaging-middleware)，pathspec 提交不受白名单影响。
+
+**本分片全部提交（git log）**：
+- bce7126 docs: 二期拆分[S3]——任务调度（Task Scheduling）.md (枢纽+3子词条)
+- e9fb951 docs: 二期拆分[S3]——索引与查询优化术语.md (纯索引枢纽，0子词条)
+- 7573a00 docs: 二期拆分[S3]——数据库内核原理深度解析.md (枢纽+2子词条)
+- 1aad624 docs: 二期拆分[S3]——搜索引擎技术详解.md (枢纽+4子词条)
+- eec75bb docs: 二期拆分[S3]——数据库设计术语.md (枢纽+3子词条)
+- ec0549c docs: 二期拆分[S3] 终极包圆续（NoSQL/Redis/SQL/事务 四篇完成，余5篇）
+- cbe19f1 docs: 二期拆分[S3]——事务与并发控制术语.md (枢纽+4子词条)
+- 4a785b1 docs: 二期拆分[S3]——SQL 基础术语.md (枢纽+2子词条)；test_learn 解耦语料夹具
+- 4a2a64d docs: 二期拆分[S3]——Redis深度解析与实战指南.md (枢纽+4子词条)
+- 78b9c8e docs: 二期拆分[S3] 终极包圆轮收尾报告（NoSQL 枢纽+3子词条，余 8 篇）
+- a7fb73f docs: 二期拆分[S3]——NoSQL 数据库术语.md (枢纽+3子词条)
+- 72a1011 docs: 二期拆分[S3] 第二轮收尾报告（MySQL从入门到架构师 枢纽+3子词条）
+- b65388d docs: 二期拆分[S3]——MySQL从入门到架构师.md (枢纽+3子词条)
+- 455d82f docs: 二期拆分[S3] 收尾报告 §S3（数据分析与可视化实战 枢纽+3子词条）
+- 7eb26c9 docs: 二期拆分[S3]——数据分析与可视化实战.md (枢纽+3子词条)
+
+s3 分片状态：algorithms/database/data-science/middleware 四子域 pending 全部清空。
+
+
+### 分片 S4（工程线）
+
+# S4 二期拆分收尾报告（工程线 · 分片4）
+
+> 隔离说明：本会话仅写本文件 `docs/refactor/final-report-s4.md`，**未触碰** `docs/refactor/final-report.md` 及其他分片报告。（第一轮"创建型模式"拆分当时尚无报告隔离要求，其段落写在 `final-report.md`；自第二轮起统一落此文件。）
+
+## §S4 第二轮 · 结构型模式（Structural Patterns）
+
+**处理篇（1 篇，巨型汇编收手）**：`content/baike/design-patterns/结构型模式（Structural Patterns）.md`（原 16104 字 ≫ 8000 → 本会话仅此 1 篇）。
+
+**拆分产物**：
+- **枢纽页**（`done-hub`）：正文 1809/2200、0 围栏、1 def + 2 trap；核心机制改为「8 子词条索引表 + 选型判据」，§8.1 信息不重复承载（表格载"有什么"、散文载"怎么选/为什么"）；过滤器/Criteria 作非 GoF 说明枢纽内联，不单列；frontmatter 逐字未改（⑦ 与 HEAD 一致）。
+- **新建 8 子词条**（§3 继承父 `source_path: 开发术语 / 设计模式`、`collected: 2026-09-05`、`tags: []`）：
+  - `适配器模式.md` 1450/1围栏
+  - `桥接模式.md` 1353/1围栏
+  - `组合模式.md` 1484/1围栏
+  - `装饰器模式.md` 1417/1围栏
+  - `外观模式.md` 1301/1围栏
+  - `享元模式.md` 1357/1围栏
+  - `代理模式.md` 1428/1围栏
+  - `MVC 与 MVVM.md` 1933/1围栏（族词条合并 MVC+MVVM；标注"属架构模式、非 GoF 设计模式"，并保留 Reenskaug 1979 / Gossman 2005 出处）
+
+**概念级查重（§8.2）**：全库无同名或异名的结构型 pattern 专条（`云原生` 等文件里的"代理"是反向代理/RPC 义，非 GoF 代理模式，不构成重叠）。唯一重叠为 pending 的 `programming-languages/编程概念音频课-设计模式.md`——其 `### 5 装饰器 / ### 6 适配器 / ### 7 代理` 三节 → 按 §2 第 4 档先行立条，在 `装饰器模式`、`适配器模式`、`代理模式` 三行标 `pending-merge`，并把去重队列第 7 对由"两条"扩展为"五条"（累计 单例/工厂/装饰器/适配器/代理，拆该音频课前不得清）。本轮无删除/改名，不造悬空，未重建索引。
+
+**check_rewrite --strict（本分片 9 篇）**：9 篇全 PASS / 0 FAIL；8 条 warning 均为「新文件不在 HEAD」；0 悬空双链、0 处含 `/` 的链名；⑨ 面试速答全部 ≤150 字硬判通过。`check_cards` 9 篇各 1 def + 2 trap。
+
+**提交**（hash 由 `git log` 自动追加）：
+
+- 0498f56 docs: 二期拆分[S4]——结构型模式 (枢纽+8子词条)
+
+**剩余本分片 pending**：36 篇。**下一篇巨型汇编**：`content/baike/design-patterns/行为型模式（Behavioral Patterns）.md`（16222 字）。
+## §S4 第三轮 · 行为型模式（Behavioral Patterns）
+
+**处理篇**：`content/baike/design-patterns/行为型模式（Behavioral Patterns）.md`（16222 字巨型汇编）。
+
+**产物 = 枢纽页 + 7 子词条**：枢纽页 1576/2200、0 围栏、frontmatter 逐字未改；7 高频模式独立成条——`策略模式`1325/`观察者模式`1235/`命令模式`1351/`状态模式`1276/`模板方法模式`1343/`责任链模式`1227/`中介者模式`1271；4 种低频（迭代器/备忘录/访问者/解释器）枢纽内联速查。
+
+**去重（§2 第4档）**：策略/观察者/模板方法 与 pending 的 `编程概念音频课-设计模式.md` 的 `### 3 观察者/### 4 策略/### 8 模板方法` 重叠 → 3 条新词标 `pending-merge`；去重队列第 7 对由「五条」扩至「八条」（单例/工厂/装饰器/适配器/代理/观察者/策略/模板方法），恰为该音频课所覆盖的全部 8 个 GoF 模式，拆音频课时全改双链、pending-merge 清完前不得判 done。
+
+**校验**：`check_rewrite --strict` 8 篇全 PASS / 0 FAIL，0 悬空、0 含 `/` 链名、⑨ 全 ≤150；`check_cards` 各 1 def + 2 trap。
+
+**里程碑**：至此 design-patterns 三个模式汇编（创建型/结构型/行为型）全部拆分完成并收敛为枢纽页 + 子词条。
+
+**提交**（hash 由 git log 追加）：
+
+- 5e63802 docs: 二期拆分[S4]——行为型模式 (枢纽+7子词条，4低频内联)
+## §S4 · 开发者效率工具大全（个人工具链参考，拆为 4 工具族）
+
+**处理篇**：`developer-skills/开发者效率工具大全.md`（16942字，个人 dotfiles/命令配置巨块）。
+**产物**：枢纽页(1303/0围栏,frontmatter逐字未改)+4 子词条——`终端与Shell工作流`(1883)/`编辑器与IDE选型`(1738)/`Git高级用法`(1627,基础双链[[版本控制与Git深入]]不重复)/`命令行效率工具`(1394)。原文数十字超长个人配置(zshrc/tmux.conf/settings.json/init.lua)按 §4"配置本身即知识"仍受 ≤20 行围栏约束，故压缩为"有哪些工具/各解决什么/关键命令"的知识+表格，保留可核验价值。
+**校验**：`--strict` 5 篇全 PASS(2 篇 🎯 曾 182/176 字→裁至 ≤150)，0 悬空、0 含 `/`；frontmatter 继承父 source_path「技术文章 / 开发者技能」。
+**hash**：
+
+- f92cbe7 docs: 二期拆分[S4]——开发者效率工具大全 (枢纽+4工具族子词条)
+## §S4 · 敏捷项目管理实战（拆为 7 子词条，最重的一篇）
+
+**处理篇**：`developer-skills/敏捷项目管理实战.md`（13106字、10 大节、含巨型 TDD/Jenkins/mermaid 代码块）。
+**产物**：枢纽页(1344/0围栏,frontmatter逐字未改)+7 子词条——`敏捷宣言与原则`/`Scrum框架`/`看板方法`/`用户故事与敏捷估算`/`需求梳理与优先级`/`迭代与回顾`/`规模化敏捷框架`；TDD/结对/CI-CD 双链到已有专条(测试驱动开发/结对编程/CI 与 CD)不重复，远程敏捷内联枢纽。
+**去重（§2第4档 + §8.2）**：01-开发流程/05-项目管理(均 pending)与本文重叠同一批敏捷/管理术语 → 本汇编为最完整源、立为归口，6 条新词标 `pending-merge: software-engineering/01-开发流程.md`，新增去重队列第 8 对（01/05 拆分时删重叠节改双链）。
+**校验**：`--strict` 8 篇全 PASS，0 悬空、0 含 `/`，⑨ 全 ≤150。
+**hash**：
+
+- 0109e69 docs: 二期拆分[S4]——敏捷项目管理实战 (枢纽+7子词条)
+## §S4 · API设计最佳实践（收敛型：枢纽 + 1 net-new）
+
+**处理篇**：`devops/API设计最佳实践.md`（14388字/35围栏，含 RESTful/版本/认证/错误/分页）。
+**判定（§8.2）**：RESTful/Richardson/HATEOAS、版本、分页、契约、鉴权 的归口专条均已在 architecture(`RESTful API 设计`/`API 分页与版本控制`/`OpenAPI 规范`)与 security(`OAuth 与 JWT`)存在且 done → 一律双链不新建；唯一 net-new = RFC 7807 错误处理 → 立 `API 错误处理规范`。§5 分页原稿导入截断，按 §5 以 [[API 分页与版本控制]] 为准、不补写。
+**产物**：枢纽页(1387/0围栏)+1 子词条；新增去重队列第 9 对。**校验**：2 篇 strict 全 PASS、0 悬空、0 含 `/`。
+**hash**：
+
+- 897414e docs: 二期拆分[S4]——API设计最佳实践 (枢纽+1 net-new 错误处理，余双链已done专条)
+
+> 进度：design-patterns 3/3、developer-skills 2/2 全清；devops 已清 3（含本 API）。
+
+## §S4 · Docker容器化完全指南（枢纽+3 子词条）
+
+**处理篇**：`devops/Docker容器化完全指南.md`（16568字/48围栏/957代码行）。**产物**：枢纽页(1531/0围栏,frontmatter逐字未改)+3 子词条 `Docker 镜像构建与分发`/`容器网络与数据持久化`/`容器运行时安全`；容器vsVM/Dockerfile/Compose 基础双链已 done 的 [[容器与编排技术详解]][[容器化与Docker]]、日志内联，无 pending-merge。**校验**：4 篇 strict 全 PASS(3 处 🎯 曾 >150 已裁)。
+**并发**：本提交曾被并发 s3 的 `database/SQL 基础术语` 在途改动打断共享 test_learn(2 fail)；按 §0.4 等待重试，未 `--no-verify`、未碰他人文件，门转 218/0 后落地。**hash**：
+
+- ec8ea46 docs: 二期拆分[S4]——Docker容器化完全指南 (枢纽+3子词条)
+
+> 进度：devops 已清 Docker/API(+phase1 6 篇 done)；剩 Linux系统管理/Web安全/OS内核/网络渗透/K8s云原生 等 pending。
+
+## §S4 · Kubernetes云原生实战指南（枢纽+2）
+
+**产物**：枢纽页(1606)+2 子词条 `Kubernetes 工作负载（StatefulSet 与 DaemonSet）`/`Kubernetes 网络（Service 与 Ingress）`；容器基础/Pod/Deployment 双链已 done 专条；Ingress 原稿末尾导入截断按 §5 以官方为准。3 篇 strict 全 PASS(🎯 多次超 150 已裁)。
+**hash**：
+
+- c8ad47b docs: 二期拆分[S4]——Kubernetes云原生实战指南 (枢纽+2子词条)
+
+> devops 累计收敛：API/Docker/K8s 三大指南 + phase1；剩 Linux/Web安全/OS内核/网络渗透 4 篇 pending。
+
+## §S4 · Linux系统管理高级指南（枢纽+3 运维子词条）
+
+**产物**：枢纽页(1532)+3 运维层子词条 `Linux 性能分析工具`/`Linux 网络管理`/`Linux 文件系统选型`；内核·进程·内存·VFS 机制双链 [[操作系统内核原理]](不同抽象层，不建重复词条)、Shell 双链 os、容器双链 容器与编排；无 pending-merge。4 篇 strict 全 PASS。
+**hash**：
+
+- 8de359a docs: 二期拆分[S4]——Linux系统管理高级指南 (枢纽+3运维子词条)
+
+> devops 累计清：API/Docker/K8s/Linux 4 大指南 + phase1 6 篇；剩 Web安全攻防/操作系统内核原理/网络安全与渗透测试 3 篇 pending。
+
+## §S4 · 操作系统内核原理（枢纽+6 机制子词条）
+
+**产物**：枢纽页(1468)+6 机制子词条 `进程与调度`/`线程与同步`/`内核内存管理`/`文件系统与IO模型`/`系统调用与中断`(含设备驱动)/`容器隔离与内核安全`；性能/文件系统选型/网络运维 双链已建运维专条(分层不重复)；原稿§9 Seccomp 代码块导入截断按 §5 以官方为准。
+**踩坑修正**：6 子词条初稿漏了必备 `## 优劣与代价`、且多条 🎯 >150 → 补节 + 裁 🎯；`[[进程间通信]]` 等双链已核实无悬空。
+**校验**：7 篇 strict 全 PASS、0 悬空、0 含 `/`、⑨ 全 ≤150、各 1def+2trap。
+**hash**：
+
+- 90b89bd docs: 二期拆分[S4]——操作系统内核原理 (枢纽+6机制子词条)
+
+> devops 剩：Web安全攻防实战指南、网络安全与渗透测试。s4 总 pending 降至 28。
+
+## §S4 · Web安全攻防实战指南（枢纽+4 攻击子词条）
+
+**产物**：枢纽页(1601，OWASP Top10 全景表)+4 攻击族词条 `XSS 与内容安全`/`注入类漏洞`(SQL·命令·XXE)/`CSRF与SSRF`/`文件上传与反序列化`；JWT/OAuth 双链 [[OAuth 与 JWT]]。
+**去重(§2第4档)**：XSS/注入与 s5 pending `security/网络安全篇` 重叠 → 两新词标 `pending-merge: security/网络安全篇.md`(跨片)，新增去重队列第 10 对。
+**踩坑修正**：4 子词条初稿再次漏 `## 优劣与代价`、2 条 🎯 >150 → 补节+裁；终 5 篇 strict 全 PASS、0 悬空。
+**hash**：
+
+- 44da334 docs: 二期拆分[S4]——Web安全攻防实战指南 (枢纽+4攻击子词条)
+
+> devops 仅剩 `网络安全与渗透测试`(17171)。s4 pending 降至约 27。
+
+## §S4 · 网络安全与渗透测试（枢纽+2；devops 域收尾）
+
+**产物**：枢纽页(1207，含授权红线声明)+2 防御性子词条 `网络协议层攻击与防护`(SYN Flood/DNS劫持/ARP/反射放大+加固)、`渗透测试流程与工具`(侦察→验证→报告+授权范围红线，利用细节双链 [[注入类漏洞]][[XSS 与内容安全]] 等)；常见漏洞实战/认证 双链 Web安全 词条与 [[OAuth 与 JWT]]；网络协议层 pending-merge security/网络安全篇(第10对补充)。
+**合规**：按防御性安全知识库组织既有内容，攻击机理点到为止、防御具体，未新增可操作的越权攻击材料。
+**踩坑修正**：2 子词条再次漏 `## 优劣与代价`、网络协议层 🎯 158>150 → 补+裁；一处脚本因并发编辑改了锚点致 split-candidates 首轮未落，已用新锚点补记 done。终 3 篇 strict 全 PASS。
+**里程碑**：devops 子域 13 篇全部收敛(7 done-hub/枢纽 + 叶子/子词条)。**hash**：
+
+- 97f6afc docs: 二期拆分[S4]——网络安全与渗透测试 台账补记(split-candidates done)
+
+> s4 剩约 26（programming-languages ~19、software-engineering 01/02/05、testing 01/02/03）。
+
+## §S4 · Flutter跨平台开发实战（枢纽+5；programming-languages 起）
+
+**产物**：枢纽页(1494)+5 子词条 `Dart语言精要`/`Flutter Widget体系`/`Flutter布局系统`/`Flutter路由与导航`(GoRouter)/`Flutter状态管理`(Provider/Riverpod/Bloc)；全 net-new、无 pending-merge；mobile/移动开发概览 作概览双链。
+**踩坑**：又漏 `## 优劣与代价` 与 4 条 🎯 超长(hub 233)，均补/裁；终 6 篇 strict 全 PASS、0 悬空。
+**hash**：
+
+- 62a8b59 docs: 二期拆分[S4]——Flutter跨平台开发实战 (枢纽+5子词条)
+
+> s4 pending 降至 25（programming-languages 剩 ~18：Go系统/Python全栈/Python高级/Rust系统/TS高级/函数式/密码学/并发/数学/音频课×2/通用概念/编译原理/CS图谱/软件测试(已done)/OOP/概念×2；software-engineering 3；testing 3）。
+
+## §S4 · Go语言系统编程指南（枢纽+3）
+
+**产物**：枢纽页(1230)+3 子词条 `Go并发与内存模型`(CSP/happens-before/atomic)、`Go接口与反射`、`Go unsafe与底层`(unsafe.Pointer/cgo)；goroutine/channel/接口基础双链 [[Go语言核心]]；net-new 无 pending-merge。**踩坑**：3 条 🎯 又超150→裁；4 篇 strict 全 PASS、0 悬空。**hash**：
+
+- 06dc2a2 docs: 二期拆分[S4]——Go语言系统编程指南 (枢纽+3子词条)
+
+## §S4 · Python全栈开发教程（纯收敛枢纽，0 新子词条）
+
+各栈已有 done 专条（[[Web框架对比]]含FastAPI/SQLAlchemy、[[PostgreSQL高级特性]]、[[React深入]]、[[Python高级特性]]、API 系列），按 §8.2 全改双链不新建、避免重复承载；本页收敛为全栈接线枢纽。提交范围核验 CLEAN。**hash**：
+
+- 4284d39 docs: 二期拆分[S4]——Python全栈开发教程 (纯收敛枢纽，0 新子词条)
+
+## §S4 · Python高级编程完全指南（枢纽+3）
+
+枢纽页(1305)+3 子词条 `Python 高级装饰器`/`Python 元类编程`/`Python 描述符与上下文管理器`；概览双链 [[Python高级特性]]、GoF 辨析双链 [[装饰器模式]]；net-new 无 pending-merge。踩坑：hub `[[生成器与迭代器]]` 悬空→改纯文本、多条 🎯 微超逐次裁；终 4 篇 strict 全 PASS、0 悬空。**hash**：
+
+- a75cb55 docs: 二期拆分[S4]——Python高级编程完全指南 (枢纽+3子词条)
+
+## §S4 · Rust系统编程入门到精通（枢纽+4）
+
+枢纽页(1413)+4 子词条 `Rust Trait与泛型`/`Rust 错误处理`/`Rust 智能指针`/`Rust 并发与异步`；所有权/借用/生命周期/unsafe 双链 done 的 [[Rust编程基础]]；net-new 无 pending-merge。踩坑：2 条 🎯 超150 裁；5 篇 strict 全 PASS、0 悬空。提交 CLEAN。**hash**：
+
+- 55c78c0 docs: 二期拆分[S4]——Rust系统编程入门到精通 (枢纽+4子词条)
+
+## §S4 · TypeScript高级编程指南（枢纽+3）
+
+枢纽页(1309)+3 子词条 `TypeScript 高级类型与类型体操`/`模块与声明文件`/`装饰器与编译器API`；类型/泛型基础双链 [[TypeScript深入]][[泛型]]；net-new 无 pending-merge。踩坑：4 条 🎯 均超150 逐裁、一处不相关 [[MVC 与 MVVM]] 链删除；4 篇 strict 全 PASS、0 悬空。提交 CLEAN。**hash**：
+
+- 3cf8ede docs: 二期拆分[S4]——TypeScript高级编程指南 (枢纽+3子词条)
+
+## §S4 · 函数式编程完全指南（枢纽+4）
+
+枢纽页(1369)+4 子词条 `函数式编程基础`/`Functor 与 Monad`/`函数式错误处理与不可变数据结构`/`函数式并发与多语言实践`。基础&Monad 与同片 pending 的 `函数式编程（FP）概念`(14-def 汇编) 术语重叠→按 §2 第4档两新词标 pending-merge，新增去重队列第 11 对。踩坑：清理 [[Option 与 Result]]/[[Actor 模型]] 两处悬空链为既有专条、4 条 🎯 逐裁；5 篇 strict 全 PASS、0 悬空。提交 CLEAN。**hash**：
+
+- 769ddc3 docs: 二期拆分[S4]——函数式编程完全指南 (枢纽+4子词条)
+
+## §S4 · 密码学与区块链技术指南（枢纽+2）
+
+枢纽页(1253)+2 子词条 `密码学基础`(对称/非对称/哈希/签名/AES·RSA·ECC·SHA/KMS·HSM/TLS)、`区块链与比特币`(哈希链/PoW-PoS/P2P/UTXO/SegWit)。密码学基础与 s5 pending 的 security/密码学基础篇·加密技术篇·哈希算法篇 跨片重叠→标 pending-merge、新增去重队列第 12 对（归口宜统一 security，待 s5 收敛定夺）；区块链 net-new。踩坑：2 新链悬空(哈希算法与一致性哈希/去中心化身份)改纯文本、2 条 🎯 裁；一处 heredoc 脚本因 ASCII 引号语法错致 split-candidates 首轮未落，改用脚本文件补记。3 篇 strict 全 PASS、0 悬空。提交 CLEAN。**hash**：
+
+- ade354c docs: 二期拆分[S4]——密码学与区块链 台账补记(split-candidates done + 第12对)
+
+## §S4 · 并发编程模式与实践（枢纽+3）
+
+枢纽页(1321)+3 子词条 `并发与并行及线程模型`/`同步原语与无锁并发`/`消息传递并发：CSP 与 Actor`；线程/协程/Go/Rust 并发双链既有专条；三条与同片 pending 的 `并发编程（CP）概念`(14-def) 重叠→pending-merge、新增去重队列第 13 对。4 篇 strict 全 PASS、0 悬空。提交 CLEAN。**hash**：
+
+- 248bc22 docs: 二期拆分[S4]——并发编程模式与实践 (枢纽+3子词条)
+
+## §S4 · 程序员的数学基础（枢纽+2）
+
+枢纽页(1116)+2 子词条 `离散数学与组合`(集合/逻辑/组合/图论结构)、`线性代数`(向量/矩阵/特征值/SVD)。图论/复杂度/ML 双链既有 done 专条([[图算法大全]][[复杂度分析]][[机器学习基础]])；修掉3处不存在链(大O与离散数学基础/梯度下降与优化算法/2.0,0.0 numpy 误判)。2 篇 net-new 无 pending-merge。3 篇 strict 全 PASS、0 悬空。提交 CLEAN。**hash**：
+
+- 5e7917d docs: 二期拆分[S4]——程序员的数学基础 (枢纽+2子词条)
+
+## §S4 · 编程概念音频课-数据结构（枢纽+2）
+
+枢纽页(1283)+2 net-new 子词条 `数组与链表`/`栈与队列`；哈希/树/图/堆双链 algorithms done 专条([[哈希表]][[二叉搜索树]][[图(数据结构)]][[堆与优先队列]])；修悬空链。3 篇 strict 全 PASS、0 悬空。**（s5 落库后 test_learn 门转 218/0，本提交随即落地）hash 见下：
+- fca1354 docs: 二期拆分[S4]——编程概念音频课-数据结构 (枢纽+2子词条)
+## §S4 · 编程概念音频课-设计模式（纯收敛 hub，闭环第7对）
+
+枢纽页(1316，比喻速记+双链 8 个 design-patterns 专条)、0 新子词条；此步作为收尾复检：清除指向本汇编的 8 条 pending-merge(单例/工厂/装饰器/适配器/代理/观察者/策略/模板方法)、第7对标 ✅已执行。1 篇 strict PASS、0 悬空。提交 CLEAN。**hash**：
+
+- 276a561 docs: 二期拆分[S4]——编程概念音频课-设计模式 (纯收敛hub，清8条pending-merge)
+
+## §S4 · 编程语言通用概念（枢纽+3族）
+
+枢纽页(1163，11术语归3族)+3 子词条 `变量与数据类型`/`控制流与函数`/`作用域与命名`；类型/闭包双链 done 专条；net-new 无 pending-merge。踩坑：控制流与函数 🎯 151 微超→按行裁。4 篇 strict 全 PASS、0 悬空。提交 CLEAN。**hash**：
+
+- c042661 docs: 二期拆分[S4]——编程语言通用概念 (枢纽+3族子词条)
+
+## §S4 · 编译原理与解释器实现（枢纽+2，闭环第4对）
+
+枢纽页(1419,流水线总览+实战)+2 net-new 子词条 `语义分析`/`代码生成与LLVM`；词法/语法/AST/IR/优化/JIT/GC 全双链已 done 专条(第4对闭环)。3 篇 strict 首轮全 PASS(清单生效)、0 悬空。提交 CLEAN。**hash**：
+
+- c4a0114 docs: 二期拆分[S4]——编译原理与解释器实现 (枢纽+2子词条)
+
+## §S4 · 计算机科学完整知识图谱（纯收敛 hub，0 新条）
+
+全景 hub(1320)：五大子系统+数学 全双链既有 done/existing 专条，0 新子词条；修1处悬空。1 篇 strict PASS、0 悬空。提交 CLEAN。**hash**：
+
+- 4ff4b46 docs: 二期拆分[S4]——计算机科学完整知识图谱 (纯收敛hub)
+
+## §S4 · 面向对象编程（OOP）概念（枢纽+3族）
+
+枢纽页(1168,13术语归3族)+3 族子词条 `类与对象`/`封装与继承`/`多态与抽象`；泛型/设计原则双链既有专条；修2处悬空链(SOLID/开闭→设计原则)、多态🎯152→按行裁。net-new 无 pending-merge。4 篇 strict 全 PASS、0 悬空。提交 CLEAN。**hash**：
+
+- 4d16df7 docs: 二期拆分[S4]——面向对象编程（OOP）概念 (枢纽+3族子词条)
+
+## §S4 · React Native移动应用开发（枢纽+4子词条）
+
+枢纽页(1859，四层地图+子词条索引表)+4 net-new 子词条 `React Native 新架构与原生桥接`(JSI/Fabric/TurboModules/Codegen/原生模块)/`React Native 组件与布局`(Flexbox默认column/SafeAreaView/FlatList)/`React Native 导航与状态管理`(React Navigation嵌套深链/Zustand/Jotai)/`React Native 网络与数据缓存`(拦截器/TanStack Query staleTime·gcTime/MMKV)；原计划6层，实际收敛为4篇(原生桥接并入新架构、导航与状态合1篇)，见 split-candidates 行注。枢纽双链 [[React深入]][[TypeScript深入]][[Flutter跨平台开发实战]]。踩坑：枢纽首稿误按纯收敛页写→补全 §2 骨架(def/2误区/🎯)；修2处悬空链(RN组件布局→React Native 组件与布局)；枢纽🎯152·组件181·导航169·网络158 逐行裁至≤150。5 篇 strict 全 PASS、0 悬空。提交 CLEAN。**hash**：
+
+- 2d77163 docs: 二期拆分[S4]——React Native移动应用开发 (枢纽+4子词条)
+
+## §S4 · Rust Web开发实战（枢纽+5子词条）
+
+枢纽页(1798，五块技术栈索引表+框架选型 Actix/Axum/Rocket)+5 net-new 子词条 `Axum 路由与中间件`(类型安全 Router/extractor·tower layer·with_state·IntoResponse)/`Rust Web 数据库集成`(SQLx 编译期校验·Diesel·SeaORM·池·事务·migrate)/`serde 序列化与反序列化`(derive 解耦·rename/skip/default/with·Json<T>)/`Rust Web 认证与授权`(JWT 签验+Bearer 中间件·OAuth2 授权码+CSRF state)/`tokio 异步运行时实战`(工作窃取·spawn_blocking·信号量·通道)；原计划6块、框架选型入枢纽故落5子词条。语言层双链 done 的 [[Rust编程基础]][[Rust 错误处理]][[Rust 并发与异步]]，避免与系统层重复承载。踩坑：认证页误链[[API 鉴权与授权（…）]]→改[[API 错误处理规范]]；4 条🎯(Axum175/serde168/认证156/tokio188，英文标识符计入致估长)逐行裁至≤150。6 篇 strict 全 PASS、0 悬空。提交 CLEAN。**hash**：
+
+- b4055af docs: 二期拆分[S4]——Rust Web开发实战 (枢纽+5子词条)
+
+## §S4 · 函数式编程（FP）概念（收敛枢纽+1子词条 · 闭环去重第11对）
+
+原 14-def 概念汇编收敛为枢纽页(1616)：纯函数/副作用/不可变/高阶/柯里化/组合/闭包/Functor/Applicative/Monad/错误处理 等 12 概念**已在既有专条承载**，故删除重复、改双链指向 [[函数式编程基础]][[Functor 与 Monad]][[函数式错误处理与不可变数据结构]][[闭包]]；仅 声明式vs命令式 + 惰性求值 两概念汇编独家、无归口 → net-new 1 子词条 `声明式风格与惰性求值`(1538)。枢纽核心机制为"概念→专条"归属表(6 行)。闭环：清掉 [[函数式编程基础]][[Functor 与 Monad]] 两行 pending-merge，去重队列第 11 对标 ✅已执行，`grep pending-merge:.*函数式编程（Functional` 复检为空。踩坑：新条 source 字段误填成 source_path→改回 "baike"；误链[[高阶函数与 Lambda]](不存在)→改[[闭包]]；2 篇 strict 全 PASS、0 悬空。提交 CLEAN。**hash**：
+
+- fcb844b docs: 二期拆分[S4]——函数式编程（FP）概念 (收敛枢纽+1子词条，闭环去重第11对)
+
+## §S4 · 并发编程（CP）概念（收敛枢纽+2子词条 · 闭环去重第13对）
+
+原 14-def 概念汇编收敛为枢纽页(1650)：并发vs并行/线程vs进程/锁·读写锁·信号量·条件变量·原子·CAS·死锁·协程·消息传递 等 11 概念**已在既有专条承载**，改双链归口 [[并发与并行及线程模型]][[同步原语与无锁并发]][[消息传递并发：CSP 与 Actor]][[死锁]][[协程]]；汇编独家、无归口的 线程池 与 Future·Promise·事件循环 → net-new 2 子词条 `线程池`(1582，复用worker+队列/容量参数·拒绝策略/大小选型) + `异步结果与事件循环`(1804，Future vs Promise/链式组合/事件循环协作调度·禁阻塞红线)。闭环：清 [[并发与并行及线程模型]][[同步原语与无锁并发]][[消息传递并发：CSP 与 Actor]] 三行 pending-merge、并发编程模式与实践 hub 与去重队列第 13 对标 ✅已执行，`grep pending-merge:.*并发编程（Concurrent` 复检为空。踩坑：异步结果 leaf 🎯151→删 run_in_executor 括注过线。3 篇 strict 全 PASS、0 悬空。提交 CLEAN。**hash**：
+
+- 1a2c4bd docs: 二期拆分[S4]——并发编程（CP）概念 (收敛枢纽+2子词条，闭环去重第13对)
+
+## §S4 · 01-开发流程（收敛枢纽+1子词条 · 闭环去重第8对之01侧）
+
+原 13-def 术语汇编收敛为枢纽页(1513)：敏捷/Scrum/Kanban/Sprint/站会/回顾/用户故事/验收标准/故事点/计划扑克/产品待办/冲刺待办 等 12 术语**已在 developer-skills 承载**，改双链归口 [[敏捷宣言与原则]][[Scrum框架]][[看板方法]][[用户故事与敏捷估算]][[需求梳理与优先级]][[迭代与回顾]]；仅 瀑布模型 为软件工程侧独家、另立 1 net-new 子词条 `瀑布模型`(1374，线性阶段/Stage-Gate/变更控制/与增量·螺旋·敏捷对比)。核心机制为"术语→专条"归属表(7 行)。闭环：清 developer-skills 六行 pending-merge、去重队列第 8 对 01 侧标 ✅已执行(05 侧仍 pending、拆 05 时同双链看板/需求专条)，`grep pending-merge: software-engineering/01-开发流程` 复检为空。2 篇 strict 全 PASS、0 悬空。提交 CLEAN。**hash**：
+
+- acff229 docs: 二期拆分[S4]——01-开发流程 (收敛枢纽+瀑布模型，闭环去重第8对之01侧)
+
+## §S4 · 02-版本控制（纯收敛枢纽页，0 新条）
+
+原 14-def 汇编收敛为纯索引枢纽(1735)：三区模型/add·commit·push·pull·fetch/分支·merge·rebase·冲突/cherry·stash·.gitignore/分支策略 全双链 [[版本控制与Git深入]]，Hooks·rebase-i 归 [[Git高级用法]]，PR·MR·CodeReview 归 [[代码评审]]——无一条未被既有 done 专条承载、故 0 net-new（避免造薄词条）。核心机制为"术语→专条"归属表(6 行)。踩坑：🎯152→去"暂存区→仓库"冗余括注+缩"择规模"两步裁至≤150。1 篇 strict PASS、0 悬空。提交 CLEAN。**hash**：
+
+- 6d9e45f docs: 二期拆分[S4]——02-版本控制 (纯收敛枢纽页，0新条)
+
+## §S4 · 05-项目管理（枢纽+5子词条 · 闭环去重第8对之05侧）
+
+枢纽页(1587，四组主线:进度/目标/质量/协作 + 术语归属表)+5 net-new 子词条 `燃尽图与燃起图`(剩余↓vs完成↑·范围蔓延暴露)/`OKR与KPI`(目标对齐vs绩效水位·古德哈特防刷)/`里程碑与发布计划`(阶段检查点·release train·发布≠部署)/`缺陷生命周期与风险管理`(Bug状态机·Severity vs Priority·风险四应对)/`干系人管理与RACI`(权力×利益分级·唯一A·C双向I单向)。看板/需求管理 改双链归口 [[看板方法]][[需求梳理与优先级]]→**闭环去重第8对(01+05 两侧齐、整对 ✅)**；Jira 作工具速览不立条避免薄词条。踩坑：缺陷 leaf 🎯210→大幅精简状态名与括注两步裁至≤150。6 篇 strict 全 PASS、0 悬空。提交 CLEAN。**hash**：
+
+- 14e601a docs: 二期拆分[S4]——05-项目管理 (枢纽+5子词条，闭环去重第8对)
+
+## §S4 · 01-测试基础（枢纽+5子词条）
+
+枢纽页(1575，"概念→专条"归属表 9 行)+5 net-new 子词条 `测试金字塔与覆盖率`(三层70/20/10+语句·分支覆盖·高覆盖≠高质量)/`冒烟测试与回归测试`(构建后准入小集 vs 改动后全量重放)/`验收测试与探索性测试`(UAT 业务符合度 vs charter 时间盒挖隐藏 bug)/`断言与测试替身`(判对错/Stub·Spy·Mock·Fake·Dummy·state vs interaction·忌过度mock)/`BDD 与契约测试`(Gherkin 活文档 + Pact 消费者驱动·只验形状不验业务)；单元/集成/E2E/TDD 四概念改双链归口既有专条、**清 E2E 测试行的 pending-merge**(01 的 E2E 节已删除)。踩坑：BDD 页误链[[微服务架构设计]]→改[[微服务架构设计与实践]]；断言页 H2 手滑写成"## 面试速答>"→修回；断言🎯183·BDD🎯166→精简裁至≤150。6 篇 strict 全 PASS、0 悬空。提交 CLEAN。**hash**：
+
+- 6d3ee72 docs: 二期拆分[S4]——01-测试基础 (枢纽+5子词条)
+
+## §S4 · 02-测试工具（枢纽+3子词条 · 清 Playwright/Cypress pending-merge）
+
+工具选型枢纽(1745，"工具→用途→归口"表)+3 net-new 子词条 `单元测试框架`(pytest·JUnit5·Jest·Mocha+Chai/发现·断言·fixture·参数化·mock·CI)/`Postman 与接口测试`(Collection·Tests脚本·Environment·Runner+Newman CI·只验接口形状)/`测试数据与环境管理`(夹具·工厂·种子·隔离重置脱敏·本地/CI/临时容器/类生产·治 flaky 地基)；浏览器工具(Selenium/Cypress/Playwright)归口 [[Playwright 与 Cypress]][[E2E 测试]]、JMeter 归口 [[性能测试]]、Mockito/Mock.js 归口 [[断言与测试替身]]——均双链不重复。**清 [[Playwright 与 Cypress]] 行 pending-merge**(02 三节已删)。踩坑：4 条🎯(198/179/183/162)全需精简；提交首跑 pre-commit 崩在 OpenBLAS 内存分配失败(RAG 模型加载 OOM、非代码失败)，**未 --no-verify**、文件仍暂存，原样重试一次即全绿落库。6 篇 strict 全 PASS、0 悬空。提交 CLEAN。**hash**：
+
+- 55c68cb docs: 二期拆分[S4]——02-测试工具 (枢纽+3子词条，清 Playwright/Cypress pending-merge)
+
+## §S4 · Python全栈开发教程（纯收敛枢纽，0 新子词条）
+
+各技术层均已存在 done 专条（[[Web框架对比]] 含 FastAPI/SQLAlchemy、[[PostgreSQL高级特性]]、[[React深入]]、[[Python高级特性]]、API 系列），按 §8.2 全部改双链、不新建；本页收敛为全栈接线枢纽。**hash**：
+
+- 93646c3 docs: 二期拆分[S4]——Python全栈开发教程 (纯收敛枢纽，0 新子词条)
+
+## §S4 · 03-性能测试（枢纽+4子词条）
+
+性能测试全景枢纽(1607，"主题→归属"表)+4 net-new 子词条 `性能测试类型与策略`(负载·压力·稳定soak·容量四型 + 预热·数据隔离·环境同构策略)/`性能测试指标`(QPS/TPS/并发·Little定律/响应分位 P90-P99·吞吐拐点)/`负载测试工具（JMeter·K6·Locust）`(三工具心智与组件·JMeter CLI非GUI·k6 thresholds 门禁·脚本须预热参数化)/`性能报告与瓶颈分析`(报告要素·基线对比·USE 法定位 CPU/内存/IO/网络/DB·top/iostat/EXPLAIN 取证)；总述归口 [[性能测试]]、优化思路归口 [[性能优化]][[Linux 性能分析工具]]，均双链不重复。踩坑：5 条🎯(168/156/157/195/216)全需精简、报告 216→两步裁；提交首跑 pre-commit 又遇 app.py --import-check 瞬时红(73/1、并发写致)，**未 --no-verify**——期间并发 agent 的 `93646c3`(Python全栈) 用共享 index 把我已暂存的 s4.md/split-candidates.md 的 03 台账行一并卷入其提交(台账内容无误、已在 HEAD，仅提交信息非本任务)，我的 5 个内容文件仍安全暂存、单独重试提交全绿落库；**未 reset/改写他人提交**，仅补提内容文件。5 篇 strict 全 PASS、0 悬空。提交 CLEAN(内容)。**hash**：
+
+- eb915e8 docs: 二期拆分[S4]——03-性能测试 (枢纽+4子词条)〔台账行见 93646c3〕
+
+
+
+### 分片 S5（Web 与其余）
+
+# 二期拆分报告 · 分片 S5（Web 与其余）
+
+> 本报告仅由 S5 分片会话维护，不触碰 `final-report.md` 及其他分片报告。
+
+## S5 第二轮（巨型汇编 · 处理 1 篇即停）
+
+**本篇**：`content/baike/architecture/云原生与多云架构实战指南.md`
+- 规模：19526 字 / 12 围栏 / 970 行代码（>8000 字且代码 >500 行 → 命中巨型汇编规则，本会话仅此一篇）。
+- 拆出：父文档 → **枢纽页**（核心机制改为 mermaid 关系图 + 四支柱「带双链的编号项」，正文不复述子概念，§8.1 单一承载；1517/2200 字）；新建 **1 个子词条** `云原生十二要素.md`（12-Factor 族词条，「做法」变体，十二条按代码/构建/运行/运维四组归并；1289/2200 字）。子词条 frontmatter 继承父 source_path「技术文章 / 架构与设计」与 collected「2026-09-05」，tags 留空。
+- 概念级去重（§8.2）：IaaS/PaaS/SaaS/FaaS 服务模型已由 `devops/云服务详解.md`（s4 已 done）完整承载 → 双链 `[[云服务详解]]` 不新建；容器→`[[容器与编排技术详解]]`、K8s→`[[Kubernetes深入]]`、服务网格→`[[服务网格]]`、CI/CD→`[[CI 与 CD]]`、IaC→`[[基础设施即代码详解]]`、可观测→`[[可观测性工程实战]]` 全部双链既有专条；原稿 §2/§3 的 AWS/阿里云 boto3 代码为产品漫游、无对应面试术语，收敛进枢纽不单立。
+- 源稿截断（v1.2 §5）：§5「多云策略」在原稿中途截断（止于 `class CloudProviderAdapter`），按规范不据推测补写，多云仅在枢纽内联保留可确认的策略框架并在参考资料注明。
+- 双链核对：无含 `/` 的链名（mermaid 节点内 `CI-CD` 用连字符）；新增 `[[云原生十二要素]]` 目标已落盘，⑧ 0 悬空、⑩ 0 疑似专条。
+
+**check_rewrite --strict（本会话 2 篇）**：
+PASS content/baike/architecture/云原生与多云架构实战指南.md  (正文 1517/2200 字 / 围栏 1 块 5 行 / 卡 1def+2trap)
+PASS content/baike/architecture/云原生十二要素.md  (正文 1289/2200 字 / 围栏 0 块 0 行 / 卡 1def+2trap)
+（两篇全 PASS / 0 FAIL；唯一 warning 为子词条「新文件不在 HEAD，⑤⑦ 跳过」，已随提交消失；⑨ 速答全 ≤150；check_cards 各 1 def + 2 trap；枢纽页 frontmatter 与 HEAD 逐字一致，check ⑦ 通过。）
+
+**台账**：`s5.md` 追加 done-hub + 1 子词条行；`split-candidates.md` 云原生行改 done。§0.1 断言以真实目录名（architecture/security/hci/mobile）+ `core.quotepath=false` 等价校验本会话待提交路径全属本分片。
+
+**剩余本分片 pending（20）**：architecture 7（分布式系统设计完全指南 / 可观测性工程实战 / 推荐系统设计与实现 / 数据工程完全指南 / 架构模式 / 设计原则 / 领域驱动设计DDD完全指南）；frontend-concepts 4；frontend-frameworks 4；security 5。
+
+**⚠ 并发提交纪律**：本会话全程 `git add` 后立即以显式 pathspec 提交、不留锁等待窗口，提交恰含 4 个本分片文件（`bbc91fb`）。上一轮曾因并发会话裸 commit 把 S5 暂存扫入其提交——本轮已规避。
+
+**本会话提交（git log 机器追加）**：
+- bbc91fb docs: 二期拆分[S5]——云原生与多云架构实战指南 (枢纽+1子词条)
+
+---
+
+## S5 第三轮（终极包圆 · 本分片 pending 20 → 0）
+
+**目标达成**：`split-candidates.md` 本分片 s5 行 pending 计数 = **0**（20 篇全部拆分入库）。全程串行子代理逐篇端到端处理、即时显式 pathspec 提交，避免裸 commit 与并发扫入。
+
+**本会话 20 篇（队首→队尾）**：
+| # | 巨型/中小 | 父文件 | 新建子词条数 | 双链归口要点 |
+|--|--|--|--|--|
+|1|巨 19344|architecture/分布式系统设计完全指南|0|全双链 distributed/*(CAP/BASE/一致性算法/分布式事务/Saga与TCC/最终一致性/Quorum)|
+|2|巨 19848|architecture/可观测性工程实战|3|日志管道与结构化采集/Prometheus指标与告警/分布式链路追踪；三支柱口径双链 devops/监控与日志详解|
+|3|巨 19007|architecture/推荐系统设计与实现|4|协同过滤与矩阵分解/基于内容推荐与混合策略/多路召回与双塔模型/深度推荐模型；本体双链 data-science/推荐系统|
+|4|巨 20180|architecture/数据工程完全指南|2|流处理与批处理/湖仓一体与开放表格式；ETL/数仓/数据湖/MapReduce/Kafka 双链|
+|5|中 3165|architecture/架构模式|1|六边形与洋葱架构(族条,曾标 pending-merge→DDD)|
+|6|中 4636|architecture/设计原则|4|SOLID/DRY·KISS·YAGNI/复用与解耦/IoC与依赖注入；SOLID族曾标 pending-merge→OOP|
+|7|中 13699|architecture/领域驱动设计DDD完全指南|1|事件风暴与上下文映射；DDD基础双链[[DDD领域驱动设计]]，CQRS/ES双链[[事件驱动架构]]；**已收敛第10对 pending-merge**|
+|8|中 6192|frontend-concepts/HTML & CSS 核心概念|5|布局/盒模型·BFC·层叠/选择器/变量动画/HTML语义化；响应式双链[[响应式设计]]|
+|9|巨 11507|frontend-concepts/JavaScript 基础核心概念|6|作用域与this/原型链/异步族/模块化/语法糖族/弱引用；闭包双链[[闭包]]|
+|10|巨 11188|frontend-concepts/前端工程化核心概念|5|构建工具/规范转换/CSS预处理模块化/PWA/构建优化；TS·包管理·Monorepo双链(标pending-merge→现代前端工程化)|
+|11|巨 11884|frontend-concepts/前端框架核心概念|4|虚拟DOM与Diff/状态管理/前端路由/组件化与微前端；React·Vue本体双链|
+|12|巨 20601|frontend-frameworks/GraphQL从入门到精通|3|Schema与Resolver/N+1与DataLoader/实时订阅与文件上传；本体双链[[GraphQL实践]]|
+|13|巨 19672|frontend-frameworks/Next.js全栈开发实战|4|App Router与渲染策略/RSC与数据获取/缓存与再验证/中间件与i18n|
+|14|巨 17972|frontend-frameworks/WebAssembly完全指南|3|线性内存与模块结构/JS互操作/WASI与非浏览器运行时|
+|15|巨 19016|frontend-frameworks/现代前端工程化完全指南|1|组件库开发与设计系统；**已收敛第12对(10)pending-merge**|
+|16|中 8631|security/加密技术篇|4|对称算法族/非对称算法族/国密SM2·3·4/密钥交换与混合加密与数字信封|
+|17|中 5705|security/哈希算法篇|4|密码学哈希函数族/HMAC与校验和/布隆过滤器/加盐哈希与口令存储(标pending-merge→密码学基础篇)|
+|18|中 11041|security/密码学基础篇|2|密钥与密钥对/密钥管理与轮换；**已收敛第14对、执行第12对择一归口**|
+|19|中 10652|security/网络安全篇|1|CORS；HTTPS/证书/签名/CA/MITM/XSS/CSRF/SQLi/DDoS/WAF 全双链既有done|
+|20|中 9407|security/认证与授权篇|3|SSO与OIDC/MFA/API Key与Basic与Bearer；OAuth·JWT/RBAC·ABAC/Cookie·Session 双链|
+
+**合计**：20 篇父文档改写为枢纽页，新建 **60** 个子词条文件；子域全清——architecture 7、frontend-concepts 4、frontend-frameworks 4、security 5（本轮）+ 前轮 SaaS/云原生。graphics-multimedia/hci/blockchain/iot/mobile/web-backend 无拆分候选（一期已全 done）。
+
+**自检**：每篇 `check_rewrite.py --strict` 全 PASS / 0 FAIL / 0 含`/`链名 / 0 悬空双链；`check_cards.py` 每篇（含新建）各 1 def + 2 trap；枢纽页 frontmatter 与首行 `> 📌` 均逐字未动（check ⑦）。原稿多处抓取截断（可观测§6告警、数据工程§6.2、GraphQL§8、Next.js§11.4、WebAssembly§5、DDD§4.3 等）一律按 v1.2 §5 不臆测补写，在页尾⚠️与台账登记。
+
+**跨分片耦合与纪律**：
+- pending-merge 全部按 §2 第4档收敛（第10对→六边形与洋葱架构、第12对→programming-languages/密码学基础 择一归口、第14对→加盐哈希与口令存储），指向 s5 文件的标记已清并 grep 复检为空；指向他片账页(s4.md)的残留**未代清**（越界），已在台账注明留片方处理。
+- `tests/test_learn.py`：本会话仅在 `47a3be0`（哈希算法篇）动过一次——因该测试把 security B 格式样本钉死到真实语料文件、拆分转 A 格式后夹具漂移致 pre-commit 全红；改法为"内联语料夹具解耦"，与仓库所有者 lxc 在先例 `4a785b1`（拆 SQL 基础术语时的同一处置）完全一致，且此后 security 侧夹具已内联、不再被后续拆分支扰。改动最小、test_learn 现 218/0 绿。此为越界但属所有者既定范式，如实标注。
+- 并发：全程 `git add` 后即时 pathspec 提交，未再出现上一轮"暂存被他片裸 commit 扫入"；期间遇 `.git/index.lock` 与一次他片脏 corpus 顶红，均按纪律等待重试解决，未用 `--no-verify`、未 reset/删他文件。
+
+**本会话 S5 提交（git log 机器追加，最近 20 条二期拆分[S5]，队首在底部）**：
+- 381b962 docs: 二期拆分[S5]——认证与授权篇 (枢纽+3子词条)
+- 7b508b3 docs: 二期拆分[S5]——网络安全篇 (枢纽+1子词条)
+- 3506142 docs: 二期拆分[S5]——密码学基础篇 (枢纽+2子词条；收敛pending-merge第14对、执行第12对择一归口)
+- 47a3be0 docs: 二期拆分[S5]——哈希算法篇 (枢纽+4子词条；test_learn 解耦哈希算法篇语料夹具)
+- 15641ee docs: 二期拆分[S5]——加密技术篇 (枢纽+4子词条)
+- 804fb7d docs: 二期拆分[S5]——现代前端工程化完全指南 (枢纽+1子词条；收敛pending-merge)
+- 951c017 docs: 二期拆分[S5]——WebAssembly完全指南 (枢纽+3子词条)
+- f14c2ca docs: 二期拆分[S5]——Next.js全栈开发实战 (枢纽+4子词条)
+- d10b2b8 docs: 二期拆分[S5]——GraphQL从入门到精通 (枢纽+3子词条)
+- 569e8e6 docs: 二期拆分[S5]——前端框架核心概念 (枢纽+4子词条：虚拟DOM与Diff/状态管理/路由/组件化与微前端；React·Vue本体双链既有专条)
+- 0388baf docs: 二期拆分[S5]——前端工程化核心概念 (枢纽+5子词条：构建工具/规范转换/CSS预处理模块化/PWA/构建优化；TS·包管理·Monorepo 双链既有专条)
+- bae0041 docs: 二期拆分[S5]——JavaScript 基础核心概念 (枢纽+6子词条：作用域与this/原型链/异步族/模块化/语法糖族/弱引用；闭包双链既有专条)
+- 71f60db docs: 二期拆分[S5]——HTML & CSS 核心概念 (枢纽+5子词条：布局/盒模型BFC层叠/选择器伪/变量动画/HTML语义化；响应式双链既有专条)
+- 04f7e74 docs: 二期拆分[S5]——领域驱动设计DDD完全指南 (枢纽+1子词条：事件风暴与上下文映射；收敛 pending-merge 六边形与洋葱架构)
+- e60e6fa docs: 二期拆分[S5]——设计原则 (枢纽+4子词条)
+- 60e8ad2 docs: 二期拆分[S5]——架构模式 (枢纽+1子词条：六边形与洋葱架构)
+- 541e846 docs: 二期拆分[S5]——数据工程完全指南 (枢纽+2子词条)
+- 48f2d3c docs: 二期拆分[S5]——推荐系统设计与实现 (枢纽+4子词条)
+- 8869df8 docs: 二期拆分[S5]——可观测性工程实战 (枢纽+3子词条)
+- 89b9343 docs: 二期拆分[S5]——分布式系统设计完全指南 (枢纽+0子词条，全双链归口 distributed)
+
