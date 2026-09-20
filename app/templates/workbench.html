@@ -38,11 +38,11 @@
     {% endif %}
 
   <section class="panel article-wrap" id="p-article" data-reveal data-reveal-y="14">
-    {# ============ 读数头（INSTRUMENT：等宽路径行 → 标题 → 元信息 chip 行 → 工具组） ============
-       结构改动仅视觉重排：全部 id / onclick / 结构 class 原样保留（JS 契约零变更）。 #}
+    {# ============ 读数头（2026-09-20 头部瘦身：左侧路径/元信息 chips 全部撤下，
+       分类与状态信息只留底部状态栏；标签 chips 由 JS renderHeadChips 填 #crumb-tags） ============ #}
     <div class="crumb" id="crumb">
-      <span class="rh-path mono-sm" aria-label="文档路径">content<i class="rh-sep">/</i>{{ doc.rel }}</span>
       <span class="spacer"></span>
+      <span class="crumb-tags" id="crumb-tags"></span>
       {% if doc.has_html and not doc.is_html %}<button class="iconbtn" id="kb-md-src-btn" onclick="toggleMdSource()" title="在美化版 / Markdown 源之间切换"><svg class="i i-12"><use href="#i-file-md"/></svg> Markdown 源</button>{% endif %}
       {% if doc.has_html %}<a class="iconbtn" href="/raw/{{ doc.html_rel }}" target="_blank" title="新标签页打开美化版"><svg class="i i-12"><use href="#i-external-link"/></svg> 新标签页</a>{% endif %}
       {% if not doc.is_html %}<button class="iconbtn" onclick="openEditor()"><svg class="i i-12"><use href="#i-edit-pencil"/></svg> 编辑</button>
@@ -51,7 +51,6 @@
       <button class="iconbtn primary{% if doc.favorite %} faved{% endif %}" id="fav-btn" onclick="toggleFav()"><svg class="i i-12"><use href="#i-star"/></svg> {% if doc.favorite %}已收藏{% else %}收藏{% endif %}</button>
       {% if doc.name.endswith(('.txt', '.pdf', '.xlsx', '.epub')) %}<a class="iconbtn" id="kb-lib-dl" href="/raw/{{ doc.rel }}" download="{{ doc.name }}" title="下载原文件"><svg class="i i-12"><use href="#i-download"/></svg> 下载</a>{% endif %}
     </div>
-    {# 读数元信息条（2026-09-18）：chips 上移并入 crumb 左端 #crumb-chips（JS renderHeadChips 填充），独立 readhead 行取消 #}
     <div class="article"><div class="article-inner" id="article"></div></div>
     <div class="editor" id="editor" role="dialog" aria-label="Markdown 编辑器">
       <div class="bar">

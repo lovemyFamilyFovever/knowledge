@@ -321,6 +321,7 @@ function initInbox() {
     if (!act) return;
     if (act.dataset.act === "move") inboxMove(row);
     else if (act.dataset.act === "del") inboxDelete(row);
+    else if (act.dataset.act === "purge") inboxPurge(row);
     else if (act.dataset.act === "ignore") inboxIgnoreDir(row);
   });
 
@@ -424,6 +425,26 @@ function initInbox() {
       body: JSON.stringify({ path: rel }) });
     if (r.ok) { toast("已移入回收站"); row.remove(); ibUpdate(); }
     else toast("删除失败：" + r.status);
+  }
+
+  /* 彻底删除（2026-09-20 用户要求）：仅收件箱可用的不可逆删除。
+     _inbox 不进 git 也不进索引，软删到 _trash 只是垃圾换个地方躺；
+     须输入确认词，防手滑。后端 /api/inbox/purge 二次设防（路径前缀校验）。 */
+  async function inboxPurge(row) {
+    const rel = row.dataset.rel;
+    const res = await kbModal({ title: "彻底删除（不可恢复）",
+      body: "「<span class='mono'>" + esc(rel) + "</span>」将从磁盘直接删除：<b>不进回收站、git 也没有它</b>（_inbox 不被跟踪），删了就是没了。输入 <b>彻底删除</b> 以确认。",
+      inputs: [{ key: "c", label: "确认词", placeholder: "输入：彻底删除" }],
+      danger: true, confirmText: "彻底删除" });
+    if (!res) return;
+    if ((res.c || "").trim() !== "彻底删除") { toast("确认词不匹配，已取消"); return; }
+    const r = await fetch("/api/inbox/purge", { method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ path: rel }) });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok || !d.ok) { toast("彻底删除失败：" + (d.error || r.status)); return; }
+    row.remove(); ibUpdate();
+    if (window.invalidate) invalidate("all");
+    toast("已彻底删除");
   }
 
   /* 需求#3：开发产生的临时/日志/脚本类文件不再进待归档 —— 忽略整个来源目录。

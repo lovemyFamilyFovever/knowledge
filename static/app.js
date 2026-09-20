@@ -248,11 +248,10 @@ window.promptNewDocInDir = promptNewDocInDir;
    .xlsx → SheetJS 渲染工作表前 200 行
    .epub → 暂不支持在线渲染，给下载与打开方式 */
 /* ---------- 书库文档顶栏 chrome 同步（用户要求） ----------
-   顶部 crumb 已显示完整标题 → 正文不重复标题；
-   格式/体积/下载统一并入「crumb 按钮组」与「readhead 状态栏」同一行，不单独起行。 */
+   格式/体积信息在底部状态栏（updateStatusBarPath），下载按钮在 crumb 按钮组最右。 */
 function syncLibraryChrome(ext, sizeMiB) {
-  /* 2026-09-18：readhead 独立行已取消，格式 · 体积 chip 由 renderHeadChips() 统一渲染进 crumb 左端。 */
-  renderHeadChips();
+  /* 2026-09-20 头部瘦身：书库格式/体积信息随元信息进底部状态栏，crumb 左端不再放 chips。 */
+  updateStatusBarPath();
 }
 
 /* 切换到非书库文档时清掉上一个文档挂上的 chrome（防串场） */
@@ -577,10 +576,13 @@ function renderArticle(forceMd) {
       </div>`;
     mountHtmlDoc(el.querySelector("#html-render"), rawHref, DOC.title).then(() => buildToc());
   } else {
-    el.innerHTML = `<h1 class="a-title">${esc(DOC.title)}</h1>
-      <div class="a-chips">${buildChipsRow()}</div>
+    /* 2026-09-20 头部瘦身：.a-chips 元信息行撤销（标签已并入 crumb 右端）；
+       正文自带 H1 时不再重复渲染 .a-title 小标题。 */
+    const bodyHtml = DOMPurify.sanitize(renderMarkdownSafe(DOC.md), { FORBID_TAGS: ['style', 'iframe', 'form', 'script'], ADD_ATTR: ['target'] });
+    const hasH1 = /^\s*<h1[\s>]/i.test(bodyHtml);
+    el.innerHTML = `${hasH1 ? "" : `<h1 class="a-title">${esc(DOC.title)}</h1>`}
       <div class="a-rule"></div>
-      <div class="a-body">${DOMPurify.sanitize(renderMarkdownSafe(DOC.md), { FORBID_TAGS: ['style', 'iframe', 'form', 'script'], ADD_ATTR: ['target'] })}</div>
+      <div class="a-body">${bodyHtml}</div>
       <div class="kb-finish-bar" id="kb-finish-bar">
         <span class="kb-finish-q">读完这篇了？</span>
         <button type="button" class="kb-btn" id="mark-read-btn" onclick="toggleDocMark('read')" title="标记已读完（存本地复习库，不写语料）">已读完</button>
@@ -1265,10 +1267,18 @@ function renderDocList(docs, subLabel, activeName) {
     </a>`).join("") || `<div style="padding:20px;color:var(--faint);font-size:13px">无匹配文档</div>`;
 }
 
-/* 图3：面包屑（正文区「域 / 子域」行）移除 —— 路径显示在底部状态栏左侧 #sb-path */
+/* 图3：面包屑（正文区「域 / 子域」行）移除 —— 路径显示在底部状态栏左侧 #sb-path。
+   2026-09-20 头部瘦身：状态/收录日期/体积元信息也从 crumb 撤下，一并挂在这里。 */
 function updateStatusBarPath() {
   const el = document.getElementById("sb-path"); if (!el) return;
-  el.textContent = DOC ? `${DOC.domain_label || ""} / ${DOC.sub_label || ""} · ${DOC.name || ""}`.replace(/^\s*\/\s*/, "") : "";
+  if (!DOC) { el.textContent = ""; return; }
+  const meta = [
+    DOC.status_label || "",
+    DOC.fm && DOC.fm.collected ? `${DOC.fm.collected} 收录` : "",
+    DOC.size || "",
+  ].filter(Boolean).join(" · ");
+  el.textContent = `${DOC.domain_label || ""} / ${DOC.sub_label || ""} · ${DOC.name || ""}`.replace(/^\s*\/\s*/, "")
+    + (meta ? ` · ${meta}` : "");
 }
 
 /* 美化版 ↔ Markdown 源 双向切换（统一分流后所有有美化版的文档都可用）。
@@ -1296,8 +1306,10 @@ function renderCrumb() {
   const canSwitchToMd = DOC.has_html && !DOC.is_html;
   /* 书库格式（txt/pdf/xlsx/epub）：下载按钮统一并入本行最右（用户要求） */
   const libExt = (DOC.name || "").match(/\.(txt|pdf|xlsx|epub)$/i);
-  /* 用户要求（2026-09-18）：左上角不再显示标题；readhead 状态栏 chips 上移并入本行左端（#crumb-chips，renderHeadChips 填充）。 */
-  crumb.innerHTML = `<span class="crumb-chips" id="crumb-chips"></span><span class="spacer"></span>
+  /* 用户要求（2026-09-20 头部瘦身）：crumb 左端分类徽章/状态/收录/体积 chips 全部撤下——
+     分类路径与元信息统一并入底部状态栏（updateStatusBarPath），标签 chips 并入本行右端按钮组前。 */
+  crumb.innerHTML = `<span class="spacer"></span>
+    <span class="crumb-tags" id="crumb-tags"></span>
     ${canSwitchToMd ? `<button class="iconbtn" id="kb-md-src-btn" onclick="toggleMdSource()" title="在美化版 / Markdown 源之间切换">${MD_SRC_ON ? icon("preview-eye", 13) + " 美化版" : icon("file-md", 13) + " Markdown 源"}</button>` : ""}
     ${DOC.has_html ? `<a class="iconbtn" href="${rawUrl(DOC.is_html ? DOC.rel : DOC.html_rel)}" target="_blank" title="新标签页打开美化版">${icon("external-link", 13)} 新标签页</a>` : ""}
     ${!DOC.is_html ? `<button class="iconbtn" onclick="openEditor()">${icon("edit",13)} 编辑</button>
@@ -1308,21 +1320,12 @@ function renderCrumb() {
   renderHeadChips();
 }
 
-/* 读数元信息 chips：原 .readhead 独立行内容，现渲染进 crumb 左端 #crumb-chips。
-   书库格式（txt/pdf/xlsx/epub）额外追加「TXT · 0.2 MB」chip（替代原 syncLibraryChrome）。 */
+/* crumb 右端标签 chips（2026-09-20 头部瘦身）：原 #crumb-chips 元信息行已撤销，
+   状态/收录/体积进底部状态栏，分类徽章删除（底部本就有路径）。书库格式无标签编辑。 */
 function renderHeadChips() {
-  const box = $("#crumb-chips"); if (!box || !DOC) return;
-  const libExt = (DOC.name || "").match(/\.(txt|pdf|xlsx|epub)$/i);
-  const sizeMiB = libExt ? (parseFloat(DOC.size) / 1024).toFixed(1) : null;
-  const chips = [
-    DOC.domain_label || DOC.domain,
-    DOC.sub_label || "",
-    DOC.status_label || (DOC.fm && DOC.fm.status ? String(DOC.fm.status).toUpperCase() : ""),
-    DOC.fm && DOC.fm.collected ? `${DOC.fm.collected} 收录` : "",
-    DOC.size && !libExt ? `${DOC.size}` : "",
-    libExt ? `${libExt[0].slice(1).toUpperCase()} · ${sizeMiB} MB` : ""
-  ].filter(Boolean);
-  box.innerHTML = chips.map(c => `<span class="rh-chip">${esc(c)}</span>`).join("");
+  const box = $("#crumb-tags"); if (!box || !DOC) return;
+  if (/\.(txt|pdf|xlsx|epub)$/i.test(DOC.name || "")) { box.innerHTML = ""; return; }
+  box.innerHTML = buildChipsRow();
 }
 
 function renderInfo() {
@@ -1410,8 +1413,8 @@ async function apiTags(payload) {
   }
 }
 
-/* Story 4：头部 chips 行构造 —— renderArticle 初始渲染与 renderChipsRow 刷新共用
-   一份模板（此前两处手写重复，改一处漏一处）。标签 chip 就地可编辑：× 删除
+/* Story 4（2026-09-20 头部瘦身后）：crumb 标签行只留标签本体 + 就地编辑入口；
+   来源/路径/收录日期 chips 随头部瘦身撤销。标签 chip 就地可编辑：× 删除
    复用现有 removeTag（按钮自带 data-tag），+ 展开就地输入框回车添加；
    html 美化版语料不可写，保持只读。 */
 function buildChipsRow() {
@@ -1421,18 +1424,15 @@ function buildChipsRow() {
     ? tags.map(t => `<span class="chip acc tag-chip">${esc(t)}${editable
         ? `<button type="button" class="chip-x" data-tag="${esc(t)}" title="移除标签「${esc(t)}」" aria-label="移除标签 ${esc(t)}" onclick="removeTag(this)">${icon("cancel-x", 9)}</button>`
         : ""}</span>`).join("")
-    : `<span class="chip warn">tags 未打标</span>`;
+    : (editable ? `<span class="chip warn">tags 未打标</span>` : "");
   return [
-    `<span class="chip acc">${esc(DOC.source_label)}</span>`,
-    DOC.fm.source_path ? `<span class="chip">${esc(DOC.fm.source_path)}</span>` : "",
-    DOC.fm.collected ? `<span class="chip">${esc(DOC.fm.collected)} 收录</span>` : "",
     tagChips,
     editable ? `<button type="button" class="chip chip-btn chips-add" onclick="chipsAddToggle()" title="添加标签">+ 标签</button>` : "",
   ].filter(Boolean).join("");
 }
 
 function renderChipsRow() {
-  const el = document.querySelector(".a-chips"); if (!el || !DOC) return;
+  const el = document.querySelector("#crumb-tags"); if (!el || !DOC) return;
   el.innerHTML = buildChipsRow();
 }
 
@@ -1440,7 +1440,7 @@ function renderChipsRow() {
    （datalist 已弃用），回车批量添加走现有 addTagsFromRaw → /api/tags；
    浮层未消费的 Esc/空失焦收起。 */
 function chipsAddToggle() {
-  const row = document.querySelector(".a-chips"); if (!row || !DOC) return;
+  const row = document.querySelector("#crumb-tags"); if (!row || !DOC) return;
   const existed = row.querySelector(".chips-in");
   if (existed) { existed.remove(); return; } // 再点 + 收起
   if (window.TagSuggest) TagSuggest.ensureIndex();
@@ -3307,6 +3307,7 @@ if (docData) {
     CUR = { domain: DOC.domain, sub: DOC.sub, name: DOC.name };
     renderArticle();
     renderCrumb();
+    updateStatusBarPath(); // 直载 /doc 页也填充底部路径+元信息（此前只在 SPA 切页时更新）
     renderInfo();
     renderNotes();
     setTrackingDoc(DOC.rel);

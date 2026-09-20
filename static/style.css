@@ -400,10 +400,10 @@ main.single{display:flex;flex-direction:column}
   font-family:var(--f-mono);font-size:11px;color:var(--muted);flex-wrap:wrap;row-gap:6px}
 .crumb b{color:var(--c-acc);font-weight:600;flex:0 1 auto;min-width:0;letter-spacing:.02em}
 .crumb .sep{color:var(--faint)}
-/* 读数 chips 并入 crumb 行（2026-09-18：标题取消，readhead 上移） */
-.crumb-chips{display:flex;align-items:center;gap:6px;flex-wrap:wrap;min-width:0;overflow-x:auto;scrollbar-width:none}
-.crumb-chips::-webkit-scrollbar{display:none}
-.crumb .rh-chip{height:18px;line-height:16px;font-size:11px}
+/* crumb 右端标签行（2026-09-20 头部瘦身：元信息 chips 撤下，标签并入按钮组前） */
+.crumb-tags{display:flex;align-items:center;gap:6px;flex-wrap:nowrap;min-width:0;max-width:42vw;overflow-x:auto;scrollbar-width:none;margin-right:10px}
+.crumb-tags::-webkit-scrollbar{display:none}
+.crumb-tags .chip,.crumb-tags .chips-in{flex:0 0 auto}
 .crumb .spacer{flex:1}
 .iconbtn{display:inline-flex;align-items:center;gap:6px;height:28px;padding:0 10px;border-radius:var(--rd-ctl);font-size:12px;flex:none;white-space:nowrap;
   border:1px solid var(--c-line);background:var(--c-panel);color:var(--muted);cursor:pointer;transition:color var(--dur-1),background var(--dur-1),border-color var(--dur-1);font-family:var(--f-body)}
@@ -432,7 +432,6 @@ main.single{display:flex;flex-direction:column}
 .article-inner{max-width:760px;margin:0 auto;animation:rise var(--dur-3) var(--ease-out)}
 .a-kicker{font-family:var(--f-mono);font-size:10px;letter-spacing:.22em;color:var(--c-acc);text-transform:uppercase;margin-bottom:10px}
 h1.a-title{font-family:var(--f-disp);font-weight:700;font-size:28px;line-height:1.4;letter-spacing:.01em;margin-bottom:14px;color:var(--c-ink)}
-.a-chips{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px}
 .chip{display:inline-flex;align-items:center;gap:5px;font-family:var(--f-mono);font-size:12.5px;line-height:1;color:var(--muted);
   border:1px solid var(--c-line);border-radius:var(--rd-pill);padding:5px 11px;background:var(--c-sunk)}
 .chip.acc{color:var(--c-acc);border-color:var(--acc-line);background:var(--acc-soft)}

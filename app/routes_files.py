@@ -191,6 +191,36 @@ def api_inbox_ignore():
     return jsonify({"ok": True, "ignored": rel, "scope": scope, "rules": rules})
 
 
+@files_bp.post("/api/inbox/purge")
+def api_inbox_purge():
+    """收件箱彻底删除（2026-09-20 用户要求）：仅限 _inbox/ 下文件直接落盘删除。
+    _inbox 是迁移暂存区、不进 git 也不进索引，软删到 _trash 只是让垃圾换地方躺尸；
+    正式树文档不适用本接口（不变量 #4 的软删除语义完整保留）。"""
+    rel = str(request.get_json(force=True).get("path") or "").strip().replace("\\", "/")
+    if not rel.startswith("_inbox/"):
+        return jsonify({"ok": False, "error": "仅限 _inbox/ 下的文件可彻底删除"}), 400
+    p = _safe_rel(rel, WRITABLE_EXTS)  # 越界/非白名单后缀 → abort(400)，与 /api/move 同语义
+    # 前缀检查必须在 resolve 后重做："_inbox/../../content/x.md" 这类穿越
+    # 串能过字符串前缀却落在正式树里（临时夹具实测逮到，误删 1 篇后修复）
+    try:
+        prel = p.relative_to(_content().resolve()).as_posix()
+    except ValueError:
+        return jsonify({"ok": False, "error": "仅限 _inbox/ 下的文件可彻底删除"}), 400
+    if not prel.startswith("_inbox/"):
+        return jsonify({"ok": False, "error": "仅限 _inbox/ 下的文件可彻底删除"}), 400
+    if not p.is_file():
+        return jsonify({"ok": False, "error": "not found: 文件不存在"}), 404
+    gone = []
+    for t in (p, p.with_name(p.name + ".notes.md"), p.with_name(p.stem + ".html")):
+        try:
+            if t.is_file():
+                t.unlink()
+                gone.append(t.name)
+        except OSError as e:
+            return jsonify({"ok": False, "error": f"删除失败：{e}"}), 500
+    return jsonify({"ok": True, "purged": rel, "removed": gone})
+
+
 @files_bp.post("/api/move")
 def api_move():
     """移动/重命名文档（含层级调整）。同步级联：
