@@ -33,7 +33,7 @@ try {
   const send = (method, params = {}) => new Promise(ok => { const i = ++id; pend.set(i, ok); ws.send(JSON.stringify({ id: i, method, params })); });
   await send('Page.enable'); await send('Runtime.enable');
   await sleep(4000);
-  const r = await send('Runtime.evaluate', { expression: expr, returnByValue: true });
+  const r = await send('Runtime.evaluate', { expression: expr, returnByValue: true, awaitPromise: true });
   console.log('EVAL:', JSON.stringify(r.result?.result?.value ?? r.result, null, 1).slice(0, 1500));
   console.log('CONSOLE_ERRORS:', errors.length ? '\n  ' + errors.slice(0, 5).join('\n  ') : 'none');
   ws.close();

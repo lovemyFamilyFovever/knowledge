@@ -255,6 +255,7 @@
 <div id="toast"></div>
 {# 命令面板 / 阅读偏好面板容器（kb-core.js 在首次打开时注入内部结构） #}
 <div id="kb-palette"></div>
+{# 就地搜索浮层 · 方案 D 白底版（2026-09-20 用户拍板）：左栏引擎/域竖排，右栏结果区 #}
 <div class="kb-search-ov" id="kb-search-ov" hidden>
   <div class="kb-search-box" role="dialog" aria-label="就地搜索">
     <div class="kb-search-head">
@@ -262,40 +263,40 @@
       <input id="kb-so-q" placeholder="检索正文 / 标签 / 术语…（? 前缀走语义）" autocomplete="off" spellcheck="false" aria-label="搜索词">
       <kbd>Esc</kbd>
     </div>
-    <div class="kb-search-engines" role="tablist" aria-label="检索引擎">
-      <span class="eng-cap">ENGINE</span>
-      <button type="button" class="kb-eng-chip" data-eng="hybrid" aria-pressed="false">混合 Hybrid</button>
-      <button type="button" class="kb-eng-chip on" data-eng="fts" aria-pressed="true">全文 FTS5</button>
-      <button type="button" class="kb-eng-chip" data-eng="semantic" aria-pressed="false">语义 RAG</button>
-      <button type="button" class="kb-eng-chip" data-eng="tags" aria-pressed="false">标签</button>
-      <span class="kb-sr-todo" title="引擎参数接线属 STEP 0 待批项">…</span>
-    </div>
-    <div class="kb-search-scopes" aria-label="范围筛选">
-      <span class="eng-cap" style="margin-right:2px">SCOPE</span>
-      <button type="button" class="kb-scope-chip on" data-scope="">全部域</button>
-      <button type="button" class="kb-scope-chip" data-scope="baike"><span class="dh" style="--dh:var(--dh-baike)"></span>百科</button>
-      <button type="button" class="kb-scope-chip" data-scope="articles"><span class="dh" style="--dh:var(--dh-articles)"></span>文章</button>
-      <button type="button" class="kb-scope-chip" data-scope="interview"><span class="dh" style="--dh:var(--dh-interview)"></span>面试</button>
-      <button type="button" class="kb-scope-chip" data-scope="projects"><span class="dh" style="--dh:var(--dh-projects)"></span>项目</button>
-      <button type="button" class="kb-scope-chip" data-scope="handbook"><span class="dh" style="--dh:var(--dh-handbook)"></span>手册</button>
-      <button type="button" class="kb-scope-chip" data-scope="career"><span class="dh" style="--dh:var(--dh-career)"></span>职场</button>
-      <button type="button" class="kb-scope-chip" data-scope="ai"><span class="dh" style="--dh:var(--dh-ai)"></span>AI 资产</button>
-      <button type="button" class="kb-scope-chip" data-scope="fav">仅收藏</button>
-      <button type="button" class="kb-scope-chip" data-scope="unmastered">仅未掌握</button>
-    </div>
-    <div class="kb-search-body" id="kb-so-body">
-      <div class="kb-sr-group">最近查询<span class="n">本地</span></div>
-      <div class="kb-sr-todo" style="font:400 12px/1.7 var(--f-body);color:var(--faint);padding:6px 2px">
-        结果渲染待接线（STEP 0 报告已交，等引擎参数与浮层开关授权）。
+    <div class="kb-search-cols">
+      <div class="kb-search-rail">
+        <div class="so-rail-h">ENGINE</div>
+        <div class="kb-search-engines" role="tablist" aria-label="检索引擎">
+          <button type="button" class="kb-eng-chip" data-eng="hybrid" aria-pressed="false">混合 Hybrid</button>
+          <button type="button" class="kb-eng-chip on" data-eng="fts" aria-pressed="true">全文 FTS5</button>
+          <button type="button" class="kb-eng-chip" data-eng="semantic" aria-pressed="false">语义 RAG</button>
+          <button type="button" class="kb-eng-chip" data-eng="tags" aria-pressed="false">标签</button>
+        </div>
+        <div class="so-rail-h">SCOPE</div>
+        <div class="kb-search-scopes" aria-label="范围筛选">
+          <button type="button" class="kb-scope-chip on" data-scope="">全部域</button>
+          <button type="button" class="kb-scope-chip" data-scope="baike"><span class="dh" style="--dh:var(--dh-baike)"></span>百科</button>
+          <button type="button" class="kb-scope-chip" data-scope="articles"><span class="dh" style="--dh:var(--dh-articles)"></span>文章</button>
+          <button type="button" class="kb-scope-chip" data-scope="interview"><span class="dh" style="--dh:var(--dh-interview)"></span>面试</button>
+          <button type="button" class="kb-scope-chip" data-scope="projects"><span class="dh" style="--dh:var(--dh-projects)"></span>项目</button>
+          <button type="button" class="kb-scope-chip" data-scope="handbook"><span class="dh" style="--dh:var(--dh-handbook)"></span>手册</button>
+          <button type="button" class="kb-scope-chip" data-scope="career"><span class="dh" style="--dh:var(--dh-career)"></span>职场</button>
+          <button type="button" class="kb-scope-chip" data-scope="ai"><span class="dh" style="--dh:var(--dh-ai)"></span>AI 资产</button>
+          <button type="button" class="kb-scope-chip" data-scope="fav">仅收藏</button>
+          <button type="button" class="kb-scope-chip" data-scope="unmastered">仅未掌握</button>
+        </div>
       </div>
-    </div>
-    <div class="kb-search-foot">
-      <span class="kbd-hint"><kbd>↑↓</kbd>选择</span>
-      <span class="kbd-hint"><kbd>Enter</kbd>打开</span>
-      <span class="kbd-hint"><kbd>F2</kbd>/<kbd>F3</kbd>切引擎</span>
-      <span class="kbd-hint"><kbd>Shift+Enter</kbd>结果页</span>
-      <span class="kbd-hint">点空白处关闭</span>
-      <span class="eng-stat" id="kb-so-stat">— · 待接线</span>
+      <div class="kb-search-main">
+        <div class="kb-search-body" id="kb-so-body"></div>
+        <div class="kb-search-foot">
+          <span class="kbd-hint"><kbd>↑↓</kbd>选择</span>
+          <span class="kbd-hint"><kbd>Enter</kbd>打开</span>
+          <span class="kbd-hint"><kbd>F2</kbd>/<kbd>F3</kbd>切引擎</span>
+          <span class="kbd-hint"><kbd>Shift+Enter</kbd>结果页</span>
+          <span class="kbd-hint">点空白处关闭</span>
+          <span class="eng-stat" id="kb-so-stat">— · 输入以检索</span>
+        </div>
+      </div>
     </div>
   </div>
 </div>
