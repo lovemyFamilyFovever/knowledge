@@ -42,3 +42,8 @@ scripts/codemirror-vendor/node_modules/
 # Agent 工作流会话产物
 /output/
 /.spark/
+/.qoder-credits
+# shell 重定向事故（未加引号的 `>`）把内容碎片误丢到仓库根：名为 -/file 的空文件、工具误输出
+/-
+/file
+/top_ip.txt
