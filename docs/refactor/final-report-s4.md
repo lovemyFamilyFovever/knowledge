@@ -228,3 +228,9 @@
 
 - 4d16df7 docs: 二期拆分[S4]——面向对象编程（OOP）概念 (枢纽+3族子词条)
 
+## §S4 · React Native移动应用开发（枢纽+4子词条）
+
+枢纽页(1859，四层地图+子词条索引表)+4 net-new 子词条 `React Native 新架构与原生桥接`(JSI/Fabric/TurboModules/Codegen/原生模块)/`React Native 组件与布局`(Flexbox默认column/SafeAreaView/FlatList)/`React Native 导航与状态管理`(React Navigation嵌套深链/Zustand/Jotai)/`React Native 网络与数据缓存`(拦截器/TanStack Query staleTime·gcTime/MMKV)；原计划6层，实际收敛为4篇(原生桥接并入新架构、导航与状态合1篇)，见 split-candidates 行注。枢纽双链 [[React深入]][[TypeScript深入]][[Flutter跨平台开发实战]]。踩坑：枢纽首稿误按纯收敛页写→补全 §2 骨架(def/2误区/🎯)；修2处悬空链(RN组件布局→React Native 组件与布局)；枢纽🎯152·组件181·导航169·网络158 逐行裁至≤150。5 篇 strict 全 PASS、0 悬空。提交 CLEAN。**hash**：
+
+- 2d77163 docs: 二期拆分[S4]——React Native移动应用开发 (枢纽+4子词条)
+
