@@ -28,10 +28,10 @@ function applyTheme(t) {
   window.dispatchEvent(new CustomEvent("theme-changed", { detail: t }));
   try { localStorage.setItem("kb-theme", t); } catch (e) {}
 }
-/* 任务8：5 版皮肤切换（墨韵/午夜蓝/森绿/暮色玫瑰/石墨 + 默认青瓷）
-   2026-09-20：选择器从主题按钮右键弹层迁入设置弹窗（KB.prefs.panelHTML 消费 KB_SKINS）。 */
+/* 任务8：5 版皮肤切换（墨韵/午夜蓝/森绿/暮色玫瑰/石墨 + 默认玄青）
+   2026-09-20：默认皮肤由青瓷绿改为玄青（普鲁士蓝 × 朱砂），与 style.css [2] 基准令牌同步。 */
 const SKINS = [
-  { id: "celadon", name: "青瓷", desc: "默认 · 现状", a: "#0c9a6a", b: "#0f86b8" },
+  { id: "celadon", name: "玄青", desc: "默认 · 普鲁士 × 朱砂", a: "#1f4e8c", b: "#b23a2a" },
   { id: "ink", name: "墨韵", desc: "宣纸 × 朱砂", a: "#8c3a2e", b: "#3d5a80" },
   { id: "midnight", name: "午夜蓝", desc: "工程仪表感", a: "#2563eb", b: "#0891b2" },
   { id: "forest", name: "森绿", desc: "苔绿 × 菌菇棕", a: "#4a7c59", b: "#b0713a" },
@@ -3161,7 +3161,7 @@ function soEmptyState() {
     <div class="kb-sdrop-grid">${shortcuts.map(s =>
       `<a class="kb-sdrop-item" href="${s.href}"><svg class="i i-14"><use href="#${s.icon}"/></svg>${SO.esc2(s.label)}</a>`).join("")}</div>
     <div class="kb-sr-group">搜索语法</div>
-    <div style="font:400 12px/1.8 var(--f-body);color:var(--faint);padding:2px 2px 8px">
+    <div style="font:400 13px/1.8 var(--f-body);color:var(--muted);padding:2px 2px 8px">
       直接输入 = 混合检索 · <span class="mono">? 问题</span> = 语义 · <span class="mono">Enter</span> 打开首条 · <span class="mono">Shift+Enter</span> 结果页</div>`;
 }
 
@@ -3200,7 +3200,7 @@ function soRun() {
     soRenderResults(j, qstr);
   }).catch(() => {
     if (seq !== SO.seq) return;
-    SO.body.innerHTML = `<div class="kb-sr-group">检索失败</div><div style="font:400 12.5px/1.7 var(--f-body);color:var(--faint);padding:8px 2px">网络或索引异常，稍后重试。</div>`;
+    SO.body.innerHTML = `<div class="kb-sr-group">检索失败</div><div style="font:400 13.5px/1.7 var(--f-body);color:var(--muted);padding:8px 2px">网络或索引异常，稍后重试。</div>`;
   });
 }
 
@@ -3244,7 +3244,7 @@ function soRenderResults(j, qstr) {
       </a>`;
     });
   });
-  SO.body.innerHTML = html || `<div class="kb-sr-group">无结果</div><div style="font:400 12.5px/1.7 var(--f-body);color:var(--faint);padding:8px 2px">换个关键词，或 <span class="mono">Shift+Enter</span> 进结果页。</div>`;
+  SO.body.innerHTML = html || `<div class="kb-sr-group">无结果</div><div style="font:400 13.5px/1.7 var(--f-body);color:var(--muted);padding:8px 2px">换个关键词，或 <span class="mono">Shift+Enter</span> 进结果页。</div>`;
   SO.body.dataset.hasResults = all.length ? "1" : "0";
   if (SO.stat) {
     const e = j.engines || {};
