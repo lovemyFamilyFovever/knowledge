@@ -10,7 +10,7 @@
   background:radial-gradient(50% 60% at 72% 40%,var(--wash-hero),transparent 70%);pointer-events:none}
 .home-hero>*{position:relative;z-index:1}
 .hero-eyebrow{display:inline-flex;align-items:center;gap:6px;font:600 var(--fs-label)/1 var(--f-mono);
-  letter-spacing:.14em;text-transform:uppercase;color:var(--c-acc);margin-bottom:12px}
+  letter-spacing:.14em;text-transform:uppercase;color:var(--c-acc);margin-bottom:28px}
 .hero-eyebrow svg{width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
 .hero-title{font-family:var(--f-disp);font-weight:700;font-size:var(--fs-hero);line-height:.92;
   letter-spacing:-.045em;color:var(--ink);margin:0;display:flex;gap:0}
@@ -37,6 +37,24 @@
 .home-hero-visual{position:relative;display:flex;justify-content:center;align-items:center;min-height:320px}
 .home-hero-visual .hero-constellation{width:min(100%,380px);height:auto}
 .parallax-layer{will-change:transform;transform:translate(var(--px,0),var(--py,0))}
+/* ---------- 星座图动效（reduced-motion 下全部静止，静态即终态） ---------- */
+@media (prefers-reduced-motion:no-preference){
+  .cst-links path{stroke-dasharray:6 4;animation:cst-dash 1.4s linear infinite}
+  .cst-links path:nth-child(2){animation-duration:2.1s;animation-direction:reverse}
+  @keyframes cst-dash{to{stroke-dashoffset:-20}}
+  .cst-nodes circle{animation:cst-tw 3.4s ease-in-out infinite}
+  .cst-nodes circle:nth-child(2n){animation-delay:.7s}
+  .cst-nodes circle:nth-child(3n){animation-delay:1.5s}
+  @keyframes cst-tw{0%,100%{opacity:1}50%{opacity:.4}}
+  .cst-ring{transform-box:view-box;transform-origin:170px 128px;animation:cst-spin 22s linear infinite}
+  @keyframes cst-spin{to{transform:rotate(360deg)}}
+  .cst-halo{transform-box:fill-box;transform-origin:center;animation:cst-breathe 4.5s ease-in-out infinite}
+  @keyframes cst-breathe{0%,100%{transform:scale(1);opacity:.14}50%{transform:scale(1.28);opacity:.28}}
+  .cst-dot{opacity:0}
+  .cst-dot-a{offset-path:path("M170 128 L108 74");animation:cst-run 3.6s cubic-bezier(.4,0,.2,1) infinite}
+  .cst-dot-b{offset-path:path("M170 128 L246 182");animation:cst-run 3.6s cubic-bezier(.4,0,.2,1) 1.8s infinite}
+  @keyframes cst-run{0%{offset-distance:0%;opacity:0}12%{opacity:1}88%{opacity:1}100%{offset-distance:100%;opacity:0}}
+}
 
 /* ---------- KPI 条（真实数字 countUp） ---------- */
 .kpi-strip{display:grid;grid-template-columns:repeat(4,1fr);border-top:1px solid var(--c-line);

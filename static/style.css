@@ -822,13 +822,17 @@ h1.a-title{font-family:var(--f-disp);font-weight:700;font-size:28px;line-height:
 .ss-cell{border:1px solid var(--c-line);border-radius:var(--rd-ctl);padding:12px 10px;text-align:center;background:var(--c-sunk)}
 .ss-cell .ss-n{font-family:var(--f-mono);font-size:20px;font-weight:700;color:var(--c-acc);font-variant-numeric:tabular-nums}
 .ss-cell .ss-l{font-size:10.5px;color:var(--muted);margin-top:3px}
-.ss-sec{font-family:var(--f-mono);font-size:10px;letter-spacing:.16em;color:var(--muted);margin:14px 0 7px;text-transform:uppercase}
+.ss-sec{font-family:var(--f-mono);font-size:13px;font-weight:600;letter-spacing:.12em;color:var(--c-ink);margin:16px 0 8px;text-transform:uppercase}
 .ss-tags{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px 18px}
 .ss-tag{display:flex;align-items:center;gap:10px;min-width:0}
 .ss-tag-name{flex:0 0 96px;font-size:12px;color:var(--c-ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:right}
 .ss-dot{display:inline-block;width:7px;height:7px;border-radius:1px;margin-right:6px;flex:none}
 .ss-bar{flex:1;height:6px;border-radius:1px;background:var(--c-sunk);border:1px solid var(--c-line);overflow:hidden;min-width:24px}
 .ss-bar i{display:block;height:100%;background:var(--c-acc)}
+@media (prefers-reduced-motion:no-preference){
+  .ss-bar i{transform-origin:left center;animation:ss-grow .9s var(--ease-out) .1s both}
+  @keyframes ss-grow{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+}
 .ss-tag-n{flex:0 0 26px;font-family:var(--f-mono);font-size:12px;color:var(--c-ink);text-align:left}
 .ss-sibs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
 .ss-sib{display:flex;align-items:center;gap:10px;padding:6px 10px;border:1px solid var(--c-line);border-radius:var(--rd-ctl);
@@ -1015,14 +1019,18 @@ h1.a-title{font-family:var(--f-disp);font-weight:700;font-size:28px;line-height:
 .toast.info{border-left-color:var(--c-info)}
 .toast.info .t-ico{background:var(--info-soft);color:var(--c-info)}
 /* 右键菜单（v0.4 命名） */
-.ctx{display:inline-block;min-width:220px;padding:5px;border-radius:var(--rd-card);border:1px solid var(--c-line2);background:var(--c-panel);box-shadow:var(--elev-pop);color:var(--c-ink)}
-.ctx .row{display:flex;align-items:center;gap:9px;padding:6px 10px;font-size:12.5px;border-radius:var(--rd-ctl);cursor:pointer}
-.ctx .row:hover{background:var(--c-sunk);color:var(--c-acc)}
-.ctx .row svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;color:var(--faint)}
+.ctx{display:inline-block;min-width:212px;max-width:280px;padding:6px;border-radius:10px;border:1px solid var(--acc-line);background:var(--c-panel);box-shadow:var(--elev-pop);color:var(--c-ink)}
+@media (prefers-reduced-motion:no-preference){.ctx{animation:ctxIn .16s var(--ease-out)}
+@keyframes ctxIn{from{opacity:0;transform:translateY(5px) scale(.98)}to{opacity:1;transform:none}}}
+.ctx .row{display:flex;align-items:center;gap:10px;padding:8px 11px;font-size:13px;font-weight:500;border-radius:7px;cursor:pointer;transition:background var(--dur-1),color var(--dur-1)}
+.ctx .row:hover{background:var(--acc-soft);color:var(--c-acc)}
+.ctx .row svg{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;color:var(--muted);flex:none}
 .ctx .row:hover svg{color:var(--c-acc)}
 .ctx .row .kbd-hint{margin-left:auto;font:500 10px/1 var(--f-mono);color:var(--faint);padding:2px 5px;border:1px solid var(--c-line);border-radius:var(--rd-ctl)}
+.ctx .row.danger{color:var(--c-danger)}
+.ctx .row.danger svg{color:color-mix(in oklab,var(--c-danger),transparent 20%)}
 .ctx .row.danger:hover{background:var(--danger-soft);color:var(--c-danger)}
-.ctx .divider{height:1px;background:var(--c-line);margin:4px 6px}
+.ctx .divider{height:1px;background:var(--c-line);margin:5px 8px}
 /* 空态（标题 + 描述 + CTA） */
 .page-body .empty,.rpane .empty,.panel .empty{align-items:center;justify-content:center;text-align:center}
 .empty .e-title{font-size:14px;color:var(--c-ink);font-weight:500}

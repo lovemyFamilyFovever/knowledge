@@ -40,11 +40,11 @@
       <svg class="hero-constellation" viewBox="0 0 340 260" role="img" aria-label="知识节点连成的星座">
         <title>知识星座：术语、文档与双链连成的网络</title>
         <circle cx="170" cy="128" r="84" fill="var(--ill-halo)" opacity=".45"/>
-        <g stroke="var(--ill-line)" stroke-width="1.1" opacity=".55" fill="none" class="parallax-layer" data-depth="0.3">
+        <g class="cst-links parallax-layer" stroke="var(--ill-line)" stroke-width="1.1" opacity=".55" fill="none" data-depth="0.3">
           <path d="M170 128 L108 74 M170 128 L242 82 M170 128 L92 176 M170 128 L246 182 M170 128 L160 214"/>
           <path d="M108 74 L242 82 M92 176 L246 182 M108 74 L92 176"/>
         </g>
-        <g class="parallax-layer" data-depth="0.55">
+        <g class="cst-nodes parallax-layer" data-depth="0.55">
           <circle cx="108" cy="74" r="7" fill="var(--c-acc)"/>
           <circle cx="242" cy="82" r="6" fill="var(--c-info)"/>
           <circle cx="92" cy="176" r="8" fill="var(--warn)"/>
@@ -54,21 +54,23 @@
           <circle cx="44" cy="118" r="4.5" fill="var(--c-info)" opacity=".6"/>
         </g>
         <g class="parallax-layer" data-depth="0.8">
-          <circle cx="170" cy="128" r="30" fill="var(--c-acc)" opacity=".14"/>
+          <circle class="cst-halo" cx="170" cy="128" r="30" fill="var(--c-acc)" opacity=".14"/>
           <circle cx="170" cy="128" r="19" fill="var(--c-acc)"/>
           <circle cx="170" cy="128" r="7" fill="var(--c-bg)"/>
-          <circle cx="170" cy="128" r="30" fill="none" stroke="var(--c-acc)" stroke-width="1" stroke-dasharray="2 5" opacity=".5"/>
+          <circle class="cst-ring" cx="170" cy="128" r="30" fill="none" stroke="var(--c-acc)" stroke-width="1" stroke-dasharray="2 5" opacity=".5"/>
         </g>
+        <circle class="cst-dot cst-dot-a" cx="0" cy="0" r="2.6" fill="var(--c-acc)"/>
+        <circle class="cst-dot cst-dot-b" cx="0" cy="0" r="2.6" fill="var(--c-info)"/>
       </svg>
     </div>
   </section>
 
   {# ========== KPI 条：只渲染后端实传的真实数字（countUp） ========== #}
   <div class="kpi-strip">
-    <div class="k" data-reveal><span class="kn"><span data-counter="{{ n_md }}">{{ n_md }}</span><span class="u">篇</span></span><span class="kl"><svg aria-hidden="true"><use href="#i-file"/></svg>文档总量</span></div>
-    <div class="k" data-reveal><span class="kn"><span data-counter="{{ leaves }}">{{ leaves }}</span><span class="u">个</span></span><span class="kl"><svg aria-hidden="true"><use href="#i-scope-domain"/></svg>子域</span></div>
-    <div class="k" data-reveal><span class="kn"><span data-counter="{{ stats.n_fav }}">{{ stats.n_fav }}</span><span class="u">篇</span></span><span class="kl"><svg aria-hidden="true"><use href="#i-star-outline"/></svg>已收藏</span></div>
-    <div class="k" data-reveal><span class="kn"><span data-counter="{{ days }}">{{ days }}</span><span class="u">天</span></span><span class="kl"><svg aria-hidden="true"><use href="#i-calendar-day"/></svg>距 10·01</span></div>
+    <div class="k" data-reveal><span class="kn"><span data-counter data-count="{{ n_md }}">{{ n_md }}</span><span class="u">篇</span></span><span class="kl"><svg aria-hidden="true"><use href="#i-file"/></svg>文档总量</span></div>
+    <div class="k" data-reveal><span class="kn"><span data-counter data-count="{{ leaves }}">{{ leaves }}</span><span class="u">个</span></span><span class="kl"><svg aria-hidden="true"><use href="#i-scope-domain"/></svg>子域</span></div>
+    <div class="k" data-reveal><span class="kn"><span data-counter data-count="{{ stats.n_fav }}">{{ stats.n_fav }}</span><span class="u">篇</span></span><span class="kl"><svg aria-hidden="true"><use href="#i-star-outline"/></svg>已收藏</span></div>
+    <div class="k" data-reveal><span class="kn"><span data-counter data-count="{{ days }}">{{ days }}</span><span class="u">天</span></span><span class="kl"><svg aria-hidden="true"><use href="#i-calendar-day"/></svg>距 10·01</span></div>
   </div>
 
   {# ========== 今日学习（需求3）：真实数字，由 pages/home.js 调 /api/learn/today + /api/learn/mastery 渲染 ========== #}

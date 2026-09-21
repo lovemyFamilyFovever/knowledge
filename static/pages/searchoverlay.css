@@ -45,9 +45,14 @@
 /* ---- 右栏 ---- */
 .kb-search-main{display:flex;flex-direction:column;min-height:0}
 .kb-search-body{flex:1;min-height:120px;overflow-y:auto;padding:12px 20px}
-.kb-search-foot{flex:none;display:flex;align-items:center;gap:12px;padding:9px 18px;border-top:1px solid var(--acc-line);
-  font:500 11.5px/1 var(--f-mono);color:var(--muted)}
-.kb-search-foot .eng-stat{margin-left:auto;font-variant-numeric:tabular-nums}
+/* 最近查询：逐条删除 + 全部清除（常态淡灰，hover 才提示可点） */
+.kb-sr-del{flex:none;display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;
+  border:none;border-radius:50%;background:none;color:var(--faint);cursor:pointer;padding:0;opacity:.55;transition:opacity var(--dur-1),color var(--dur-1)}
+.kb-sr-del:hover{opacity:1;color:var(--c-danger)}
+.kb-sr-del svg{width:11px;height:11px}
+.kb-sr-group .kb-sr-clearall{float:right;margin-right:2px;border:none;background:none;cursor:pointer;
+  font:500 11px/1 var(--f-mono);letter-spacing:0;text-transform:none;color:var(--faint);padding:2px 6px;border-radius:var(--rd-ctl)}
+.kb-sr-group .kb-sr-clearall:hover{color:var(--c-danger);background:var(--danger-soft)}
 /* 窄屏：左栏退化为顶部横排 */
 @media (max-width:720px){
   .kb-search-cols{grid-template-columns:1fr}

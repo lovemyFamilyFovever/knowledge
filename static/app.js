@@ -2298,10 +2298,10 @@ async function showSubStats(dom, sub) {
     <div class="kbm-title">${icon("chart", 16)} ${esc(s.domain_label)} / ${esc(s.label)} · 目录统计<span class="spacer" style="flex:1"></span><button class="iconbtn ss-x" title="关闭（Esc）" aria-label="关闭">${icon("cancel-x", 14)}</button></div>
     <div class="kbm-body">
     <div class="gkpi">
-      <div class="g"><div class="lab">文档</div><div class="num acc">${s.n_docs}</div><div class="sub">本目录篇数</div></div>
-      <div class="g"><div class="lab">总字数</div><div class="num">${s.total_cjk.toLocaleString()}</div><div class="sub">CJK 字符</div></div>
-      <div class="g"><div class="lab">篇均字数</div><div class="num">${s.avg_cjk.toLocaleString()}</div><div class="sub">字 / 篇</div></div>
-      <div class="g"><div class="lab">未打标</div><div class="num ${s.n_untagged ? "warn" : "acc"}">${s.n_untagged}</div><div class="sub">待补 tags</div></div>
+      <div class="g"><div class="lab">文档</div><div class="num acc" data-counter data-count="${s.n_docs}">${s.n_docs}</div><div class="sub">本目录篇数</div></div>
+      <div class="g"><div class="lab">总字数</div><div class="num" data-counter data-count="${s.total_cjk}">${s.total_cjk.toLocaleString()}</div><div class="sub">CJK 字符</div></div>
+      <div class="g"><div class="lab">篇均字数</div><div class="num" data-counter data-count="${s.avg_cjk}">${s.avg_cjk.toLocaleString()}</div><div class="sub">字 / 篇</div></div>
+      <div class="g"><div class="lab">未打标</div><div class="num ${s.n_untagged ? "warn" : "acc"}" data-counter data-count="${s.n_untagged}">${s.n_untagged}</div><div class="sub">待补 tags</div></div>
     </div>
     <div class="ss-sec">标签分布 Top ${s.tags.length}</div>
     <div class="ss-tags">${tagRows}</div>
@@ -2474,10 +2474,10 @@ async function showGlobalStats() {
   const L = d.links || { total: 0, dead: 0, dead_docs: 0 };
   bodyEl.innerHTML = `
     <div class="gkpi">
-      <div class="g"><div class="lab">文档</div><div class="num acc">${d.n_docs.toLocaleString()}</div><div class="sub">美化版 ${d.n_html} · 收藏 ${d.n_fav}</div></div>
-      <div class="g"><div class="lab">总字数</div><div class="num">${d.total_cjk.toLocaleString()}</div><div class="sub">CJK 字符</div></div>
-      <div class="g"><div class="lab">标签覆盖</div><div class="num ${d.tagged_pct < 50 ? "warn" : "acc"}">${d.tagged_pct}<span class="u">%</span></div><div class="sub">共 ${d.n_tag_types} 种标签</div></div>
-      <div class="g"><div class="lab">双链健康</div><div class="num ${L.dead ? "rose" : "acc"}">${L.dead}</div><div class="sub">死链 / 共 ${L.total} 链</div></div>
+      <div class="g"><div class="lab">文档</div><div class="num acc" data-counter data-count="${d.n_docs}">${d.n_docs.toLocaleString()}</div><div class="sub">美化版 ${d.n_html} · 收藏 ${d.n_fav}</div></div>
+      <div class="g"><div class="lab">总字数</div><div class="num" data-counter data-count="${d.total_cjk}">${d.total_cjk.toLocaleString()}</div><div class="sub">CJK 字符</div></div>
+      <div class="g"><div class="lab">标签覆盖</div><div class="num ${d.tagged_pct < 50 ? "warn" : "acc"}" data-counter data-count="${d.tagged_pct}" data-count-suffix="%">${d.tagged_pct}<span class="u">%</span></div><div class="sub">共 ${d.n_tag_types} 种标签</div></div>
+      <div class="g"><div class="lab">双链健康</div><div class="num ${L.dead ? "rose" : "acc"}" data-counter data-count="${L.dead}">${L.dead}</div><div class="sub">死链 / 共 ${L.total} 链</div></div>
     </div>
     <div class="ss-sec">各域分布 · ${d.domains.length} 域</div>
     <div class="ss-tags">${d.domains.map(x => {
@@ -3127,7 +3127,6 @@ function soOpen() {
   SO.box = SO.box || SO.ov.querySelector(".kb-search-box");
   SO.input = SO.input || document.getElementById("kb-so-q");
   SO.body = SO.body || document.getElementById("kb-so-body");
-  SO.stat = SO.stat || document.getElementById("kb-so-stat");
   SO.ov.hidden = false;
   SO.ov.classList.add("show");
   if (!SO.ov.dataset.wired) {
@@ -3172,6 +3171,10 @@ function soWire() {
   /* 点结果/快速前往等任意链接 → 先关浮层再放行导航：
      workbench 的 SPA 全局 click 接管会吃掉整页跳转，浮层不主动关就一直悬在脸上 */
   SO.body.addEventListener("click", e => {
+    /* 最近查询：逐条删除 / 全部清除（先于 data-q 分支，避免冒泡触发重检） */
+    const del = e.target.closest && e.target.closest(".kb-sr-del");
+    if (del) { soForget(del.dataset.del); return; }
+    if (e.target.closest && e.target.closest(".kb-sr-clearall")) { soForget(null); return; }
     /* 最近查询条目（非链接，带 data-q）→ 填入该词并立即重检，浮层保持打开 */
     const rec = e.target.closest && e.target.closest(".kb-sr[data-q]");
     if (rec) {
@@ -3201,7 +3204,6 @@ function soWire() {
     soSyncClear();
     SO.body.innerHTML = soEmptyState();
     soRenderRecent();
-    if (SO.stat) SO.stat.textContent = "— · 输入以检索";
   });
 }
 
@@ -3241,10 +3243,23 @@ function soRenderRecent() {
     if (!body || body.dataset.hasResults === "1") return;
     const div = document.createElement("div");
     div.className = "kb-sr-recent";
-    div.innerHTML = `<div class="kb-sr-group">最近查询<span class="n">本地</span></div>` +
-      list.slice(0, 5).map(qs => `<div class="kb-sr" data-q="${SO.esc2(qs)}"><div class="sr-top"><span class="idx">↺</span><span class="path">${SO.esc2(qs)}</span></div></div>`).join("");
+    div.innerHTML = `<div class="kb-sr-group">最近查询<span class="n">本地</span><button type="button" class="kb-sr-clearall">全部清除</button></div>` +
+      list.slice(0, 5).map(qs => `<div class="kb-sr" data-q="${SO.esc2(qs)}"><div class="sr-top"><span class="idx">↺</span><span class="path">${SO.esc2(qs)}</span><button type="button" class="kb-sr-del" data-del="${SO.esc2(qs)}" aria-label="删除该条" title="删除"><svg class="i" aria-hidden="true"><use href="#i-cancel-x"/></svg></button></div></div>`).join("");
     body.insertBefore(div, body.firstChild);
   } catch (e) {}
+}
+
+/* 删除单条（q 为词）或全部清除（q 为 null），随后重建最近查询区块 */
+function soForget(q) {
+  try {
+    let list = JSON.parse(localStorage.getItem("kb-recent-queries") || "[]");
+    list = q == null ? [] : list.filter(x => x !== q);
+    localStorage.setItem("kb-recent-queries", JSON.stringify(list));
+  } catch (e) {}
+  const body = document.getElementById("kb-so-body");
+  const old = body && body.querySelector(".kb-sr-recent");
+  if (old) old.remove();
+  soRenderRecent();
 }
 
 function soRemember(qstr) {
@@ -3258,7 +3273,7 @@ function soRemember(qstr) {
 function soRun() {
   const qstr = (SO.input ? SO.input.value : "").trim();
   SO.lastQ = qstr;
-  if (!qstr) { SO.body.innerHTML = soEmptyState(); SO.body.dataset.hasResults = "0"; soRenderRecent(); if (SO.stat) SO.stat.textContent = "— · 输入以检索"; return; }
+  if (!qstr) { SO.body.innerHTML = soEmptyState(); SO.body.dataset.hasResults = "0"; soRenderRecent(); return; }
   const seq = ++SO.seq;
   const eng = SO.engine === "semantic" ? "semantic" : SO.engine;
   const pfx = SO.engine === "semantic" && !qstr.startsWith("?") ? "?" + qstr : qstr;
@@ -3313,15 +3328,8 @@ function soRenderResults(j, qstr) {
       </a>`;
     });
   });
-  SO.body.innerHTML = html || `<div class="kb-sr-group">无结果</div><div style="font:400 13.5px/1.7 var(--f-body);color:var(--muted);padding:8px 2px">换个关键词，或 <span class="mono">Shift+Enter</span> 进结果页。</div>`;
+  SO.body.innerHTML = html || `<div class="kb-sr-group">无结果</div><div style="font:400 13.5px/1.7 var(--f-body);color:var(--muted);padding:8px 2px">换个关键词，或用左侧引擎/域筛选缩小范围。</div>`;
   SO.body.dataset.hasResults = all.length ? "1" : "0";
-  if (SO.stat) {
-    const e = j.engines || {};
-    const parts = [];
-    if (e.fts_ms != null) parts.push("FTS " + e.fts_ms + "ms");
-    if (e.rag_ms != null) parts.push("RAG " + e.rag_ms + "ms");
-    SO.stat.textContent = (j.mode || "—") + " · " + (parts.join(" + ") || j.took_ms + "ms") + " · " + j.total + " 条";
-  }
 }
 
 function soOpenFirst() {
