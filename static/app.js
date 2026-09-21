@@ -3098,9 +3098,16 @@ function soOpen() {
     SO.ov.dataset.wired = "1";
   }
   SO.body.innerHTML = soEmptyState();
+  soSyncClear();
   setTimeout(() => { if (SO.input) SO.input.focus(); }, 0);
   // 打开即带出最近查询（纯前端 localStorage，无编造）
   soRenderRecent();
+}
+
+/* 清空按钮：输入框有字才现身；点击清空并回到空态（浮层保持打开） */
+function soSyncClear() {
+  const btn = document.getElementById("kb-so-clear");
+  if (btn && SO.input) btn.hidden = !SO.input.value;
 }
 
 function soClose() {
@@ -3144,8 +3151,17 @@ function soWire() {
     });
   });
   if (SO.input) SO.input.addEventListener("input", () => {
+    soSyncClear();
     clearTimeout(SO.timer);
     SO.timer = setTimeout(soRun, 240);
+  });
+  const clearBtn = document.getElementById("kb-so-clear");
+  if (clearBtn) clearBtn.addEventListener("click", () => {
+    if (SO.input) { SO.input.value = ""; SO.input.focus(); }
+    soSyncClear();
+    SO.body.innerHTML = soEmptyState();
+    soRenderRecent();
+    if (SO.stat) SO.stat.textContent = "— · 输入以检索";
   });
 }
 
@@ -3184,6 +3200,7 @@ function soRenderRecent() {
     const body = document.getElementById("kb-so-body");
     if (!body || body.dataset.hasResults === "1") return;
     const div = document.createElement("div");
+    div.className = "kb-sr-recent";
     div.innerHTML = `<div class="kb-sr-group">最近查询<span class="n">本地</span></div>` +
       list.slice(0, 5).map(qs => `<div class="kb-sr" data-q="${SO.esc2(qs)}"><div class="sr-top"><span class="idx">↺</span><span class="path">${SO.esc2(qs)}</span></div></div>`).join("");
     body.insertBefore(div, body.firstChild);
