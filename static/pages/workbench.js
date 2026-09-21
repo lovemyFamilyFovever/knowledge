@@ -74,10 +74,10 @@
   function enhanceRoamLinks() {
     var pane = document.getElementById("pane-links");
     if (!pane) return;
-    Array.prototype.forEach.call(pane.querySelectorAll("a.result[href]"), function (a) {
+    Array.prototype.forEach.call(pane.querySelectorAll("a.lk-row[href]"), function (a) {
       if (a.dataset.roamBound) return;
       a.dataset.roamBound = "1";
-      var t = a.querySelector(".doc-t");
+      var t = a.querySelector(".t1");
       var name = ((t && t.textContent) || "").trim();
       if (!name) return;
       var b = document.createElement("a");
@@ -85,7 +85,10 @@
       b.href = "/glossary?roam=" + encodeURIComponent(name);
       b.title = "以「" + name + "」为起点做一次串学漫游";
       b.innerHTML = SVG.replace(":id:", "i-backlink-graph") + "<span>→ 加入串学</span>";
-      a.parentNode.insertBefore(b, a.nextSibling);
+      var wrap = document.createElement("span");
+      wrap.className = "lk-roam";
+      wrap.appendChild(b);
+      a.parentNode.insertBefore(wrap, a.nextSibling);
     });
   }
   document.addEventListener("kb:links-rendered", enhanceRoamLinks);

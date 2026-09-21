@@ -561,29 +561,64 @@ h1.a-title{font-family:var(--f-disp);font-weight:700;font-size:28px;line-height:
 .a-body .wikilink.dead{color:var(--c-warn);border-bottom-color:var(--warn-edge)}
 .a-body .wikilink.dead::after{content:"断链";font:500 9px/1 var(--f-mono);color:var(--c-warn);
   border:1px solid var(--warn-edge);border-radius:var(--rd-ctl);padding:1px 4px;margin-left:5px;vertical-align:1px;letter-spacing:.08em}
-/* 双链面板断链行 + 补建动作（pane-links 由 workbench.js 注入列表，样式在此消费） */
-.kblink-row{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:var(--rd-ctl);font-size:12.5px;color:var(--c-ink)}
-.kblink-row:hover{background:var(--c-sunk)}
-.kblink-row .dir{flex:none;font:600 10px/1 var(--f-mono);color:var(--faint);letter-spacing:.1em;width:26px}
-.kblink-row.dead .t{color:var(--c-warn)}
-.kblink-row .fix{margin-left:auto;flex:none;font:500 10px/1 var(--f-mono);color:var(--c-acc);border:1px dashed var(--acc-line);
-  border-radius:var(--rd-ctl);padding:2px 7px;background:none;cursor:pointer}
-.kblink-row .fix:hover{background:var(--acc-soft);border-style:solid}
-.kblink-sec{font:600 10px/1 var(--f-mono);letter-spacing:.14em;text-transform:uppercase;color:var(--faint);padding:8px 8px 4px}
+/* 双链面板（pane-links）：三格统计带 + 色带区块头 + 编号清单行（2026-09-22 三 tab 重构） */
+.lk-stats{display:flex;gap:8px}
+.lk-st{flex:1;min-width:0;background:var(--c-sunk);border:1px solid var(--c-line);border-top:2px solid var(--c-acc);
+  border-radius:0 0 var(--rd-card) var(--rd-card);padding:8px 10px}
+.lk-st.d{border-top-color:var(--c-warn)}
+.lk-st .sv{font:700 17px/1.15 var(--f-mono);color:var(--c-ink);font-variant-numeric:tabular-nums}
+.lk-st .sk{margin-top:3px;font:600 10.5px/1.3 var(--f-body);color:var(--muted)}
+.lk-h{display:flex;align-items:center;gap:8px;margin:16px 0 3px;padding-left:9px;border-left:3px solid var(--c-acc);
+  font:700 13px/1.4 var(--f-body);color:var(--c-ink)}
+.lk-h .cnt{font:700 10px/1 var(--f-mono);background:var(--c-acc);color:var(--c-panel);border-radius:var(--rd-pill);padding:3px 7px}
+.lk-row{display:flex;gap:10px;align-items:baseline;padding:9px 4px;border-radius:var(--rd-ctl);color:inherit;text-decoration:none}
+a.lk-row:hover{background:var(--c-sunk)}
+.lk-row .no{flex:none;width:20px;font:600 10px/1.5 var(--f-mono);color:var(--faint);font-variant-numeric:tabular-nums}
+.lk-row.in .no{color:var(--c-acc)}
+.lk-row .tt{flex:1;min-width:0}
+.lk-row .t1{font-size:13.5px;font-weight:700;color:var(--c-ink);line-height:1.45;word-break:break-word}
+.lk-row .p{margin-top:2px;font:400 9.5px/1.5 var(--f-mono);color:var(--faint);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lk-row.dead .no{color:var(--c-warn)}
+.lk-row.dead .t1{font-weight:600;color:var(--c-warn)}
+.lk-row .fix{flex:none;align-self:center;border:none;border-radius:var(--rd-ctl);background:var(--c-ink);color:var(--c-panel);
+  font:700 9.5px/1 var(--f-mono);letter-spacing:.04em;padding:6px 9px;cursor:pointer;transition:background var(--dur-1)}
+.lk-row .fix:hover{background:var(--c-acc)}
+.lk-empty{padding:5px 4px 9px;font-size:12.5px;color:var(--muted);line-height:1.7}
 
-/* [9] 右栏 rail（tab = 2px 下边条选中） ===== */
+/* [9] 右栏 rail（tab = 分段药丸，选中浮起白块） ===== */
 .rail{display:flex;flex-direction:column;min-height:0}
-.rtabs{flex:none;display:flex;border-bottom:1px solid var(--c-line);position:relative;background:var(--c-sunk);overflow-x:auto;scrollbar-width:none}
+.rtabs{flex:none;display:flex;gap:4px;padding:6px;border-bottom:1px solid var(--c-line);background:var(--c-sunk);overflow-x:auto;scrollbar-width:none}
 .rtabs::-webkit-scrollbar{display:none}
-.rtab{flex:1;min-width:0;text-align:center;padding:11px 2px;font-size:11px;letter-spacing:.02em;color:var(--faint);cursor:pointer;font-family:var(--f-mono);border:0;border-bottom:2px solid transparent;transition:color var(--dur-1);user-select:none;background:none;white-space:nowrap}
-.rtab svg{margin-right:3px;vertical-align:-2px}
-.rtab:hover{color:var(--muted)}
-.rtab.active{color:var(--c-acc);border-bottom-color:var(--c-acc);background:var(--c-panel)}
-.rtab:focus-visible{outline:2px solid var(--acc-line);outline-offset:-2px}
+.rtab{flex:1;min-width:0;display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:8px 4px;
+  font:600 12.5px/1 var(--f-body);letter-spacing:0;color:var(--muted);cursor:pointer;white-space:nowrap;user-select:none;
+  background:transparent;border:1px solid transparent;border-radius:var(--rd-card);
+  transition:color var(--dur-1),background var(--dur-1),border-color var(--dur-1),box-shadow var(--dur-1)}
+.rtab .rt-n{font:600 10px/1 var(--f-mono);color:var(--faint);font-variant-numeric:tabular-nums}
+.rtab:hover{color:var(--c-ink);background:color-mix(in oklab,var(--c-panel),transparent 52%)}
+.rtab.active{background:var(--c-panel);border-color:var(--c-line);color:var(--c-ink);
+  box-shadow:0 1px 2px color-mix(in oklab,var(--c-ink),transparent 92%)}
+.rtab.active .rt-n{color:var(--c-acc)}
+.rtab:focus-visible{outline:2px solid var(--acc-line);outline-offset:1px}
 .rpane{flex:1;overflow-y:auto;padding-top:10px;display:none}
 .rpane.active{display:block;animation:rise var(--dur-2) var(--ease-out)}
 /* 目录面板走纵向 flex：让底部 sparkline 卡片可用 margin-top:auto 贴底 */
 #pane-toc.active{display:flex;flex-direction:column}
+/* 三块内容面板统一 12px 内衬；备注面板纵向 flex + 内部滚动，使输入条常驻贴底 */
+#pane-info,#pane-links{padding:12px 12px 18px}
+#pane-notes{padding:0}
+#pane-notes.active{display:flex;flex-direction:column;overflow:hidden}
+.notes-flow{flex:1;min-height:0;overflow-y:auto;padding:12px 12px 16px}
+/* B 式区块卡：标签卡 / 元信息卡共用 */
+.rp-card{border:1px solid var(--c-line);border-radius:min(10px,calc(var(--rd-card) + 4px));background:var(--c-panel);
+  padding:12px 13px;box-shadow:0 1px 2px color-mix(in oklab,var(--c-ink),transparent 94%)}
+.rp-card+.rp-card{margin-top:11px}
+.rp-ch{display:flex;align-items:center;gap:7px;font:700 13px/1.4 var(--f-body);color:var(--c-ink);margin-bottom:10px}
+.rp-ch>svg{width:14px;height:14px;color:var(--c-acc);flex:none}
+.rp-ch .cnt{margin-left:auto;font:600 10.5px/1 var(--f-mono);color:var(--c-acc);background:var(--acc-soft);border-radius:var(--rd-pill);padding:3px 8px}
+.kv{display:flex;justify-content:space-between;align-items:baseline;gap:14px;padding:7.5px 0;font-size:12.5px}
+.kv+.kv{border-top:1px solid var(--c-line)}
+.kv .k{flex:none;font-weight:600;color:var(--muted)}
+.kv .v{font-weight:600;color:var(--c-ink);text-align:right;word-break:break-all}
 .kb-skeleton{padding:20px 4px;display:flex;flex-direction:column;gap:14px}
 .kb-skeleton i{height:14px;border-radius:var(--rd-ctl);background:linear-gradient(90deg,var(--c-sunk) 25%,var(--c-line) 50%,var(--c-sunk) 75%);background-size:200% 100%;animation:kbSkl 1.2s linear infinite}
 @keyframes kbSkl{from{background-position:200% 0}to{background-position:-200% 0}}
@@ -608,14 +643,24 @@ h1.a-title{font-family:var(--f-disp);font-weight:700;font-size:28px;line-height:
 .meta-row{display:flex;justify-content:space-between;gap:10px;padding:7px 2px;border-bottom:1px dashed var(--c-line);font-size:12.5px}
 .meta-row .k{color:var(--faint);font-family:var(--f-mono);font-size:10.5px;flex:none}
 .meta-row .v{color:var(--c-ink);text-align:right;font-family:var(--f-mono);font-size:11.5px;word-break:break-all}
-.note-card{border:1px solid var(--warn-edge);border-left:3px solid var(--c-warn);border-radius:var(--rd-card);padding:10px 12px;margin-bottom:9px;background:var(--warn-soft)}
-.note-card .when{font-family:var(--f-mono);font-size:9.5px;color:var(--c-warn);letter-spacing:.08em;margin-bottom:5px}
-.note-card p{font-size:13px;line-height:1.7;color:var(--c-ink)}
-.note-input{display:flex;gap:7px;margin-top:4px}
-.note-input input{flex:1;background:var(--c-sunk);border:1px solid var(--c-line);border-radius:var(--rd-ctl);outline:none;color:var(--c-ink);font:13px var(--f-body);padding:8px 11px}
-.note-input input:focus{border-color:var(--c-warn);box-shadow:0 0 0 3px var(--warn-soft)}
-.note-input button{flex:none;border:none;border-radius:var(--rd-ctl);background:var(--c-warn);color:var(--c-panel);font-weight:600;font-size:12px;padding:0 13px;cursor:pointer}
-.note-input button:hover{background:color-mix(in oklab,var(--c-warn),black 10%)}
+/* 备注面板（pane-notes）：C 式无框清单 + B 式贴底输入条 */
+.note-item{padding:11px 2px}
+.note-item+.note-item{border-top:1px solid var(--c-line)}
+.note-item:first-child{padding-top:2px}
+.note-when{display:flex;align-items:baseline;gap:8px;margin-bottom:5px}
+.note-when .dt{font:700 11.5px/1.3 var(--f-mono);letter-spacing:.03em;color:var(--c-acc);font-variant-numeric:tabular-nums}
+.note-item p{font-size:13.5px;font-weight:500;line-height:1.7;color:var(--c-ink);word-break:break-word}
+.note-empty{padding:6px 2px;font-size:12.5px;color:var(--muted);line-height:1.8}
+.note-input{flex:none;display:flex;gap:8px;align-items:stretch;padding:11px 12px;border-top:1px solid var(--c-line);background:var(--c-panel)}
+.note-input input{flex:1;min-width:0;background:var(--c-panel);border:1px solid var(--acc-line);border-radius:var(--rd-pill);
+  outline:none;color:var(--c-ink);font:13px var(--f-body);padding:8px 14px;transition:border-color var(--dur-1),box-shadow var(--dur-1)}
+.note-input input:focus{border-color:var(--c-acc);box-shadow:0 0 0 3px var(--acc-soft)}
+.note-input input::placeholder{color:var(--faint)}
+.note-input button{flex:none;display:inline-flex;align-items:center;gap:5px;border:none;border-radius:var(--rd-pill);
+  background:var(--c-acc);color:var(--c-panel);font:700 12.5px/1 var(--f-body);padding:0 16px;cursor:pointer;
+  transition:background var(--dur-1),opacity var(--dur-1)}
+.note-input button:hover{background:color-mix(in oklab,var(--c-acc),black 14%)}
+.note-input button[disabled]{opacity:.55;cursor:default}
 
 /* [10] 单栏页与首页（平面薄板卡片） ===== */
 .page-body{flex:1;overflow-y:auto;padding:22px 30px}

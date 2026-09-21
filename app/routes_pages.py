@@ -175,7 +175,7 @@ def _workbench(domain, sub, name):
                            cur={"domain": domain, "sub": sub, "name": name},
                            docs=sobj["docs"], sub_label=sobj["label"], doc=doc, n_fav=n_fav,
                            info_rows=info_rows,
-                           doc_json=json.dumps(doc, ensure_ascii=False).replace("<", "\\u003c"),
+                           doc_json=json.dumps({**doc, "info_rows": info_rows}, ensure_ascii=False).replace("<", "\\u003c"),
                            fts_n=fts_n, inbox_n=inbox_n)
 
 

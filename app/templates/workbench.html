@@ -72,29 +72,47 @@
   </section>
 
   <section class="panel rail" id="p-rail" data-reveal data-reveal-y="14">
+    {% set n_tags = (doc.fm.tags or [])|length %}
     <div class="rtabs" role="tablist" aria-label="文档信息面板">
       <button type="button" class="rtab{% if not doc.has_html %} active{% endif %}" data-pane="toc" role="tab" aria-selected="{% if doc.has_html %}false{% else %}true{% endif %}" tabindex="0" onclick="tab('toc',this)"><svg class="i i-12"><use href="#i-toc-list"/></svg>目录</button>
-      <button type="button" class="rtab{% if doc.has_html %} active{% endif %}" data-pane="info" role="tab" aria-selected="{% if doc.has_html %}true{% else %}false{% endif %}" tabindex="0" onclick="tab('info',this)"><svg class="i i-12"><use href="#i-info-circle"/></svg>标签</button>
-      <button type="button" class="rtab" data-pane="notes" role="tab" aria-selected="false" tabindex="0" onclick="tab('notes',this)"><svg class="i i-12"><use href="#i-note-pen"/></svg>备注</button>
-      <button type="button" class="rtab" data-pane="links" role="tab" aria-selected="false" tabindex="0" onclick="tab('links',this)"><svg class="i i-12"><use href="#i-backlink-graph"/></svg>双链</button>
+      <button type="button" class="rtab{% if doc.has_html %} active{% endif %}" data-pane="info" role="tab" aria-selected="{% if doc.has_html %}true{% else %}false{% endif %}" tabindex="0" onclick="tab('info',this)"><svg class="i i-12"><use href="#i-info-circle"/></svg>标签<span class="rt-n" id="rt-n-tags">{{ n_tags or "" }}</span></button>
+      <button type="button" class="rtab" data-pane="notes" role="tab" aria-selected="false" tabindex="0" onclick="tab('notes',this)"><svg class="i i-12"><use href="#i-note-pen"/></svg>备注<span class="rt-n" id="rt-n-notes">{{ doc.notes|length or "" }}</span></button>
+      <button type="button" class="rtab" data-pane="links" role="tab" aria-selected="false" tabindex="0" onclick="tab('links',this)"><svg class="i i-12"><use href="#i-backlink-graph"/></svg>双链<span class="rt-n" id="rt-n-links"></span></button>
     </div>
     <div class="rpane active toc" id="pane-toc" role="tabpanel"></div>
     <div class="rpane" id="pane-info" role="tabpanel">
-      {% for k, v in info_rows %}
-      <div class="meta-row"><span class="k">{{ k }}</span><span class="v">{{ v }}</span></div>
-      {% endfor %}
-      <div class="meta-row"><span class="k">版本</span><span class="v">git 全程可追溯</span></div>
+      {% set tags = doc.fm.tags or [] %}
+      <div class="tag-edit{% if doc.is_html %} readonly{% endif %}">
+        <div class="tag-edit-h"><svg class="i i-12"><use href="#i-tag-outline"/></svg> 标签{% if tags %}<span class="tag-edit-cnt">{{ tags|length }}</span>{% endif %}</div>
+        <div class="tag-chips" id="tag-chips">
+          {% for t in tags %}
+          <span class="tagchip" data-tag="{{ t }}"><span class="tagchip-name">{{ t }}</span>{% if not doc.is_html %}<button type="button" class="tagchip-x" title="移除标签「{{ t }}」" aria-label="移除标签 {{ t }}" onclick="removeTag(this.parentElement)"><svg class="i i-12"><use href="#i-cancel-x"/></svg></button>{% endif %}</span>
+          {% else %}
+          <span class="tag-empty">{% if doc.is_html %}美化版不支持在线编辑标签{% else %}还没有标签{% endif %}</span>
+          {% endfor %}
+        </div>
+        {% if not doc.is_html %}<button type="button" class="tag-addbar" id="tag-add-btn" title="添加标签"><svg class="i i-12"><use href="#i-plus-circle"/></svg> 添加标签（逗号可批量）</button>{% endif %}
+        <div class="tag-inputrow" id="tag-inputrow" hidden>
+          <input id="tag-in" placeholder="输入标签，逗号可批量，回车确认" maxlength="64" autocomplete="off">
+        </div>
+      </div>
+      <div class="rp-card">
+        <div class="rp-ch"><svg class="i i-12"><use href="#i-info-circle"/></svg> 元信息</div>
+        {% for k, v in info_rows %}
+        <div class="kv"><span class="k">{{ k }}</span><span class="v">{{ v }}</span></div>
+        {% endfor %}
+      </div>
     </div>
     <div class="rpane" id="pane-links" role="tabpanel">
-      <div class="rpane-hint">打开本标签时自动加载。</div>
+      <div class="lk-empty">打开本标签时自动加载。</div>
     </div>
     <div class="rpane" id="pane-notes" role="tabpanel">
-      <div id="notes-list">
+      <div class="notes-flow">
         {% for n in doc.notes %}
-        <div class="note-card"><div class="when">{{ n.when }} · 旁挂 .notes.md</div><p>{{ n.text }}</p></div>
-        {% else %}<div class="rpane-hint">还没有备注，写下第一条。</div>{% endfor %}
+        <div class="note-item"><div class="note-when"><span class="dt">{{ n.when }}</span></div><p>{{ n.text }}</p></div>
+        {% else %}<div class="note-empty">还没有批注。读到值得记一笔的地方，写在下面。</div>{% endfor %}
       </div>
-      <div class="note-input"><input id="ni" placeholder="追加备注，回车保存…" aria-label="追加备注"><button onclick="addNote()">记</button></div>
+      <div class="note-input"><input id="ni" placeholder="追加批注，回车保存…" aria-label="追加批注"><button onclick="addNote()"><svg class="i i-12"><use href="#i-plus-circle"/></svg> 记录</button></div>
     </div>
   </section>
 </main>

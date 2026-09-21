@@ -3,35 +3,36 @@
    挂载：workbench.html；作用域：右栏 pane-info / 正文 .a-body
    ============================================================ */
 
-/* ---- 标签编辑区（右栏「信息·标签」页顶部） ---- */
-.tag-edit{border:1px solid var(--c-line);border-radius:var(--rd-card);background:color-mix(in oklab,var(--c-panel),transparent 30%);
-  padding:14px 15px;margin-bottom:14px}
-html[data-theme="dark"] .tag-edit{background:color-mix(in oklab,var(--c-panel),transparent 72%)}
-.tag-edit-h{display:flex;align-items:center;gap:7px;font-family:var(--f-disp);font-size:13.5px;font-weight:600;color:var(--c-ink);margin-bottom:11px}
-.tag-edit-h svg{color:var(--c-acc)}
-.tag-edit-addbtn{margin-left:auto;display:inline-flex;align-items:center;gap:4px;
-  border:1px solid var(--acc-line);background:var(--acc-soft);color:var(--c-acc);
-  font:600 11.5px/1 var(--f-body);padding:6px 12px;border-radius:var(--rd-ctl);cursor:pointer;
-  transition:background .15s,border-color .15s}
-.tag-edit-addbtn:hover{background:var(--acc-line)}
+/* ---- 标签编辑区（右栏「标签」页顶部；2026-09-22 三 tab 重构 = B 卡片层） ---- */
+.tag-edit{border:1px solid var(--c-line);border-radius:min(10px,calc(var(--rd-card) + 4px));background:var(--c-panel);
+  padding:12px 13px;margin-bottom:11px;box-shadow:0 1px 2px color-mix(in oklab,var(--c-ink),transparent 94%)}
+.tag-edit-h{display:flex;align-items:center;gap:7px;font:700 13px/1.4 var(--f-body);color:var(--c-ink);margin-bottom:10px}
+.tag-edit-h svg{width:14px;height:14px;color:var(--c-acc);flex:none}
+.tag-edit-cnt{margin-left:auto;font:600 10.5px/1 var(--f-mono);color:var(--c-acc);background:var(--acc-soft);
+  border-radius:var(--rd-pill);padding:3px 8px;font-variant-numeric:tabular-nums}
+.tag-addbar{display:flex;align-items:center;justify-content:center;gap:5px;width:100%;margin-top:10px;cursor:pointer;
+  border:1px dashed var(--acc-line);background:color-mix(in oklab,var(--acc-soft),transparent 45%);color:var(--c-acc);
+  font:600 12px/1 var(--f-body);border-radius:var(--rd-pill);padding:8px;transition:background .15s,border-style .15s}
+.tag-addbar:hover{background:var(--acc-soft);border-style:solid}
+.tag-addbar svg{width:12px;height:12px;flex:none}
 .tag-chips{display:flex;flex-wrap:wrap;gap:7px}
 .tag-chips .tag-empty{font-size:12px;color:var(--faint);font-style:normal;padding:2px 0}
-.tagchip{display:inline-flex;align-items:center;gap:5px;max-width:100%;
+.tagchip{display:inline-flex;align-items:center;gap:6px;max-width:100%;
   border:1px solid var(--acc-line);background:var(--acc-soft);color:var(--c-acc);
-  font:500 11.5px/1 var(--f-mono);padding:5px 6px 5px 11px;border-radius:999px}
+  font:600 12px/1 var(--f-body);padding:5px 5px 5px 12px;border-radius:var(--rd-pill)}
 .tagchip-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:200px}
 .tagchip-x{display:inline-flex;align-items:center;justify-content:center;flex:none;
-  width:17px;height:17px;border:none;background:transparent;color:var(--c-acc);
-  opacity:.55;border-radius:50%;cursor:pointer;padding:0}
+  width:16px;height:16px;border:none;background:color-mix(in oklab,var(--c-acc),transparent 88%);color:var(--c-acc);
+  opacity:.8;border-radius:50%;cursor:pointer;padding:0;transition:opacity .15s,background .15s}
 .tagchip-x:hover{opacity:1;background:var(--acc-line)}
 .tagchip-x svg{display:block}
-.tag-inputrow{margin-top:11px}
+.tag-inputrow{margin-top:10px}
 .tag-inputrow input{width:100%;box-sizing:border-box;border:1px solid var(--c-line);border-radius:var(--rd-ctl);
   background:var(--c-panel);color:var(--c-ink);font:400 12.5px/1.4 var(--f-body);padding:9px 12px;outline:none}
 .tag-inputrow input:focus{border-color:var(--acc-line);box-shadow:0 0 0 3px var(--acc-soft)}
 .tag-inputrow input::placeholder{color:var(--faint)}
 /* HTML 美化版文档：语料不可写 → 隐藏编辑控件，仅展示 */
-.tag-edit.readonly .tag-edit-addbtn{display:none}
+.tag-edit.readonly .tag-addbar{display:none}
 .tag-edit.readonly .tagchip-x{display:none}
 
 /* ---- 需求 #12：书库格式阅读样式（txt/pdf/xlsx/epub 分流渲染） ---- */

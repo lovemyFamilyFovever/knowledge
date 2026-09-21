@@ -1146,10 +1146,16 @@ function renderHeadChips() {
   box.innerHTML = buildChipsRow();
 }
 
+/* 右栏页签计数徽标：0 时清空（不显示「0」占位） */
+function tabCount(id, n) {
+  const el = document.getElementById(id);
+  if (el) el.textContent = n ? String(n) : "";
+}
+
 function renderInfo() {
   const pane = $("#pane-info"); if (!pane || !DOC) return;
   const rows = (DOC.info_rows || []).map(([k, v]) =>
-    `<div class="meta-row"><span class="k">${esc(k)}</span><span class="v">${esc(v)}</span></div>`).join("");
+    `<div class="kv"><span class="k">${esc(k)}</span><span class="v">${esc(v)}</span></div>`).join("");
   const editable = !DOC.is_html; // .md 可写；.html 美化版语料不可写 → 只读展示
   const tags = (DOC.fm && Array.isArray(DOC.fm.tags)) ? DOC.fm.tags : [];
   const tagChips = tags.length
@@ -1157,13 +1163,18 @@ function renderInfo() {
     : (editable ? `<span class="tag-empty">还没有标签</span>` : `<span class="tag-empty">美化版不支持在线编辑标签</span>`);
   pane.innerHTML =
     `<div class="tag-edit${editable ? "" : " readonly"}">
-      <div class="tag-edit-h">${icon("tag-outline", 13)} 标签${editable ? `<button type="button" class="tag-edit-addbtn" id="tag-add-btn" title="添加标签">+ 添加</button>` : ""}</div>
+      <div class="tag-edit-h">${icon("tag-outline", 14)} 标签${tags.length ? `<span class="tag-edit-cnt">${tags.length}</span>` : ""}</div>
       <div class="tag-chips" id="tag-chips">${tagChips}</div>
+      ${editable ? `<button type="button" class="tag-addbar" id="tag-add-btn" title="添加标签">${icon("plus-circle", 12)} 添加标签（逗号可批量）</button>` : ""}
       <div class="tag-inputrow" id="tag-inputrow" hidden>
         <input id="tag-in" placeholder="输入标签，逗号可批量，回车确认" maxlength="64" autocomplete="off">
       </div>
     </div>
-    <div class="meta-row"><span class="k">版本</span><span class="v">git 全程可追溯</span></div>` + rows;
+    <div class="rp-card">
+      <div class="rp-ch">${icon("info-circle", 14)} 元信息</div>
+      ${rows}
+    </div>`;
+  tabCount("rt-n-tags", tags.length);
   const addBtn = pane.querySelector("#tag-add-btn");
   const row = pane.querySelector("#tag-inputrow");
   const input = pane.querySelector("#tag-in");
@@ -1298,10 +1309,12 @@ window.jumpToTagEdit = jumpToTagEdit;
 
 function renderNotes() {
   const pane = $("#pane-notes"); if (!pane || !DOC) return;
-  pane.innerHTML = `<div id="notes-list">` + ((DOC.notes || []).map(n =>
-    `<div class="note-card"><div class="when">${esc(n.when)} · 旁挂 .notes.md</div><p>${esc(n.text)}</p></div>`).join("")
-    || `<div style="padding:6px 2px;font-size:12.5px;color:var(--faint)">还没有备注，写下第一条。</div>`)
-    + `</div><div class="note-input"><input id="ni" placeholder="追加备注，回车保存…"><button onclick="addNote()">记</button></div>`;
+  const notes = DOC.notes || [];
+  pane.innerHTML = `<div class="notes-flow">` + (notes.map(n =>
+    `<div class="note-item"><div class="note-when"><span class="dt">${esc(n.when)}</span></div><p>${esc(n.text)}</p></div>`).join("")
+    || `<div class="note-empty">还没有批注。读到值得记一笔的地方，写在下面。</div>`)
+    + `</div><div class="note-input"><input id="ni" placeholder="追加批注，回车保存…" aria-label="追加批注"><button onclick="addNote()">${icon("plus-circle", 12)} 记录</button></div>`;
+  tabCount("rt-n-notes", notes.length);
   const ni = $("#ni"); if (ni) ni.onkeydown = e => { if (e.key === "Enter") addNote(); };
 }
 
@@ -1375,6 +1388,7 @@ async function openDoc(domain, sub, name) {
   }
   const data = await r.json();
   DOC = data.doc;
+  DOC.info_rows = data.info_rows || []; // /api/doc 把 info_rows 放在 doc 同级，不接上则元信息卡空白
   try { localStorage.setItem("kb-last-doc", ED_LAST_HREF || location.pathname + location.search); } catch (e) {}
   MD_SRC_ON = false;   // 换文档重置视图偏好（避免上一篇的 Markdown 源状态带过来）
   updateStatusBarPath();
@@ -1390,6 +1404,7 @@ async function openDoc(domain, sub, name) {
   setTrackingDoc(DOC.rel);
   linksLoadedFor = null;
   if (document.querySelector("#pane-links.active")) loadLinks(); // 停在双链标签时跟随切换
+  else if (window.requestIdleCallback) requestIdleCallback(() => loadLinks()); // 空闲预取：填页签计数徽标
   const art = document.querySelector(".article"); if (art) art.scrollTop = 0;
   resetReadProgress(); // C1：新文档渲染前进度归零（restoreReadPos 回跳时 scroll 事件自然续上）
   restoreReadPos();
@@ -1897,29 +1912,38 @@ async function deleteDoc() {
 let linksLoadedFor = null;
 function loadLinks() {
   const pane = $("#pane-links"); if (!pane) return;
-  if (!DOC || DOC.is_html) { pane.innerHTML = `<div class="empty" style="padding:10px 2px">HTML 文档暂无双链解析。</div>`; return; }
+  if (!DOC || DOC.is_html) { pane.innerHTML = `<div class="lk-empty">HTML 文档暂无双链解析。</div>`; tabCount("rt-n-links", 0); return; }
   if (linksLoadedFor === DOC.rel) return;
   linksLoadedFor = DOC.rel;
-  pane.innerHTML = `<div style="padding:6px 2px;font-size:12.5px;color:var(--faint)">解析中…</div>`;
+  pane.innerHTML = `<div class="lk-empty">解析中…</div>`;
   fetch("/api/links?path=" + encodeURIComponent(DOC.rel))
     .then(r => r.json())
     .then(d => {
-      const back = d.incoming.map(x =>
-        `<a class="result" href="${docUrl(x.path)}"><div class="doc-t">${esc(x.title)}</div><div class="rp">${esc(x.path)}</div></a>`).join("");
-      const fwd = d.outgoing.map(x => x.resolved
-        ? `<a class="result" href="${docUrl(x.path)}"><div class="doc-t">${esc(x.title)}</div><div class="rp">${esc(x.path)}</div></a>`
-        : `<div class="kblink-row dead"><span class="t">未解析：${esc(x.raw)}</span><button type="button" class="fix" data-raw="${esc(x.raw)}" title="为该断链目标创建占位文档">补建</button></div>`).join("");
+      const live = d.outgoing.filter(x => x.resolved);
+      const dead = d.outgoing.filter(x => !x.resolved);
+      const pad = i => String(i + 1).padStart(2, "0");
+      const row = (x, i, dir) =>
+        `<a class="lk-row ${dir}" href="${docUrl(x.path)}"><span class="no">${pad(i)}</span><div class="tt"><div class="t1">${esc(x.title)}</div><div class="p">${esc(x.path)}</div></div></a>`;
+      const back = d.incoming.map((x, i) => row(x, i, "in")).join("");
+      const fwd = live.map((x, i) => row(x, i, "out")).join("") + dead.map(x =>
+        `<div class="lk-row dead"><span class="no">✕</span><div class="tt"><div class="t1">${esc(x.raw)}</div><div class="p">[[${esc(x.raw)}]] · 语料中不存在</div></div><button type="button" class="fix" data-raw="${esc(x.raw)}" title="为该断链目标创建占位文档">补建</button></div>`).join("");
+      tabCount("rt-n-links", d.incoming.length + d.outgoing.length);
       pane.innerHTML =
-        `<div class="home-sec" style="margin-top:4px">谁引用了它 · ${d.incoming.length}</div>` +
-        (back || `<div style="font-size:12.5px;color:var(--faint);padding:4px 2px">还没有。写别的文档时打个 [[${esc(DOC.title)}]] 就连上了。</div>`) +
-        `<div class="home-sec" style="margin-top:16px">它引用 · ${d.outgoing.length}</div>` +
-        (fwd || `<div style="font-size:12.5px;color:var(--faint);padding:4px 2px">本文没有 [[双链]]。</div>`);
-      pane.querySelectorAll(".kblink-row .fix").forEach(b => {
+        `<div class="lk-stats">
+          <div class="lk-st"><div class="sv">${d.incoming.length}</div><div class="sk">入站引用</div></div>
+          <div class="lk-st"><div class="sv">${live.length}</div><div class="sk">出站链接</div></div>
+          <div class="lk-st d"><div class="sv">${dead.length}</div><div class="sk">断链</div></div>
+        </div>
+        <div class="lk-h">入站 · 谁引用了它${d.incoming.length ? `<span class="cnt">${d.incoming.length}</span>` : ""}</div>` +
+        (back || `<div class="lk-empty">还没有。写别的文档时打个 [[${esc(DOC.title)}]] 就连上了。</div>`) +
+        `<div class="lk-h">出站 · 它引用${d.outgoing.length ? `<span class="cnt">${d.outgoing.length}</span>` : ""}</div>` +
+        (fwd || `<div class="lk-empty">本文没有 [[双链]]。</div>`);
+      pane.querySelectorAll(".lk-row .fix").forEach(b => {
         b.addEventListener("click", () => fixDeadLink(b.dataset.raw || ""));
       });
       document.dispatchEvent(new CustomEvent("kb:links-rendered")); // roam 增强挂点（问题8：替代 observer）
     })
-    .catch(() => { pane.innerHTML = `<div class="empty" style="padding:10px 2px">加载失败，稍后再试。</div>`; linksLoadedFor = null; });
+    .catch(() => { pane.innerHTML = `<div class="lk-empty">加载失败，稍后再试。</div>`; linksLoadedFor = null; });
 }
 
 /* ---------- C2：断链「补建占位」——走既有 /api/save 写回，不新造通道 ----------

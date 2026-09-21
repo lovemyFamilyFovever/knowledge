@@ -98,21 +98,23 @@
 .chips-in:focus{box-shadow:0 0 0 3px var(--acc-soft)}
 .chips-in::placeholder{color:var(--faint)}
 
-/* ---- [7] 右 rail：tab 图标节奏 + 面板提示 ---- */
-.rtab{display:flex;align-items:center;justify-content:center;gap:5px}
-.rtab svg{width:12px;height:12px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;opacity:.75}
-.rtab.active svg{opacity:1}
-.rtab:focus-visible{outline:3px solid color-mix(in oklab,var(--c-acc),transparent 20%);outline-offset:-2px;border-radius:6px}
+/* ---- [7] 右 rail：药丸页签内的图标节奏（页签本体样式在 style.css [9]） ---- */
+.rtab svg{width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex:none;opacity:.78}
+.rtab.active svg{color:var(--c-acc);opacity:1}
+.rtab:focus-visible{outline:3px solid color-mix(in oklab,var(--c-acc),transparent 20%);outline-offset:1px;border-radius:var(--rd-card)}
 .rpane-hint{padding:6px 2px;font-size:12.5px;color:var(--faint)}
-.rpane .home-sec{font-family:var(--f-mono);font-size:10px;letter-spacing:.16em;color:var(--muted);text-transform:uppercase}
 
 /* ---- [8] 面板 reveal 微调：三栏不同步起跳（stagger 由 data-reveal 顺序决定） ---- */
 html.motion-ready .wb-panel{will-change:transform}
 
-/* ---- [10] v1.1 追加：双链面板「→ 加入串学」（需求4，pages/workbench.js 注入） ---- */
+/* ---- [10] v1.1 追加：双链面板「→ 加入串学」（需求4，pages/workbench.js 注入）
+   2026-09-22 三 tab 重构：行变紧凑后串学入口改为 hover 浮层，零高度不占行。 ---- */
+.lk-roam{display:flex;justify-content:flex-end;align-items:center;height:0;position:relative;top:-26px;z-index:2;
+  opacity:0;pointer-events:none;transition:opacity var(--dur-1)}
+.lk-row:hover + .lk-roam,.lk-roam:focus-within{opacity:1;pointer-events:auto}
 .kb-roam-link{
-  display:inline-flex;align-items:center;gap:5px;margin:-2px 0 8px;padding:3px 9px;border-radius:var(--rd-pill);
-  border:1px dashed var(--acc-line);background:transparent;color:var(--c-acc);
+  display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:var(--rd-pill);
+  border:1px dashed var(--acc-line);background:var(--c-panel);color:var(--c-acc);
   font-size:10.5px;text-decoration:none;transition:background .15s,border-color .15s;
 }
 .kb-roam-link svg{width:11px;height:11px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
