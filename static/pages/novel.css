@@ -1,20 +1,21 @@
 /* novel.css — 书库/小说在线阅读（kb-novel.js 消费；主题变量由 KBNOVEL.apply 写在 :root） */
-.nv-reader{display:flex;flex-direction:column;gap:10px}
+/* 书库文档全屏：去 crumb 后阅读区撑满视口，内部各自滚动，页面级不出滚动条 */
+.article-wrap.nv-mode{height:calc(100vh - 72px)}
+.article-wrap.nv-mode .article{overflow:hidden;padding:10px 14px;flex:1;min-height:0}
+.article-wrap.nv-mode .article-inner{max-width:none;height:100%;display:flex;flex-direction:column;animation:none}
+.article-wrap.nv-mode .article-inner > .a-body{flex:1;min-height:0;display:flex;flex-direction:column}
+.nv-reader{display:flex;flex-direction:column;gap:10px;flex:1;min-height:0}
+.nv-reader .nv-toolbar{order:1}
+.nv-reader .nv-find{order:2}
+.nv-reader .nv-body-row{order:3}
 .nv-toolbar{display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid var(--c-line);
-  border-radius:var(--rd-ctl);background:var(--c-panel);flex-wrap:wrap}
+  border-radius:var(--rd-ctl);background:var(--c-panel);flex-wrap:wrap;flex:none}
 .nv-toolbar .iconbtn{font-size:12px}
 .nv-toolbar .iconbtn.on{border-color:var(--c-acc);color:var(--c-acc);background:var(--acc-soft)}
 .nv-toolbar .iconbtn.busy{opacity:.6}
 .nv-pos{font:500 11.5px/1.4 var(--f-mono);color:var(--muted);min-width:120px;text-align:center;
   max-width:46ch;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.nv-body-row{display:flex;gap:12px;align-items:stretch;min-height:520px;height:calc(100vh - 300px)}
-.nv-toc{flex:0 0 220px;overflow-y:auto;border:1px solid var(--c-line);border-radius:var(--rd-card);
-  background:var(--c-panel);padding:6px}
-.nv-toc-item{display:block;padding:6px 9px;font-size:12.5px;color:var(--muted);text-decoration:none;
-  border-radius:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.nv-toc-item:hover{background:var(--c-sunk);color:var(--c-ink)}
-.nv-toc-item.on{background:var(--acc-soft);color:var(--c-acc);font-weight:600}
-.nv-toc-empty{padding:10px;font-size:12px;color:var(--faint)}
+.nv-body-row{flex:1;min-height:0;display:flex;gap:12px;align-items:stretch}
 /* 阅读舞台：护眼色只染这里，不碰全站 token */
 .nv-stage{flex:1;min-width:0;overflow-y:auto;border:1px solid var(--c-line);border-radius:var(--rd-card);
   background:var(--nv-bg,#fff);color:var(--nv-ink,#17181a);padding:26px 30px;
@@ -55,4 +56,4 @@
 .lib-mobi-card{padding:26px;border:1px dashed var(--c-line2);border-radius:var(--rd-card);
   background:var(--c-panel);font-size:13.5px;color:var(--muted)}
 .lib-mobi-card b{color:var(--c-ink)}
-@media (max-width:900px){.nv-toc{display:none}.nv-body-row{height:calc(100vh - 330px)}}
+@media (max-width:900px){.article-wrap.nv-mode .article{padding:8px 6px}.nv-stage{padding:16px 14px}}

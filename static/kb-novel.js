@@ -318,13 +318,17 @@
   }
   N.notePrompt = notePrompt;
 
-  /* 工具栏 HTML（txt/epub 共用骨架） */
+  /* 工具栏 HTML（txt/epub 共用骨架）；pager: "chap"|"page"|false */
   function toolbarHTML(opts) {
+    var pg = opts.pager;
+    var prevTxt = pg === "page" ? "上页" : "上章";
+    var nextTxt = pg === "page" ? "下页" : "下章";
     return '<div class="nv-toolbar">' +
-      (opts.pager ? '<button class="iconbtn nv-prev-chap" title="上一章">' + icon("chev-left", 13) + " 上章</button>" : "") +
+      (pg ? '<button class="iconbtn nv-prev-chap" title="' + (pg === "page" ? "上一页" : "上一章") + '">' + icon("chev-left", 13) + " " + prevTxt + "</button>" : "") +
       '<span class="nv-pos" id="nv-pos">—</span>' +
-      (opts.pager ? '<button class="iconbtn nv-next-chap" title="下一章">下章 ' + icon("chev-right", 13) + "</button>" : "") +
+      (pg ? '<button class="iconbtn nv-next-chap" title="' + (pg === "page" ? "下一页" : "下一章") + '">' + nextTxt + " " + icon("chev-right", 13) + "</button>" : "") +
       '<span class="spacer" style="flex:1"></span>' +
+      '<button class="iconbtn nv-pref-btn" title="小说排版设置">' + icon("palette", 13) + " 排版</button>" +
       '<button class="iconbtn nv-find-btn" title="书内搜索">' + icon("search-magnifier", 13) + " 搜索</button>" +
       '<button class="iconbtn nv-note-btn" title="给当前章写章评">' + icon("edit", 13) + " 章评</button>" +
       '<button class="iconbtn nv-tts" title="朗读本章（浏览器 TTS，再点停止）">' + icon("volume-2", 13) + " 朗读</button>" +
@@ -333,6 +337,41 @@
       "</div>";
   }
   N.toolbarHTML = toolbarHTML;
+
+  /* 右侧面板「目录」桥接：txt/epub 都把章节灌进 #pane-toc，阅读器内不再放左目录 */
+  var _pt = { items: [], jump: null, cur: -1 };
+  N.registerPaneToc = function (items, jump) {
+    _pt.items = items || []; _pt.jump = jump; _pt.cur = 0;
+    N.paintPaneToc();
+  };
+  N.paintPaneToc = function (pane) {
+    pane = pane || document.getElementById("pane-toc");
+    if (!pane) return;
+    if (!_pt.items.length) return;
+    pane.innerHTML = _pt.items.map(function (t, i) {
+      return '<a href="#" data-pt="' + i + '" class="' + (i === _pt.cur ? "on" : "") + '">' + util.esc(t || "（无标题）") + "</a>";
+    }).join("");
+    if (!pane.dataset.nvWired) {
+      pane.dataset.nvWired = "1";
+      pane.addEventListener("click", function (e) {
+        var a = e.target.closest("a[data-pt]");
+        if (!a || !_pt.jump) return;
+        e.preventDefault();
+        _pt.jump(Number(a.dataset.pt));
+      });
+    }
+  };
+  N.markPaneToc = function (i) {
+    if (i === _pt.cur) return;
+    _pt.cur = i;
+    var pane = document.getElementById("pane-toc");
+    if (!pane || !pane.querySelector("a[data-pt]")) return;
+    pane.querySelectorAll("a[data-pt]").forEach(function (a) { a.classList.toggle("on", Number(a.dataset.pt) === i); });
+    var on = pane.querySelector("a[data-pt].on");
+    if (on) on.scrollIntoView({ block: "nearest" });
+  };
+  N.resetPaneToc = function () { _pt.items = []; _pt.jump = null; _pt.cur = -1; };
+  N.hasPaneToc = function () { return _pt.items.length > 0; };
 
   /* ================= txt 阅读器 ================= */
   var CHAP_RE = /^\s*(第[0-9零一二三四五六七八九十百千两]+[章回卷节部集]|Chapter\s+\d+|CHAPTER\s+\d+|序[章言]?|楔子|引子|番外[篇·]?\S*|尾声|终章|后记)\s*[^\n]{0,40}$/;
@@ -381,23 +420,30 @@
       if (!wrap.isConnected) return;
       var chaps = buildChapters(text);
       var paged = N.get().flow === "page";
-      wrap.innerHTML = '<div class="nv-reader">' + toolbarHTML({ pager: paged, autoScroll: !paged }) +
+      wrap.innerHTML = '<div class="nv-reader">' + toolbarHTML({ pager: paged ? "chap" : false, autoScroll: !paged }) +
         '<div class="nv-body-row">' +
-        '<nav class="nv-toc" aria-label="书籍目录">' + chaps.map(function (c, i) {
-          return '<a class="nv-toc-item" data-ch="' + i + '" href="#">' + util.esc(c.title || "（开头）") + "</a>";
-        }).join("") + "</nav>" +
         '<div class="nv-stage"><div class="nv-pages"></div></div></div>' +
         '<div class="nv-find" hidden><input class="nv-find-in" placeholder="书内搜索，回车下一处 · Esc 关闭"><span class="nv-find-n"></span><button class="iconbtn nv-find-x">' + icon("cancel-x", 12) + " 关闭</button></div></div>";
 
       var stage = wrap.querySelector(".nv-stage");
       var pages = wrap.querySelector(".nv-pages");
-      var tocEl = wrap.querySelector(".nv-toc");
       var posEl = wrap.querySelector(".nv-pos");
       var findBox = wrap.querySelector(".nv-find");
       var findIn = wrap.querySelector(".nv-find-in");
       var findN = wrap.querySelector(".nv-find-n");
       var built = {};   // chIdx → 已渲染
       var curCh = 0;
+
+      /* 章节目录挂到右侧面板「目录」页签（阅读器内不再放左目录，避免双份） */
+      N.registerPaneToc(chaps.map(function (c) { return c.title || "（开头）"; }), function (i) {
+        if (paged) { renderPaged(i); }
+        else {
+          var sec = materialize(i);
+          if (!sec.parentNode) pages.appendChild(sec);
+          stage.scrollTo({ top: sec.offsetTop - stage.offsetTop, behavior: "smooth" });
+          setCur(i);
+        }
+      });
 
       function chapEl(i) {
         if (built[i]) return built[i];
@@ -462,14 +508,7 @@
         var pct = paged ? Math.round(((i + 1) / chaps.length) * 100)
           : Math.round(Math.min(100, (stage.scrollTop + stage.clientHeight) / Math.max(stage.scrollHeight, 1) * 100));
         posEl.textContent = "第 " + (i + 1) + "/" + chaps.length + " 节 · " + (chaps[i].title || "正文") + " · " + pct + "%";
-        tocEl.querySelectorAll(".nv-toc-item").forEach(function (x) {
-          x.classList.toggle("on", Number(x.dataset.ch) === i);
-        });
-        var on = tocEl.querySelector(".nv-toc-item.on");
-        if (on && on.offsetParent !== null && !paged) {
-          var r = on.getBoundingClientRect(), tr = tocEl.getBoundingClientRect();
-          if (r.top < tr.top || r.bottom > tr.bottom) on.scrollIntoView({ block: "nearest" });
-        }
+        N.markPaneToc(i);
       }
 
       /* --- 渲染模式 --- */
@@ -523,18 +562,7 @@
         }, 500);
       }, { passive: true });
 
-      /* --- 目录点击 --- */
-      tocEl.addEventListener("click", function (e) {
-        var a = e.target.closest(".nv-toc-item");
-        if (!a) return;
-        e.preventDefault();
-        var i = Number(a.dataset.ch);
-        if (paged) { renderPaged(i); return; }
-        var sec = materialize(i);
-        if (!sec.parentNode) { pages.appendChild(sec); }
-        stage.scrollTo({ top: sec.offsetTop - stage.offsetTop, behavior: "smooth" });
-        setCur(i);
-      });
+      /* --- 目录点击已移至右侧面板（paneToc），高亮由 setCur 同步 --- */
 
       /* --- 分页模式：上/下章 --- */
       var prevB = wrap.querySelector(".nv-prev-chap"), nextB = wrap.querySelector(".nv-next-chap");
@@ -633,7 +661,7 @@
           var ch = curCh;
           paged = nowPaged;
           var tb = wrap.querySelector(".nv-toolbar");
-          tb.outerHTML = toolbarHTML({ pager: paged, autoScroll: !paged });
+          tb.outerHTML = toolbarHTML({ pager: paged ? "chap" : false, autoScroll: !paged });
           rewireChrome();
           if (paged) renderPaged(ch); else renderScroll(ch);
         }
@@ -642,6 +670,7 @@
         prevB = wrap.querySelector(".nv-prev-chap"); nextB = wrap.querySelector(".nv-next-chap");
         if (prevB) prevB.onclick = function () { goCh(-1); };
         if (nextB) nextB.onclick = function () { goCh(1); };
+        wrap.querySelector(".nv-pref-btn").onclick = function () { KB.settings.open("type"); };
         wrap.querySelector(".nv-dl").onclick = function () {
           var a = document.createElement("a");
           a.href = rawHref; a.download = DOC.name || "book.txt"; a.click();
@@ -682,6 +711,56 @@
   }
 
   var _epubBook = null, _epubRendition = null;
+
+  /* 实测坑：部分 epub（多看版等）把非法文件名字符（* | :）在 OPF manifest / NCX 里做了百分号编码，
+     但 zip 条目存的是原始名。vendored epub.min.js 拿编码 href 直查 JSZip 命中不了（整本空白），
+     且 nav 的编码 href 与 spine 的编码 href 还不一致 → 点目录报 No Section Found。
+     解法：把 OPF/NCX 里那些"编码查不到、解码能查到"的 href 就地解码，使 spine/nav/zip 三者一致。
+     仅当确有此类条目才重建并回传 ArrayBuffer（正常书返回 null，零改动）；ePub 只认 ArrayBuffer，blob URL 会卡死。 */
+  async function normalizeEpub(rawHref) {
+    var buf = await (await fetch(rawHref)).arrayBuffer();
+    var zip = await window.JSZip.loadAsync(buf);
+    var container = zip.file("META-INF/container.xml");
+    if (!container) return null;
+    var m = /full-path="([^"]+)"/.exec(await container.async("string"));
+    if (!m) return null;
+    var opfPath = decodeAmp(m[1]);
+    var prefix = opfPath.indexOf("/") >= 0 ? opfPath.slice(0, opfPath.lastIndexOf("/") + 1) : "";
+    var opfFile = zip.file(opfPath);
+    if (!opfFile) return null;
+    var opf = await opfFile.async("string");
+    var dec = function (s) { try { return decodeURIComponent(s); } catch (e) { return s; } };
+    var fixes = 0;
+    var fixHref = function (raw) {
+      var clean = decodeAmp(raw.split("#")[0]);
+      if (!clean) return raw;
+      if (zip.file(prefix + clean)) return raw;          // 编码形式本就能命中：不动
+      var d = dec(clean);
+      if (d === clean || !zip.file(prefix + d)) return raw; // 解码后也查不到：不动
+      fixes++;
+      var frag = raw.indexOf("#") >= 0 ? raw.slice(raw.indexOf("#")) : "";
+      return d + frag;
+    };
+    var opfNew = opf.replace(/(<item\b[^>]*href=")([^"]+)(")/g, function (mm, a, h, b) { return a + fixHref(h) + b; });
+    var ncxPath = null;
+    var ncxM = /<item\b[^>]*href="([^"]+\.ncx)"[^>]*>/.exec(opfNew) || /<item\b[^>]*media-type="application\/x-dtbncx\+xml"[^>]*href="([^"]+)"/.exec(opfNew);
+    if (ncxM) ncxPath = prefix + decodeAmp(ncxM[1]);
+    else { var navM = /<item\b[^>]*href="([^"]+)"[^>]*properties="[^"]*nav/.exec(opfNew) || /<item\b[^>]*properties="[^"]*nav[^>]*href="([^"]+)"/.exec(opfNew); if (navM) ncxPath = prefix + decodeAmp(navM[1]); }
+    zip.file(opfPath, opfNew);
+    if (ncxPath) {
+      var nf = zip.file(ncxPath);
+      if (nf) {
+        var nav = await nf.async("string");
+        nav = nav.replace(/(src=")([^"]+)(")/g, function (mm, a, s, b) { return a + fixHref(decodeAmp(s)) + b; });
+        nav = nav.replace(/(href=")([^"]+)(")/g, function (mm, a, s, b) { return a + fixHref(decodeAmp(s)) + b; });
+        zip.file(ncxPath, nav);
+      }
+    }
+    if (!fixes) return null;
+    return zip.generateAsync({ type: "arraybuffer", compression: "STORE" });
+  }
+  function decodeAmp(s) { return s.replace(/&amp;/g, "&"); }
+
   N.renderEpub = function (wrap, rawHref, rel) {
     autoStop(); tts.stop();
     wrap.innerHTML = '<div class="nv-reader"><div class="kb-skeleton" aria-busy="true"><i style="width:65%"></i><i style="width:88%"></i></div><p style="color:var(--faint);font-size:12.5px">EPUB 解析中…</p></div>';
@@ -689,18 +768,18 @@
       await ensureEpubLib();
       if (_epubRendition) { try { _epubRendition.destroy(); } catch (e) {} _epubRendition = null; }
       if (_epubBook) { try { _epubBook.destroy(); } catch (e) {} _epubBook = null; }
-      wrap.innerHTML = '<div class="nv-reader">' + toolbarHTML({ pager: false, autoScroll: false }) +
+      wrap.innerHTML = '<div class="nv-reader">' + toolbarHTML({ pager: "page", autoScroll: false }) +
         '<div class="nv-body-row">' +
-        '<nav class="nv-toc" id="epub-toc" aria-label="书籍目录"></nav>' +
         '<div class="nv-stage epub"><div id="epub-view"></div></div></div>' +
         '<div class="nv-find" hidden><input class="nv-find-in" placeholder="书内搜索（全 spine），回车下一处 · Esc 关闭"><span class="nv-find-n"></span><button class="iconbtn nv-find-x">' + icon("cancel-x", 12) + " 关闭</button></div></div>";
-      var tocEl = wrap.querySelector(".nv-toc");
       var posEl = wrap.querySelector(".nv-pos");
       var findBox = wrap.querySelector(".nv-find");
       var findIn = wrap.querySelector(".nv-find-in");
       var findN = wrap.querySelector(".nv-find-n");
 
-      var book = window.ePub(rawHref);
+      var epubUrl = rawHref;
+      try { var fixed = await normalizeEpub(rawHref); if (fixed) epubUrl = fixed; } catch (e) {}
+      var book = window.ePub(epubUrl);
       _epubBook = book;
       var p = N.get();
       var rendition = book.renderTo("epub-view", {
@@ -753,11 +832,10 @@
         if (chapTexts) return chapTexts;
         var buf = await (await fetch(rawHref)).arrayBuffer();
         var zip = await window.JSZip.loadAsync(buf);
+        var prefix = (book.packaging && book.packaging.prefix) || "";
         var items = [];
-        try { items = book.spine.map(function (s) { return s.href; }); } catch (e) { items = []; }
-        if (!items.length) {
-          zip.forEach(function (path) { if (/\.x?html?$/i.test(path)) items.push(path); });
-        }
+        try { for (var s, i = 0; i < 800 && (s = book.spine.get(i)); i++) { if (s && s.href) items.push(s.href); } } catch (e) { items = []; }
+        if (!items.length) zip.forEach(function (path) { if (/\.x?html?$/i.test(path)) items.push(path); });
         var nav = await book.loaded.navigation;
         var tocFlat = [];
         (function walk(list, parents) {
@@ -767,17 +845,17 @@
           });
         })(nav && nav.toc, []);
         chapTexts = [];
-        for (var i = 0; i < items.length; i++) {
-          var href = (items[i] || "").split("#")[0];
+        for (var n = 0; n < items.length; n++) {
+          var href = (items[n] || "").split("#")[0];
           if (!href) continue;
-          var f = zip.file(href) || zip.file(decodeURIComponent(href));
+          var f = zip.file(href) || zip.file(prefix + href) || zip.file(decodeURIComponent(href)) || zip.file(prefix + decodeURIComponent(href));
           if (!f) continue;
           var html = await f.async("string");
           var doc = new DOMParser().parseFromString(html, "text/html");
           var text = (doc.body && doc.body.textContent || "").replace(/\s+\n/g, "\n").trim();
           if (!text) continue;
           var t = tocFlat.filter(function (x) { return x.href === href; })[0];
-          chapTexts.push({ href: href, title: t ? t.path : href.split("/").pop(), text: text });
+          chapTexts.push({ href: items[n], title: t ? t.path : href.split("/").pop(), text: text });
         }
         return chapTexts;
       }
@@ -790,44 +868,53 @@
       } catch (e) {}
 
       var nav2 = await book.loaded.navigation;
-      if (nav2 && nav2.toc && nav2.toc.length) {
-        tocEl.innerHTML = nav2.toc.map(function (item) {
-          return '<a class="nv-toc-item" href="#" data-href="' + util.esc(item.href) + '">' + util.esc(item.label.trim() || "（无标题）") + "</a>";
-        }).join("");
-        tocEl.addEventListener("click", function (e) {
-          var a = e.target.closest(".nv-toc-item");
-          if (!a) return;
-          e.preventDefault();
-          rendition.display(a.dataset.href);
+      var flat = [];
+      (function walk(list) {
+        (list || []).forEach(function (it) {
+          flat.push({ href: decodeAmp((it.href || "").split("#")[0]), label: (it.label || "").trim() });
+          if (it.subitems && it.subitems.length) walk(it.subitems);
         });
-      } else tocEl.innerHTML = '<div class="nv-toc-empty">本书无目录</div>';
+      })(nav2 && nav2.toc);
+      var curHref = "";
+      N.registerPaneToc(flat.map(function (f) { return f.label; }), function (i) {
+        var f = flat[i];
+        if (f && f.href) { try { rendition.display(f.href); } catch (e) {} }
+      });
 
       var saveT = 0;
       rendition.on("relocated", function (loc) {
         injectTheme();
         var href = loc && loc.start && loc.start.href;
-        if (href) tocEl.querySelectorAll(".nv-toc-item").forEach(function (x) {
-          x.classList.toggle("on", x.dataset.href === href || href.indexOf(x.dataset.href) === 0);
-        });
+        if (href) {
+          curHref = decodeAmp(href.split("#")[0]);
+          var idx = -1;
+          for (var k = 0; k < flat.length; k++) {
+            if (flat[k].href === curHref || (flat[k].href && curHref.indexOf(flat[k].href) === 0)) { idx = k; break; }
+          }
+          if (idx >= 0) N.markPaneToc(idx);
+        }
         if (loc && loc.start && loc.start.cfi) {
           clearTimeout(saveT);
           saveT = setTimeout(function () { savePos(rel, { cfi: loc.start.cfi }); }, 1500);
         }
         try {
           var pct = book.locations && book.locations.total ? Math.round(book.locations.percentageFromCfi(loc.start.cfi) * 100) : NaN;
-          var cur = tocEl.querySelector(".nv-toc-item.on");
-          posEl.textContent = (cur ? cur.textContent : "阅读中") + (isNaN(pct) ? "" : " · " + pct + "%");
+          var cur = flat[Array.prototype.findIndex.call(flat, function (f) { return f.href === curHref; })];
+          posEl.textContent = ((cur && cur.label) || "阅读中") + (isNaN(pct) ? "" : " · " + pct + "%");
         } catch (e) {}
       });
       try { book.locations.generate(1024); } catch (e) {}
 
+      wrap.querySelector(".nv-prev-chap").onclick = function () { rendition.prev(); };
+      wrap.querySelector(".nv-next-chap").onclick = function () { rendition.next(); };
+      wrap.querySelector(".nv-pref-btn").onclick = function () { KB.settings.open("type"); };
       wrap.querySelector(".nv-dl").onclick = function () {
         var a = document.createElement("a");
         a.href = rawHref; a.download = DOC.name || "book.epub"; a.click();
       };
       wrap.querySelector(".nv-note-btn").onclick = function () {
-        var cur = tocEl.querySelector(".nv-toc-item.on");
-        notePrompt(rel, cur ? cur.textContent.trim() : "");
+        var cur = flat.filter(function (f) { return f.href === curHref; })[0];
+        notePrompt(rel, cur ? cur.label : "");
       };
       var ttsBtn = wrap.querySelector(".nv-tts");
       ttsBtn.onclick = async function () {

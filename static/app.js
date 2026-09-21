@@ -676,6 +676,11 @@ let _tocScrollSpy = null; // Shadow 片段目录的滚动高亮监听，重渲�
 function buildToc() {
   const pane = $("#pane-toc"); if (!pane) return;
   if (_tocScrollSpy) { _tocScrollSpy(); _tocScrollSpy = null; }
+  // 小说/书库：章节列表由 KBNOVEL 灌进本面板（阅读器内不再放左目录）
+  if (window.KBNOVEL && DOC && /\.(txt|epub)$/i.test(DOC.name || "") && KBNOVEL.hasPaneToc()) {
+    KBNOVEL.paintPaneToc(pane);
+    return;
+  }
   function tocOn(a) { $$("#pane-toc a").forEach(x => x.classList.remove("on")); if (a) a.classList.add("on"); }
 
   // 内联 HTML 片段走 Shadow DOM：标题在 shadowRoot 内，普通 querySelectorAll 够不到
@@ -1891,7 +1896,7 @@ async function deleteDoc() {
     <div class="a-rule"></div>
     <div class="a-body"><p>《${esc(deletedTitle)}》及其美化版、备注已一起移入 <code>content/_trash/</code>，git 历史亦可找回。</p>
     <p>从左侧选择其他文档继续阅读。</p></div>`;
-  $("#crumb").innerHTML = `<b>已删除</b><span class="sep">·</span>${esc(deletedTitle)}`;
+  { const _c = $("#crumb"); if (_c) _c.innerHTML = `<b>已删除</b><span class="sep">·</span>${esc(deletedTitle)}`; }
   // 快赢：删除可撤销 —— 5 秒内 toast 内点「撤销」反向 move 回原路径
   const trashRel = rel.replace(/^content\//, "");
   const undo = async () => {
@@ -2709,7 +2714,7 @@ async function ctxDiscardDoc(rel, title, deletedJustNow) {
     <div class="a-rule"></div>
     <div class="a-body"><p>《${esc(deletedTitle)}》及其美化版、备注已${deletedJustNow ? "" : "此前"}移入 <code>content/_trash/</code>，git 历史亦可找回。</p>
     <p>从左侧选择其他文档继续阅读。</p></div>`;
-  $("#crumb").innerHTML = `<b>已删除</b><span class="sep">·</span>${esc(deletedTitle)}`;
+  { const _c = $("#crumb"); if (_c) _c.innerHTML = `<b>已删除</b><span class="sep">·</span>${esc(deletedTitle)}`; }
   await afterMutation();
 }
 /* 新建子目录（需求 #4）：域下二级目录，或子域下嵌套目录。

@@ -768,7 +768,7 @@
       settings._ov = ov;
       return ov;
     },
-    open: function () {
+    open: function (sec) {
       var ov = settings.el();
       var body = ov.querySelector("#kb-set-body");
       /* 顶部页签（2026-09-20 用户要求 tab 化）：外观 / 排版 / 快捷键，
@@ -809,6 +809,14 @@
       void ov.offsetWidth;
       ov.classList.add("show");
       settings.isOpen = true;
+      if (sec) {
+        var tabBtn = tabs.querySelector('[data-sec="' + sec + '"]');
+        if (tabBtn) tabBtn.click();
+        if (sec === "type") {
+          var nh = body.querySelector("#nv-panel-host .kb-pref-head");
+          if (nh) nh.scrollIntoView({ block: "start" });
+        }
+      }
     },
     close: function () {
       if (settings._ov) settings._ov.classList.remove("show");

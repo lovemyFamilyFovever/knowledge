@@ -37,22 +37,22 @@
     </section>
     {% endif %}
 
-  <section class="panel article-wrap" id="p-article" data-reveal data-reveal-y="14">
+    {% set is_lib = doc.name.endswith(('.txt', '.pdf', '.xlsx', '.epub', '.mobi')) %}
+  <section class="panel article-wrap{% if is_lib %} nv-mode{% endif %}" id="p-article" data-reveal data-reveal-y="14">
     {# ============ 读数头（方案 B，2026-09-20 用户拍板：次级动作合并进白底分段药丸组，
        收藏独立为主按钮；标签 chips 由 JS renderHeadChips 填 #crumb-tags） ============ #}
-    {% set is_lib = doc.name.endswith(('.txt', '.pdf', '.xlsx', '.epub', '.mobi')) %}
-    <div class="crumb" id="crumb">
+    {% if not is_lib %}<div class="crumb" id="crumb">
       <span class="crumb-tags" id="crumb-tags"></span>
       <span class="spacer"></span>
-      {% if not is_lib %}<span class="seg-group">
+      <span class="seg-group">
       {% if doc.has_html and not doc.is_html %}<button class="seg-btn" id="kb-md-src-btn" onclick="toggleMdSource()" title="在美化版 / Markdown 源之间切换"><svg class="i i-12"><use href="#i-file-md"/></svg> Markdown 源</button>{% endif %}
       {% if doc.has_html %}<a class="seg-btn" href="/raw/{{ doc.html_rel }}" target="_blank" title="新标签页打开美化版"><svg class="i i-12"><use href="#i-external-link"/></svg> 新标签页</a>{% endif %}
       {% if not doc.is_html %}<button class="seg-btn" onclick="openEditor()"><svg class="i i-12"><use href="#i-edit-pencil"/></svg> 编辑</button>
       <button class="seg-btn danger" onclick="deleteDoc()" title="移入 content/_trash/"><svg class="i i-12"><use href="#i-trash-outline"/></svg> 删除</button>
       <button class="seg-btn" onclick="jumpToTagEdit()" title="编辑本篇标签（右栏信息·标签页）"><svg class="i i-12"><use href="#i-tag-outline"/></svg> 标签</button>{% endif %}
-      </span>{% endif %}
+      </span>
       {% if not is_lib %}<button class="iconbtn primary{% if doc.favorite %} faved{% endif %}" id="fav-btn" onclick="toggleFav()"><svg class="i i-12"><use href="#i-star"/></svg> {% if doc.favorite %}已收藏{% else %}收藏{% endif %}</button>{% endif %}
-    </div>
+    </div>{% endif %}
     <div class="article"><div class="article-inner" id="article"></div></div>
     <div class="editor" id="editor" role="dialog" aria-label="Markdown 编辑器">
       <div class="bar">
@@ -75,7 +75,7 @@
     {% set n_tags = (doc.fm.tags or [])|length %}
     <div class="rtabs" role="tablist" aria-label="文档信息面板">
       <button type="button" class="rtab{% if not doc.has_html %} active{% endif %}" data-pane="toc" role="tab" aria-selected="{% if doc.has_html %}false{% else %}true{% endif %}" tabindex="0" onclick="tab('toc',this)"><svg class="i i-12"><use href="#i-toc-list"/></svg>目录</button>
-      <button type="button" class="rtab{% if doc.has_html %} active{% endif %}" data-pane="info" role="tab" aria-selected="{% if doc.has_html %}true{% else %}false{% endif %}" tabindex="0" onclick="tab('info',this)"><svg class="i i-12"><use href="#i-info-circle"/></svg>标签<span class="rt-n" id="rt-n-tags">{{ n_tags or "" }}</span></button>
+      <button type="button" class="rtab{% if doc.has_html %} active{% endif %}" data-pane="info" role="tab" aria-selected="{% if doc.has_html %}true{% else %}false{% endif %}" tabindex="0" onclick="tab('info',this)"><svg class="i i-12"><use href="#i-tag-outline"/></svg>标签<span class="rt-n" id="rt-n-tags">{{ n_tags or "" }}</span></button>
       <button type="button" class="rtab" data-pane="notes" role="tab" aria-selected="false" tabindex="0" onclick="tab('notes',this)"><svg class="i i-12"><use href="#i-note-pen"/></svg>备注<span class="rt-n" id="rt-n-notes">{{ doc.notes|length or "" }}</span></button>
       <button type="button" class="rtab" data-pane="links" role="tab" aria-selected="false" tabindex="0" onclick="tab('links',this)"><svg class="i i-12"><use href="#i-backlink-graph"/></svg>双链<span class="rt-n" id="rt-n-links"></span></button>
     </div>
