@@ -59,18 +59,18 @@
           <circle cx="170" cy="128" r="7" fill="var(--c-bg)"/>
           <circle class="cst-ring" cx="170" cy="128" r="30" fill="none" stroke="var(--c-acc)" stroke-width="1" stroke-dasharray="2 5" opacity=".5"/>
         </g>
-        <circle class="cst-dot cst-dot-a" cx="0" cy="0" r="2.6" fill="var(--c-acc)"/>
-        <circle class="cst-dot cst-dot-b" cx="0" cy="0" r="2.6" fill="var(--c-info)"/>
+        <circle class="cst-dot cst-dot-a" cx="0" cy="0" r="4" fill="var(--c-acc)"/>
+        <circle class="cst-dot cst-dot-b" cx="0" cy="0" r="4" fill="var(--c-info)"/>
       </svg>
     </div>
   </section>
 
   {# ========== KPI 条：只渲染后端实传的真实数字（countUp） ========== #}
   <div class="kpi-strip">
-    <div class="k" data-reveal><span class="kn"><span data-counter data-count="{{ n_md }}">{{ n_md }}</span><span class="u">篇</span></span><span class="kl"><svg aria-hidden="true"><use href="#i-file"/></svg>文档总量</span></div>
-    <div class="k" data-reveal><span class="kn"><span data-counter data-count="{{ leaves }}">{{ leaves }}</span><span class="u">个</span></span><span class="kl"><svg aria-hidden="true"><use href="#i-scope-domain"/></svg>子域</span></div>
-    <div class="k" data-reveal><span class="kn"><span data-counter data-count="{{ stats.n_fav }}">{{ stats.n_fav }}</span><span class="u">篇</span></span><span class="kl"><svg aria-hidden="true"><use href="#i-star-outline"/></svg>已收藏</span></div>
-    <div class="k" data-reveal><span class="kn"><span data-counter data-count="{{ days }}">{{ days }}</span><span class="u">天</span></span><span class="kl"><svg aria-hidden="true"><use href="#i-calendar-day"/></svg>距 10·01</span></div>
+    <div class="k" data-reveal><span class="kn"><span data-counter data-count="{{ n_md }}" data-count-duration="2.2" data-count-delay="0.5">{{ n_md }}</span><span class="u">篇</span></span><span class="kl"><svg aria-hidden="true"><use href="#i-file"/></svg>文档总量</span></div>
+    <div class="k" data-reveal><span class="kn"><span data-counter data-count="{{ leaves }}" data-count-duration="2.2" data-count-delay="0.65">{{ leaves }}</span><span class="u">个</span></span><span class="kl"><svg aria-hidden="true"><use href="#i-scope-domain"/></svg>子域</span></div>
+    <div class="k" data-reveal><span class="kn"><span data-counter data-count="{{ stats.n_fav }}" data-count-duration="2.2" data-count-delay="0.8">{{ stats.n_fav }}</span><span class="u">篇</span></span><span class="kl"><svg aria-hidden="true"><use href="#i-star-outline"/></svg>已收藏</span></div>
+    <div class="k" data-reveal><span class="kn"><span data-counter data-count="{{ days }}" data-count-duration="2.2" data-count-delay="0.95">{{ days }}</span><span class="u">天</span></span><span class="kl"><svg aria-hidden="true"><use href="#i-calendar-day"/></svg>距 10·01</span></div>
   </div>
 
   {# ========== 今日学习（需求3）：真实数字，由 pages/home.js 调 /api/learn/today + /api/learn/mastery 渲染 ========== #}

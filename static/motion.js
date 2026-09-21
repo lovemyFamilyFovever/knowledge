@@ -74,9 +74,11 @@
     };
     if (reduced || !hasGsap) { render(to); return; }
     opts = opts || {};
+    var dur = opts.duration != null ? opts.duration : (parseFloat(el.dataset.countDuration) || 1.5);
+    var dly = opts.delay != null ? opts.delay : (parseFloat(el.dataset.countDelay) || 0);
     var state = { v: 0 };
     window.gsap.to(state, {
-      v: to, duration: opts.duration != null ? opts.duration : 1.5, ease: "power2.out",
+      v: to, duration: dur, delay: dly, ease: "power2.out",
       onUpdate: function () { render(state.v); },
       scrollTrigger: (hasST && opts.once !== false)
         ? { trigger: el, start: "top 90%", once: true } : undefined
