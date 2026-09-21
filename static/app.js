@@ -32,12 +32,12 @@ function applyTheme(t) {
    字段：a/b=预览主辅色 bg/ink=预览纸底与墨色。风格层见 skins.css [S]。
    旧值兼容：localStorage 里的 ink/forest/rose 会经 applySkin 回退到玄青。 */
 const SKINS = [
-  { id: "celadon",  name: "玄青",   desc: "基准 · 普鲁士 × 朱砂", a: "#1f4e8c", b: "#b23a2a", bg: "#f6f5f2", ink: "#1a1d21" },
+  { id: "celadon",  name: "玄青",   desc: "基准 · 普鲁士 × 朱砂", a: "#1f4e8c", b: "#b23a2a", bg: "#ffffff", ink: "#1a1d21" },
   { id: "zhimo",    name: "纸墨",   desc: "编辑部衬线 · 大序号",  a: "#c8331f", b: "#2f4d6e", bg: "#ffffff", ink: "#14161a" },
-  { id: "midnight", name: "午夜蓝", desc: "瑞士蓝印 · 空心编号",  a: "#2563eb", b: "#1c2733", bg: "#eef2f7", ink: "#1c2733" },
-  { id: "shoujuan", name: "手卷",   desc: "东方纸墨 · 朱印眉批",  a: "#bf2b1e", b: "#2f4d6e", bg: "#fcfaf4", ink: "#1c1a14" },
-  { id: "dieyin",   name: "叠印",   desc: "Riso 双色 · 硬影贴纸", a: "#1f3a8a", b: "#ff4d8a", bg: "#f7f2e8", ink: "#1f3a8a" },
-  { id: "graphite", name: "石墨",   desc: "工业极简 · 橙带细线",  a: "#1c1c1a", b: "#c2410c", bg: "#f5f5f4", ink: "#1c1c1a" },
+  { id: "midnight", name: "午夜蓝", desc: "瑞士蓝印 · 空心编号",  a: "#2563eb", b: "#1c2733", bg: "#ffffff", ink: "#1c2733" },
+  { id: "shoujuan", name: "手卷",   desc: "东方纸墨 · 朱印眉批",  a: "#bf2b1e", b: "#2f4d6e", bg: "#ffffff", ink: "#1c1a14" },
+  { id: "dieyin",   name: "叠印",   desc: "Riso 双色 · 硬影贴纸", a: "#1f3a8a", b: "#ff4d8a", bg: "#ffffff", ink: "#1f3a8a" },
+  { id: "graphite", name: "石墨",   desc: "工业极简 · 橙带细线",  a: "#1c1c1a", b: "#c2410c", bg: "#ffffff", ink: "#1c1c1a" },
 ];
 window.KB_SKINS = SKINS;
 function applySkin(id) {
