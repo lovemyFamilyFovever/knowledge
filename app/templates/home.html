@@ -110,9 +110,9 @@
   {% if stats.domains %}
   <div class="dom-cards">
     {% for d in stats.domains %}
-    <a class="dom-card" style="--dh:{{ HUES[d.id] }}" data-reveal data-magnetic="0.12" href="/browse/{{ d.id }}/{{ d.subs[0].id }}" title="{{ d.label }} · {{ d.n }} 篇">
+    <a class="dom-card" style="--dh:{{ HUES[d.id] }}" data-reveal data-magnetic="0.12" href="/browse/{{ d.id }}/{{ d.subs[0].id if d.subs else '_root' }}" title="{{ d.label }} · {{ d.n }} 篇">
       <div class="top"><span class="glyph-wrap"><svg aria-hidden="true"><use href="#i-{{ d.id }}"/></svg></span><span class="label">{{ d.label }}</span><span class="n">{{ d.n }}</span></div>
-      <div class="seg-bar">{% for s in d.subs[:5] %}<span style="width:{{ '%.1f'|format(100 * s.n / d.n) }}%;opacity:{{ '%.2f'|format(1 - loop.index0 * 0.18) }}" title="{{ s.label }} · {{ s.n }} 篇"></span>{% endfor %}</div>
+      <div class="seg-bar">{% if d.n %}{% for s in d.subs[:5] %}<span style="width:{{ '%.1f'|format(100 * s.n / d.n) }}%;opacity:{{ '%.2f'|format(1 - loop.index0 * 0.18) }}" title="{{ s.label }} · {{ s.n }} 篇"></span>{% endfor %}{% endif %}</div>
       <div class="dsub">{% for s in d.subs[:3] %}{{ s.label }} {{ s.n }}{{ " · " if not loop.last }}{% endfor %}{% if d.subs|length > 3 %} …{% endif %}</div>
     </a>
     {% endfor %}
