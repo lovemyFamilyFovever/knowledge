@@ -3118,12 +3118,12 @@ function soClose() {
 }
 
 function soWire() {
+  /* 浮层键位刻意极简（2026-09-21 用户要求，避免与别的软件冲突）：
+     只留 Esc 关闭 + Enter 打开首条；点空白关闭在 kb-core 的 Esc/点遮罩链里。
+     原 F2/F3 切引擎、Shift+Enter 结果页已连代码一并删除。 */
   SO.ov.addEventListener("keydown", e => {
     if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); soClose(); }
-    else if (e.key === "Enter" && e.shiftKey) { e.preventDefault(); soToL3(); }
-    else if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); soOpenFirst(); }
-    else if (e.key === "F2") { e.preventDefault(); soSetEngine("fts"); }
-    else if (e.key === "F3") { e.preventDefault(); soSetEngine("semantic"); }
+    else if (e.key === "Enter") { e.preventDefault(); soOpenFirst(); }
     e.stopPropagation();
   });
   SO.ov.querySelectorAll(".kb-eng-chip").forEach(ch => {
@@ -3190,7 +3190,7 @@ function soEmptyState() {
       `<a class="kb-sdrop-item" href="${s.href}"><svg class="i i-14"><use href="#${s.icon}"/></svg>${SO.esc2(s.label)}</a>`).join("")}</div>
     <div class="kb-sr-group">搜索语法</div>
     <div style="font:400 13px/1.8 var(--f-body);color:var(--muted);padding:2px 2px 8px">
-      直接输入 = 混合检索 · <span class="mono">? 问题</span> = 语义 · <span class="mono">Enter</span> 打开首条 · <span class="mono">Shift+Enter</span> 结果页</div>`;
+      直接输入 = 混合检索 · <span class="mono">? 问题</span> = 语义 · <span class="mono">Enter</span> 打开首条 · <span class="mono">Esc</span> 关闭</div>`;
 }
 
 function soRenderRecent() {
@@ -3287,14 +3287,6 @@ function soRenderResults(j, qstr) {
 function soOpenFirst() {
   const first = SO.body.querySelector("a.kb-sr[href]");
   if (first && !first.href.endsWith("#")) location.href = first.href;
-}
-
-function soToL3() {
-  const qstr = (SO.input ? SO.input.value : "").trim();
-  if (!qstr) return;
-  const eng = SO.engine;
-  const pre = eng === "semantic" && !qstr.startsWith("?") ? "?" : "";
-  location.href = "/search?q=" + encodeURIComponent(pre + qstr) + (eng !== "hybrid" ? "&engine=" + eng : "");
 }
 
 function initSearchDrop() {
