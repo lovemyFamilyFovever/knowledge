@@ -51,8 +51,9 @@
   .kb-search-engines,.kb-search-scopes{flex-direction:row}
   .kb-eng-chip,.kb-scope-chip{width:auto}
 }
-/* 结果条（壳内样式预置；数据填充待接线） */
+/* 结果条 */
 .kb-sr{display:flex;flex-direction:column;gap:4px;padding:11px 13px;border-radius:var(--rd-card);border:1px solid var(--c-line);background:var(--c-panel);margin-bottom:8px}
+.kb-sr[data-q]{cursor:pointer}
 .kb-sr:hover{border-color:var(--c-line2);background:var(--c-sunk)}
 .kb-sr .sr-top{display:flex;align-items:center;gap:8px;font:500 11px/1 var(--f-mono);color:var(--faint)}
 .kb-sr .sr-top .idx{color:var(--c-acc);font-weight:600}

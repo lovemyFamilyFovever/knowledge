@@ -3125,6 +3125,13 @@ function soWire() {
   /* 点结果/快速前往等任意链接 → 先关浮层再放行导航：
      workbench 的 SPA 全局 click 接管会吃掉整页跳转，浮层不主动关就一直悬在脸上 */
   SO.body.addEventListener("click", e => {
+    /* 最近查询条目（非链接，带 data-q）→ 填入该词并立即重检，浮层保持打开 */
+    const rec = e.target.closest && e.target.closest(".kb-sr[data-q]");
+    if (rec) {
+      if (SO.input) SO.input.value = rec.dataset.q;
+      soRun();
+      return;
+    }
     if (e.target.closest && e.target.closest("a[href]")) soClose();
   });
   SO.ov.querySelectorAll(".kb-scope-chip").forEach(ch => {
@@ -3178,7 +3185,7 @@ function soRenderRecent() {
     if (!body || body.dataset.hasResults === "1") return;
     const div = document.createElement("div");
     div.innerHTML = `<div class="kb-sr-group">最近查询<span class="n">本地</span></div>` +
-      list.slice(0, 5).map(qs => `<div class="kb-sr"><div class="sr-top"><span class="idx">↺</span><span class="path">${SO.esc2(qs)}</span></div></div>`).join("");
+      list.slice(0, 5).map(qs => `<div class="kb-sr" data-q="${SO.esc2(qs)}"><div class="sr-top"><span class="idx">↺</span><span class="path">${SO.esc2(qs)}</span></div></div>`).join("");
     body.insertBefore(div, body.firstChild);
   } catch (e) {}
 }
