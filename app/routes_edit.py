@@ -89,7 +89,8 @@ def api_save():
 @edit_bp.post("/api/note")
 def api_note():
     data = request.get_json(force=True)
-    p = _safe_rel(data.get("path", ""), WRITABLE_EXTS)
+    # 书库格式（txt/epub/…）也可挂备注（小说章评）；旁挂 .notes.md 全链路按 endswith 排除，不会成幽灵文档
+    p = _safe_rel(data.get("path", ""), WRITABLE_EXTS | store.LIBRARY_EXTS)
     text = (data.get("text") or "").strip()
     if not text:
         return jsonify({"ok": False, "error": "empty note"}), 400

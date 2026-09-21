@@ -379,7 +379,9 @@
         '<div class="kb-pref-foot">' +
         '  <button type="button" class="mbtn ghost" id="kb-pref-reset">恢复默认</button>' +
         '  <span class="kb-pref-note">偏好存 localStorage，不写语料文件</span>' +
-        "</div></section>";
+        "</div>" +
+        '<div id="nv-panel-host">' + (window.KBNOVEL ? KBNOVEL.panelHTML() : "") + "</div>" +
+        "</section>";
     },
     /** 绑定面板内控件（每次显示面板时调用一次，幂等） */
     bindPanel: function (root) {
@@ -461,6 +463,7 @@
         var ha = root.querySelector("#kb-pref-halign"); if (ha) ha.value = d.halign;
         util.toast("阅读偏好已恢复默认");
       });
+      if (window.KBNOVEL) KBNOVEL.bindPanel(root);
     }
   });
 

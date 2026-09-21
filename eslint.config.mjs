@@ -12,6 +12,7 @@ export default [
       "content/**",
       ".python/**",
       "static/vendor/**",        // 第三方 vendored 库（mermaid/echarts/marked...）不检
+      "static/marked.umd.js",    // vendored marked 散落在 static/ 根，同样不检
       "**/*.min.js",
       "app/rag_models/**",
       "qwenwork/**",
@@ -38,6 +39,12 @@ export default [
         util: "readonly",
         // app.js 定义的文档态全局（页面脚本读取当前文档元数据）：
         DOC: "writable",
+        // app.js 定义的通用小件（kb-novel.js 等后载脚本消费）：
+        icon: "readonly",
+        loadScript: "readonly",
+        buildToc: "readonly",
+        // kb-novel.js 暴露：小说/书库阅读引擎（app.js 分流调用）
+        KBNOVEL: "readonly",
         // Story 1/2：编辑器桥接层与双链补全的跨脚本全局
         // KBCM = vendor/codemirror.bundle.js 暴露；KBED = pages/cm-editor.js 暴露
         KBCM: "readonly",

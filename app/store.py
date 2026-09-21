@@ -31,7 +31,7 @@ SKIP_DIRS = {"_inbox", "_assets", "_unfiled"}
 WRITABLE_EXTS = {".md"}
 SERVABLE_EXTS = {".md", ".html"}
 # 需求 #12：书库格式 —— /raw 直服（阅读器按类型分流渲染），不进分类树/FTS/RAG
-LIBRARY_EXTS = {".txt", ".epub", ".pdf", ".xlsx"}
+LIBRARY_EXTS = {".txt", ".epub", ".pdf", ".xlsx", ".mobi"}
 # 需求#6：正文相对图片直服用的媒体扩展名（/raw/<rel> 允许，不进分类树/索引）
 MEDIA_EXTS = {".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg", ".ico", ".bmp", ".avif"}
 DOMAIN_LABELS = {

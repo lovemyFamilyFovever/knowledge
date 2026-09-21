@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% block title %}知库 · {{ sub_label }}{% endblock %}
-{% block head %}<link rel="stylesheet" href="/static/pages/workbench.css?v={{ av('pages/workbench.css') }}"><link rel="stylesheet" href="/static/pages/tagedit.css?v={{ av('pages/tagedit.css') }}">{% endblock %}
+{% block head %}<link rel="stylesheet" href="/static/pages/workbench.css?v={{ av('pages/workbench.css') }}"><link rel="stylesheet" href="/static/pages/tagedit.css?v={{ av('pages/tagedit.css') }}"><link rel="stylesheet" href="/static/pages/novel.css?v={{ av('pages/novel.css') }}">{% endblock %}
 {% block body %}
 <main>
   <section class="panel wb-panel" id="p-left" data-reveal data-reveal-y="14">
@@ -40,18 +40,18 @@
   <section class="panel article-wrap" id="p-article" data-reveal data-reveal-y="14">
     {# ============ 读数头（方案 B，2026-09-20 用户拍板：次级动作合并进白底分段药丸组，
        收藏独立为主按钮；标签 chips 由 JS renderHeadChips 填 #crumb-tags） ============ #}
+    {% set is_lib = doc.name.endswith(('.txt', '.pdf', '.xlsx', '.epub', '.mobi')) %}
     <div class="crumb" id="crumb">
       <span class="crumb-tags" id="crumb-tags"></span>
       <span class="spacer"></span>
-      <span class="seg-group">
+      {% if not is_lib %}<span class="seg-group">
       {% if doc.has_html and not doc.is_html %}<button class="seg-btn" id="kb-md-src-btn" onclick="toggleMdSource()" title="在美化版 / Markdown 源之间切换"><svg class="i i-12"><use href="#i-file-md"/></svg> Markdown 源</button>{% endif %}
       {% if doc.has_html %}<a class="seg-btn" href="/raw/{{ doc.html_rel }}" target="_blank" title="新标签页打开美化版"><svg class="i i-12"><use href="#i-external-link"/></svg> 新标签页</a>{% endif %}
       {% if not doc.is_html %}<button class="seg-btn" onclick="openEditor()"><svg class="i i-12"><use href="#i-edit-pencil"/></svg> 编辑</button>
       <button class="seg-btn danger" onclick="deleteDoc()" title="移入 content/_trash/"><svg class="i i-12"><use href="#i-trash-outline"/></svg> 删除</button>
       <button class="seg-btn" onclick="jumpToTagEdit()" title="编辑本篇标签（右栏信息·标签页）"><svg class="i i-12"><use href="#i-tag-outline"/></svg> 标签</button>{% endif %}
-      {% if doc.name.endswith(('.txt', '.pdf', '.xlsx', '.epub')) %}<a class="seg-btn" id="kb-lib-dl" href="/raw/{{ doc.rel }}" download="{{ doc.name }}" title="下载原文件"><svg class="i i-12"><use href="#i-download"/></svg> 下载</a>{% endif %}
-      </span>
-      <button class="iconbtn primary{% if doc.favorite %} faved{% endif %}" id="fav-btn" onclick="toggleFav()"><svg class="i i-12"><use href="#i-star"/></svg> {% if doc.favorite %}已收藏{% else %}收藏{% endif %}</button>
+      </span>{% endif %}
+      {% if not is_lib %}<button class="iconbtn primary{% if doc.favorite %} faved{% endif %}" id="fav-btn" onclick="toggleFav()"><svg class="i i-12"><use href="#i-star"/></svg> {% if doc.favorite %}已收藏{% else %}收藏{% endif %}</button>{% endif %}
     </div>
     <div class="article"><div class="article-inner" id="article"></div></div>
     <div class="editor" id="editor" role="dialog" aria-label="Markdown 编辑器">
