@@ -1,6 +1,6 @@
 /* novel.css — 书库/小说在线阅读（kb-novel.js 消费；主题变量由 KBNOVEL.apply 写在 :root） */
 /* 书库文档全屏：去 crumb 后阅读区撑满视口，内部各自滚动，页面级不出滚动条 */
-.article-wrap.nv-mode{height:calc(100vh - 72px)}
+.article-wrap.nv-mode{height:calc(100vh - 72px);border:none;box-shadow:none;border-radius:0}
 .article-wrap.nv-mode .article{overflow:hidden;padding:10px 14px;flex:1;min-height:0}
 .article-wrap.nv-mode .article-inner{max-width:none;height:100%;display:flex;flex-direction:column;animation:none}
 .article-wrap.nv-mode .article-inner > .a-body{flex:1;min-height:0;display:flex;flex-direction:column}
@@ -13,8 +13,7 @@
 .nv-toolbar .iconbtn{font-size:12px}
 .nv-toolbar .iconbtn.on{border-color:var(--c-acc);color:var(--c-acc);background:var(--acc-soft)}
 .nv-toolbar .iconbtn.busy{opacity:.6}
-.nv-pos{font:500 11.5px/1.4 var(--f-mono);color:var(--muted);min-width:120px;text-align:center;
-  max-width:46ch;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.nv-pos{font:500 11.5px/1.4 var(--f-mono);color:var(--muted);min-width:0;flex:1;text-align:center;white-space:normal;word-break:break-word}
 .nv-body-row{flex:1;min-height:0;display:flex;gap:12px;align-items:stretch}
 /* 阅读舞台：护眼色只染这里，不碰全站 token */
 .nv-stage{flex:1;min-width:0;overflow-y:auto;border:1px solid var(--c-line);border-radius:var(--rd-card);
@@ -41,12 +40,6 @@
   border-radius:var(--rd-ctl);background:var(--c-sunk);color:var(--c-ink);font-size:12.5px}
 .nv-find-in:focus{outline:none;border-color:var(--c-acc)}
 .nv-find-n{font:500 11.5px/1 var(--f-mono);color:var(--muted);min-width:80px;text-align:center}
-/* 设置面板：护眼主题色板 */
-.nv-theme-row{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
-.nv-theme-btn{height:26px;padding:0 10px;border-radius:8px;font-size:12px;cursor:pointer;
-  border:1px solid var(--c-line2);background:#fff;color:#222}
-.nv-theme-btn.on{outline:2px solid var(--c-acc);outline-offset:1px}
-#kb-npref-bgcustom{width:30px;height:26px;padding:0;border:1px solid var(--c-line2);border-radius:6px;background:none;cursor:pointer}
 /* epub 视图容器（nv-stage.epub 内由 epub.js 生成 iframe） */
 .nv-stage.epub{padding:0}
 .nv-stage.epub #epub-view{height:100%}

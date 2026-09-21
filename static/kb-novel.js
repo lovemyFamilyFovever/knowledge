@@ -19,16 +19,17 @@
     sage:      { name: "豆绿", bg: "#e9f0e6", ink: "#26332a" },
     night:     { name: "夜读", bg: "#1a1d21", ink: "#c9cdd3" }
   };
-  var WIDTHS = { narrow: "34rem", mid: "44rem", wide: "56rem", full: "none" };
+  var WIDTH_LEGACY = { narrow: 34, mid: 44, wide: 56, full: 100 };
   var NV_FONT_MAP = {
     "default": "var(--f-body)",
     serif: '"Source Han Serif SC", "Noto Serif SC", Georgia, "Times New Roman", serif',
     sans: '"PingFang SC", "Microsoft YaHei", system-ui, sans-serif',
     mono: '"Cascadia Mono", Consolas, monospace'
   };
-  var DEF = { size: 17, line: 1.9, track: 0.5, gap: 10, indent: 1, width: "mid",
+  var DEF = { size: 17, line: 1.9, track: 0.5, gap: 10, indent: 1, widthRem: 44,
     font: "default", theme: "white", bgCustom: "", flow: "scroll", rate: 1 };
-  var NUM_RANGE = { size: [14, 26], line: [1.5, 2.6], track: [0, 3], gap: [4, 24], rate: [0.5, 3] };
+  var NUM_RANGE = { size: [14, 26], line: [1.5, 2.6], track: [0, 3], gap: [4, 24], rate: [0.5, 3], widthRem: [24, 100] };
+  function widthMaxStr(rem) { return rem >= 100 ? "none" : rem + "rem"; }
 
   function safeFamily(v) {
     if (typeof v !== "string") return "";
@@ -38,6 +39,7 @@
     var out = {}, k;
     Object.keys(DEF).forEach(function (key) { out[key] = DEF[key]; });
     if (v && typeof v === "object") {
+      if (v.width && v.widthRem === undefined && WIDTH_LEGACY[v.width] !== undefined) v.widthRem = WIDTH_LEGACY[v.width];
       Object.keys(DEF).forEach(function (key) {
         if (v[key] === undefined || v[key] === null || v[key] === "") return;
         out[key] = v[key];
@@ -47,7 +49,6 @@
       var r = NUM_RANGE[key], x = Number(out[key]);
       out[key] = isNaN(x) ? DEF[key] : Math.min(r[1], Math.max(r[0], x));
     });
-    if (!WIDTHS[out.width]) out.width = "mid";
     if (!THEMES[out.theme]) out.theme = "white";
     if (out.flow !== "scroll" && out.flow !== "page") out.flow = "scroll";
     out.indent = out.indent ? 1 : 0;
@@ -90,7 +91,7 @@
     s.setProperty("--nv-track", p.track + "px");
     s.setProperty("--nv-gap", p.gap + "px");
     s.setProperty("--nv-indent", p.indent ? "2em" : "0");
-    s.setProperty("--nv-maxw", WIDTHS[p.width]);
+    s.setProperty("--nv-maxw", widthMaxStr(p.widthRem));
     s.setProperty("--nv-font", NV_FONT_MAP[p.font] ? (p.font === "default" ? NV_FONT_MAP["default"] : NV_FONT_MAP[p.font]) : '"' + p.font + '", var(--f-body)');
     s.setProperty("--nv-bg", c.bg);
     s.setProperty("--nv-ink", c.ink);
@@ -105,7 +106,7 @@
     }
     tag.textContent =
       ".nv-stage{background:" + c.bg + ";color:" + c.ink + "}" +
-      ".nv-pages{max-width:" + WIDTHS[p.width] + "}" +
+      ".nv-pages{max-width:" + widthMaxStr(p.widthRem) + "}" +
       ".nv-stage .nv-p{font-family:" + fam + ";font-size:" + p.size + "px;line-height:" + p.line +
       ";letter-spacing:" + p.track + "px;margin:" + p.gap + "px 0;text-indent:" + (p.indent ? "2em" : "0") + "}" +
       ".nv-stage .nv-chap-h{font-family:" + fam + ";font-size:" + (p.size * 1.25).toFixed(2) + "px}";
@@ -113,51 +114,59 @@
   };
   N.themes = THEMES;
 
-  /* ================= 设置面板（拼进 kb-core 设置抽屉「排版」tab 底部） ================= */
+  /* ================= 设置面板（独立「小说」tab） ================= */
   N.panelHTML = function () {
     var p = N.get();
+    var px = function (v) { return v + "px"; };
+    var f2 = function (v) { return Number(v).toFixed(2); };
     var row = function (id, label, min, max, step, val, fmt) {
       return '<div class="kb-pref-row">' +
         '<label for="kb-npref-' + id + '">' + label + "</label>" +
         '<input type="range" id="kb-npref-' + id + '" min="' + min + '" max="' + max + '" step="' + step + '" value="' + val + '">' +
         '<output id="kb-npref-' + id + '-o">' + fmt(val) + "</output></div>";
     };
-    var px = function (v) { return v + "px"; };
-    var f2 = function (v) { return Number(v).toFixed(2); };
     var sel = function (id, label, opts, val) {
       return '<div class="kb-pref-row"><label for="kb-npref-' + id + '">' + label + "</label>" +
         '<select id="kb-npref-' + id + '">' + opts.map(function (o) {
           return '<option value="' + o[0] + '"' + (String(val) === o[0] ? " selected" : "") + ">" + util.esc(o[1]) + "</option>";
         }).join("") + "</select><output aria-hidden=\"true\"></output></div>";
     };
+    var grp = function (iconName, title, body) {
+      return '<div class="nv-grp"><div class="nv-grp-h">' + util.icon(iconName, 13) + title + "</div>" + body + "</div>";
+    };
     var themeBtns = Object.keys(THEMES).map(function (k) {
       var t = THEMES[k];
       return `<button type="button" class="nv-theme-btn${!p.bgCustom && p.theme === k ? " on" : ""}" data-nvtheme="${k}" title="${util.esc(t.name)}" style="background:${t.bg};color:${t.ink};border:1px solid var(--c-line2)">${util.esc(t.name)}</button>`;
     }).join("");
     var curFont = NV_FONT_MAP[p.font] ? "" : '<option value="' + util.esc(p.font) + '" selected>' + util.esc(p.font) + "</option>";
-    return '<div class="kb-pref-head" style="margin-top:18px">' + util.icon("i-book-open", 14) + "小说与文本</div>" +
-      '<div class="kb-pref-note" style="margin:2px 0 8px">以下设置只作用于小说/书库阅读区（txt / epub），不影响文章正文；存 localStorage，不写语料文件。</div>' +
-      row("size", "正文字号", 14, 26, 1, p.size, px) +
-      row("line", "行高", 1.5, 2.6, 0.05, p.line, f2) +
-      row("track", "字间距", 0, 3, 0.1, p.track, function (v) { return Number(v).toFixed(1) + "px"; }) +
-      row("gap", "段间距", 4, 24, 1, p.gap, px) +
-      '<div class="kb-pref-row"><label for="kb-npref-indent">首行缩进</label>' +
-      '<input type="checkbox" id="kb-npref-indent"' + (p.indent ? " checked" : "") + '><span class="kb-pref-note">段首空两格（中文小说习惯）</span></div>' +
-      sel("width", "阅读宽度", [["narrow", "窄 · 34rem"], ["mid", "中 · 44rem"], ["wide", "宽 · 56rem"], ["full", "撑满"]], p.width) +
-      '<div class="kb-pref-row"><label for="kb-npref-font">阅读字体</label>' +
-      '<select id="kb-npref-font">' + curFont +
-      '<option value="default"' + (p.font === "default" ? " selected" : "") + ">跟随正文</option>" +
-      '<option value="serif"' + (p.font === "serif" ? " selected" : "") + ">衬线（宋体）</option>" +
-      '<option value="sans"' + (p.font === "sans" ? " selected" : "") + ">无衬线（黑体）</option>" +
-      '<option value="mono"' + (p.font === "mono" ? " selected" : "") + ">等宽</option></select>" +
-      '<button type="button" class="kb-pref-mini" id="kb-npref-fontsys" title="读取本机字体">系统字体</button></div>' +
-      '<div class="kb-pref-row"><label>护眼主题</label>' +
-      '<div class="nv-theme-row">' + themeBtns +
-      '<input type="color" id="kb-npref-bgcustom" value="' + (p.bgCustom || "#ffffff") + '" title="自定义背景色">' +
-      "</div><output aria-hidden=\"true\"></output></div>" +
-      sel("flow", "txt 阅读模式", [["scroll", "连续滚动"], ["page", "章节分页"]], p.flow) +
-      sel("rate", "朗读/滚动速度", [["0.75", "0.75×"], ["1", "1×"], ["1.25", "1.25×"], ["1.5", "1.5×"], ["2", "2×"], ["3", "3×"]], String(p.rate)) +
-      '<div class="kb-pref-foot"><button type="button" class="mbtn ghost" id="kb-npref-reset">小说偏好恢复默认</button></div>';
+    return '<div class="nv-set">' +
+      grp("i-toc-list", "排版",
+        row("size", "正文字号", 14, 26, 1, p.size, px) +
+        row("line", "行高", 1.5, 2.6, 0.05, p.line, f2) +
+        row("track", "字间距", 0, 3, 0.1, p.track, function (v) { return Number(v).toFixed(1) + "px"; }) +
+        row("gap", "段间距", 4, 24, 1, p.gap, px) +
+        row("widthRem", "正文宽度", 24, 100, 2, p.widthRem, function (v) { return v >= 100 ? "撑满" : v + "rem"; }) +
+        '<div class="kb-pref-row nv-row-toggle"><label for="kb-npref-indent">首行缩进</label>' +
+        '<label class="nv-switch"><input type="checkbox" id="kb-npref-indent"' + (p.indent ? " checked" : "") + '><span class="nv-switch-t"></span></label>' +
+        '<output aria-hidden="true"></output></div>') +
+      grp("i-palette", "外观",
+        '<div class="kb-pref-row"><label for="kb-npref-font">阅读字体</label>' +
+        '<select id="kb-npref-font">' + curFont +
+        '<option value="default"' + (p.font === "default" ? " selected" : "") + ">跟随正文</option>" +
+        '<option value="serif"' + (p.font === "serif" ? " selected" : "") + ">衬线（宋体）</option>" +
+        '<option value="sans"' + (p.font === "sans" ? " selected" : "") + ">无衬线（黑体）</option>" +
+        '<option value="mono"' + (p.font === "mono" ? " selected" : "") + ">等宽</option></select>" +
+        '<button type="button" class="kb-pref-mini" id="kb-npref-fontsys" title="读取本机字体">系统字体</button></div>' +
+        '<div class="nv-theme-grid"><span class="nv-theme-lb">护眼主题</span>' +
+        '<div class="nv-theme-row">' + themeBtns +
+        '<label class="nv-theme-custom" title="自定义背景色"><input type="color" id="kb-npref-bgcustom" value="' + (p.bgCustom || "#ffffff") + '"><span>自定义</span></label>' +
+        "</div></div>") +
+      grp("i-book-open", "阅读",
+        sel("flow", "txt 阅读模式", [["scroll", "连续滚动"], ["page", "章节分页"]], p.flow) +
+        sel("rate", "朗读/滚动速度", [["0.75", "0.75×"], ["1", "1×"], ["1.25", "1.25×"], ["1.5", "1.5×"], ["2", "2×"], ["3", "3×"]], String(p.rate))) +
+      '<div class="kb-pref-foot"><button type="button" class="mbtn ghost" id="kb-npref-reset">恢复默认</button>' +
+      '<span class="kb-pref-note">仅作用于小说/书库阅读区，存 localStorage</span></div>' +
+      "</div>";
   };
 
   N.bindPanel = function (root) {
@@ -175,13 +184,13 @@
     slider("line", "line", function (v) { return Number(v).toFixed(2); });
     slider("track", "track", function (v) { return Number(v).toFixed(1) + "px"; });
     slider("gap", "gap", function (v) { return v + "px"; });
+    slider("widthRem", "widthRem", function (v) { return v >= 100 ? "撑满" : v + "rem"; });
     var ind = root.querySelector("#kb-npref-indent");
     if (ind) ind.addEventListener("change", function () { N.set({ indent: ind.checked ? 1 : 0 }); });
     var bindSel = function (id, key, cast) {
       var el = root.querySelector("#kb-npref-" + id);
       if (el) el.addEventListener("change", function () { var p = {}; p[key] = cast(el.value); N.set(p); });
     };
-    bindSel("width", "width", String);
     bindSel("flow", "flow", String);
     bindSel("rate", "rate", Number);
     var font = root.querySelector("#kb-npref-font");
@@ -670,7 +679,7 @@
         prevB = wrap.querySelector(".nv-prev-chap"); nextB = wrap.querySelector(".nv-next-chap");
         if (prevB) prevB.onclick = function () { goCh(-1); };
         if (nextB) nextB.onclick = function () { goCh(1); };
-        wrap.querySelector(".nv-pref-btn").onclick = function () { KB.settings.open("type"); };
+        wrap.querySelector(".nv-pref-btn").onclick = function () { KB.settings.open("novel"); };
         wrap.querySelector(".nv-dl").onclick = function () {
           var a = document.createElement("a");
           a.href = rawHref; a.download = DOC.name || "book.txt"; a.click();
@@ -796,7 +805,7 @@
         return "html{font-size:" + q.size + "px !important;line-height:" + q.line + " !important;" +
           "letter-spacing:" + q.track + "px;font-family:" + fam + " !important;" +
           "background:" + c.bg + " !important;color:" + c.ink + " !important}" +
-          "body{background:transparent !important;color:" + c.ink + " !important;max-width:" + WIDTHS[q.width] + ";margin:0 auto;padding:8px 14px}" +
+          "body{background:transparent !important;color:" + c.ink + " !important;max-width:" + widthMaxStr(q.widthRem) + ";margin:0 auto;padding:8px 14px}" +
           "p,div,li,td,h1,h2,h3,h4,h5{color:" + c.ink + " !important}" +
           "a,a:link,a:visited,a:hover{color:" + c.ink + " !important;text-decoration:none}" +
           "p{margin:" + q.gap + "px 0 !important;font-size:100% !important;" + (q.indent ? "text-indent:2em !important" : "") + "}";
@@ -810,6 +819,11 @@
             var st = d.getElementById("kb-nv-epub");
             if (!st) { st = d.createElement("style"); st.id = "kb-nv-epub"; d.head.appendChild(st); }
             st.textContent = css;
+            /* 多看版封面/插图常因图片文件名编码错乱加载失败，留下大片空白像"正文没了"——隐藏加载失败的图 */
+            Array.prototype.forEach.call(d.querySelectorAll("img"), function (im) {
+              if (im.complete && im.naturalWidth === 0) im.style.display = "none";
+              else if (!im.dataset.nvErr) { im.dataset.nvErr = "1"; im.addEventListener("error", function () { im.style.display = "none"; }); }
+            });
           } catch (e) {}
         });
       }
@@ -907,7 +921,7 @@
 
       wrap.querySelector(".nv-prev-chap").onclick = function () { rendition.prev(); };
       wrap.querySelector(".nv-next-chap").onclick = function () { rendition.next(); };
-      wrap.querySelector(".nv-pref-btn").onclick = function () { KB.settings.open("type"); };
+      wrap.querySelector(".nv-pref-btn").onclick = function () { KB.settings.open("novel"); };
       wrap.querySelector(".nv-dl").onclick = function () {
         var a = document.createElement("a");
         a.href = rawHref; a.download = DOC.name || "book.epub"; a.click();

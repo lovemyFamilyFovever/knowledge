@@ -380,6 +380,8 @@
         '  <button type="button" class="mbtn ghost" id="kb-pref-reset">恢复默认</button>' +
         '  <span class="kb-pref-note">偏好存 localStorage，不写语料文件</span>' +
         "</div>" +
+        "</section>" +
+        '<section class="kb-set-sec" data-sec="novel" hidden>' +
         '<div id="nv-panel-host">' + (window.KBNOVEL ? KBNOVEL.panelHTML() : "") + "</div>" +
         "</section>";
     },
@@ -786,6 +788,7 @@
       tabs.innerHTML =
         '<button type="button" role="tab" class="on" data-sec="look" aria-selected="true">外观</button>' +
         '<button type="button" role="tab" data-sec="type" aria-selected="false">排版</button>' +
+        '<button type="button" role="tab" data-sec="novel" aria-selected="false">小说</button>' +
         '<button type="button" role="tab" data-sec="keys" aria-selected="false">快捷键</button>';
       if (!tabs.dataset.wired) {
         tabs.dataset.wired = "1";
@@ -812,10 +815,6 @@
       if (sec) {
         var tabBtn = tabs.querySelector('[data-sec="' + sec + '"]');
         if (tabBtn) tabBtn.click();
-        if (sec === "type") {
-          var nh = body.querySelector("#nv-panel-host .kb-pref-head");
-          if (nh) nh.scrollIntoView({ block: "start" });
-        }
       }
     },
     close: function () {

@@ -243,6 +243,30 @@ html [hidden]{display:none}
 .kb-keys-list .kb-help-row{border-radius:6px;padding-left:6px;padding-right:6px}
 .kb-keys-list .kb-help-row:hover{background:var(--c-panel)}
 
+/* [5b] 小说设置面板（独立「小说」tab） ===== */
+.nv-set{padding-top:2px}
+.nv-grp{margin:0 0 16px}
+.nv-grp-h{display:flex;align-items:center;gap:7px;font:600 11px/1 var(--f-mono);letter-spacing:.08em;
+  text-transform:uppercase;color:var(--muted);padding:12px 0 6px;margin-bottom:2px;border-bottom:1px solid var(--c-line)}
+.nv-grp-h svg{color:var(--c-acc)}
+.nv-row-toggle .nv-switch{justify-self:start}
+.nv-switch{position:relative;display:inline-flex;align-items:center;cursor:pointer}
+.nv-switch input{position:absolute;opacity:0;width:0;height:0}
+.nv-switch-t{width:38px;height:20px;border-radius:11px;background:var(--c-line2);position:relative;transition:background var(--dur-2)}
+.nv-switch-t::after{content:"";position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;
+  background:#fff;box-shadow:0 1px 2px color-mix(in oklab,var(--c-ink),transparent 60%);transition:transform var(--dur-2)}
+.nv-switch input:checked+.nv-switch-t{background:var(--c-acc)}
+.nv-switch input:checked+.nv-switch-t::after{transform:translateX(18px)}
+.nv-theme-grid{padding:7px 0}
+.nv-theme-lb{display:block;font-size:12.5px;color:var(--muted);margin-bottom:8px}
+.nv-theme-row{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.nv-theme-btn{height:30px;min-width:44px;padding:0 10px;border-radius:8px;font-size:12px;cursor:pointer;
+  border:1px solid var(--c-line2);background:#fff;color:#222;transition:box-shadow var(--dur-1)}
+.nv-theme-btn.on{outline:2px solid var(--c-acc);outline-offset:1px}
+.nv-theme-custom{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;color:var(--muted);cursor:pointer;
+  border:1px dashed var(--c-line2);border-radius:8px;padding:0 8px;height:30px}
+.nv-theme-custom input[type=color]{width:20px;height:20px;padding:0;border:none;background:none;cursor:pointer}
+
 /* [6] 双链补全 + 断链条（需求6） ===== */
 .kb-wl-bar{
   display:flex;align-items:center;gap:7px;flex-wrap:wrap;

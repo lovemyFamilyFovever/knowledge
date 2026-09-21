@@ -891,12 +891,15 @@ html.motion-ok .ss-bar i{transform-origin:left center;animation:ss-grow .9s var(
 .ss-sib-n{flex:none;font-family:var(--f-mono);font-size:10.5px;color:var(--faint)}
 @media (max-width:720px){.ss-tags,.ss-sibs{grid-template-columns:1fr}.ss-tag-name{flex:0 0 80px}}
 /* 移动 / 重命名：目录树选择器 */
-.kbm-mv{width:min(900px,94vw)}
+/* 弹窗整体给死上限，内部靠 flex 压缩（旧写法只覆 width，树写死 360px 起、68vh 止，
+   展开目录后必然顶穿 .kbm 的 82vh，且 .kbm 无 overflow → 树和底部灰字画到框外） */
+.kbm-mv{width:min(900px,94vw);max-height:min(82vh,720px)}
 .mv-src{font-family:var(--f-mono);font-size:11px;color:var(--faint);word-break:break-all;margin-bottom:12px}
-.mv-cols{display:grid;grid-template-columns:1.2fr 1fr;gap:14px;margin-bottom:4px}
-.mv-treebox{display:flex;flex-direction:column;min-height:0}
+.mv-cols{display:grid;grid-template-columns:1.2fr 1fr;gap:14px;margin-bottom:4px;
+  flex:1 1 auto;min-height:0;align-items:stretch}
+.mv-treebox{display:flex;flex-direction:column;min-height:0;overflow:hidden}
 .mv-filter{margin-bottom:8px;height:30px;font-size:12px}
-.mv-tree{flex:1;min-height:360px;max-height:min(68vh,640px);overflow-y:auto;border:1px solid var(--c-line);border-radius:var(--rd-card);
+.mv-tree{flex:1 1 auto;min-height:120px;max-height:none;overflow-y:auto;border:1px solid var(--c-line);border-radius:var(--rd-card);
   background:var(--c-sunk);padding:6px;outline:none}
 .mv-domrow{margin-bottom:1px}
 .mv-node{display:flex;align-items:center;gap:6px;padding:5px 8px;border-radius:var(--rd-ctl);cursor:pointer;
@@ -909,7 +912,7 @@ html.motion-ok .ss-bar i{transform-origin:left center;animation:ss-grow .9s var(
 .mv-ic{display:inline-flex;align-items:center;justify-content:center;width:15px;color:var(--muted)}
 .mv-lb{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .mv-n{flex:none;font-family:var(--f-mono);font-size:11px;color:var(--faint)}
-.mv-side{display:flex;flex-direction:column}
+.mv-side{display:flex;flex-direction:column;min-height:0;overflow:hidden}
 .mv-dst-label{font-size:11px;letter-spacing:.08em;color:var(--faint);font-family:var(--f-mono);margin-bottom:6px}
 .mv-dst{font-family:var(--f-mono);font-size:12px;color:var(--c-acc);word-break:break-all;border:1px dashed var(--acc-line);
   border-radius:var(--rd-card);padding:10px 12px;background:var(--acc-soft);min-height:38px;line-height:1.7}
@@ -1141,6 +1144,9 @@ html.motion-ready .hero-mask[data-in="true"]{clip-path:inset(0 0 0 0)}
 /* primary：实底 --c-acc；hover 加深；success/danger 变体同构 */
 .kb-btn.primary{background:var(--c-acc);color:var(--c-panel);border-color:color-mix(in oklab,var(--c-acc),black 22%);font-weight:600}
 .kb-btn.primary:hover{background:color-mix(in oklab,var(--c-acc),black 10%);border-color:color-mix(in oklab,var(--c-acc),black 28%);color:var(--c-panel)}
+/* 已读完/已掌握 标记态：实底强调色，与未标记的描边态一眼可辨 */
+.kb-btn.mark-on{background:var(--c-acc);color:var(--c-panel);border-color:color-mix(in oklab,var(--c-acc),black 22%);font-weight:600;box-shadow:inset 0 0 0 1px color-mix(in oklab,var(--c-panel),transparent 78%)}
+.kb-btn.mark-on:hover{background:color-mix(in oklab,var(--c-acc),black 10%);border-color:color-mix(in oklab,var(--c-acc),black 28%);color:var(--c-panel)}
 .kb-btn.primary:active{background:color-mix(in oklab,var(--c-acc),black 16%)}
 .kb-btn.success{background:var(--c-ok);color:var(--c-panel);border-color:color-mix(in oklab,var(--c-ok),black 22%);font-weight:600}
 .kb-btn.success:hover{background:color-mix(in oklab,var(--c-ok),black 10%);border-color:color-mix(in oklab,var(--c-ok),black 28%)}
@@ -1314,6 +1320,12 @@ textarea.kb-input,textarea.inp{height:auto;min-height:88px;padding:10px 12px;fon
 .kb-empty .e-desc{font-size:12.5px;color:var(--faint);max-width:40ch;line-height:1.65}
 .kb-empty .e-act{margin-top:12px}
 .kb-empty .e-act .kb-btn{min-height:30px}
+/* 右栏「目录」空状态：填满面板 + 垂直居中。#pane-toc>*{flex:none} 会把卡片压成一条，
+   故这里显式放开 flex 成长；窄栏内去掉虚线框与底色，只留线稿插画与文字，避免边框贴边。 */
+#pane-toc>.toc-empty{flex:1 1 auto;min-height:0;margin:12px;border-style:none;background:none;padding:12px 8px}
+.toc-empty .art{width:56px;height:56px}
+.toc-empty .e-title{font-size:13px}
+.toc-empty .e-desc{font-size:12px;color:var(--muted);max-width:26ch;line-height:1.7}
 .kb-empty.is-err{border-color:color-mix(in oklab,var(--c-danger),transparent 55%)}
 .kb-empty.is-err .e-title{color:var(--c-danger)}
 .kb-empty.compact{padding:20px 14px}
