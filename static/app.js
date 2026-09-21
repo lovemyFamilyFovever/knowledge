@@ -3122,6 +3122,11 @@ function soWire() {
   SO.ov.querySelectorAll(".kb-eng-chip").forEach(ch => {
     ch.addEventListener("click", () => soSetEngine(ch.dataset.eng));
   });
+  /* 点结果/快速前往等任意链接 → 先关浮层再放行导航：
+     workbench 的 SPA 全局 click 接管会吃掉整页跳转，浮层不主动关就一直悬在脸上 */
+  SO.body.addEventListener("click", e => {
+    if (e.target.closest && e.target.closest("a[href]")) soClose();
+  });
   SO.ov.querySelectorAll(".kb-scope-chip").forEach(ch => {
     ch.addEventListener("click", () => {
       const v = ch.dataset.scope || "";
