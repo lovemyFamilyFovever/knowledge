@@ -12,20 +12,6 @@
     <div class="page-body" id="gov-body">
       {# 空态：进页面不自动扫描（全库扫描有成本），点按钮才跑 #}
       <div class="empty" id="gov-idle">
-        <svg class="mascot" viewBox="0 0 160 120" aria-hidden="true">
-          <ellipse class="halo" cx="80" cy="70" rx="70" ry="40" style="fill:color-mix(in oklab,var(--c-acc),transparent 88%)"/>
-          <ellipse class="shadow" cx="80" cy="108" rx="40" ry="4"/>
-          <ellipse class="head" cx="80" cy="46" rx="20" ry="22"/>
-          <ellipse class="ear" cx="58" cy="46" rx="3" ry="4.5"/><ellipse class="ear" cx="102" cy="46" rx="3" ry="4.5"/>
-          <path class="hair" d="M60 40 Q62 22 80 22 Q98 22 100 40 Q96 32 80 32 Q64 32 60 40 Z"/>
-          <circle class="eye" cx="73" cy="45" r="1.8"/><circle class="eye" cx="87" cy="45" r="1.8"/>
-          <path class="mouth" d="M74 54 Q80 60 86 54"/>
-          <ellipse class="blush" cx="63" cy="52" rx="4.5" ry="2.2"/><ellipse class="blush" cx="97" cy="52" rx="4.5" ry="2.2"/>
-          <path class="body" d="M58 78 Q80 68 102 78 L98 104 H62 Z"/>
-          <path class="body-line" d="M58 78 Q80 68 102 78 L98 104 H62 Z"/>
-          <path class="shirt" d="M70 70 Q80 76 90 70 L88 82 H72 Z"/>
-          <path class="arm" d="M58 82 Q46 74 48 62"/>
-        </svg>
         <div class="e-title">点「重新扫描」开始体检</div>
         <div class="e-desc">扫描全库语料，找出<b>断链</b>（指向不存在文档的双链）、<b>孤儿文档</b>（无人引用）、<b>近义标签</b>（该合并的重复标签）。只读扫描，不会改动任何文件。</div>
       </div>

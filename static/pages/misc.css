@@ -98,38 +98,7 @@
 .hint-note{margin-top:12px;font:500 11px/1.8 var(--f-mono);color:var(--faint)}
 .hint-note b{color:var(--warn);font-weight:600}
 
-/* [F] mascot 空态（第 03 屏分层语言：halo/shadow/head/hair/body/uniform 渐变） */
-.mascot .halo{fill:url(#bgHalo)}
-/* 候选三·低电量机器人（error 页专用造型，2026-09-14 用户选定） */
-.mascot > ellipse:nth-of-type(2){fill:var(--ill-shadow)}
-.mascot line{stroke:color-mix(in oklab,var(--c-ink),transparent 55%)}
-.mascot circle.bot-ant{fill:var(--rose)}
-.mascot rect{fill:var(--ill-bubble);stroke:color-mix(in oklab,var(--c-ink),transparent 35%)}
-.mascot .bot-face circle{fill:color-mix(in oklab,var(--c-ink),transparent 15%);stroke:none}
-.mascot .bot-face path{stroke:color-mix(in oklab,var(--c-ink),transparent 30%);stroke-width:1.8;fill:none;stroke-linecap:round}
-.mascot .bot-batt{fill:var(--rose)}
-.mascot path.bubble{fill:var(--ill-bubble);stroke:color-mix(in oklab,var(--c-ink),transparent 35%);stroke-width:2}
-.mascot text.bot-batt{fill:var(--rose)}
-.mascot .shadow{fill:var(--ill-shadow)}
-.mascot .head{fill:var(--ill-skin)}
-.mascot .ear{fill:var(--ill-skin-shadow)}
-.mascot .hair{fill:var(--ill-hair)}
-.mascot .eye{fill:var(--ill-hair)}
-.mascot .brow{stroke:var(--ill-hair);stroke-width:1.4;fill:none;stroke-linecap:round}
-.mascot .mouth{stroke:var(--ill-hair);stroke-width:1.4;fill:none;stroke-linecap:round}
-.mascot .blush{fill:var(--rose);opacity:.28}
-.mascot .body{fill:url(#uniformGrad)}
-.mascot .body-line{stroke:color-mix(in oklab,var(--c-ink),transparent 60%);stroke-width:1.6;fill:none;
-  stroke-linecap:round;stroke-linejoin:round}
-.mascot .shirt{fill:var(--ill-shirt);opacity:.92}
-.mascot .bubble{fill:var(--ill-bubble)}
-.mascot .bubble-ic{stroke:var(--c-acc);stroke-width:1.8;fill:none;stroke-linecap:round;stroke-linejoin:round}
-.mascot .tag-capsule{fill:color-mix(in oklab,var(--c-panel),transparent 20%);stroke:var(--acc-line);
-  stroke-width:1.6;stroke-dasharray:4 4}
-.mascot .tag-hole{fill:none;stroke:var(--ill-line);stroke-width:1.2}
-.mascot .arm{stroke:var(--ill-skin-shadow);stroke-width:5;stroke-linecap:round;fill:none}
-
-/* [G] 错误页（全屏错误态 + mascot + mbtn.primary） */
+/* [G] 错误页（全屏错误态 + mbtn.primary） */
 .err-wrap{flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;
   padding:48px 30px;text-align:center;animation:rise .4s var(--ease-out)}
 .err-wrap .e-title{font-family:var(--f-disp);font-size:24px;font-weight:700;color:var(--c-ink);letter-spacing:-.01em}

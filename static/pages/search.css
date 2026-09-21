@@ -73,9 +73,8 @@
 .result[data-hue="career"]{--dh:var(--dh-career)}
 .result[data-hue="ai-assets"]{--dh:var(--dh-ai)}
 
-/* [3] 空态插画 ===== */
+/* [3] 空态 ===== */
 .srch-empty{padding:26px 14px 34px;gap:10px}
-.srch-empty .mascot{width:200px;height:142px;flex:none}
 .srch-empty .e-desc .mono{color:var(--info);font-size:11.5px}
 
 /* [4] 响应式（T6 会统一收口，这里只保底） ===== */

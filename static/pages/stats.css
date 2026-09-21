@@ -2,7 +2,7 @@
    分工：图表由本地 Chart.js（static/vendor/chart.umd.js）渲染在 canvas 上，取色在
    stats.js 里读 CSS 令牌完成；本文件只负责卡片外观、容器尺寸与图例/说明等 DOM 细节。
    消费的模板类：.kpi-card/.chart-card/.delta/.mini-spark/.st-ratio/.sbar/
-   .st-leaderboard/.lb-row[data-hue]、.st-note、.st-nochart、.mascot。
+   .st-leaderboard/.lb-row[data-hue]、.st-note、.st-nochart。
    INSTRUMENT 化：KPI tile 平面薄板 + --f-disp 大字、图表卡结界线、
    第二序列（文档数折线）虚线 + 圆点（色盲兜底：线型+色双重编码）、图例色块方点化。
    取色全走 var()/color-mix，零硬编码 hex。 */
@@ -59,29 +59,6 @@
 .kpi-card .sbar{height:5px;border-radius:1px;background:var(--c-sunk);border:1px solid var(--c-line);overflow:hidden}
 .kpi-card .sbar i{display:block;height:100%;background:var(--c-acc)}
 
-/* 第 4 张卡的角落 mascot：给 label 让位，避免遮挡 */
-.kpi-card.st-mascot-card .label{padding-right:56px}
-.kpi-card .mascot-corner{position:absolute;right:10px;top:10px;width:48px;height:48px;opacity:1}
-
-/* mascot 角落插图：干净线条 + 主题 token 着色（重画版，替代旧 uniformGrad 草图） */
-.mascot-corner .m-head{fill:var(--ill-skin)}
-.mascot-corner .m-hair{fill:var(--ill-hair)}
-.mascot-corner .m-glass{fill:none;stroke:var(--c-acc);stroke-width:1.5;opacity:.9}
-.mascot-corner .m-glass-bridge{fill:none;stroke:var(--c-acc);stroke-width:1.5;stroke-linecap:round;opacity:.9}
-.mascot-corner .m-smile{fill:none;stroke:var(--ill-line);stroke-width:1.4;stroke-linecap:round}
-.mascot-corner .m-book{fill:var(--c-acc);opacity:.18}
-.mascot-corner .m-book-page{fill:var(--c-acc);opacity:.42}
-
-/* mascot 部位（页面级；色相全走 --ill-* token） */
-svg.mascot .head{fill:var(--ill-skin)}
-svg.mascot .hair{fill:var(--ill-hair)}
-svg.mascot .eye{fill:var(--ill-line)}
-svg.mascot .mouth{fill:none;stroke:var(--ill-line);stroke-width:1.4;stroke-linecap:round}
-svg.mascot .body-line{stroke:var(--ill-line);stroke-width:1.4}
-svg.mascot .halo{fill:var(--ill-halo)}
-svg.mascot .shadow{fill:var(--ill-shadow)}
-svg.mascot .bubble{fill:var(--ill-bubble);stroke:var(--ill-line);stroke-width:1.2}
-
 /* ── 图表卡：图例（方点=分钟柱 / 圆点+虚线=文档数线，形状双编码） ── */
 .chart-card .chart-head{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:14px}
 .chart-card .chart-title{font:600 15.5px/1.35 var(--f-disp);letter-spacing:.01em;color:var(--c-ink)}
@@ -137,7 +114,6 @@ svg.mascot .bubble{fill:var(--ill-bubble);stroke:var(--ill-line);stroke-width:1.
 .lb-row .lb-opens{display:block;color:var(--faint)}
 
 /* ── 空态微调（容器样式继承 style.css .empty / .kb-empty） ───────── */
-.empty .mascot ellipse.head{fill:var(--ill-skin)}
 
 /* ── 响应式 ─────────────────────────────────────── */
 /* KPI 与卡片版面统一由上面 .st-cols 的 grid-template-areas 回退，这里只管卡内细节 */

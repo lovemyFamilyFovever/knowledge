@@ -53,21 +53,11 @@
             <div class="num"><span data-counter data-count="{{ kpi.opened_docs }}">{{ kpi.opened_docs }}</span><span class="unit">篇</span></div>
             <div class="mini-spark" data-spark="docs" aria-hidden="true"></div>
           </div>
-          <div class="kpi-card st-mascot-card" data-st-card="c4">
+          <div class="kpi-card st-finished-card" data-st-card="c4">
             <div class="label"><svg class="i i-12"><use href="#i-check-circle"/></svg>读完文档</div>
             <div class="num"><span data-counter data-count="{{ kpi.finished_docs }}">{{ kpi.finished_docs }}</span><span class="unit">篇</span></div>
             {% if kpi.opened_docs %}<div class="st-ratio"><span class="sbar"><i style="width:{{ (100 * kpi.finished_docs / kpi.opened_docs) | round(0) }}%"></i></span><span class="st-ratio-n">{{ ((100 * kpi.finished_docs / kpi.opened_docs) | round(0)) }}%</span></div>{% endif %}
             <div class="mini-spark" data-spark="finished" aria-hidden="true"></div>
-            <svg class="mascot mascot-corner" viewBox="0 0 48 48" aria-hidden="true">
-              <path class="m-book" d="M11 35.5 L24 31.5 L37 35.5 L37 40 L24 36 L11 40 Z"/>
-              <path class="m-book-page" d="M11 35.5 L24 31.5 L24 36 L11 40 Z"/>
-              <circle class="m-head" cx="24" cy="18.5" r="9.2"/>
-              <path class="m-hair" d="M14.8 16.6 Q15.8 7.4 24 7.4 Q32.2 7.4 33.2 16.6 Q29.8 12.2 24 12.2 Q18.2 12.2 14.8 16.6 Z"/>
-              <circle class="m-glass" cx="20.2" cy="19.6" r="3.3"/>
-              <circle class="m-glass" cx="27.8" cy="19.6" r="3.3"/>
-              <path class="m-glass-bridge" d="M23.5 19.6 H24.5 M16.9 19.6 H15.4 M31.1 19.6 H32.6"/>
-              <path class="m-smile" d="M21.8 24.6 Q24 26.2 26.2 24.6"/>
-            </svg>
           </div>
         </div>
 
@@ -140,16 +130,6 @@
       {% else %}
       {# ── 空态 ─────────────────────────────────────── #}
       <div class="empty">
-        <svg class="mascot" viewBox="0 0 160 120" aria-hidden="true">
-          <circle cx="112" cy="42" r="14" fill="var(--warn)" opacity=".85"/>
-          <circle cx="112" cy="42" r="22" fill="var(--warn)" opacity=".14"/>
-          <path d="M8 96 L44 48 L80 96 Z" fill="var(--c-info)" opacity=".35"/>
-          <path d="M52 96 L88 52 L124 96 Z" fill="var(--c-info)" opacity=".6"/>
-          <path d="M96 96 L124 62 L152 96 Z" fill="var(--c-acc)" opacity=".9"/>
-          <line x1="8" y1="96" x2="152" y2="96" stroke="var(--ill-line)" stroke-width="1.2" stroke-linecap="round"/>
-          <rect x="14" y="94" width="52" height="8" rx="2.5" fill="var(--ill-book)"/>
-          <rect x="14" y="94" width="52" height="3" rx="1.5" fill="var(--ill-paper)" opacity=".55"/>
-        </svg>
         <div class="e-title">{{ ym }} 还没有阅读记录</div>
         <div class="e-desc">打开任意文档后，60 秒心跳会自动开始累计时长。</div>
         <a class="e-action" href="/"><svg class="i i-14"><use href="#i-chev-left"/></svg>去阅读</a>

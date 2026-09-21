@@ -35,30 +35,8 @@
 [data-magnetic]{transition:box-shadow .3s var(--ease-out),transform .35s var(--ease-back)}
 [data-magnetic]:hover{}
 .home-hero-visual{position:relative;display:flex;justify-content:center;align-items:center;min-height:320px}
-.home-hero-visual .mascot-hero{width:min(100%,380px);height:auto}
+.home-hero-visual .hero-constellation{width:min(100%,380px);height:auto}
 .parallax-layer{will-change:transform;transform:translate(var(--px,0),var(--py,0))}
-/* mascot 8 层配色全部走 --ill-* token（T0 定义，含 halo/shadow/五官/徽章） */
-.mascot .halo{fill:url(#bgHalo)}
-.mascot .shadow{fill:var(--ill-shadow)}
-.mascot .body-line{stroke:color-mix(in oklab,var(--c-ink),transparent 60%);stroke-width:1.6;fill:none;stroke-linecap:round;stroke-linejoin:round}
-.mascot .neck{fill:var(--ill-skin-shadow)}
-.mascot .head{fill:var(--ill-skin)}
-.mascot .ear{fill:var(--ill-skin-shadow)}
-.mascot .hair{fill:var(--ill-hair)}
-.mascot .brow{stroke:var(--ill-hair);stroke-width:1.8;fill:none;stroke-linecap:round}
-.mascot .eye{fill:var(--ill-hair)}
-.mascot .mouth{stroke:var(--ill-hair);stroke-width:1.6;fill:none;stroke-linecap:round}
-.mascot .cheek{fill:var(--rose);opacity:.28}
-.mascot .glasses-lens{fill:color-mix(in oklab,var(--c-ink),transparent 96%);stroke:var(--ill-glasses);stroke-width:1.4}
-.mascot .glasses-arm{stroke:var(--ill-glasses);stroke-width:1.4;fill:none;stroke-linecap:round}
-.mascot .shirt{fill:var(--ill-shirt)}
-.mascot .shirt-line{stroke:var(--ill-shirt-shadow);stroke-width:1.4;fill:none;stroke-linecap:round}
-.mascot .badge,.mascot .bookmark{fill:var(--ill-badge)}
-.mascot .book{fill:var(--ill-book)}
-.mascot .book-page{fill:var(--ill-paper)}
-.mascot .page-line{stroke:var(--ill-line);stroke-width:1;opacity:.55}
-.mascot .bubble{fill:var(--ill-bubble);stroke:var(--ill-line);stroke-width:1}
-.mascot .bubble-txt{stroke:var(--c-acc);stroke-width:2;fill:none;stroke-linecap:round;stroke-linejoin:round}
 
 /* ---------- KPI 条（真实数字 countUp） ---------- */
 .kpi-strip{display:grid;grid-template-columns:repeat(4,1fr);border-top:1px solid var(--c-line);
@@ -136,10 +114,9 @@ html[data-theme="dark"] .dom-card .n{color:hsl(var(--dh,158) 70% 66%)}
 .home-pipe .pipe-line{flex:1;height:1px;margin-top:15px;
   background:linear-gradient(90deg,color-mix(in oklab,var(--c-acc),transparent 60%),var(--c-line))}
 
-/* ---------- 空态（mascot 插画零件，第 11/12 屏） ---------- */
+/* ---------- 空态（第 11/12 屏） ---------- */
 .empty-state{display:flex;flex-direction:column;align-items:center;gap:10px;padding:28px 20px;text-align:center;
   border:1px dashed var(--c-line);border-radius:var(--rd-card);background:color-mix(in oklab,var(--c-panel),transparent 55%)}
-.empty-state .mascot{width:150px;height:120px}
 .empty-state .e-title{font-size:14px;font-weight:500;color:color-mix(in oklab,var(--c-ink),transparent 20%)}
 .empty-state .e-desc{font-size:12.5px;color:var(--muted)}
 .empty-state .e-desc code{font-size:11.5px;color:var(--c-acc)}

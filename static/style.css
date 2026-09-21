@@ -57,18 +57,12 @@
   /* 旧 6 皮肤(hex 种子)——保留原始值供 skins.css 演化映射与回退 */
   --hex-plate-light-a:#122028; --hex-plate-light-b:#0c151d;
   --hex-plate-dark-a:#0f1c25; --hex-plate-dark-b:#0a131b;
-  --hex-paper-dark:#22312c;
   --hex-plate-fg:#cfe0da; --hex-plate-com:#5c716c; /* LCD 板专用（原 --code-fg/-com，避开正文代码 token） */
   --hex-acc2:#b23a2a; --hex-acc2-d:#e8836b; /* 次强调（追问框 fu 左条/底）·朱砂印章色 */
   /* 正文代码块随主题翻转 + h2 渐变条饱和/明度（Prompt-R 渲染层） */
   --code-bg:#f7f6f2; --code-fg:#1d1f21; --code-com:#5a5f64;
   --code-key:#1f4e8c; --code-str:#0e7c86; --code-num:#8a4b00;
   --bar-s:50%; --bar-l:89%; --bar-fg:#1f2937;
-  /* mascot --ill-* 族（Light 种子，Dark patch 在 [3] 尾部） */
-  --hex-skin-light:#e8cba9; --hex-skin-shadow-light:#c9a482; --hex-hair-light:#2a3833;
-  --hex-glasses-light:#3d4b47; --hex-shirt-light:#f7f7f2; --hex-shirt-shadow-light:#dcded6; --hex-device-light:#4a5d58;
-  --hex-skin-dark:#c9a483; --hex-skin-shadow-dark:#a58467; --hex-hair-dark:#0d1714;
-  --hex-glasses-dark:#c8d5d0; --hex-shirt-dark:#dbe1dc; --hex-shirt-shadow-dark:#a2ada9; --hex-device-dark:#8fa4a0; --hex-fg-dark:#e2ece8; /* 批6 误删恢复（mascot dark） */
 
   /* ===== 尺度层 ===== */
   --rd-ctl:3px; --rd-card:4px; --rd-pill:999px;
@@ -132,25 +126,14 @@ html[data-theme="dark"]{
   --code-key:#7ee787; --code-str:#a5d6ff; --code-num:#f2cc60;
   --bar-s:40%; --bar-l:82%;
   --plate:linear-gradient(165deg,var(--hex-plate-dark-a),var(--hex-plate-dark-b));
-  /* mascot --ill-*（Dark） */
-  --ill-skin:var(--hex-skin-dark); --ill-skin-shadow:var(--hex-skin-shadow-dark); --ill-hair:var(--hex-hair-dark);
-  --ill-glasses:var(--hex-glasses-dark); --ill-shirt:var(--hex-shirt-dark); --ill-shirt-shadow:var(--hex-shirt-shadow-dark);
-  --ill-device:var(--hex-device-dark); --ill-book:var(--hex-fg-dark); --ill-paper:var(--hex-paper-dark);
   --dh-baike:oklch(70% .14 158); --dh-articles:oklch(70% .14 200); --dh-interview:oklch(70% .14 340);
   --dh-projects:oklch(70% .14 22); --dh-handbook:oklch(70% .14 96); --dh-career:oklch(70% .14 42); --dh-ai:oklch(70% .14 262);
   --grain:.028;
 }
-/* Light 态 mascot 种子（旧 [2] 区内联，此处保持等价） */
+/* hero 星座图 --ill-*（Light） */
 :root{
-  --ill-skin:var(--hex-skin-light); --ill-skin-shadow:var(--hex-skin-shadow-light); --ill-hair:var(--hex-hair-light);
-  --ill-glasses:var(--hex-glasses-light); --ill-shirt:var(--hex-shirt-light); --ill-shirt-shadow:var(--hex-shirt-shadow-light);
-  --ill-uniform:var(--c-acc); --ill-uniform-alt:var(--c-info);
-  --ill-device:var(--hex-device-light); --ill-book:color-mix(in oklab,var(--c-ink),white 10%);
-  --ill-paper:color-mix(in oklab,var(--c-panel),var(--c-bg) 40%);
-  --ill-badge:var(--c-warn); --ill-bubble:color-mix(in oklab,var(--c-ink),transparent 90%);
   --ill-line:color-mix(in oklab,var(--c-ink),transparent 55%);
   --ill-halo:color-mix(in oklab,var(--c-acc),transparent 82%);
-  --ill-shadow:color-mix(in oklab,var(--c-ink),transparent 88%);
 }
 
 /* [4] 基础 reset / 图标工具 ===== */
@@ -1040,9 +1023,8 @@ h1.a-title{font-family:var(--f-disp);font-weight:700;font-size:28px;line-height:
 .ctx .row .kbd-hint{margin-left:auto;font:500 10px/1 var(--f-mono);color:var(--faint);padding:2px 5px;border:1px solid var(--c-line);border-radius:var(--rd-ctl)}
 .ctx .row.danger:hover{background:var(--danger-soft);color:var(--c-danger)}
 .ctx .divider{height:1px;background:var(--c-line);margin:4px 6px}
-/* 空态（mascot + 标题 + 描述 + CTA） */
+/* 空态（标题 + 描述 + CTA） */
 .page-body .empty,.rpane .empty,.panel .empty{align-items:center;justify-content:center;text-align:center}
-.empty svg.mascot{width:150px;height:120px}
 .empty .e-title{font-size:14px;color:var(--c-ink);font-weight:500}
 .empty .e-desc{font-size:12.5px;color:var(--faint);max-width:36ch;line-height:1.6}
 .empty .e-action{margin-top:4px;font-size:11.5px;color:var(--c-acc);display:inline-flex;align-items:center;gap:5px;padding:5px 12px;border:1px solid var(--acc-line);border-radius:var(--rd-ctl);background:var(--c-panel)}

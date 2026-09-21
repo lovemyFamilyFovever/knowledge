@@ -1,7 +1,7 @@
 /* 知库 · Home 页面交互（T2 产出 · 只服务 home.html）
    依赖：T0 motion.js（window.Motion）+ vendor GSAP/ScrollTrigger。
    本页仅补两件 motion.js 不覆盖的事：
-   1) hero mascot 鼠标视差（spec §5.1：data-depth 分层，reduced-motion 关）
+   1) hero 星座图鼠标视差（spec §5.1：data-depth 分层，reduced-motion 关）
    2) Motion.refresh() 兜底（本页 DOM 全部服务端渲染，正常无需；防御性调用一次）
    其余动效全部声明式：data-reveal / data-counter / data-magnetic / data-line-mask。 */
 (function () {

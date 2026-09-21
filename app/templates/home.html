@@ -21,7 +21,7 @@
  <div class="home-inner">
   <div class="home-mark">知</div>
 
-  {# ========== hero：左巨型字 + 右 mascot（设计稿第 06 屏） ========== #}
+  {# ========== hero：左巨型字 + 右知识星座图（设计稿第 06 屏） ========== #}
   <section class="home-hero" data-parallax>
     <div class="home-hero-text">
       <div class="hero-eyebrow"><svg aria-hidden="true"><use href="#ill-compass-mini"/></svg>{{ date }} · {{ greet }}</div>
@@ -37,7 +37,7 @@
       </div>
     </div>
     <div class="home-hero-visual">
-      <svg class="mascot mascot-hero" viewBox="0 0 340 260" role="img" aria-label="知识节点连成的星座">
+      <svg class="hero-constellation" viewBox="0 0 340 260" role="img" aria-label="知识节点连成的星座">
         <title>知识星座：术语、文档与双链连成的网络</title>
         <circle cx="170" cy="128" r="84" fill="var(--ill-halo)" opacity=".45"/>
         <g stroke="var(--ill-line)" stroke-width="1.1" opacity=".55" fill="none" class="parallax-layer" data-depth="0.3">
@@ -101,16 +101,6 @@
   </div></div>
   {% else %}
   <div class="empty-state">
-    <svg class="mascot" viewBox="0 0 160 120" aria-hidden="true">
-      <ellipse class="halo" cx="80" cy="70" rx="70" ry="40"/><ellipse class="shadow" cx="80" cy="106" rx="42" ry="4"/>
-      <ellipse class="head" cx="80" cy="46" rx="20" ry="22"/>
-      <path class="hair" d="M60 40 Q62 22 80 22 Q98 22 100 40 Q96 32 80 32 Q64 32 60 40 Z"/>
-      <circle class="eye" cx="73" cy="46" r="1.6"/><circle class="eye" cx="87" cy="46" r="1.6"/>
-      <path class="mouth" d="M75 55 Q80 58 85 55"/>
-      <path class="body-line" d="M58 78 Q80 68 102 78 L98 102 H62 Z" style="fill:url(#uniformGrad);stroke:color-mix(in oklab, var(--c-ink), transparent 60%)"/>
-      <path class="bubble" d="M110 20 h34 a4 4 0 0 1 4 4 v14 a4 4 0 0 1-4 4 h-18 l-6 5 v-5 h-10 a4 4 0 0 1-4-4 V24 a4 4 0 0 1 4-4 Z"/>
-      <path class="bubble-txt" d="M118 30 l3 3 6-6"/>
-    </svg>
     <div class="e-title">还没有更新记录</div><div class="e-desc">新内容先落到 <code>_inbox/</code>，归档后这里会出现最近的文档。</div>
   </div>
   {% endif %}
@@ -133,14 +123,6 @@
   </div>
   {% else %}
   <div class="empty-state">
-    <svg class="mascot" viewBox="0 0 160 120" aria-hidden="true">
-      <ellipse class="halo" cx="80" cy="70" rx="70" ry="40"/><ellipse class="shadow" cx="80" cy="106" rx="42" ry="4"/>
-      <ellipse class="head" cx="80" cy="46" rx="20" ry="22"/>
-      <path class="hair" d="M60 40 Q62 22 80 22 Q98 22 100 40 Q96 32 80 32 Q64 32 60 40 Z"/>
-      <circle class="eye" cx="102" cy="60" r="1.8"/>
-      <path class="mouth" d="M74 58 Q80 55 86 58"/>
-      <path class="body-line" d="M58 78 Q80 68 102 78 L98 102 H62 Z" style="fill:url(#uniformGrad);stroke:color-mix(in oklab, var(--c-ink), transparent 60%)"/>
-    </svg>
     <div class="e-title">还没有任何域</div><div class="e-desc">编辑 <code>content/_meta/taxonomy.json</code> 定义域与子域后，这里会出现入口卡。</div>
   </div>
   {% endif %}

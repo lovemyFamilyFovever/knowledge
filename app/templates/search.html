@@ -42,19 +42,6 @@
 
       {% if semantic and rag_error %}
       <div class="empty srch-empty">
-        <svg class="mascot" viewBox="0 0 240 170" aria-hidden="true">
-          <ellipse cx="120" cy="120" rx="100" ry="56" fill="color-mix(in oklab, var(--info), transparent 88%)"/>
-          <path d="M78 96 Q120 78 162 96 L158 140 H82 Z" fill="url(#uniformGrad)" stroke="var(--ill-line)" stroke-width="1.5"/>
-          <rect x="110" y="74" width="20" height="14" rx="5" fill="var(--ill-skin-shadow)"/>
-          <ellipse cx="120" cy="52" rx="24" ry="26" fill="var(--ill-skin)"/>
-          <path d="M96 48 Q98 26 120 26 Q142 26 144 48 Q140 36 120 36 Q100 36 96 48 Z" fill="var(--ill-hair)"/>
-          <path d="M110 48 Q114 46 118 49 M124 49 Q128 46 132 48" stroke="var(--ill-hair)" stroke-width="1.6" fill="none" stroke-linecap="round"/>
-          <circle cx="112" cy="54" r="1.8" fill="var(--ill-hair)"/><circle cx="128" cy="54" r="1.8" fill="var(--ill-hair)"/>
-          <path d="M114 64 Q120 62 126 64" stroke="var(--ill-line)" stroke-width="1.6" fill="none" stroke-linecap="round"/>
-          <circle cx="162" cy="78" r="18" stroke="var(--info)" stroke-width="1.8" fill="color-mix(in oklab, var(--info), transparent 90%)"/>
-          <path d="M175 92 L190 107" stroke="var(--info)" stroke-width="2.4" stroke-linecap="round"/>
-          <use href="#ill-bubble-question" x="36" y="22" width="30" height="30" color="var(--info)"/>
-        </svg>
         <div class="e-title">语义检索组件未就绪</div>
         <div class="e-desc">{{ rag_error }}<br>依赖安装：<span class="mono">.python\python.exe -m pip install numpy onnxruntime sqlite-vec</span></div>
         <a class="e-action" href="/search?q={{ q|urlencode }}"><svg class="i" aria-hidden="true"><use href="#i-search-magnifier"/></svg>先用全文检索</a>
@@ -96,19 +83,6 @@
 
       {% else %}
       <div class="empty srch-empty">
-        <svg class="mascot" viewBox="0 0 240 170" aria-hidden="true">
-          <ellipse cx="120" cy="120" rx="100" ry="56" fill="color-mix(in oklab, var(--info), transparent 88%)"/>
-          <path d="M78 96 Q120 78 162 96 L158 140 H82 Z" fill="url(#uniformGrad)" stroke="var(--ill-line)" stroke-width="1.5"/>
-          <rect x="110" y="74" width="20" height="14" rx="5" fill="var(--ill-skin-shadow)"/>
-          <ellipse cx="120" cy="52" rx="24" ry="26" fill="var(--ill-skin)"/>
-          <path d="M96 48 Q98 26 120 26 Q142 26 144 48 Q140 36 120 36 Q100 36 96 48 Z" fill="var(--ill-hair)"/>
-          <path d="M110 48 Q114 46 118 49 M124 49 Q128 46 132 48" stroke="var(--ill-hair)" stroke-width="1.6" fill="none" stroke-linecap="round"/>
-          <circle cx="112" cy="54" r="1.8" fill="var(--ill-hair)"/><circle cx="128" cy="54" r="1.8" fill="var(--ill-hair)"/>
-          <path d="M114 64 Q120 62 126 64" stroke="var(--ill-line)" stroke-width="1.6" fill="none" stroke-linecap="round"/>
-          <circle cx="162" cy="78" r="18" stroke="var(--c-acc)" stroke-width="1.8" fill="color-mix(in oklab, var(--c-acc), transparent 90%)"/>
-          <path d="M175 92 L190 107" stroke="var(--c-acc)" stroke-width="2.4" stroke-linecap="round"/>
-          <use href="#ill-bubble-question" x="36" y="22" width="30" height="30" color="var(--info)"/>
-        </svg>
         {% if q %}
         <div class="e-title">没有匹配“{{ q }}”的文档</div>
         <div class="e-desc">{% if not semantic %}换更短的关键词，或试试语义模式 —— 它按意思相近找段落，不要求逐字命中。{% else %}语义模式也没有找到相近的段落，换个说法再试一次。{% endif %}</div>
