@@ -32,7 +32,7 @@
 :root{
   /* -- 基准皮肤「玄青」Light（2026-09-20 视觉 overhaul：弃青瓷绿，普鲁士蓝主色 × 朱砂次色；
        纸感暖底 + 黑系文字，muted/faint 派生比例同步收紧） -- */
-  --hex-bg:#ffffff; --hex-panel:#fffefb; --hex-sunk:#f4f3f0;
+  --hex-bg:#ffffff; --hex-panel:#ffffff; --hex-sunk:#f5f5f3;
   --hex-ink:#17181a; --hex-line:#e5e3dc; --hex-line2:#c9c6bc;
   --hex-primary:#1f4e8c; --hex-info:#0e7c86; --hex-warn:#8a5a00;
   --hex-danger:#b3261e; --hex-ok:#12864b; --hex-mark:#ffd973;
@@ -45,15 +45,15 @@
      风格皮肤六套：celadon=玄青基准(本区上方 --hex-*，无档案) / zhimo=纸墨(编辑部衬线) /
      midnight=午夜蓝(瑞士蓝印) / shoujuan=手卷(东方纸墨) / dieyin=叠印(Riso双色) /
      graphite=石墨(工业极简)。--sk-<name>-<role> 明态；--sk-<name>-<role>-d 暗态。 */
-  --sk-zhimo-bg:#ffffff; --sk-zhimo-panel:#fbf7f0; --sk-zhimo-sunk:#f5efe4; --sk-zhimo-ink:#14161a; --sk-zhimo-line:#d9d4cb; --sk-zhimo-line2:#a8a297; --sk-zhimo-primary:#c8331f; --sk-zhimo-info:#2f4d6e; --sk-zhimo-warn:#b8860b; --sk-zhimo-danger:#a8321f; --sk-zhimo-ok:#1a7f4e; --sk-zhimo-mark:#ffe1cc;
+  --sk-zhimo-bg:#ffffff; --sk-zhimo-panel:#ffffff; --sk-zhimo-sunk:#f7f6f3; --sk-zhimo-ink:#14161a; --sk-zhimo-line:#d9d4cb; --sk-zhimo-line2:#a8a297; --sk-zhimo-primary:#c8331f; --sk-zhimo-info:#2f4d6e; --sk-zhimo-warn:#b8860b; --sk-zhimo-danger:#a8321f; --sk-zhimo-ok:#1a7f4e; --sk-zhimo-mark:#ffe1cc;
   --sk-zhimo-bg-d:#0e1116; --sk-zhimo-panel-d:#161d28; --sk-zhimo-sunk-d:#0a0d12; --sk-zhimo-ink-d:#e9edf3; --sk-zhimo-line-d:#2b3747; --sk-zhimo-line2-d:#46586e; --sk-zhimo-primary-d:#ff6b52; --sk-zhimo-info-d:#7fa8c9; --sk-zhimo-warn-d:#f5c343; --sk-zhimo-danger-d:#ff6f61; --sk-zhimo-ok-d:#5ce0a0; --sk-zhimo-mark-d:#6b5a2a;
-  --sk-midnight-bg:#ffffff; --sk-midnight-panel:#f7faff; --sk-midnight-sunk:#eef3f9; --sk-midnight-ink:#1c2733; --sk-midnight-line:#d3dce6; --sk-midnight-line2:#a8b8c8; --sk-midnight-primary:#2563eb; --sk-midnight-info:#0891b2; --sk-midnight-warn:#9a6700; --sk-midnight-danger:#b3261e; --sk-midnight-ok:#12864b; --sk-midnight-mark:#ffd973;
+  --sk-midnight-bg:#ffffff; --sk-midnight-panel:#ffffff; --sk-midnight-sunk:#f4f7fb; --sk-midnight-ink:#1c2733; --sk-midnight-line:#d3dce6; --sk-midnight-line2:#a8b8c8; --sk-midnight-primary:#2563eb; --sk-midnight-info:#0891b2; --sk-midnight-warn:#9a6700; --sk-midnight-danger:#b3261e; --sk-midnight-ok:#12864b; --sk-midnight-mark:#ffd973;
   --sk-midnight-bg-d:#0b1220; --sk-midnight-panel-d:#111a2e; --sk-midnight-sunk-d:#070d18; --sk-midnight-ink-d:#dbe6f4; --sk-midnight-line-d:#1d2a40; --sk-midnight-line2-d:#3a5068; --sk-midnight-primary-d:#60a5fa; --sk-midnight-info-d:#22d3ee; --sk-midnight-warn-d:#f0b438; --sk-midnight-danger-d:#ff6b6b; --sk-midnight-ok-d:#4ade80; --sk-midnight-mark-d:#6b5a22;
-  --sk-shoujuan-bg:#ffffff; --sk-shoujuan-panel:#f9f5ea; --sk-shoujuan-sunk:#f4eedd; --sk-shoujuan-ink:#1c1a14; --sk-shoujuan-line:#e5dcc8; --sk-shoujuan-line2:#b9ab8e; --sk-shoujuan-primary:#2f4d6e; --sk-shoujuan-info:#2f4d6e; --sk-shoujuan-warn:#b4552d; --sk-shoujuan-danger:#bf2b1e; --sk-shoujuan-ok:#4a6b3a; --sk-shoujuan-mark:#f3d9a8;
+  --sk-shoujuan-bg:#ffffff; --sk-shoujuan-panel:#ffffff; --sk-shoujuan-sunk:#f8f5ec; --sk-shoujuan-ink:#1c1a14; --sk-shoujuan-line:#e5dcc8; --sk-shoujuan-line2:#b9ab8e; --sk-shoujuan-primary:#2f4d6e; --sk-shoujuan-info:#2f4d6e; --sk-shoujuan-warn:#b4552d; --sk-shoujuan-danger:#bf2b1e; --sk-shoujuan-ok:#4a6b3a; --sk-shoujuan-mark:#f3d9a8;
   --sk-shoujuan-bg-d:#171409; --sk-shoujuan-panel-d:#201c10; --sk-shoujuan-sunk-d:#100d06; --sk-shoujuan-ink-d:#ece4d2; --sk-shoujuan-line-d:#36311f; --sk-shoujuan-line2-d:#5c543a; --sk-shoujuan-primary-d:#8fb3d9; --sk-shoujuan-info-d:#8fb3d9; --sk-shoujuan-warn-d:#d98d5f; --sk-shoujuan-danger-d:#e06b52; --sk-shoujuan-ok-d:#9ab87f; --sk-shoujuan-mark-d:#6b5a2a;
-  --sk-dieyin-bg:#ffffff; --sk-dieyin-panel:#fffdf7; --sk-dieyin-sunk:#f8f3e7; --sk-dieyin-ink:#1f3a8a; --sk-dieyin-line:#d8d2c2; --sk-dieyin-line2:#a8b0c8; --sk-dieyin-primary:#ff4d8a; --sk-dieyin-info:#1f3a8a; --sk-dieyin-warn:#b8860b; --sk-dieyin-danger:#d4333f; --sk-dieyin-ok:#1a7f4e; --sk-dieyin-mark:#ffd6e4;
+  --sk-dieyin-bg:#ffffff; --sk-dieyin-panel:#ffffff; --sk-dieyin-sunk:#f8f6ef; --sk-dieyin-ink:#1f3a8a; --sk-dieyin-line:#d8d2c2; --sk-dieyin-line2:#a8b0c8; --sk-dieyin-primary:#ff4d8a; --sk-dieyin-info:#1f3a8a; --sk-dieyin-warn:#b8860b; --sk-dieyin-danger:#d4333f; --sk-dieyin-ok:#1a7f4e; --sk-dieyin-mark:#ffd6e4;
   --sk-dieyin-bg-d:#10131f; --sk-dieyin-panel-d:#1a1f33; --sk-dieyin-sunk-d:#0a0d16; --sk-dieyin-ink-d:#e8ecf8; --sk-dieyin-line-d:#2a3352; --sk-dieyin-line2-d:#4a5580; --sk-dieyin-primary-d:#ff70a6; --sk-dieyin-info-d:#7fa8ff; --sk-dieyin-warn-d:#f5c343; --sk-dieyin-danger-d:#ff6b6b; --sk-dieyin-ok-d:#5ce0a0; --sk-dieyin-mark-d:#5c2f45;
-  --sk-graphite-bg:#ffffff; --sk-graphite-panel:#fafaf9; --sk-graphite-sunk:#f2f2f0; --sk-graphite-ink:#1c1c1a; --sk-graphite-line:#ddddd9; --sk-graphite-line2:#b0b0aa; --sk-graphite-primary:#1c1c1a; --sk-graphite-info:#4a4a48; --sk-graphite-warn:#c2410c; --sk-graphite-danger:#a03028; --sk-graphite-ok:#1c7a4c; --sk-graphite-mark:#ffd973;
+  --sk-graphite-bg:#ffffff; --sk-graphite-panel:#ffffff; --sk-graphite-sunk:#f4f4f2; --sk-graphite-ink:#1c1c1a; --sk-graphite-line:#ddddd9; --sk-graphite-line2:#b0b0aa; --sk-graphite-primary:#1c1c1a; --sk-graphite-info:#4a4a48; --sk-graphite-warn:#c2410c; --sk-graphite-danger:#a03028; --sk-graphite-ok:#1c7a4c; --sk-graphite-mark:#ffd973;
   --sk-graphite-bg-d:#0f0f0e; --sk-graphite-panel-d:#1b1b19; --sk-graphite-sunk-d:#080807; --sk-graphite-ink-d:#e8e8e5; --sk-graphite-line-d:#262624; --sk-graphite-line2-d:#4a4a46; --sk-graphite-primary-d:#f5f5f4; --sk-graphite-info-d:#b0b0ac; --sk-graphite-warn-d:#e0a63a; --sk-graphite-danger-d:#ff6f66; --sk-graphite-ok-d:#45d0a4; --sk-graphite-mark-d:#6b5a2a;
   /* 旧 6 皮肤(hex 种子)——保留原始值供 skins.css 演化映射与回退 */
   --hex-plate-light-a:#122028; --hex-plate-light-b:#0c151d;
