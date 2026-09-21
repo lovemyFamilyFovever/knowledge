@@ -7,10 +7,10 @@
 .kb-sdrop-h{font:600 11.5px/1 var(--f-mono);letter-spacing:.1em;text-transform:uppercase;color:var(--faint);margin:12px 0 8px}
 .kb-sdrop-h:first-child{margin-top:0}
 .kb-sdrop-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px}
-/* 快速前往条目：琥珀框区分元素类型（2026-09-21 纯白版配色） */
+/* 快速前往条目：无框（2026-09-21 用户要求），hover 浅蓝底提示可点 */
 .kb-sdrop-item{display:flex;align-items:center;gap:9px;padding:10px 12px;border-radius:var(--rd-ctl);
-  font-size:13.5px;color:var(--c-ink);text-decoration:none;border:1px solid color-mix(in oklab,var(--c-warn),transparent 60%)}
-.kb-sdrop-item svg{color:var(--c-warn);flex:none}
-.kb-sdrop-item:hover{background:var(--warn-soft);border-color:var(--c-warn)}
+  font-size:13.5px;color:var(--c-ink);text-decoration:none;border:1px solid transparent}
+.kb-sdrop-item svg{color:var(--c-acc);flex:none}
+.kb-sdrop-item:hover{background:var(--acc-soft);border-color:transparent}
 .kb-sdrop-tip{font-size:12.5px;color:var(--muted);line-height:1.7}
 .kb-sdrop-tip .mono{font-family:var(--f-mono);color:var(--muted)}
