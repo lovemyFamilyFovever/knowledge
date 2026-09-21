@@ -237,6 +237,83 @@ def api_mkdir():
     return jsonify({"ok": True, "created": rel_created})
 
 
+def _free_md(target: Path) -> Path:
+    """导入同名避让：不覆盖已有文档，依次试 ~2 / ~3（与回收站同一策略）。"""
+    if not target.exists():
+        return target
+    i = 2
+    while True:
+        cand = target.with_name(f"{target.stem}~{i}{target.suffix}")
+        if not cand.exists():
+            return cand
+        i += 1
+
+
+@edit_bp.post("/api/import")
+def api_import():
+    """右键「导入文档」：把本地 .md 批量落到指定域 / 子目录。
+
+    三条约束沿用仓库既有契约：① 目录校验与 /api/mkdir 同语义（`_` 前缀与 SKIP_DIRS
+    一律拒绝，落点必须在 content/ 内）；② 同名不覆盖，加 ~N 避让——导入是用户主动动作，
+    静默覆盖语料不可接受；③ 无 frontmatter 的文件补身世（source 取 taxonomy 既有词表的
+    `desktop`=本地导入，不发明新值），已有的原样落盘，绝不改写。
+    索引逐个 upsert，避免全量重建的等待。
+    """
+    content = _content()
+    indexes = _indexes()
+    from app.store import SKIP_DIRS
+    domain = (request.form.get("domain") or "").strip().strip("/")
+    sub = (request.form.get("sub") or "").strip().strip("/")
+    if not domain or "/" in domain or domain.startswith("_") or domain in SKIP_DIRS:
+        return jsonify({"ok": False, "error": "invalid domain"}), 400
+    if sub and any((not seg) or seg.startswith("_") or seg in SKIP_DIRS
+                   for seg in sub.split("/")):
+        return jsonify({"ok": False, "error": "invalid sub（仅允许普通目录路径）"}), 400
+    base = (content / domain / sub) if sub else (content / domain)
+    try:
+        base.resolve().relative_to(content.resolve())
+    except ValueError:
+        return jsonify({"ok": False, "error": "路径越界"}), 400
+    files = request.files.getlist("files")
+    if not files:
+        return jsonify({"ok": False, "error": "未收到文件"}), 400
+
+    imported: list[str] = []
+    skipped: list[str] = []
+    for fs in files:
+        # 浏览器可能带相对路径（webkitdirectory），只取最后一段做文件名
+        raw = Path((fs.filename or "").replace("\\", "/")).name
+        stem = Path(raw).stem.strip()
+        if not stem or Path(raw).suffix.lower() not in WRITABLE_EXTS:
+            skipped.append(raw or "(未命名)")
+            continue
+        body = fs.read().decode("utf-8", errors="replace").lstrip("\ufeff")
+        target = _free_md(base / f"{stem}.md")
+        fm, _ = parse_frontmatter(body)
+        if not fm:
+            body = store.dump_frontmatter(
+                {"title": stem, "tags": [], "source": "desktop",
+                 "collected": time.strftime("%Y-%m-%d"), "status": "imported"}, body)
+        if not body.endswith("\n"):
+            body += "\n"
+        try:
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_text(body, encoding="utf-8")
+        except OSError as e:
+            skipped.append(f"{raw}（{e.strerror or e}）")
+            continue
+        rel = target.relative_to(content.resolve()).as_posix()
+        upsert_doc_in_index(indexes, rel, target, body)
+        imported.append(rel)
+
+    if not imported:
+        return jsonify({"ok": False, "error": "没有可导入的 .md 文件",
+                        "skipped": skipped}), 400
+    store._TAX_CACHE.clear()
+    return jsonify({"ok": True, "imported": imported, "skipped": skipped,
+                    "dir": f"{domain}/{sub}" if sub else domain})
+
+
 @edit_bp.get("/api/links")
 def api_links():
     """双链查询：正向(它引用谁，含未解析)与反向(谁引用它)。"""

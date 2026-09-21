@@ -249,42 +249,55 @@ def api_move():
 
 @files_bp.post("/api/rmdir")
 def api_rmdir():
-    """第三轮 #8：删除目录（仅限空目录）。目录里还有任何文件 → 400 提示先清空；
-    成功后清理 taxonomy.json 中该目录的 scoped 显示名键，并清 _TAX_CACHE。"""
+    """删除目录：整棵子树软删除进 content/_trash/<时间戳>/，保持相对结构。
+
+    原实现只允许删空目录且是硬删除，与 AGENTS.md 不变量 4「删除必须走软删除」不一致，
+    也让「删掉一个有内容的目录」在 UI 上无路可走。现改为：非空也删，但一律进回收站，
+    可随时手动恢复；git 历史是第二重保险。`sub` 传空表示删整个域目录（域级右键菜单）。
+    """
+    import shutil
+
     content = _content()
     data = request.get_json(force=True)
     dom = str(data.get("domain") or "").strip().strip("/")
     sub = str(data.get("sub") or "").strip().strip("/")
     if not dom or "/" in dom or dom.startswith("_") or dom in SKIP_DIRS:
         return jsonify({"ok": False, "error": "invalid domain"}), 400
-    # sub 允许嵌套（与 /api/mkdir 的 parent 对称）：每段不得下划线开头、不得 SKIP_DIRS
-    if not sub or any((not seg) or seg.startswith("_") or seg in SKIP_DIRS
-                      for seg in sub.split("/")):
+    # sub 允许嵌套（与 /api/mkdir 的 parent 对称）：每段不得下划线开头、不得 SKIP_DIRS；
+    # 空 sub = 域根本身，仅当该域下没有别的域级保护时才允许（域目录就是 content/<dom>）
+    if sub and any((not seg) or seg.startswith("_") or seg in SKIP_DIRS
+                   for seg in sub.split("/")):
         return jsonify({"ok": False, "error": "invalid sub（仅允许普通目录路径）"}), 400
-    target = content / dom / sub
+    target = content / dom / sub if sub else content / dom
     try:
         target.resolve().relative_to(content.resolve())
     except ValueError:
         return jsonify({"ok": False, "error": "路径越界"}), 400
     if not target.is_dir():
         return jsonify({"ok": False, "error": "not found: 目录不存在（可能已被删除）"}), 404
-    leftovers = [p.name for p in target.iterdir()]
-    if leftovers:
-        return jsonify({"ok": False,
-                        "error": f"目录非空（{len(leftovers)} 项），请先删除或移走其中文件"}), 400
+
+    rel_dir = target.relative_to(content.resolve())
+    docs = [p.relative_to(content.resolve()).as_posix()
+            for p in target.rglob("*.md") if not p.name.endswith(".notes.md")]
+    trash = content / "_trash" / time.strftime("%Y%m%d-%H%M%S")
+    dest = _free_path(trash / rel_dir)
+    dest.parent.mkdir(parents=True, exist_ok=True)
     try:
-        target.rmdir()
+        shutil.move(str(target), str(dest))
     except OSError as e:
-        return jsonify({"ok": False, "error": f"删除失败：{e}"}), 500
-    # taxonomy.json：清掉 域/子域 scoped 显示名键（无键则静默跳过）
+        return jsonify({"ok": False, "error": f"删除失败：{e.strerror or e}"}), 500
+
+    # taxonomy.json：清掉该目录及其子路径的 scoped 显示名键（无键则静默跳过）
     tax_path = content / "_meta" / "taxonomy.json"
     try:
         if tax_path.is_file():
             tax = json.loads(tax_path.read_text(encoding="utf-8"))
             subs = tax.get("subs", {})
-            scoped = f"{dom}/{sub}"
-            if scoped in subs:
-                subs.pop(scoped)
+            prefix = rel_dir.as_posix()
+            doomed = [k for k in subs if k == prefix or k.startswith(f"{prefix}/")]
+            for k in doomed:
+                subs.pop(k, None)
+            if doomed:
                 tax["subs"] = subs
                 tax_path.write_text(json.dumps(tax, ensure_ascii=False, indent=2) + "\n",
                                     encoding="utf-8")
@@ -292,7 +305,12 @@ def api_rmdir():
         pass  # taxonomy 写失败不回滚磁盘删除：目录已消失，显示名键残留无害
     from app.store import _TAX_CACHE
     _TAX_CACHE.clear()
-    return jsonify({"ok": True, "removed": f"{dom}/{sub}"})
+    # 派生索引可整体重建（不变量 3）：目录删除是低频动作，全量重建 <1s，
+    # 比逐文件外科删除更稳——不会与 fts.md_files 的收录口径产生偏差。
+    build_index(content, _indexes())
+    return jsonify({"ok": True, "removed": rel_dir.as_posix(),
+                    "to_trash": dest.relative_to(content).as_posix(),
+                    "docs": len(docs)})
 
 
 def _drop_sub_alias(content, dom: str, sub: str):

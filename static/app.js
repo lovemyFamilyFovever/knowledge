@@ -681,6 +681,20 @@ function buildToc() {
     KBNOVEL.paintPaneToc(pane);
     return;
   }
+  /* 右栏「目录」空状态：线稿插画 + 结论 + 说明，复用 .kb-empty 组件（三件缺一不可）。
+     两处调用点（Shadow DOM 与 Markdown 正文）共用本函数，避免样式与文案再次漂移。 */
+  function tocEmptyHTML() {
+    return `<div class="kb-empty toc-empty">
+      <div class="art"><svg viewBox="0 0 64 64" aria-hidden="true">
+        <rect x="13" y="8" width="38" height="48" rx="4"/>
+        <path d="M21 19h12"/>
+        <path d="M26 28h17"/><path d="M26 36h17"/>
+        <path d="M21 45h10"/>
+      </svg></div>
+      <div class="e-title">本文没有小节标题</div>
+      <div class="e-desc">正文里未出现二级 / 三级标题，所以没有大纲可列；带标题的文档会自动出现在这里。</div>
+    </div>`;
+  }
   function tocOn(a) { $$("#pane-toc a").forEach(x => x.classList.remove("on")); if (a) a.classList.add("on"); }
 
   // 内联 HTML 片段走 Shadow DOM：标题在 shadowRoot 内，普通 querySelectorAll 够不到
@@ -689,7 +703,7 @@ function buildToc() {
 
   if (sroot) {
     const heads = [...sroot.querySelectorAll("h2.iv-h2, h3.iv-q-title")];
-    if (!heads.length) { pane.innerHTML = `<div style="font-size:12.5px;color:var(--faint);padding:6px 2px">本文无小节标题。</div>`; renderTocSpark(); return; }
+    if (!heads.length) { pane.innerHTML = tocEmptyHTML(); renderTocSpark(); return; }
     pane.innerHTML = "";
     const pairs = [];
     heads.forEach(h => {
@@ -716,7 +730,7 @@ function buildToc() {
   }
 
   const heads = $$("#article .a-body h1, #article .a-body h2, #article .a-body h3");
-  if (!heads.length) { pane.innerHTML = `<div style="font-size:12.5px;color:var(--faint);padding:6px 2px">本文无小节标题。</div>`; return; }
+  if (!heads.length) { pane.innerHTML = tocEmptyHTML(); return; }
   pane.innerHTML = "";
   const used = new Set([...$("#article").querySelectorAll("[id]")].map(x => x.id));
   const pairs = [];
@@ -2718,7 +2732,8 @@ async function ctxDiscardDoc(rel, title, deletedJustNow) {
   await afterMutation();
 }
 /* 新建子目录（需求 #4）：域下二级目录，或子域下嵌套目录。
-   写 taxonomy.json 显示名（可留空走目录 id），空目录暂不入树，建完引导去新建文档。 */
+   一个名字搞定：目录名即文件夹名、也即左侧树的显示名（store.sub_label 无别名时回退 id）。
+   空目录也会入树（n=0），建完引导去新建文档 / 导入本地文件。 */
 async function promptNewSubdir(baseDomain, parentSub) {
   const parent = parentSub ? `${baseDomain}/${parentSub}` : "";
   const res = await kbModal({
@@ -2726,19 +2741,16 @@ async function promptNewSubdir(baseDomain, parentSub) {
     body: parent
       ? `将在 <span class='mono'>${esc(parent)}/</span> 下新建子目录。`
       : `将在 <span class='mono'>${esc(baseDomain)}/</span> 下新建二级目录（左侧分类树的一级条目）。`,
-    inputs: [
-      { key: "nm", label: "目录名（英文 id，如 rag-notes）", placeholder: "my-subdir" },
-      { key: "lb", label: "显示名（可留空，默认同目录名）", placeholder: "我的笔记" },
-    ],
+    inputs: [{ key: "nm", label: "目录名（即文件夹名与左侧显示名）", placeholder: "示例：RAG 笔记 或 rag-notes" }],
     confirmText: "创建",
   });
   if (!res || !res.nm) return;
   const r = await fetch("/api/mkdir", { method: "POST", headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ domain: baseDomain, parent, name: res.nm.trim(), label: (res.lb || "").trim() }) });
+    body: JSON.stringify({ domain: baseDomain, parent, name: res.nm.trim() }) });
   const d = await r.json().catch(() => ({}));
   if (!r.ok || !d.ok) { toast("创建失败：" + (d.error || r.status)); return; }
   await afterMutation();
-  toast(`已创建 <span class='mono'>${esc(d.created)}</span> · 左侧树已同步，右键它可新建文档`);
+  toast(`已创建 <span class='mono'>${esc(d.created)}</span> · 右键它可新建文档或导入本地 .md`);
 }
 function ctxSubItems(subA) {
   const dom = subA.dataset.dom, sub = subA.dataset.sub;
@@ -2764,6 +2776,7 @@ function ctxSubItems(subA) {
         else toast("创建失败：" + r.status);
       } },
     { icon: icon("plus-circle"), label: "新建子目录…", fn: () => promptNewSubdir(dom, sub === "_root" ? "" : sub) },
+    { icon: icon("download"), label: "导入文档…", fn: () => importDocsPrompt(dom, sub === "_root" ? "" : sub) },
   ];
   if (sub !== "_root") {
     items.push(
@@ -2772,10 +2785,9 @@ function ctxSubItems(subA) {
       { icon: icon("trash"), label: "删除目录…", danger: true, fn: () => rmdirPrompt(dom, sub) }
     );
   }
-  items.push("-", { icon: icon("copy-path"), label: "复制路径", fn: () => copyText(base, "已复制路径") });
   return items;
 }
-/* 域级右键（第三轮 #7 契约）：新增二级目录 + 复制域名；
+/* 域级右键（第三轮 #7 契约）：新增二级目录 + 导入 + 复制域名 + 删除域；
    #3：data-dom 挂在 .dom 父元素上，domA（.dom-head）需 closest 向上取。 */
 function ctxDomItems(domA) {
   const host = domA.closest(".dom") || domA;
@@ -2783,29 +2795,65 @@ function ctxDomItems(domA) {
   return [
     { icon: icon("new-file"), label: "在此新建文档…", fn: () => promptNewDocInDir(dom, "") },
     { icon: icon("plus-circle"), label: "新增二级目录…", fn: () => promptNewSubdir(dom, "") },
+    { icon: icon("download"), label: "导入文档…", fn: () => importDocsPrompt(dom, "") },
     { icon: icon("swap"), label: "重命名域…", fn: () => renameDomainPrompt(dom) },
     "-",
     { icon: icon("copy"), label: "复制域名", fn: () => copyText(dom, "已复制域名") },
+    { icon: icon("trash"), label: "删除域…", danger: true, fn: () => rmdirPrompt(dom, "") },
   ];
 }
-/* 第三轮 #8：删除目录（仅限空目录）。先确认；非空由后端 400 提示先清空。 */
+/* 删除目录 / 域：后端整棵子树软删除进 content/_trash/<时间戳>/，非空也可删。
+   sub 传空 = 删整个域目录。git 历史是第二重保险。 */
 async function rmdirPrompt(dom, sub) {
+  const path = sub ? `${dom}/${sub}/` : `${dom}/`;
   const c = await kbModal({
-    title: icon("trash", 16) + " 删除目录？",
-    body: `将删除 <span class='mono'>${esc(dom)}/${esc(sub)}/</span>。仅限<b>空目录</b>：若里面还有文档，请先删除或移走，否则会被拒绝。`,
-    danger: true, confirmText: "删除目录", cancelText: "取消",
+    title: icon("trash", 16) + (sub ? " 删除目录？" : " 删除域？"),
+    body: `将把 <span class='mono'>${esc(path)}</span> 整棵子树移入 <b>回收站</b> <span class='mono'>content/_trash/</span>。`
+        + `<br><br>目录里的<b>所有文档会一并移走</b>；此操作可从回收站手动恢复，git 历史亦可找回。`,
+    danger: true, confirmText: sub ? "删除目录" : "删除域", cancelText: "取消",
   });
   if (!c) return;
   const r = await fetch("/api/rmdir", { method: "POST", headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ domain: dom, sub }) });
+    body: JSON.stringify({ domain: dom, sub: sub || "" }) });
   const d = await r.json().catch(() => ({}));
-  if (!r.ok || !d.ok) { toast("删除目录失败：" + (d.error || r.status)); return; }
-  toast(`已删除目录 <span class='mono'>${esc(dom)}/${esc(sub)}</span>`);
-  // 删除的若正是当前浏览的目录 → 回首页，避免右侧残留（第三轮 #9 同源问题）
-  if (CUR && CUR.domain === dom && (CUR.sub === sub || `${CUR.domain}/${CUR.sub}` === `${dom}/${sub}`)) {
+  if (!r.ok || !d.ok) { toast("删除失败：" + (d.error || r.status)); return; }
+  toast(`已删除 <span class='mono'>${esc(d.removed)}/</span> · ${d.docs} 篇文档移入 <span class='mono'>${esc(d.to_trash)}</span>`);
+  // 删除的若正是当前浏览的目录（或其上级域）→ 回首页，避免右侧残留（第三轮 #9 同源问题）
+  if (CUR && (CUR.domain === dom || (sub && `${CUR.domain}/${CUR.sub}` === `${dom}/${sub}`)
+              || (sub && CUR.domain === dom && String(CUR.sub || "").startsWith(sub)))) {
     invalidate("all"); location.href = "/"; return;
   }
   await afterMutation();
+}
+/* 右键「导入文档」：选本地 .md 批量落到该目录（域根或某个子目录）。
+   走 /api/import（multipart）：同名不覆盖（后端 ~2 避让）、无 frontmatter 的补身世
+   （source=desktop，取 taxonomy 既有词表，不发明新值），逐个 upsert 进 FTS 索引。 */
+function importDocsPrompt(dom, sub) {
+  const inp = document.createElement("input");
+  inp.type = "file"; inp.accept = ".md,text/markdown"; inp.multiple = true;
+  inp.style.display = "none";
+  inp.onchange = async () => {
+    const files = [...(inp.files || [])];
+    inp.remove();
+    if (!files.length) return;
+    const fd = new FormData();
+    fd.append("domain", dom);
+    fd.append("sub", sub || "");
+    files.forEach(f => fd.append("files", f, f.name));
+    toast(`正在导入 ${files.length} 个文件…`);
+    let d = {};
+    try {
+      const r = await fetch("/api/import", { method: "POST", body: fd });
+      d = await r.json().catch(() => ({}));
+      if (!r.ok || !d.ok) { toast("导入失败：" + (d.error || r.status)); return; }
+    } catch (e) { toast("导入失败：" + e); return; }
+    await afterMutation();
+    const sk = (d.skipped && d.skipped.length) ? ` · 跳过 ${d.skipped.length} 个非 .md` : "";
+    toast(`已导入 <b>${d.imported.length}</b> 篇到 <span class='mono'>${esc(d.dir)}/</span>${sk}`);
+    if (CUR && CUR.domain === dom) location.href = sub ? `/browse/${encodeURIComponent(dom)}/${encodeURIComponent(sub)}` : `/browse/${encodeURIComponent(dom)}`;
+  };
+  document.body.appendChild(inp);
+  inp.click();
 }
 /* 第三轮 #1 目录重命名：/api/rename-sub（store.rename_sub 修复后经 Web 暴露）。 */
 async function renameSubPrompt(dom, sub) {
