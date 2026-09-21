@@ -32,6 +32,7 @@
       <p class="hero-sub">Markdown 是唯一事实源，索引只是派生缓存。当前已归档 <strong>{{ pct }}%</strong>（{{ n_md }} 篇正文 / {{ inbox_n }} 篇待归档）。</p>
       <div class="hero-cta">
         <a class="iconbtn primary" href="/inbox" data-cursor-label="进入"><svg><use href="#i-inbox-tray"/></svg>去收件箱 · {{ inbox_n }}</a>
+        <a class="iconbtn" id="btn-continue" hidden href="/" data-cursor-label="续读"><svg><use href="#i-history-clock"/></svg>继续阅读</a>
         <a class="iconbtn" href="/search?q=%3F" data-magnetic="0.2"><svg><use href="#i-search-semantic"/></svg>语义检索</a>
         <a class="iconbtn" href="/favorites" data-magnetic="0.2"><svg><use href="#i-star-outline"/></svg>收藏 · {{ stats.n_fav }}</a>
       </div>

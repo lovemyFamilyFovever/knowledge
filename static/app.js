@@ -221,125 +221,57 @@ async function promptNewDocInDir(dom, sub) {
 }
 window.promptNewDocInDir = promptNewDocInDir;
 
-/* ---------- 需求 #12：书库格式分流渲染 ----------
-   .txt  → fetch 原文 + <pre> 分页阅读（大文件截断展示头部 + 下载入口）
-   .pdf  → 浏览器原生 PDF 查看器（iframe 直通 /raw/）
-   .xlsx → SheetJS 渲染工作表前 200 行
-   .epub → 暂不支持在线渲染，给下载与打开方式 */
-/* ---------- 书库文档顶栏 chrome 同步（用户要求） ----------
-   格式/体积信息在底部状态栏（updateStatusBarPath），下载按钮在 crumb 按钮组最右。 */
+/* ---------- 需求 #12：书库格式分流渲染（小说引擎见 kb-novel.js） ----------
+   .txt  → KBNOVEL.renderTxt：编码嗅探 + 章节引擎 + 懒渲染 + 搜索/朗读/续读
+   .epub → KBNOVEL.renderEpub：epub.js + 小说排版偏好 + CFI 续读 + spine 搜索
+   .pdf  → 浏览器原生 PDF 查看器（iframe 直通 /raw/）+ lib-bar 下载
+   .xlsx → SheetJS 渲染工作表前 200 行 + lib-bar 下载
+   .mobi → 不提供在线渲染（私有格式），给下载与「转 epub」提示 */
+/* 书库文档顶栏 chrome 同步：格式/体积信息在底部状态栏（updateStatusBarPath）。 */
 function syncLibraryChrome(ext, sizeMiB) {
-  /* 2026-09-20 头部瘦身：书库格式/体积信息随元信息进底部状态栏，crumb 左端不再放 chips。 */
   updateStatusBarPath();
 }
-
 /* 切换到非书库文档时清掉上一个文档挂上的 chrome（防串场） */
 function clearLibraryChrome() {
   const fmt = document.getElementById("kb-lib-fmt");
   if (fmt && fmt.parentNode) fmt.parentNode.removeChild(fmt);
 }
-
+function libBar(rawHref, name) {
+  return `<div class="lib-bar"><span class="hint">${esc(name)}</span><span class="spacer"></span>
+    <a class="iconbtn" href="${rawHref}" download="${esc(name)}">${icon("download", 13)} 下载</a>
+    <a class="iconbtn" href="${rawHref}" target="_blank" rel="noopener">${icon("external-link", 13)} 新标签页</a></div>`;
+}
 function renderLibraryDoc(el, ext) {
   el.classList.remove("pretty-mode");
   const rawHref = rawUrl(DOC.rel);
   const sizeMiB = (parseFloat(DOC.size) / 1024).toFixed(1); // DOC.size 是 KB 字符串
-  /* 用户要求：顶部 crumb 已显示完整标题 → 正文不再重复标题；
-     格式/体积/下载统一并入「顶栏 crumb 按钮组」与「readhead 状态栏」，不再单独起行。
-     syncLibraryChrome() 负责把这套 chrome 挂到正确位置（幂等）。 */
   syncLibraryChrome(ext, sizeMiB);
   if (ext === "pdf") {
-    el.innerHTML = `<div class="a-body"><div class="lib-frame-wrap"><iframe class="lib-frame" src="${rawHref}" title="${esc(DOC.title)}"></iframe></div></div>`;
+    el.innerHTML = `<div class="a-body">${libBar(rawHref, DOC.name || "file.pdf")}<div class="lib-frame-wrap"><iframe class="lib-frame" src="${rawHref}" title="${esc(DOC.title)}"></iframe></div></div>`;
     buildToc(); // 清空残留目录
     return;
   }
+  if (ext === "mobi") {
+    el.innerHTML = `<div class="a-body"><div class="lib-mobi-card"><b>MOBI 暂不支持在线阅读</b>（Palm 私有格式）。<br>
+      推荐用 Calibre 或在线工具转成 EPUB 后放回书库，即可获得目录/护眼主题/朗读等完整阅读体验。
+      <p style="margin-top:12px"><a class="chip chip-btn" href="${rawHref}" download="${esc(DOC.name || "book.mobi")}">${icon("download", 11)} 下载原文件</a></p></div></div>`;
+    buildToc();
+    return;
+  }
   if (ext === "epub") {
-    el.innerHTML = `<div class="a-body" id="lib-epub"><div class="kb-skeleton" aria-busy="true"><i style="width:65%"></i><i style="width:88%"></i><i style="width:76%"></i></div><p style="color:var(--faint);font-size:12.5px">EPUB 解析中…</p></div>`;
-    renderEpub(rawHref);
+    el.innerHTML = `<div class="a-body" id="lib-epub"></div>`;
+    KBNOVEL.renderEpub($("#lib-epub"), rawHref, DOC.rel);
     return;
   }
   if (ext === "xlsx") {
-    el.innerHTML = `<div class="a-body" id="lib-xlsx"><div class="kb-skeleton" aria-busy="true"><i style="width:60%"></i><i style="width:90%"></i></div></div>`;
+    el.innerHTML = `<div class="a-body">${libBar(rawHref, DOC.name || "sheet.xlsx")}<div id="lib-xlsx"><div class="kb-skeleton" aria-busy="true"><i style="width:60%"></i><i style="width:90%"></i></div></div></div>`;
     renderXlsx(rawHref);
     buildToc();
     return;
   }
-  // txt：>2MB 只展示前 512KB 预览，完整阅读走下载
-  el.innerHTML = `<div class="a-body lib-txt" id="lib-txt"><div class="kb-skeleton" aria-busy="true"><i style="width:70%"></i><i style="width:92%"></i><i style="width:84%"></i></div></div>`;
-  /* 编码修复（2026-09-18）：本地书库 txt 大量是 GBK/GB18030，浏览器 fetch 默认按
-     UTF-8 解码会整页菱形问号。策略：BOM 判定 → UTF-8 严格解码（fatal:true）→
-     失败回退 GB18030（GBK 超集，兼容 Big5 常用字不足时再退 Big5）。 */
-  fetch(rawHref).then(r => {
-    if (!r.ok) throw new Error("HTTP " + r.status);
-    return r.arrayBuffer();
-  }).then(buf => {
-    const bytes = new Uint8Array(buf);
-    let t;
-    if (bytes[0] === 0xEF && bytes[1] === 0xBB && bytes[2] === 0xBF) {
-      t = new TextDecoder("utf-8").decode(bytes.slice(3));
-    } else {
-      try { t = new TextDecoder("utf-8", { fatal: true }).decode(bytes); }
-      catch (e) {
-        try { t = new TextDecoder("gb18030").decode(bytes); }
-        catch (e2) { t = new TextDecoder("big5").decode(bytes); }
-      }
-    }
-    return t;
-  }).then(t => {
-    const LIMIT = 512 * 1024;
-    const truncated = t.length > LIMIT;
-    const body = truncated ? t.slice(0, LIMIT) : t;
-    /* 章节识别：按行扫描常见章节标题（第X章/Chapter N/序章/番外等），
-       命中 ≥2 个则渲染为带锚点标题的可导航文本，右栏目录随之生成 */
-    const lines = body.split(/\r?\n/);
-    const chapRe = /^\s*(第[0-9零一二三四五六七八九十百千两]+[章回卷节部集]|Chapter\s+\d+|CHAPTER\s+\d+|序[章言]?|楔子|引子|番外[篇·]?\S*|尾声|终章|后记)\s*[^\n]{0,40}$/;
-    const segs = [];
-    let cur = null;
-    lines.forEach(ln => {
-      if (chapRe.test(ln) && ln.trim().length <= 42) {
-        if (cur) segs.push(cur);
-        cur = { title: ln.trim(), lines: [] };
-      } else if (cur) cur.lines.push(ln);
-      else { if (!cur) cur = { title: "", lines: [] }; cur.lines.push(ln); }
-    });
-    if (cur) segs.push(cur);
-    const hasChapters = segs.filter(s => s.title).length >= 2;
-    const wrap = $("#lib-txt");
-    if (!wrap) return;
-    wrap.innerHTML = "";
-    if (hasChapters) {
-      const used = new Set();
-      segs.forEach(s => {
-        if (s.title) {
-          const h = document.createElement("h2");
-          h.className = "lib-txt-chap";
-          h.textContent = s.title;
-          h.id = slugifyHeading(s.title, used);
-          wrap.appendChild(h);
-        }
-        const pre = document.createElement("pre");
-        pre.className = "lib-txt-pre";
-        pre.textContent = s.lines.join("\n").replace(/^\n+/, "");
-        wrap.appendChild(pre);
-      });
-    } else {
-      const pre = document.createElement("pre");
-      pre.className = "lib-txt-pre";
-      pre.textContent = body;
-      wrap.appendChild(pre);
-    }
-    if (truncated) {
-      const note = document.createElement("div");
-      note.className = "hint";
-      note.style.marginTop = "10px";
-      note.textContent = `文件较大（${sizeMiB} MB），仅预览前 512KB —— 下载后阅读全文。`;
-      wrap.appendChild(note);
-    }
-    buildToc(); // 章节标题已就位，重建右栏目录（含空态提示）
-  }).catch(e => {
-    const wrap = $("#lib-txt");
-    if (wrap) wrap.innerHTML = `<p>读取失败：${esc(String(e.message || e))}</p>`;
-    buildToc();
-  });
+  // txt：全本阅读引擎（编码嗅探/章节/搜索/朗读均在 kb-novel.js）
+  el.innerHTML = `<div class="a-body" id="lib-txt"></div>`;
+  KBNOVEL.renderTxt($("#lib-txt"), rawHref, DOC.rel, sizeMiB);
 }
 
 let _sheetjsLoading = null;
@@ -371,107 +303,7 @@ async function renderXlsx(url) {
   }
 }
 
-/* ---------- EPUB 在线阅读（epub.js + jszip，vendor 离线） ---------- */
-let _epubLibLoading = null;
-function ensureEpubLib() {
-  if (window.ePub) return Promise.resolve();
-  if (!_epubLibLoading) {
-    _epubLibLoading = loadScript("/static/vendor/jszip.min.js")
-      .then(() => loadScript("/static/vendor/epub.min.js"));
-  }
-  return _epubLibLoading;
-}
-
-let _epubBook = null, _epubRendition = null;
-async function renderEpub(url) {
-  const wrap = $("#lib-epub");
-  if (!wrap) return;
-  try {
-    await ensureEpubLib();
-    // 销毁上一本（切换文档时防泄漏）
-    if (_epubRendition) { try { _epubRendition.destroy(); } catch (e) {} _epubRendition = null; }
-    if (_epubBook) { try { _epubBook.destroy(); } catch (e) {} _epubBook = null; }
-
-    wrap.innerHTML = `
-      <div class="epub-reader">
-        <div class="epub-toolbar">
-          <button class="iconbtn epub-prev" title="上一页">${icon("chev-left", 13)} 上一页</button>
-          <span class="epub-loc" id="epub-loc">—</span>
-          <button class="iconbtn epub-next" title="下一页">下一页 ${icon("chev-right", 13)}</button>
-          <span class="spacer" style="flex:1"></span>
-          <button class="iconbtn epub-font-dec" title="缩小字号">A-</button>
-          <button class="iconbtn epub-font-inc" title="放大字号">A+</button>
-        </div>
-        <div class="epub-body-row">
-          <nav class="epub-toc" id="epub-toc" aria-label="书籍目录"></nav>
-          <div class="epub-view" id="epub-view"></div>
-        </div>
-      </div>`;
-
-    const book = window.ePub(url);
-    _epubBook = book;
-    const rendition = book.renderTo("epub-view", {
-      width: "100%", height: "100%", spread: "none", flow: "scrolled-doc"
-    });
-    _epubRendition = rendition;
-    // 主题适配：注入浅色阅读样式到 epub iframe
-    rendition.themes.default({
-      body: { color: "#131c23", background: "#ffffff", "font-size": "16px", "line-height": "1.85", padding: "8px 4px" },
-      p: { "margin": "0.6em 0" }
-    });
-
-    let fontSize = 100;
-    const applyFont = () => rendition.themes.fontSize(fontSize + "%");
-
-    await rendition.display();
-
-    // 目录
-    const nav = await book.loaded.navigation;
-    const tocEl = $("#epub-toc");
-    if (nav && nav.toc && nav.toc.length) {
-      tocEl.innerHTML = nav.toc.map(item =>
-        `<a class="epub-toc-item" href="#" data-href="${esc(item.href)}" title="${esc(item.label)}">${esc(item.label.trim() || "（无标题）")}</a>`
-      ).join("");
-      tocEl.addEventListener("click", e => {
-        const a = e.target.closest(".epub-toc-item");
-        if (!a) return;
-        e.preventDefault();
-        rendition.display(a.dataset.href);
-        tocEl.querySelectorAll(".epub-toc-item").forEach(x => x.classList.toggle("on", x === a));
-      });
-    } else {
-      tocEl.innerHTML = `<div class="epub-toc-empty">本书无目录</div>`;
-    }
-
-    // 翻页与位置
-    const locEl = $("#epub-loc");
-    rendition.on("relocated", loc => {
-      const pct = book.locations && book.locations.length() ? "" : "";
-      locEl.textContent = (loc && loc.start && loc.start.cfi) ? "·" : "—";
-      // 高亮当前章
-      const href = loc && loc.start && loc.start.href;
-      if (href) tocEl.querySelectorAll(".epub-toc-item").forEach(x =>
-        x.classList.toggle("on", x.dataset.href === href || href.startsWith(x.dataset.href)));
-    });
-    const prev = () => rendition.prev();
-    const next = () => rendition.next();
-    wrap.querySelector(".epub-prev").onclick = prev;
-    wrap.querySelector(".epub-next").onclick = next;
-    wrap.querySelector(".epub-font-dec").onclick = () => { fontSize = Math.max(70, fontSize - 10); applyFont(); };
-    wrap.querySelector(".epub-font-inc").onclick = () => { fontSize = Math.min(180, fontSize + 10); applyFont(); };
-    // 键盘 ←→ 翻页（焦点在阅读器时）
-    wrap.tabIndex = 0;
-    wrap.addEventListener("keydown", e => {
-      if (e.key === "ArrowLeft") { e.preventDefault(); prev(); }
-      else if (e.key === "ArrowRight") { e.preventDefault(); next(); }
-    });
-    buildToc(); // epub 自带目录在工具栏左侧，右栏 rail 显示空态
-  } catch (e) {
-    wrap.innerHTML = `<div class="a-body"><p>EPUB 解析失败：${esc(String(e && e.message || e))}</p>
-      <p><a class="chip chip-btn" href="${url}" download="${esc(DOC.name || "book.epub")}">${icon("download", 11)} 下载后用阅读器打开</a></p></div>`;
-    buildToc();
-  }
-}
+/* EPUB 在线阅读引擎已迁至 kb-novel.js（KBNOVEL.renderEpub，接小说排版偏好） */
 window.renderArticle = renderArticle;
 
 /* 美化版 HTML 挂载：作用域片段 → 正文直接内联渲染（非 iframe）；
@@ -515,7 +347,7 @@ function renderArticle(forceMd) {
   refreshDocMark(); // 已读/已掌握按钮状态（异步，不阻塞渲染）
   /* 需求 #12：书库格式分流渲染 —— .txt 直接读文本、.pdf 原生 iframe、
      .xlsx 用 SheetJS 渲染前 N 行、.epub 给下载/打开方式；不进 markdown 管线 */
-  const libExt = (DOC.name || "").match(/\.(txt|pdf|xlsx|epub)$/i);
+  const libExt = (DOC.name || "").match(/\.(txt|pdf|xlsx|epub|mobi)$/i);
   if (libExt && !forceMd) { renderLibraryDoc(el, libExt[1].toLowerCase()); return; }
   clearLibraryChrome(); // 非书库文档：清掉上一个书库文档挂的下载钮/格式 chip
   /* 空目录占位（新建目录未放文档时不再 404，正文区给引导） */
@@ -1288,23 +1120,21 @@ function renderCrumb() {
      统一分流后：所有「有美化版」的 .md 文档都显示「Markdown 源」切换按钮
      （原先只对 interview 域显示）；服务端渲染保持同一套结构。 */
   const canSwitchToMd = DOC.has_html && !DOC.is_html;
-  /* 书库格式（txt/pdf/xlsx/epub）：下载按钮统一并入本行最右（用户要求） */
-  const libExt = (DOC.name || "").match(/\.(txt|pdf|xlsx|epub)$/i);
-  /* 用户要求（2026-09-20 头部瘦身）：crumb 左端分类徽章/状态/收录/体积 chips 全部撤下——
-     分类路径与元信息统一并入底部状态栏（updateStatusBarPath），标签 chips 并入本行右端按钮组前。
-     方案 B（用户拍板）：次级动作（Markdown 源/新标签页/编辑/删除/标签/下载）合并进一个
-     白底分段药丸组，收藏作为唯一实心主按钮独立在外。 */
+  /* 书库格式（txt/pdf/xlsx/epub/mobi）：编辑/删除/标签/收藏与小说阅读无关，
+     全部撤下；下载按钮移入阅读器工具栏（kb-novel.js / libBar）。 */
+  const isLib = /\.(txt|pdf|xlsx|epub|mobi)$/i.test(DOC.name || "");
   const segs = [];
   if (canSwitchToMd) segs.push(`<button class="seg-btn" id="kb-md-src-btn" onclick="toggleMdSource()" title="在美化版 / Markdown 源之间切换">${MD_SRC_ON ? icon("preview-eye", 13) + " 美化版" : icon("file-md", 13) + " Markdown 源"}</button>`);
   if (DOC.has_html) segs.push(`<a class="seg-btn" href="${rawUrl(DOC.is_html ? DOC.rel : DOC.html_rel)}" target="_blank" title="新标签页打开美化版">${icon("external-link", 13)} 新标签页</a>`);
-  if (!DOC.is_html) segs.push(
+  if (!DOC.is_html && !isLib) segs.push(
     `<button class="seg-btn" onclick="openEditor()">${icon("edit",13)} 编辑</button>`,
     `<button class="seg-btn danger" onclick="deleteDoc()" title="移入 content/_trash/">${icon("trash",13)} 删除</button>`,
     `<button class="seg-btn" onclick="jumpToTagEdit()" title="编辑本篇标签（右栏信息·标签页）">${icon("tag-outline",13)} 标签</button>`);
-  if (libExt) segs.push(`<a class="seg-btn" id="kb-lib-dl" href="${rawUrl(DOC.rel)}" download="${esc(DOC.name || "文件")}" title="下载原文件">${icon("download", 13)} 下载</a>`);
+  if (/\.md$/i.test(DOC.name || "")) segs.push(
+    `<button class="seg-btn" onclick="copyDocSource()" title="复制本篇 Markdown 原文到剪贴板">${icon("copy",13)} 复制原文</button>`);
   crumb.innerHTML = `<span class="crumb-tags" id="crumb-tags"></span><span class="spacer"></span>
     ${segs.length ? `<span class="seg-group">${segs.join("")}</span>` : ""}
-    <button class="iconbtn primary ${DOC.favorite ? "faved" : ""}" id="fav-btn" onclick="toggleFav()">${icon("star",13)} ${DOC.favorite ? "已收藏" : "收藏"}</button>`;
+    ${isLib ? "" : `<button class="iconbtn primary ${DOC.favorite ? "faved" : ""}" id="fav-btn" onclick="toggleFav()">${icon("star",13)} ${DOC.favorite ? "已收藏" : "收藏"}</button>`}`;
   renderHeadChips();
 }
 
@@ -1312,7 +1142,7 @@ function renderCrumb() {
    状态/收录/体积进底部状态栏，分类徽章删除（底部本就有路径）。书库格式无标签编辑。 */
 function renderHeadChips() {
   const box = $("#crumb-tags"); if (!box || !DOC) return;
-  if (/\.(txt|pdf|xlsx|epub)$/i.test(DOC.name || "")) { box.innerHTML = ""; return; }
+  if (/\.(txt|pdf|xlsx|epub|mobi)$/i.test(DOC.name || "")) { box.innerHTML = ""; return; }
   box.innerHTML = buildChipsRow();
 }
 
@@ -1545,6 +1375,7 @@ async function openDoc(domain, sub, name) {
   }
   const data = await r.json();
   DOC = data.doc;
+  try { localStorage.setItem("kb-last-doc", ED_LAST_HREF || location.pathname + location.search); } catch (e) {}
   MD_SRC_ON = false;   // 换文档重置视图偏好（避免上一篇的 Markdown 源状态带过来）
   updateStatusBarPath();
   // 编辑态残留防护：openDoc 必须从干净阅读态开始（删除文档后再开新文档时，
@@ -1735,7 +1566,7 @@ function fmSerialize(fm) {
 async function openEditor() {
   if (!DOC || DOC.is_html) return;
   // 需求 #12：书库格式（txt/pdf/xlsx/epub）不进 Markdown 编辑器
-  if (/\.(txt|pdf|xlsx|epub)$/i.test(DOC.name || "")) { toast("书库文件不支持在线编辑，请下载后用本地应用处理"); return; }
+  if (/\.(txt|pdf|xlsx|epub|mobi)$/i.test(DOC.name || "")) { toast("书库文件不支持在线编辑，请下载后用本地应用处理"); return; }
   $("#article").style.display = "none";
   $("#editor").classList.add("show");
   const hint = $("#ed-hint");
@@ -2207,12 +2038,26 @@ async function copyText(t, okMsg) {
     ta.select(); document.execCommand("copy"); ta.remove(); toast(okMsg);
   }
 }
+window.copyText = copyText;
+
+/* 复制原文：拉 /raw 直服的源文件全文进剪贴板（md 事实源，复制即可粘贴走用） */
+async function copyDocSource() {
+  if (!DOC) return;
+  try {
+    const r = await fetch(rawUrl(DOC.rel));
+    if (!r.ok) throw new Error("HTTP " + r.status);
+    copyText(await r.text(), "原文已复制到剪贴板");
+  } catch (e) { toast("复制失败：" + (e.message || e)); }
+}
+window.copyDocSource = copyDocSource;
 
 function showStats(rel) {
   fetch("/api/stats?path=" + encodeURIComponent(rel))
     .then(r => { if (!r.ok) throw new Error(r.status); return r.json(); })
     .then(s => {
       const kb = (s.size / 1024).toFixed(1);
+      const ROW_IC = { "标题": "file-md", "路径": "folder", "字数": "edit-pencil", "结构": "toc-list",
+        "双链": "backlink-graph", "标签": "tag-outline", "来源": "source", "收录": "calendar-day", "文件": "file" };
       const rows = [
         ["标题", s.title], ["路径", s.path],
         ["字数", `${s.chars} 字符（中文 ${s.cjk} · 英数词 ${s.words}）`],
@@ -2224,8 +2069,8 @@ function showStats(rel) {
       ];
       const ov = KB.overlay.open({
         className: "pretty-ov",
-        html: `<div class="pretty-box stats-box"><div class="pretty-bar"><span class="pt">统计信息</span><button class="iconbtn gs-close">${icon("cancel-x", 12)} 关闭</button></div>
-      <div class="stats-body">${rows.map(([k, v]) => `<div class="meta-row"><span class="k">${esc(k)}</span><span class="v">${esc(v)}</span></div>`).join("")}</div></div>`,
+        html: `<div class="pretty-box stats-box"><div class="pretty-bar"><span class="pt">${icon("stats-chart", 14)} 统计信息</span><button class="iconbtn gs-close">${icon("cancel-x", 12)} 关闭</button></div>
+      <div class="stats-body">${rows.map(([k, v]) => `<div class="meta-row"><span class="k">${icon(ROW_IC[k] || "info-circle", 12)}${esc(k)}</span><span class="v">${esc(v)}</span></div>`).join("")}</div></div>`,
       });
       ov.root.querySelector(".gs-close").onclick = () => ov.close("btn");
       
@@ -2246,8 +2091,10 @@ function kbModal(opt) {
       ${opt.body ? `<div class="kbm-body">${opt.body}</div>` : ""}
       ${opt.html ? `<div class="kbm-body">${opt.html}</div>` : ""}
       ${inputs.map(i => `<label class="kbm-label">${esc(i.label || "")}
-        <input class="kbm-input" data-k="${esc(i.key)}" value="${esc(i.value ?? "")}"
-          placeholder="${esc(i.placeholder || "")}" spellcheck="false"></label>`).join("")}
+        ${i.multiline
+          ? `<textarea class="kbm-input kbm-ta" data-k="${esc(i.key)}" rows="4" placeholder="${esc(i.placeholder || "")}" spellcheck="false"></textarea>`
+          : `<input class="kbm-input" data-k="${esc(i.key)}" value="${esc(i.value ?? "")}"
+          placeholder="${esc(i.placeholder || "")}" spellcheck="false">`}</label>`).join("")}
       <div class="kbm-btns">
         <button class="iconbtn kbm-cancel">${esc(opt.cancelText || "取消")}</button>
         <button class="iconbtn primary kbm-ok ${opt.danger ? "danger" : ""}">${esc(opt.confirmText || "确定")}</button>
@@ -3368,3 +3215,9 @@ if (WORKBENCH) wireDragMove();
 loadTree().then(() => {
   renderTree();
 });
+
+/* 首页「继续阅读」：接上最后打开的文档（滚动进度由 restoreReadPos 自动续） */
+if (!WORKBENCH) {
+  const cont = document.getElementById("btn-continue");
+  if (cont) { try { const l = localStorage.getItem("kb-last-doc"); if (l) { cont.href = l; cont.hidden = false; } } catch (e) {} }
+}
