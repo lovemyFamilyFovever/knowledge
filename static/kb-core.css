@@ -203,9 +203,19 @@ html [hidden]{display:none}
 .kb-set-b .kb-pref-head:first-child{position:static}
 .kb-pref-head{display:flex;align-items:center;gap:8px;font-family:var(--f-disp);font-size:14.5px;font-weight:600;padding:8px 0 12px}
 .kb-pref-head svg{color:var(--c-acc)}
-.kb-pref-row{display:grid;grid-template-columns:64px minmax(0,1fr) 56px;align-items:center;gap:12px;padding:7px 0}
+.kb-pref-row{display:grid;grid-template-columns:64px minmax(0,1fr) 62px;align-items:center;gap:12px;padding:7px 0}
 .kb-pref-row label{font-size:12.5px;color:var(--muted)}
-.kb-pref-row input[type=range]{width:100%;accent-color:var(--c-acc)}
+/* 滑杆瘦身（2026-09-20 用户嫌默认 accent 滑杆太粗大）：3px 细轨 + 12px 圆点 */
+.kb-pref-row input[type=range]{width:100%;height:16px;
+  -webkit-appearance:none;appearance:none;background:transparent;cursor:pointer}
+.kb-pref-row input[type=range]::-webkit-slider-runnable-track{height:3px;border-radius:2px;background:var(--c-line2)}
+.kb-pref-row input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:12px;height:12px;border-radius:50%;
+  background:var(--c-acc);border:none;margin-top:-4.5px;box-shadow:0 1px 3px color-mix(in oklab,var(--c-ink),transparent 65%)}
+.kb-pref-row input[type=range]::-moz-range-track{height:3px;border-radius:2px;background:var(--c-line2)}
+.kb-pref-row input[type=range]::-moz-range-thumb{width:12px;height:12px;border:none;border-radius:50%;background:var(--c-acc)}
+.kb-pref-mini{font:600 10.5px/1 var(--f-body);color:var(--c-acc);background:var(--acc-soft);
+  border:1px solid var(--acc-line);border-radius:var(--rd-ctl);padding:6px 6px;cursor:pointer;white-space:nowrap}
+.kb-pref-mini:disabled{opacity:.55;cursor:wait}
 .kb-pref-row select{
   width:100%;box-sizing:border-box;padding:5px 8px;border-radius:var(--rd-ctl);border:1px solid var(--c-line);
   background:var(--c-panel);color:var(--c-ink);font-family:var(--f-body);font-size:12.5px;

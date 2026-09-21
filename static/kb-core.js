@@ -254,6 +254,16 @@
     var r = NUM_RANGE[key];
     return (v == null || v === "" || isNaN(v)) ? PREF_DEF[key] : util.clamp(Number(v), r[0], r[1]);
   }
+  /* 自定义字体家族（2026-09-20 系统字体枚举）：font 允许存任意本机家族名。
+     家族名会被拼进 CSS 值，必须剥掉引号/分号/花括号等能改写声明的字符。 */
+  function safeFamily(v) {
+    if (typeof v !== "string") return "";
+    var s = v.replace(/["'\\;{}<>()&]/g, "").trim().slice(0, 80);
+    return s;
+  }
+  function normFont(v) {
+    return FONT_MAP[v] ? v : (safeFamily(v) || PREF_DEF.font);
+  }
 
   var prefs = (KB.prefs = {
     LS: LS_PREF,
@@ -265,7 +275,7 @@
          而 0.85 是 truthy，|| 永远不生效，会导致首次访问的用户拿到 0.85 倍字号 / 520px 行宽。 */
       var out = {};
       Object.keys(NUM_RANGE).forEach(function (k) { out[k] = prefNum(v[k], k); });
-      out.font = FONT_MAP[v.font] ? v.font : PREF_DEF.font;
+      out.font = normFont(v.font);
       out.halign = (v.halign === "left" || v.halign === "center") ? v.halign : PREF_DEF.halign;
       return out;
     },
@@ -273,7 +283,7 @@
       var cur = prefs.get();
       Object.keys(patch || {}).forEach(function (k) { cur[k] = patch[k]; });
       Object.keys(NUM_RANGE).forEach(function (k) { cur[k] = prefNum(cur[k], k); });
-      if (!FONT_MAP[cur.font]) cur.font = PREF_DEF.font;
+      cur.font = normFont(cur.font);
       if (cur.halign !== "left" && cur.halign !== "center") cur.halign = PREF_DEF.halign;
       util.setJSON(LS_PREF, cur);
       prefs.apply();
@@ -290,7 +300,7 @@
       var p = prefs.get(), s = document.documentElement.style;
       s.setProperty("--kb-fs-scale", String(p.scale));
       s.setProperty("--kb-measure", "none");
-      s.setProperty("--kb-font", FONT_MAP[p.font] || FONT_MAP.sans);
+      s.setProperty("--kb-font", FONT_MAP[p.font] || ('"' + p.font + '", var(--f-body)'));
       s.setProperty("--kb-line", String(p.line));
       s.setProperty("--kb-h1-size", p.h1s + "rem");
       s.setProperty("--kb-h2-size", p.h2s + "rem");
@@ -341,8 +351,10 @@
         "</div>" +
         '<div class="kb-pref-row">' +
         '  <label for="kb-pref-font">正文字体</label>' +
-        '  <select id="kb-pref-font">' + opt("sans", "无衬线（默认）") + opt("serif", "衬线 Georgia") + opt("mono", "等宽") + "</select>" +
-        '  <output aria-hidden="true"></output>' +
+        '  <select id="kb-pref-font">' +
+        (FONT_MAP[p.font] ? "" : '<option value="' + util.esc(p.font) + '" selected>' + util.esc(p.font) + "</option>") +
+        opt("sans", "无衬线（默认）") + opt("serif", "衬线 Georgia") + opt("mono", "等宽") + "</select>" +
+        '  <button type="button" class="kb-pref-mini" id="kb-pref-fontsys" title="读取本机安装的全部字体（Chrome/Edge，首次需授权）">系统字体</button>' +
         "</div>" +
         '<div class="kb-pref-head">' + util.icon("i-md-h1", 14) + "标题与代码</div>" +
         row("h1s", "一级标题", 1.2, 2.4, 0.05, p.h1s, f2) +
@@ -383,6 +395,33 @@
       slider("code", "code", function (v) { return v + "px"; });
       var font = root.querySelector("#kb-pref-font");
       if (font) font.addEventListener("change", function () { prefs.set({ font: font.value }); });
+      var sysBtn = root.querySelector("#kb-pref-fontsys");
+      if (sysBtn) sysBtn.addEventListener("click", function () {
+        if (!window.queryLocalFonts) { util.toast("当前浏览器不支持读取系统字体（需 Chrome / Edge）"); return; }
+        sysBtn.disabled = true;
+        window.queryLocalFonts().then(function (list) {
+          var seen = {}, names = [];
+          list.forEach(function (f) { if (f.family && !seen[f.family]) { seen[f.family] = 1; names.push(f.family); } });
+          names.sort(function (a, b) { return a.localeCompare(b, "zh-Hans-CN"); });
+          var sel = root.querySelector("#kb-pref-font");
+          if (!sel) return;
+          sel.querySelectorAll("optgroup").forEach(function (x) { x.remove(); });
+          var og = document.createElement("optgroup");
+          og.label = "系统字体 · " + names.length + " 个家族";
+          names.forEach(function (n) {
+            var o = document.createElement("option");
+            o.value = n; o.textContent = n;
+            og.appendChild(o);
+          });
+          sel.appendChild(og);
+          sel.value = prefs.get().font;
+          sysBtn.disabled = false;
+          sysBtn.textContent = "已加载";
+        }).catch(function (err) {
+          sysBtn.disabled = false;
+          util.toast("读取系统字体失败（可能被拒绝授权）：" + ((err && err.name) || err));
+        });
+      });
       var halign = root.querySelector("#kb-pref-halign");
       if (halign) halign.addEventListener("change", function () { prefs.set({ halign: halign.value }); });
       var skins = root.querySelector(".kb-pref-skins");
