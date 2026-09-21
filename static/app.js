@@ -1156,15 +1156,20 @@ function renderTree() {
   const nav = $("#tree"); if (!nav || !TREE) return;
   const open = treeOpenSet();                // 默认空集合 → 一级全部收起
   const dirCollapsed = subdirCollapsedSet(); // 三级手动收起集合
+  // 域图标 sprite 只有内置七域（base.html 固定符号）；重命名出的新域 id 回退通用 folder
+  const DOM_ICON_IDS = new Set(["baike", "articles", "interview", "projects", "handbook", "career", "ai-assets"]);
   nav.innerHTML = TREE.map(d => {
     const isOpen = open.has(d.id);
+    // 空域根（没有散文件的"总览"伪节点）不显示；域根一旦建了文档它会自动回来
+    const subs = d.subs.filter(s => !(s.id === "_root" && !s.n));
+    const headSub = ((subs[0] || d.subs[0] || {}).id) || "_root";
     return `
    <div class="dom ${isOpen ? "open" : ""}" style="--dh:${HUES[d.id] || 158}" data-dom="${esc(d.id)}">
-    <a class="dom-head ${CUR && CUR.domain === d.id ? "active" : ""}" href="/browse/${d.id}/${d.subs[0].id}" role="button" tabindex="0" aria-expanded="${isOpen ? "true" : "false"}" title="${esc(d.label)} · 点击展开/收起 · ←/→ 收起展开">
-     <span class="dom-glyph" style="--dh:${HUES[d.id] || 158}"><svg><use href="#i-${d.id}"/></svg></span>
+    <a class="dom-head ${CUR && CUR.domain === d.id ? "active" : ""}" href="/browse/${d.id}/${headSub}" role="button" tabindex="0" aria-expanded="${isOpen ? "true" : "false"}" title="${esc(d.label)} · 点击展开/收起 · ←/→ 收起展开">
+     <span class="dom-glyph" style="--dh:${HUES[d.id] || 158}"><svg><use href="#i-${DOM_ICON_IDS.has(d.id) ? d.id : "folder"}"/></svg></span>
      <span class="dom-name" title="${esc(d.label)}">${esc(d.label)}</span><span class="dom-n">${d.n}</span>
     </a>
-    <div class="subs">${d.subs.map(s => {
+    <div class="subs">${subs.map(s => {
       // 需求 #11：单列树 —— 文档内联在子域下（第二列列表列已移除）
       // 需求 #7：多层目录支持 —— name 含斜杠的深层文档按路径分组缩进
       const cur = CUR && CUR.domain === d.id && CUR.sub === s.id;
@@ -2899,7 +2904,9 @@ function ctxDomItems(domA) {
   const host = domA.closest(".dom") || domA;
   const dom = host.dataset.dom || domA.dataset.dom;
   return [
+    { icon: icon("new-file"), label: "在此新建文档…", fn: () => promptNewDocInDir(dom, "") },
     { icon: icon("plus-circle"), label: "新增二级目录…", fn: () => promptNewSubdir(dom, "") },
+    { icon: icon("swap"), label: "重命名域…", fn: () => renameDomainPrompt(dom) },
     "-",
     { icon: icon("copy"), label: "复制域名", fn: () => copyText(dom, "已复制域名") },
   ];
@@ -2944,6 +2951,36 @@ async function renameSubPrompt(dom, sub) {
   toast(`已重命名为 <span class='mono'>${esc(dom)}/${esc(nn)}</span> · 索引已级联更新`);
   if (CUR && CUR.domain === dom && CUR.sub === sub) {
     invalidate("all"); location.href = `/browse/${encodeURIComponent(dom)}/${encodeURIComponent(nn)}`; return;
+  }
+  await afterMutation();
+}
+/* 域重命名：/api/rename-domain 整目录搬移 + taxonomy 键迁移。
+   id 留空 = 只改显示名（alias_only 分支）；两者都空 = 取消。 */
+async function renameDomainPrompt(dom) {
+  const res = await kbModal({
+    title: "重命名域",
+    body: `重命名 <span class='mono'>${esc(dom)}/</span>：改目录 id 会整体搬移该域全部文档（含旁挂，索引自动级联）；id 留空则只改显示名。`,
+    inputs: [
+      { key: "nm", label: "新目录 id（英文，留空=不改 id）", placeholder: "new-domain-id" },
+      { key: "lb", label: "显示名（留空=保留当前）", value: (window.LABELS && window.LABELS[dom]) || "" },
+    ],
+    confirmText: "重命名",
+  });
+  if (!res) return;
+  const nn = (res.nm || "").trim();
+  const lb = (res.lb || "").trim();
+  if (!nn && !lb) { toast("id 与显示名都没填，已取消"); return; }
+  const r = await fetch("/api/rename-domain", { method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ domain: dom, new: nn, label: lb }) });
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok || !d.ok) { toast("重命名失败：" + (d.error || r.status)); return; }
+  if (d.alias_only) {
+    toast(lb ? `显示名已改为「${esc(lb)}」` : "显示别名已清除，回退目录本名");
+    await afterMutation(); return;
+  }
+  toast(`已重命名域 <span class='mono'>${esc(dom)} → ${esc(d.to)}</span> · ${d.n_docs} 篇文档级联完成`);
+  if (CUR && CUR.domain === dom) {
+    invalidate("all"); location.href = `/browse/${encodeURIComponent(d.to)}/${encodeURIComponent(CUR.sub || "")}`; return;
   }
   await afterMutation();
 }

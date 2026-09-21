@@ -12,7 +12,7 @@ from pathlib import Path
 from flask import Blueprint, current_app, jsonify, request
 
 from app.fts import build_index, remove_doc_from_index, upsert_doc_in_index
-from app.store import SKIP_DIRS, WRITABLE_EXTS, rename_sub
+from app.store import SKIP_DIRS, WRITABLE_EXTS, rename_domain, rename_sub
 
 logger = logging.getLogger("kb.reader")
 
@@ -363,6 +363,79 @@ def api_rename_sub():
     _TAX_CACHE.clear()
     return jsonify({"ok": True, "renamed": f"{dom}/{sub}", "to": f"{dom}/{new}",
                     "n_docs": plan.get("n_docs", 0)})
+
+
+@files_bp.post("/api/rename-domain")
+def api_rename_domain():
+    """域重命名：store.rename_domain 整目录搬移 + taxonomy 键迁移，本接口补
+    ① 目标冲突/非法名预检 ② FTS 全量重建 ③ taxonomy 缓存清理。
+    new==domain 时退化为「只改显示名」：label 非空写别名，空则删 JSON 条目回退缺省。"""
+    content = _content()
+    data = request.get_json(force=True)
+    dom = str(data.get("domain") or "").strip().strip("/")
+    new = str(data.get("new") or "").strip().strip("/")
+    label = str(data.get("label") or "").strip()
+    if not dom or "/" in dom or dom.startswith("_") or dom in SKIP_DIRS:
+        return jsonify({"ok": False, "error": "invalid domain"}), 400
+    if not new or new == dom:
+        return _set_domain_label(content, dom, label)
+    if "/" in new or new.startswith("_") or new in SKIP_DIRS:
+        return jsonify({"ok": False, "error": "域名不能含 /、不能以 _ 开头"}), 400
+    if not (content / dom).is_dir():
+        return jsonify({"ok": False, "error": "not found: 域目录不存在（可能已被重命名）"}), 404
+    if (content / new).exists():
+        return jsonify({"ok": False, "error": f"目标目录已存在：{new}"}), 400
+    try:
+        plan = rename_domain(content, dom, new, label=label, apply=True)
+    except ValueError as e:
+        return jsonify({"ok": False, "error": str(e)}), 400
+    except FileNotFoundError:
+        return jsonify({"ok": False, "error": "not found: 域目录不存在"}), 404
+    try:
+        build_index(content, _indexes())
+    except Exception:
+        logger.warning("rename-domain 后 FTS 重建失败（等 watcher 重试）", exc_info=True)
+    from app.store import _TAX_CACHE
+    _TAX_CACHE.clear()
+    return jsonify({"ok": True, "renamed": dom, "to": new,
+                    "n_docs": plan.get("n_docs", 0)})
+
+
+def _set_domain_label(content, dom: str, label: str):
+    """只改域显示名（不动目录）：taxonomy.json domains.<dom>.label 写入/清空。"""
+    from app.store import DOMAIN_LABELS, _TAX_CACHE
+    if not (content / dom).is_dir():
+        return jsonify({"ok": False, "error": "not found: 域目录不存在"}), 404
+    tax_path = content / "_meta" / "taxonomy.json"
+    try:
+        tax = json.loads(tax_path.read_text(encoding="utf-8")) if tax_path.is_file() else {}
+    except ValueError:
+        tax = {}
+    doms = tax.get("domains") or {}
+    entry = dict(doms.get(dom) or {})
+    cur = (tax.get("domains") or {}).get(dom)
+    cur_label = (str(cur.get("label")) if isinstance(cur, dict) else str(cur)) if cur \
+        else DOMAIN_LABELS.get(dom, dom)
+    if not label and cur_label == dom:
+        return jsonify({"ok": False, "error": "该域本来就没有显示别名"}), 400
+    if label:
+        entry["label"] = label
+    else:
+        entry.pop("label", None)
+    if entry:
+        doms[dom] = entry
+    else:
+        doms.pop(dom, None)
+    tax["domains"] = doms
+    try:
+        tax_path.parent.mkdir(parents=True, exist_ok=True)
+        tax_path.write_text(json.dumps(tax, ensure_ascii=False, indent=2) + "\n",
+                            encoding="utf-8")
+    except OSError as e:
+        return jsonify({"ok": False, "error": f"taxonomy 写入失败：{e}"}), 500
+    _TAX_CACHE.clear()
+    return jsonify({"ok": True, "renamed": dom, "to": dom, "alias_only": True,
+                    "label": label, "n_docs": 0})
 
 
 @files_bp.post("/api/move/batch")

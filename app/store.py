@@ -798,6 +798,57 @@ def rename_sub(content: Path, domain: str, old_sub: str, new_sub: str,
             "plan": [{"src": i["src"], "dst": i["dst"]} for i in plan]}
 
 
+def rename_domain(content: Path, old_dom: str, new_dom: str, label: str = "",
+                  apply: bool = False) -> dict:
+    """重命名整个域目录：一次目录级搬移（旁挂/书库/媒体随目录整体走，
+    无需逐文件循环），并迁移 taxonomy.json 的 domains 条目与 scoped subs 键。
+    目标目录已存在时拒绝（不做合并）。默认 dry-run。与 rename_sub 同款契约：
+    调用方负责随后 build_index 与 _TAX_CACHE.clear()。"""
+    if "/" in new_dom or new_dom.startswith("_") or new_dom in SKIP_DIRS:
+        raise ValueError(f"invalid new domain name: {new_dom}")
+    src_dir = content / old_dom
+    if not src_dir.is_dir():
+        raise FileNotFoundError(f"domain dir not found: {src_dir}")
+    dst_dir = content / new_dom
+    if dst_dir.exists():
+        raise ValueError(f"目标目录已存在：{new_dom}")
+    n_docs = sum(1 for p in src_dir.rglob("*")
+                 if p.is_file() and p.suffix in SERVABLE_EXTS)
+    if not apply:
+        return {"old_domain": old_dom, "new_domain": new_dom, "apply": False,
+                "n_docs": n_docs}
+    try:
+        src_dir.rename(dst_dir)
+    except OSError:
+        shutil.move(str(src_dir), str(dst_dir))  # 句柄占用/边界情形兜底
+    tax_path = content / "_meta" / "taxonomy.json"
+    if tax_path.is_file():
+        try:
+            tax = json.loads(tax_path.read_text(encoding="utf-8"))
+        except ValueError:
+            tax = {}
+        doms = tax.get("domains") or {}
+        entry = dict(doms.get(old_dom) or {})
+        if not entry and (old_dom in DOMAIN_LABELS or old_dom in GRAPH_HUES):
+            # 旧域走的是内置缺省：把缺省显式落到 JSON，新域才不丢显示名/色相
+            entry = {"label": DOMAIN_LABELS.get(old_dom, old_dom),
+                     "hue": GRAPH_HUES.get(old_dom, 158)}
+        if label:
+            entry["label"] = label
+        doms.pop(old_dom, None)
+        if entry:
+            doms[new_dom] = entry
+        tax["domains"] = doms
+        pre = f"{old_dom}/"
+        subs = tax.get("subs") or {}
+        tax["subs"] = {(new_dom + k[len(pre):] if k.startswith(pre) else k): v
+                       for k, v in subs.items()}
+        tax_path.write_text(json.dumps(tax, ensure_ascii=False, indent=2) + "\n",
+                            encoding="utf-8")
+    return {"old_domain": old_dom, "new_domain": new_dom, "apply": True,
+            "n_docs": n_docs}
+
+
 # ---------------- 文档字数缓存（派生，indexes/stats_cjk.json；纯新增工具函数） ----------------
 # 用途：统计类接口（app/routes_stats.py::_corpus_agg）不再需要每次全库逐篇
 # read_text + 数 CJK。按「rel 路径 + mtime_ns」做键——内容一变（写入/移动/编辑

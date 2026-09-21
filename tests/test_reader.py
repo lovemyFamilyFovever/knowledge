@@ -322,6 +322,25 @@ def main() -> int:
         r = c.get("/doc/ai/nope/nope")
         check("不存在的文档 404", r.status_code == 404)
 
+        # ── 域重命名 /api/rename-domain：整目录搬移 + taxonomy 键迁移 ──
+        r = c.post("/api/rename-domain", json={"domain": "cookbook", "new": "cookbook2"})
+        j = r.get_json() or {}
+        check("域重命名成功", r.status_code == 200 and j.get("ok") is True, str(j))
+        check("域重命名整目录搬移", (root / "content/cookbook2/fragment/newfile.md").is_file()
+              and not (root / "content/cookbook").exists())
+        check("新路径文档可访问", c.get("/doc/cookbook2/fragment/newfile").status_code == 200)
+        check("旧路径文档 404", c.get("/doc/cookbook/fragment/newfile").status_code == 404)
+        check("域重命名拒绝撞已有目录",
+              c.post("/api/rename-domain", json={"domain": "cookbook2", "new": "career"}).status_code == 400)
+        check("域重命名拒绝 _ 前缀新名",
+              c.post("/api/rename-domain", json={"domain": "cookbook2", "new": "_x"}).status_code == 400)
+        r = c.post("/api/rename-domain", json={"domain": "cookbook2", "new": "", "label": "测试域"})
+        j = r.get_json() or {}
+        check("id 留空+label = 只改显示名", j.get("ok") and j.get("alias_only"), str(j))
+        tree = c.get("/api/tree").get_json()
+        check("改显示名后树 label 生效",
+              any(d["id"] == "cookbook2" and d["label"] == "测试域" for d in tree["domains"]))
+
         # ── C4 回归：treesig 失效判据（B11）+ 路径式双链即时解析（B12）──
         from app.fts import build_index, index_is_stale
         content_dir = root / "content"
