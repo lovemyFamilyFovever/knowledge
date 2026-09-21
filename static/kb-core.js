@@ -324,7 +324,10 @@
       };
       var f2 = function (v) { return Number(v).toFixed(2); };
       var px = function (v) { return v + "px"; };
-      return skinSec +
+      /* 2026-09-20：抽屉顶部改 tab 切换（用户要求，参考 draw.io 属性面板页签）——
+         look=界面风格，type=阅读排版+标题与代码；快捷键页签由 settings.open 追加。 */
+      return '<section class="kb-set-sec" data-sec="look">' + skinSec + "</section>" +
+        '<section class="kb-set-sec" data-sec="type" hidden>' +
         '<div class="kb-pref-head">' + util.icon("i-toc-list", 14) + "阅读排版</div>" +
         '<div class="kb-pref-row">' +
         '  <label for="kb-pref-scale">正文字号</label>' +
@@ -356,7 +359,7 @@
         '<div class="kb-pref-foot">' +
         '  <button type="button" class="mbtn ghost" id="kb-pref-reset">恢复默认</button>' +
         '  <span class="kb-pref-note">偏好存 localStorage，不写语料文件</span>' +
-        "</div>";
+        "</div></section>";
     },
     /** 绑定面板内控件（每次显示面板时调用一次，幂等） */
     bindPanel: function (root) {
@@ -700,6 +703,7 @@
       ov.innerHTML = '<aside class="kb-set-drawer" role="dialog" aria-modal="true" aria-label="设置">' +
         '<div class="kb-set-h">' + util.icon("i-palette", 15) + "<b>设置</b>" +
         '<button type="button" class="kb-set-x" aria-label="关闭设置">' + util.icon("i-cancel-x", 13) + "</button></div>" +
+        '<div class="kb-set-tabs" id="kb-set-tabs" role="tablist" aria-label="设置分区"></div>' +
         '<div class="kb-set-b" id="kb-set-body"></div></aside>';
       document.body.appendChild(ov);
       ov.addEventListener("click", function (e) {
@@ -712,13 +716,38 @@
     open: function () {
       var ov = settings.el();
       var body = ov.querySelector("#kb-set-body");
-      body.innerHTML = prefs.panelHTML()
-        + '<div class="kb-pref-head">' + util.icon("i-kbd-cmd", 14) + '快捷键<span class="kb-pref-kbd-hint">随时按 ? 唤出完整帮助</span></div>'
-        + '<div class="kb-keys-list">' + HELP_HTML.map(function (r) {
+      /* 顶部页签（2026-09-20 用户要求 tab 化）：外观 / 排版 / 快捷键，
+         各 section 由 data-sec 关联，切换只动 hidden，不重建 DOM（滑杆绑定不丢）。 */
+      body.innerHTML =
+        prefs.panelHTML() +
+        '<section class="kb-set-sec" data-sec="keys" hidden>' +
+        '<div class="kb-pref-head">' + util.icon("i-kbd-cmd", 14) + '快捷键<span class="kb-pref-kbd-hint">随时按 ? 唤出完整帮助</span></div>' +
+        '<div class="kb-keys-list">' + HELP_HTML.map(function (r) {
             return '<div class="kb-help-row"><kbd>' + util.esc(r[0]) + "</kbd><span>" + util.esc(r[1]) + "</span></div>";
-          }).join("") + "</div>";
+          }).join("") + "</div></section>";
       body.dataset.bound = ""; // 每次 open 都重建 DOM，绑定标记随之重置
       prefs.bindPanel(body);
+      var tabs = ov.querySelector("#kb-set-tabs");
+      tabs.innerHTML =
+        '<button type="button" role="tab" class="on" data-sec="look" aria-selected="true">外观</button>' +
+        '<button type="button" role="tab" data-sec="type" aria-selected="false">排版</button>' +
+        '<button type="button" role="tab" data-sec="keys" aria-selected="false">快捷键</button>';
+      if (!tabs.dataset.wired) {
+        tabs.dataset.wired = "1";
+        tabs.addEventListener("click", function (e) {
+          var btn = e.target.closest("[data-sec]");
+          if (!btn) return;
+          tabs.querySelectorAll("[data-sec]").forEach(function (b) {
+            var on = b === btn;
+            b.classList.toggle("on", on);
+            b.setAttribute("aria-selected", on ? "true" : "false");
+          });
+          body.querySelectorAll(".kb-set-sec").forEach(function (sec) {
+            sec.hidden = sec.dataset.sec !== btn.dataset.sec;
+          });
+          body.scrollTop = 0;
+        });
+      }
       /* 强制回流让首帧停在 translateX(103%)，再加 .show 触发滑入过渡。
          不用 requestAnimationFrame：后台标签页 rAF 被节流，抽屉会永远停在关闭态。 */
       ov.classList.remove("show");

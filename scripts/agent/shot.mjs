@@ -53,8 +53,12 @@ try {
     { width: +w, height: +h, deviceScaleFactor: 1, mobile: false });
   await sleep(3500); // 等 JS/字体/动画
   if (clickSel) {
-    await send('Runtime.evaluate', { expression: `document.querySelector(${JSON.stringify(clickSel)})?.click()` });
-    await sleep(900);
+    // 支持逗号分隔的连续点击（如「先开抽屉再切页签」），每步间隔 700ms 等过渡
+    for (const sel of String(clickSel).split(',')) {
+      if (!sel.trim()) continue;
+      await send('Runtime.evaluate', { expression: `document.querySelector(${JSON.stringify(sel.trim())})?.click()` });
+      await sleep(700);
+    }
   }
   const shot = await send('Page.captureScreenshot', { format: 'png' });
   fs.writeFileSync(out, Buffer.from(shot.result.data, 'base64'));
