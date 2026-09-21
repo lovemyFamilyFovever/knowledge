@@ -3098,6 +3098,9 @@ function soOpen() {
     SO.ov.dataset.wired = "1";
   }
   SO.body.innerHTML = soEmptyState();
+  /* dataset 不随 innerHTML 重建而清：SPA 切页不刷页，上一次搜索留下的
+     hasResults="1" 会让 soRenderRecent 的守卫永远跳过（2026-09-21 最近查询消失 bug） */
+  SO.body.dataset.hasResults = "0";
   soSyncClear();
   setTimeout(() => { if (SO.input) SO.input.focus(); }, 0);
   // 打开即带出最近查询（纯前端 localStorage，无编造）
@@ -3218,7 +3221,7 @@ function soRemember(qstr) {
 function soRun() {
   const qstr = (SO.input ? SO.input.value : "").trim();
   SO.lastQ = qstr;
-  if (!qstr) { SO.body.innerHTML = soEmptyState(); soRenderRecent(); if (SO.stat) SO.stat.textContent = "— · 输入以检索"; return; }
+  if (!qstr) { SO.body.innerHTML = soEmptyState(); SO.body.dataset.hasResults = "0"; soRenderRecent(); if (SO.stat) SO.stat.textContent = "— · 输入以检索"; return; }
   const seq = ++SO.seq;
   const eng = SO.engine === "semantic" ? "semantic" : SO.engine;
   const pfx = SO.engine === "semantic" && !qstr.startsWith("?") ? "?" + qstr : qstr;
