@@ -1,290 +1,237 @@
 /* ============================================================
-   skins.css v1.0-INSTRUMENT · 阶段1 补丁（皮肤层返工）
-   机制：html[data-skin="X"] 把 12 角色令牌整体指向该皮肤自己的档案组
-   --sk-X-*（明）/--sk-X-*-d（暗），raw hex 全部在 style.css [2] 区。
-   6 皮肤：celadon=基准（无 data-skin，即 style.css 默认值）；
-   ink / midnight / forest / rose / graphite 各自独立成套、明暗双态。
-   暗态种子在明态块内一并覆写（--hex-*-d），保证「暗色下切肤」同样生效。
-   阶段6：六套升级性格层（圆角/纹理/字距），不换本接线结构。
+   skins.css v2.1-STYLE · 风格皮肤层
+   机制（与 v1 同构，不玩中间层）：html[data-skin="X"] 把 12 角色 --hex-*
+   直接指向 style.css [2.5] 的 --sk-X-* 档案；暗态种子在明态块内一并覆写
+   （保证「暗色下切肤」同样生效）；[data-theme="dark"] 块再显式覆暗态。
+   ② 追加「风格层」——字体/章节形态/提示框形状/表格规线/性格令牌
+   （--rd-* 系列、--texture、--kb-font），换肤如换杂志。
+   六套：celadon=玄青基准（无 data-skin，不覆写）；zhimo=纸墨（编辑部衬线）；
+   midnight=午夜蓝（瑞士蓝印）；shoujuan=手卷（东方纸墨）；
+   dieyin=叠印（Riso 双色）；graphite=石墨（工业极简）。
+   章节序号 counter 依赖 enhanceArticleDOM 产出的 .sec-card 结构。
    ============================================================ */
 
-/* ---- ink（墨韵 · 宣纸暖调）明态 ---- */
-html[data-skin="ink"]{
-  --hex-bg:var(--sk-ink-bg);
-  --hex-panel:var(--sk-ink-panel);
-  --hex-sunk:var(--sk-ink-sunk);
-  --hex-ink:var(--sk-ink-ink);
-  --hex-line:var(--sk-ink-line);
-  --hex-line2:var(--sk-ink-line2);
-  --hex-primary:var(--sk-ink-primary);
-  --hex-info:var(--sk-ink-info);
-  --hex-warn:var(--sk-ink-warn);
-  --hex-danger:var(--sk-ink-danger);
-  --hex-ok:var(--sk-ink-ok);
-  --hex-mark:var(--sk-ink-mark);
-  --hex-bg-d:var(--sk-ink-bg-d);
-  --hex-panel-d:var(--sk-ink-panel-d);
-  --hex-sunk-d:var(--sk-ink-sunk-d);
-  --hex-ink-d:var(--sk-ink-ink-d);
-  --hex-line-d:var(--sk-ink-line-d);
-  --hex-line2-d:var(--sk-ink-line2-d);
-  --hex-primary-d:var(--sk-ink-primary-d);
-  --hex-info-d:var(--sk-ink-info-d);
-  --hex-warn-d:var(--sk-ink-warn-d);
-  --hex-danger-d:var(--sk-ink-danger-d);
-  --hex-ok-d:var(--sk-ink-ok-d);
-  --hex-mark-d:var(--sk-ink-mark-d)
+/* ---- zhimo（纸墨 · 编辑部衬线）明态 ---- */
+html[data-skin="zhimo"]{
+  --hex-bg:var(--sk-zhimo-bg); --hex-panel:var(--sk-zhimo-panel); --hex-sunk:var(--sk-zhimo-sunk);
+  --hex-ink:var(--sk-zhimo-ink); --hex-line:var(--sk-zhimo-line); --hex-line2:var(--sk-zhimo-line2);
+  --hex-primary:var(--sk-zhimo-primary); --hex-info:var(--sk-zhimo-info); --hex-warn:var(--sk-zhimo-warn);
+  --hex-danger:var(--sk-zhimo-danger); --hex-ok:var(--sk-zhimo-ok); --hex-mark:var(--sk-zhimo-mark);
+  --hex-bg-d:var(--sk-zhimo-bg-d); --hex-panel-d:var(--sk-zhimo-panel-d); --hex-sunk-d:var(--sk-zhimo-sunk-d);
+  --hex-ink-d:var(--sk-zhimo-ink-d); --hex-line-d:var(--sk-zhimo-line-d); --hex-line2-d:var(--sk-zhimo-line2-d);
+  --hex-primary-d:var(--sk-zhimo-primary-d); --hex-info-d:var(--sk-zhimo-info-d); --hex-warn-d:var(--sk-zhimo-warn-d);
+  --hex-danger-d:var(--sk-zhimo-danger-d); --hex-ok-d:var(--sk-zhimo-ok-d); --hex-mark-d:var(--sk-zhimo-mark-d);
+}
+html[data-skin="zhimo"][data-theme="dark"]{
+  --hex-bg:var(--sk-zhimo-bg-d); --hex-panel:var(--sk-zhimo-panel-d); --hex-sunk:var(--sk-zhimo-sunk-d);
+  --hex-ink:var(--sk-zhimo-ink-d); --hex-line:var(--sk-zhimo-line-d); --hex-line2:var(--sk-zhimo-line2-d);
+  --hex-primary:var(--sk-zhimo-primary-d); --hex-info:var(--sk-zhimo-info-d); --hex-warn:var(--sk-zhimo-warn-d);
+  --hex-danger:var(--sk-zhimo-danger-d); --hex-ok:var(--sk-zhimo-ok-d); --hex-mark:var(--sk-zhimo-mark-d);
 }
 
-html[data-skin="ink"][data-theme="dark"]{
-  --hex-bg-d:var(--sk-ink-bg-d);
-  --hex-panel-d:var(--sk-ink-panel-d);
-  --hex-sunk-d:var(--sk-ink-sunk-d);
-  --hex-ink-d:var(--sk-ink-ink-d);
-  --hex-line-d:var(--sk-ink-line-d);
-  --hex-line2-d:var(--sk-ink-line2-d);
-  --hex-primary-d:var(--sk-ink-primary-d);
-  --hex-info-d:var(--sk-ink-info-d);
-  --hex-warn-d:var(--sk-ink-warn-d);
-  --hex-danger-d:var(--sk-ink-danger-d);
-  --hex-ok-d:var(--sk-ink-ok-d);
-  --hex-mark-d:var(--sk-ink-mark-d)
-}
-
-/* ---- midnight（午夜蓝 · 冷调工程）明态 ---- */
+/* ---- midnight（午夜蓝 · 瑞士蓝印）明态 ---- */
 html[data-skin="midnight"]{
-  --hex-bg:var(--sk-midnight-bg);
-  --hex-panel:var(--sk-midnight-panel);
-  --hex-sunk:var(--sk-midnight-sunk);
-  --hex-ink:var(--sk-midnight-ink);
-  --hex-line:var(--sk-midnight-line);
-  --hex-line2:var(--sk-midnight-line2);
-  --hex-primary:var(--sk-midnight-primary);
-  --hex-info:var(--sk-midnight-info);
-  --hex-warn:var(--sk-midnight-warn);
-  --hex-danger:var(--sk-midnight-danger);
-  --hex-ok:var(--sk-midnight-ok);
-  --hex-mark:var(--sk-midnight-mark);
-  --hex-bg-d:var(--sk-midnight-bg-d);
-  --hex-panel-d:var(--sk-midnight-panel-d);
-  --hex-sunk-d:var(--sk-midnight-sunk-d);
-  --hex-ink-d:var(--sk-midnight-ink-d);
-  --hex-line-d:var(--sk-midnight-line-d);
-  --hex-line2-d:var(--sk-midnight-line2-d);
-  --hex-primary-d:var(--sk-midnight-primary-d);
-  --hex-info-d:var(--sk-midnight-info-d);
-  --hex-warn-d:var(--sk-midnight-warn-d);
-  --hex-danger-d:var(--sk-midnight-danger-d);
-  --hex-ok-d:var(--sk-midnight-ok-d);
-  --hex-mark-d:var(--sk-midnight-mark-d)
+  --hex-bg:var(--sk-midnight-bg); --hex-panel:var(--sk-midnight-panel); --hex-sunk:var(--sk-midnight-sunk);
+  --hex-ink:var(--sk-midnight-ink); --hex-line:var(--sk-midnight-line); --hex-line2:var(--sk-midnight-line2);
+  --hex-primary:var(--sk-midnight-primary); --hex-info:var(--sk-midnight-info); --hex-warn:var(--sk-midnight-warn);
+  --hex-danger:var(--sk-midnight-danger); --hex-ok:var(--sk-midnight-ok); --hex-mark:var(--sk-midnight-mark);
+  --hex-bg-d:var(--sk-midnight-bg-d); --hex-panel-d:var(--sk-midnight-panel-d); --hex-sunk-d:var(--sk-midnight-sunk-d);
+  --hex-ink-d:var(--sk-midnight-ink-d); --hex-line-d:var(--sk-midnight-line-d); --hex-line2-d:var(--sk-midnight-line2-d);
+  --hex-primary-d:var(--sk-midnight-primary-d); --hex-info-d:var(--sk-midnight-info-d); --hex-warn-d:var(--sk-midnight-warn-d);
+  --hex-danger-d:var(--sk-midnight-danger-d); --hex-ok-d:var(--sk-midnight-ok-d); --hex-mark-d:var(--sk-midnight-mark-d);
 }
-
 html[data-skin="midnight"][data-theme="dark"]{
-  --hex-bg-d:var(--sk-midnight-bg-d);
-  --hex-panel-d:var(--sk-midnight-panel-d);
-  --hex-sunk-d:var(--sk-midnight-sunk-d);
-  --hex-ink-d:var(--sk-midnight-ink-d);
-  --hex-line-d:var(--sk-midnight-line-d);
-  --hex-line2-d:var(--sk-midnight-line2-d);
-  --hex-primary-d:var(--sk-midnight-primary-d);
-  --hex-info-d:var(--sk-midnight-info-d);
-  --hex-warn-d:var(--sk-midnight-warn-d);
-  --hex-danger-d:var(--sk-midnight-danger-d);
-  --hex-ok-d:var(--sk-midnight-ok-d);
-  --hex-mark-d:var(--sk-midnight-mark-d)
+  --hex-bg:var(--sk-midnight-bg-d); --hex-panel:var(--sk-midnight-panel-d); --hex-sunk:var(--sk-midnight-sunk-d);
+  --hex-ink:var(--sk-midnight-ink-d); --hex-line:var(--sk-midnight-line-d); --hex-line2:var(--sk-midnight-line2-d);
+  --hex-primary:var(--sk-midnight-primary-d); --hex-info:var(--sk-midnight-info-d); --hex-warn:var(--sk-midnight-warn-d);
+  --hex-danger:var(--sk-midnight-danger-d); --hex-ok:var(--sk-midnight-ok-d); --hex-mark:var(--sk-midnight-mark-d);
 }
 
-/* ---- forest（森绿 · 自然）明态 ---- */
-html[data-skin="forest"]{
-  --hex-bg:var(--sk-forest-bg);
-  --hex-panel:var(--sk-forest-panel);
-  --hex-sunk:var(--sk-forest-sunk);
-  --hex-ink:var(--sk-forest-ink);
-  --hex-line:var(--sk-forest-line);
-  --hex-line2:var(--sk-forest-line2);
-  --hex-primary:var(--sk-forest-primary);
-  --hex-info:var(--sk-forest-info);
-  --hex-warn:var(--sk-forest-warn);
-  --hex-danger:var(--sk-forest-danger);
-  --hex-ok:var(--sk-forest-ok);
-  --hex-mark:var(--sk-forest-mark);
-  --hex-bg-d:var(--sk-forest-bg-d);
-  --hex-panel-d:var(--sk-forest-panel-d);
-  --hex-sunk-d:var(--sk-forest-sunk-d);
-  --hex-ink-d:var(--sk-forest-ink-d);
-  --hex-line-d:var(--sk-forest-line-d);
-  --hex-line2-d:var(--sk-forest-line2-d);
-  --hex-primary-d:var(--sk-forest-primary-d);
-  --hex-info-d:var(--sk-forest-info-d);
-  --hex-warn-d:var(--sk-forest-warn-d);
-  --hex-danger-d:var(--sk-forest-danger-d);
-  --hex-ok-d:var(--sk-forest-ok-d);
-  --hex-mark-d:var(--sk-forest-mark-d)
+/* ---- shoujuan（手卷 · 东方纸墨）明态 ---- */
+html[data-skin="shoujuan"]{
+  --hex-bg:var(--sk-shoujuan-bg); --hex-panel:var(--sk-shoujuan-panel); --hex-sunk:var(--sk-shoujuan-sunk);
+  --hex-ink:var(--sk-shoujuan-ink); --hex-line:var(--sk-shoujuan-line); --hex-line2:var(--sk-shoujuan-line2);
+  --hex-primary:var(--sk-shoujuan-primary); --hex-info:var(--sk-shoujuan-info); --hex-warn:var(--sk-shoujuan-warn);
+  --hex-danger:var(--sk-shoujuan-danger); --hex-ok:var(--sk-shoujuan-ok); --hex-mark:var(--sk-shoujuan-mark);
+  --hex-bg-d:var(--sk-shoujuan-bg-d); --hex-panel-d:var(--sk-shoujuan-panel-d); --hex-sunk-d:var(--sk-shoujuan-sunk-d);
+  --hex-ink-d:var(--sk-shoujuan-ink-d); --hex-line-d:var(--sk-shoujuan-line-d); --hex-line2-d:var(--sk-shoujuan-line2-d);
+  --hex-primary-d:var(--sk-shoujuan-primary-d); --hex-info-d:var(--sk-shoujuan-info-d); --hex-warn-d:var(--sk-shoujuan-warn-d);
+  --hex-danger-d:var(--sk-shoujuan-danger-d); --hex-ok-d:var(--sk-shoujuan-ok-d); --hex-mark-d:var(--sk-shoujuan-mark-d);
+}
+html[data-skin="shoujuan"][data-theme="dark"]{
+  --hex-bg:var(--sk-shoujuan-bg-d); --hex-panel:var(--sk-shoujuan-panel-d); --hex-sunk:var(--sk-shoujuan-sunk-d);
+  --hex-ink:var(--sk-shoujuan-ink-d); --hex-line:var(--sk-shoujuan-line-d); --hex-line2:var(--sk-shoujuan-line2-d);
+  --hex-primary:var(--sk-shoujuan-primary-d); --hex-info:var(--sk-shoujuan-info-d); --hex-warn:var(--sk-shoujuan-warn-d);
+  --hex-danger:var(--sk-shoujuan-danger-d); --hex-ok:var(--sk-shoujuan-ok-d); --hex-mark:var(--sk-shoujuan-mark-d);
 }
 
-html[data-skin="forest"][data-theme="dark"]{
-  --hex-bg-d:var(--sk-forest-bg-d);
-  --hex-panel-d:var(--sk-forest-panel-d);
-  --hex-sunk-d:var(--sk-forest-sunk-d);
-  --hex-ink-d:var(--sk-forest-ink-d);
-  --hex-line-d:var(--sk-forest-line-d);
-  --hex-line2-d:var(--sk-forest-line2-d);
-  --hex-primary-d:var(--sk-forest-primary-d);
-  --hex-info-d:var(--sk-forest-info-d);
-  --hex-warn-d:var(--sk-forest-warn-d);
-  --hex-danger-d:var(--sk-forest-danger-d);
-  --hex-ok-d:var(--sk-forest-ok-d);
-  --hex-mark-d:var(--sk-forest-mark-d)
+/* ---- dieyin（叠印 · Riso 双色）明态 ---- */
+html[data-skin="dieyin"]{
+  --hex-bg:var(--sk-dieyin-bg); --hex-panel:var(--sk-dieyin-panel); --hex-sunk:var(--sk-dieyin-sunk);
+  --hex-ink:var(--sk-dieyin-ink); --hex-line:var(--sk-dieyin-line); --hex-line2:var(--sk-dieyin-line2);
+  --hex-primary:var(--sk-dieyin-primary); --hex-info:var(--sk-dieyin-info); --hex-warn:var(--sk-dieyin-warn);
+  --hex-danger:var(--sk-dieyin-danger); --hex-ok:var(--sk-dieyin-ok); --hex-mark:var(--sk-dieyin-mark);
+  --hex-bg-d:var(--sk-dieyin-bg-d); --hex-panel-d:var(--sk-dieyin-panel-d); --hex-sunk-d:var(--sk-dieyin-sunk-d);
+  --hex-ink-d:var(--sk-dieyin-ink-d); --hex-line-d:var(--sk-dieyin-line-d); --hex-line2-d:var(--sk-dieyin-line2-d);
+  --hex-primary-d:var(--sk-dieyin-primary-d); --hex-info-d:var(--sk-dieyin-info-d); --hex-warn-d:var(--sk-dieyin-warn-d);
+  --hex-danger-d:var(--sk-dieyin-danger-d); --hex-ok-d:var(--sk-dieyin-ok-d); --hex-mark-d:var(--sk-dieyin-mark-d);
+}
+html[data-skin="dieyin"][data-theme="dark"]{
+  --hex-bg:var(--sk-dieyin-bg-d); --hex-panel:var(--sk-dieyin-panel-d); --hex-sunk:var(--sk-dieyin-sunk-d);
+  --hex-ink:var(--sk-dieyin-ink-d); --hex-line:var(--sk-dieyin-line-d); --hex-line2:var(--sk-dieyin-line2-d);
+  --hex-primary:var(--sk-dieyin-primary-d); --hex-info:var(--sk-dieyin-info-d); --hex-warn:var(--sk-dieyin-warn-d);
+  --hex-danger:var(--sk-dieyin-danger-d); --hex-ok:var(--sk-dieyin-ok-d); --hex-mark:var(--sk-dieyin-mark-d);
 }
 
-/* ---- rose（暮色玫瑰 · 杂志）明态 ---- */
-html[data-skin="rose"]{
-  --hex-bg:var(--sk-rose-bg);
-  --hex-panel:var(--sk-rose-panel);
-  --hex-sunk:var(--sk-rose-sunk);
-  --hex-ink:var(--sk-rose-ink);
-  --hex-line:var(--sk-rose-line);
-  --hex-line2:var(--sk-rose-line2);
-  --hex-primary:var(--sk-rose-primary);
-  --hex-info:var(--sk-rose-info);
-  --hex-warn:var(--sk-rose-warn);
-  --hex-danger:var(--sk-rose-danger);
-  --hex-ok:var(--sk-rose-ok);
-  --hex-mark:var(--sk-rose-mark);
-  --hex-bg-d:var(--sk-rose-bg-d);
-  --hex-panel-d:var(--sk-rose-panel-d);
-  --hex-sunk-d:var(--sk-rose-sunk-d);
-  --hex-ink-d:var(--sk-rose-ink-d);
-  --hex-line-d:var(--sk-rose-line-d);
-  --hex-line2-d:var(--sk-rose-line2-d);
-  --hex-primary-d:var(--sk-rose-primary-d);
-  --hex-info-d:var(--sk-rose-info-d);
-  --hex-warn-d:var(--sk-rose-warn-d);
-  --hex-danger-d:var(--sk-rose-danger-d);
-  --hex-ok-d:var(--sk-rose-ok-d);
-  --hex-mark-d:var(--sk-rose-mark-d)
-}
-
-html[data-skin="rose"][data-theme="dark"]{
-  --hex-bg-d:var(--sk-rose-bg-d);
-  --hex-panel-d:var(--sk-rose-panel-d);
-  --hex-sunk-d:var(--sk-rose-sunk-d);
-  --hex-ink-d:var(--sk-rose-ink-d);
-  --hex-line-d:var(--sk-rose-line-d);
-  --hex-line2-d:var(--sk-rose-line2-d);
-  --hex-primary-d:var(--sk-rose-primary-d);
-  --hex-info-d:var(--sk-rose-info-d);
-  --hex-warn-d:var(--sk-rose-warn-d);
-  --hex-danger-d:var(--sk-rose-danger-d);
-  --hex-ok-d:var(--sk-rose-ok-d);
-  --hex-mark-d:var(--sk-rose-mark-d)
-}
-
-/* ---- graphite（石墨 · 中性零装饰）明态 ---- */
+/* ---- graphite（石墨 · 工业极简）明态 ---- */
 html[data-skin="graphite"]{
-  --hex-bg:var(--sk-graphite-bg);
-  --hex-panel:var(--sk-graphite-panel);
-  --hex-sunk:var(--sk-graphite-sunk);
-  --hex-ink:var(--sk-graphite-ink);
-  --hex-line:var(--sk-graphite-line);
-  --hex-line2:var(--sk-graphite-line2);
-  --hex-primary:var(--sk-graphite-primary);
-  --hex-info:var(--sk-graphite-info);
-  --hex-warn:var(--sk-graphite-warn);
-  --hex-danger:var(--sk-graphite-danger);
-  --hex-ok:var(--sk-graphite-ok);
-  --hex-mark:var(--sk-graphite-mark);
-  --hex-bg-d:var(--sk-graphite-bg-d);
-  --hex-panel-d:var(--sk-graphite-panel-d);
-  --hex-sunk-d:var(--sk-graphite-sunk-d);
-  --hex-ink-d:var(--sk-graphite-ink-d);
-  --hex-line-d:var(--sk-graphite-line-d);
-  --hex-line2-d:var(--sk-graphite-line2-d);
-  --hex-primary-d:var(--sk-graphite-primary-d);
-  --hex-info-d:var(--sk-graphite-info-d);
-  --hex-warn-d:var(--sk-graphite-warn-d);
-  --hex-danger-d:var(--sk-graphite-danger-d);
-  --hex-ok-d:var(--sk-graphite-ok-d);
-  --hex-mark-d:var(--sk-graphite-mark-d)
+  --hex-bg:var(--sk-graphite-bg); --hex-panel:var(--sk-graphite-panel); --hex-sunk:var(--sk-graphite-sunk);
+  --hex-ink:var(--sk-graphite-ink); --hex-line:var(--sk-graphite-line); --hex-line2:var(--sk-graphite-line2);
+  --hex-primary:var(--sk-graphite-primary); --hex-info:var(--sk-graphite-info); --hex-warn:var(--sk-graphite-warn);
+  --hex-danger:var(--sk-graphite-danger); --hex-ok:var(--sk-graphite-ok); --hex-mark:var(--sk-graphite-mark);
+  --hex-bg-d:var(--sk-graphite-bg-d); --hex-panel-d:var(--sk-graphite-panel-d); --hex-sunk-d:var(--sk-graphite-sunk-d);
+  --hex-ink-d:var(--sk-graphite-ink-d); --hex-line-d:var(--sk-graphite-line-d); --hex-line2-d:var(--sk-graphite-line2-d);
+  --hex-primary-d:var(--sk-graphite-primary-d); --hex-info-d:var(--sk-graphite-info-d); --hex-warn-d:var(--sk-graphite-warn-d);
+  --hex-danger-d:var(--sk-graphite-danger-d); --hex-ok-d:var(--sk-graphite-ok-d); --hex-mark-d:var(--sk-graphite-mark-d);
 }
-
 html[data-skin="graphite"][data-theme="dark"]{
-  --hex-bg-d:var(--sk-graphite-bg-d);
-  --hex-panel-d:var(--sk-graphite-panel-d);
-  --hex-sunk-d:var(--sk-graphite-sunk-d);
-  --hex-ink-d:var(--sk-graphite-ink-d);
-  --hex-line-d:var(--sk-graphite-line-d);
-  --hex-line2-d:var(--sk-graphite-line2-d);
-  --hex-primary-d:var(--sk-graphite-primary-d);
-  --hex-info-d:var(--sk-graphite-info-d);
-  --hex-warn-d:var(--sk-graphite-warn-d);
-  --hex-danger-d:var(--sk-graphite-danger-d);
-  --hex-ok-d:var(--sk-graphite-ok-d);
-  --hex-mark-d:var(--sk-graphite-mark-d)
+  --hex-bg:var(--sk-graphite-bg-d); --hex-panel:var(--sk-graphite-panel-d); --hex-sunk:var(--sk-graphite-sunk-d);
+  --hex-ink:var(--sk-graphite-ink-d); --hex-line:var(--sk-graphite-line-d); --hex-line2:var(--sk-graphite-line2-d);
+  --hex-primary:var(--sk-graphite-primary-d); --hex-info:var(--sk-graphite-info-d); --hex-warn:var(--sk-graphite-warn-d);
+  --hex-danger:var(--sk-graphite-danger-d); --hex-ok:var(--sk-graphite-ok-d); --hex-mark:var(--sk-graphite-mark-d);
 }
 
+/* ============================================================
+   [S] 风格层 —— 每套皮肤自己的排印与装饰语言
+   ============================================================ */
 
-/* ---- 皮肤选择格（2026-09-20：从顶栏右键弹层迁入设置弹窗，KB.prefs 面板消费） ---- */
+/* ---- 纸墨 zhimo：编辑部衬线 · 大序号 · 规线 ---- */
+html[data-skin="zhimo"]{
+  --kb-font:var(--f-serif); --rd-ctl:2px; --rd-card:2px; --texture:none;
+}
+html[data-skin="zhimo"] .a-body{counter-reset:ksec}
+html[data-skin="zhimo"] .a-body .sec-card{background:transparent;border:none;border-radius:0;padding:0 0 1.8rem;margin:0}
+html[data-skin="zhimo"] .a-body h2{counter-increment:ksec;display:flex;align-items:baseline;gap:.9rem;
+  background:none;border:none;border-bottom:2px solid var(--c-ink);border-radius:0;padding:0 0 .4rem;margin:.2rem 0 1.1rem;
+  color:var(--c-ink);font-weight:900;letter-spacing:.05em}
+html[data-skin="zhimo"] .a-body h2::before{content:counter(ksec,decimal-leading-zero);
+  font:700 1.55rem/1 var(--f-mono);color:var(--c-acc);letter-spacing:-.02em}
+html[data-skin="zhimo"] .a-body h1{text-align:left;border-bottom:3px double var(--c-line2);color:var(--c-ink)}
+html[data-skin="zhimo"] .a-body h3{border-left:none;padding-left:0;color:var(--c-ink)}
+html[data-skin="zhimo"] .a-body blockquote{border:1px solid var(--c-line);border-left:3px solid var(--c-acc);border-radius:2px;background:var(--c-panel)}
+html[data-skin="zhimo"] .a-body blockquote.kp{border-color:color-mix(in oklab,var(--c-acc),transparent 55%)}
+html[data-skin="zhimo"] .a-body table th{border-top:2px solid var(--c-ink);border-bottom:1px solid var(--c-ink)}
+html[data-skin="zhimo"] .a-body table td{border-bottom:1px solid var(--c-line)}
+
+/* ---- 午夜蓝 midnight（蓝印）：瑞士网格 · 空心大编号 · 粗规线 ---- */
+html[data-skin="midnight"]{
+  --rd-ctl:0px; --rd-card:0px;
+  --texture:linear-gradient(color-mix(in oklab,var(--c-ink),transparent 94%) 1px,transparent 1px),
+             linear-gradient(90deg,color-mix(in oklab,var(--c-ink),transparent 94%) 1px,transparent 1px);
+  --texture-size:14px 14px;
+}
+html[data-skin="midnight"] .a-body{counter-reset:ksec}
+html[data-skin="midnight"] .a-body .sec-card{background:transparent;border:none;border-radius:0;padding:0 0 1.8rem;margin:0}
+html[data-skin="midnight"] .a-body h2{counter-increment:ksec;display:flex;align-items:baseline;gap:1rem;
+  background:linear-gradient(transparent 62%,color-mix(in oklab,var(--c-acc),transparent 80%) 62%);
+  border:none;border-bottom:3px solid var(--c-ink);border-radius:0;padding:0 0 .5rem;margin:.2rem 0 1.2rem;
+  color:var(--c-ink);font-weight:900;letter-spacing:.02em}
+html[data-skin="midnight"] .a-body h2::before{content:counter(ksec);font:900 2.4rem/.9 var(--f-body);
+  color:transparent;-webkit-text-stroke:1.5px var(--c-acc)}
+html[data-skin="midnight"] .a-body h1{text-align:left;border-bottom:3px solid var(--c-ink);color:var(--c-ink);font-weight:900}
+html[data-skin="midnight"] .a-body h3{border-left:none;padding-left:0;color:var(--c-ink)}
+html[data-skin="midnight"] .a-body h3::before{content:"";display:inline-block;width:14px;height:3px;background:var(--c-acc);margin-right:.5rem;vertical-align:middle}
+html[data-skin="midnight"] .a-body blockquote{border:1px solid var(--c-line);border-left:8px solid var(--c-acc);border-radius:0;background:var(--c-sunk)}
+html[data-skin="midnight"] .a-body table th{border-top:3px solid var(--c-ink);border-bottom:1px solid var(--c-ink)}
+html[data-skin="midnight"] .a-body table td{border-bottom:1px solid var(--c-line)}
+html[data-skin="midnight"] .a-body .badge{border-radius:0}
+
+/* ---- 手卷 shoujuan：东方纸墨 · 圆点眉批 · 朱印 ---- */
+html[data-skin="shoujuan"]{
+  --kb-font:var(--f-serif); --rd-ctl:3px; --rd-card:10px;
+  --texture:radial-gradient(color-mix(in oklab,var(--c-ink),transparent 94%) .8px,transparent .8px);
+  --texture-size:22px 22px;
+}
+html[data-skin="shoujuan"] .a-body h1{text-align:left;border-bottom:none;color:var(--c-ink);letter-spacing:.06em}
+html[data-skin="shoujuan"] .a-body .sec-card{background:var(--c-panel);border:1px solid var(--c-line);border-radius:10px;padding:1.3rem 1.5rem;margin-bottom:1.5rem}
+html[data-skin="shoujuan"] .a-body h2{display:flex;align-items:center;gap:.7rem;background:none;border:none;border-radius:0;padding:0;margin:.1rem 0 1rem;
+  color:var(--c-ink);font-weight:900;letter-spacing:.08em}
+html[data-skin="shoujuan"] .a-body h2::before{content:"";width:10px;height:10px;border-radius:50%;background:var(--c-acc);flex:none}
+html[data-skin="shoujuan"] .a-body h2::after{content:"";flex:1;height:1px;background:color-mix(in oklab,var(--c-ink),transparent 78%);margin-left:.4rem}
+html[data-skin="shoujuan"] .a-body h3{border-left:none;padding-left:0;color:var(--c-info)}
+html[data-skin="shoujuan"] .a-body blockquote{border:1px solid var(--c-line);border-left:3px solid var(--c-info);border-radius:4px;background:var(--c-sunk)}
+html[data-skin="shoujuan"] .a-body blockquote.kp{border-left-color:var(--c-danger);background:color-mix(in oklab,var(--c-danger),var(--c-bg) 92%);position:relative}
+html[data-skin="shoujuan"] .a-body blockquote.kp::before{content:"要";position:absolute;left:-11px;top:-11px;width:26px;height:26px;
+  display:grid;place-items:center;background:var(--c-danger);color:#fff;font:700 .78rem/1 var(--f-serif);border-radius:4px;transform:rotate(-6deg)}
+html[data-skin="shoujuan"] .a-body .badge{border-radius:4px}
+
+/* ---- 叠印 dieyin：Riso 双色 · 硬影贴纸 · 药丸 ---- */
+html[data-skin="dieyin"]{
+  --rd-ctl:99px; --rd-card:16px;
+  --texture:radial-gradient(color-mix(in oklab,var(--c-acc),transparent 90%) 1px,transparent 1.4px);
+  --texture-size:7px 7px;
+}
+html[data-skin="dieyin"] .a-body h1{text-align:left;color:var(--c-ink);font-weight:900;text-shadow:3px 3px 0 color-mix(in oklab,var(--c-acc),transparent 72%)}
+html[data-skin="dieyin"] .a-body .sec-card{background:var(--c-panel);border:2px solid var(--c-info);border-radius:16px;
+  padding:1.3rem 1.5rem;margin-bottom:1.7rem;box-shadow:6px 6px 0 color-mix(in oklab,var(--c-acc),transparent 15%)}
+html[data-skin="dieyin"] .a-body .sec-card:nth-of-type(even){box-shadow:6px 6px 0 var(--c-info)}
+html[data-skin="dieyin"] .a-body h2{display:inline-block;background:var(--c-info);color:#fff;border:none;border-radius:99px;
+  padding:.25rem 1.1rem;margin:0 0 1rem;transform:rotate(-1deg);font-weight:800;letter-spacing:.06em}
+html[data-skin="dieyin"] .a-body h3{border-left:none;padding-left:0;color:var(--c-info)}
+html[data-skin="dieyin"] .a-body strong{background:linear-gradient(transparent 66%,color-mix(in oklab,var(--c-mark),transparent 30%) 66%);color:inherit}
+html[data-skin="dieyin"] .a-body blockquote{border:2px solid var(--c-info);border-left-width:2px;border-radius:12px;background:var(--c-sunk)}
+html[data-skin="dieyin"] .a-body blockquote.kp{border-color:var(--c-acc)}
+html[data-skin="dieyin"] .a-body blockquote.warn{border-color:var(--c-danger)}
+
+/* ---- 石墨 graphite：工业极简 · 黑白灰 · 橙色细带 ---- */
+html[data-skin="graphite"]{
+  --rd-ctl:0px; --rd-card:0px; --texture:none; --texture-on:0;
+}
+html[data-skin="graphite"] .panel.is-bracket::before,html[data-skin="graphite"] .panel.is-bracket::after,
+html[data-skin="graphite"] .kb-panel.is-bracket::before,html[data-skin="graphite"] .kb-panel.is-bracket::after{display:none}
+html[data-skin="graphite"] .kb-side-h,html[data-skin="graphite"] .panel-h,
+html[data-skin="graphite"] .kb-panel-h{letter-spacing:.18em}
+html[data-skin="graphite"] .a-body h1{text-align:left;border-bottom:1px solid var(--c-ink);color:var(--c-ink);font-weight:900;letter-spacing:.01em}
+html[data-skin="graphite"] .a-body .sec-card{background:transparent;border:none;border-radius:0;padding:0 0 1.8rem;margin:0}
+html[data-skin="graphite"] .a-body h2{background:none;border:none;border-bottom:1px solid var(--c-line2);border-radius:0;
+  padding:.2rem 0 .35rem .8rem;margin:.2rem 0 1.1rem;color:var(--c-ink);font-weight:800;letter-spacing:-.01em;
+  border-left:4px solid var(--c-warn)}
+html[data-skin="graphite"] .a-body h3{border-left:2px solid var(--c-line2);padding-left:.6rem;color:var(--c-ink)}
+html[data-skin="graphite"] .a-body strong{color:var(--c-ink)}
+html[data-skin="graphite"] .a-body blockquote{background:var(--c-sunk);border:none;border-left:2px solid var(--c-ink);border-radius:0;padding:.8rem 1rem}
+html[data-skin="graphite"] .a-body blockquote.tip,html[data-skin="graphite"] .a-body blockquote.warn,
+html[data-skin="graphite"] .a-body blockquote.kp,html[data-skin="graphite"] .a-body blockquote.fu{border-left-color:var(--c-ink)}
+html[data-skin="graphite"] .a-body code{color:var(--c-ink);background:var(--c-sunk);border-color:var(--c-line)}
+html[data-skin="graphite"] .a-body table th{border-top:1px solid var(--c-ink);border-bottom:1px solid var(--c-ink);letter-spacing:.1em}
+html[data-skin="graphite"] .a-body table td{border-bottom:1px solid var(--c-line)}
+html[data-skin="graphite"] .a-body .badge{border-radius:0;border:1px solid currentColor;background:transparent}
+
+/* ============================================================
+   [P] 皮肤选择卡（设置弹窗）：迷你预览缩略图
+   ============================================================ */
 .kb-skin-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .kb-pref-skins{margin-bottom:6px}
 .kb-skin-card{display:flex;align-items:center;gap:9px;padding:9px 11px;border-radius:var(--rd-ctl);
   border:1px solid var(--c-line);cursor:pointer;background:transparent;text-align:left;width:100%}
 .kb-skin-card:hover{border-color:var(--acc-line);background:var(--acc-soft)}
 .kb-skin-card.on{border-color:var(--c-acc);background:var(--acc-soft)}
-.kb-skin-dot{width:18px;height:18px;border-radius:50%;flex:none;border:1px solid rgba(0,0,0,.12);
-  background:linear-gradient(135deg,var(--sd-a) 50%,var(--sd-b) 50%)}
 .kb-skin-card b{font:600 12px/1.3 var(--f-body);color:var(--c-ink);display:block}
 .kb-skin-card i{font:400 10px/1.3 var(--f-body);color:var(--faint);font-style:normal;display:block}
-
-/* ============================================================
-   [6.5] 皮肤性格层（阶段6）：颜色之外，圆角/纹理/密度/字距同随皮肤切换。
-   机制：html[data-skin="X"] 追加覆写性格令牌（--rd-ctl/--rd-card/
-   --texture/--texture-size/--sp-dens），基准 celadon 不覆写。
-   零裸 hex；纹理用 color-mix 派生（无 raw 色值）；--texture:none 即关闭。
-   graphite 额外隐藏 .is-bracket 角码（零装饰性格）。
-   ============================================================ */
-
-/* ---- ink 墨韵：横格纸纹理、圆角收紧 2/6、标题字距放宽 ---- */
-html[data-skin="ink"]{
-  --rd-ctl:2px; --rd-card:6px;
-  --texture:repeating-linear-gradient(0deg,transparent 0 27px,color-mix(in oklab,var(--c-ink),transparent 93%) 27px,transparent 28px);
-  --texture-size:auto;
-}
-html[data-skin="ink"] .kb-learn-title,html[data-skin="ink"] h1.a-title{letter-spacing:.06em}
-
-/* ---- midnight 午夜蓝：毫米网格纹理、圆角 1/2、小标签字距收紧 ---- */
-html[data-skin="midnight"]{
-  --rd-ctl:1px; --rd-card:2px;
-  --texture:linear-gradient(color-mix(in oklab,var(--c-ink),transparent 94%) 1px,transparent 1px),
-             linear-gradient(90deg,color-mix(in oklab,var(--c-ink),transparent 94%) 1px,transparent 1px);
-  --texture-size:10px 10px;
-}
-html[data-skin="midnight"] .kb-side-h,html[data-skin="midnight"] .panel-h,
-html[data-skin="midnight"] .kb-panel-h,html[data-skin="midnight"] .t-label{letter-spacing:.08em}
-
-/* ---- forest 森绿：无纹理（极淡底噪交 grain）、圆角 4/4 基准卡 ---- */
-html[data-skin="forest"]{
-  --rd-ctl:4px; --rd-card:4px;
-  --texture:none;
-}
-
-/* ---- rose 玫瑰：细网格、圆角 3/5 ---- */
-html[data-skin="rose"]{
-  --rd-ctl:3px; --rd-card:5px;
-  --texture:linear-gradient(color-mix(in oklab,var(--c-ink),transparent 96%) 1px,transparent 1px),
-             linear-gradient(90deg,color-mix(in oklab,var(--c-ink),transparent 96%) 1px,transparent 1px);
-  --texture-size:14px 14px;
-}
-
-/* ---- graphite 石墨：零圆角、无纹理、无角码（零装饰性格） ---- */
-html[data-skin="graphite"]{
-  --rd-ctl:0px; --rd-card:0px;
-  --texture:none;
-  --texture-on:0;
-}
-html[data-skin="graphite"] .panel.is-bracket::before,
-html[data-skin="graphite"] .panel.is-bracket::after,
-html[data-skin="graphite"] .kb-panel.is-bracket::before,
-html[data-skin="graphite"] .kb-panel.is-bracket::after{display:none}
-html[data-skin="graphite"] .kb-side-h,html[data-skin="graphite"] .panel-h,
-html[data-skin="graphite"] .kb-panel-h{letter-spacing:.18em}
+/* 预览：46×30 微型版式，标题块 + 双线正文，形态随风格变化 */
+.kb-skin-prev{width:46px;height:30px;flex:none;position:relative;overflow:hidden;padding:0;
+  border:1px solid var(--c-line);border-radius:3px;background:var(--sd-bg,#fff)}
+.kb-skin-prev::before{content:"";position:absolute;left:5px;top:5px;width:20px;height:6px;border-radius:1px;background:var(--sd-a)}
+.kb-skin-prev::after{content:"";position:absolute;left:5px;top:15px;right:5px;height:2px;background:var(--sd-b);
+  box-shadow:0 5px 0 color-mix(in oklab,var(--sd-ink,#999),transparent 55%),0 9px 0 color-mix(in oklab,var(--sd-ink,#999),transparent 55%)}
+button[data-prev=celadon] .kb-skin-prev::before{border-radius:2px;height:7px}
+button[data-prev=zhimo] .kb-skin-prev::before{width:7px;height:7px;border-radius:0}
+button[data-prev=zhimo] .kb-skin-prev::after{top:16px}
+button[data-prev=midnight] .kb-skin-prev::before{background:transparent;border:1.5px solid var(--sd-a);width:9px;height:8px;border-radius:1px}
+button[data-prev=midnight] .kb-skin-prev::after{background:var(--sd-a)}
+button[data-prev=shoujuan] .kb-skin-prev::before{width:6px;height:6px;border-radius:50%}
+button[data-prev=shoujuan] .kb-skin-prev{border-radius:6px}
+button[data-prev=dieyin] .kb-skin-prev{border-radius:8px;border-width:1.5px;border-color:var(--sd-a);box-shadow:3px 3px 0 var(--sd-b)}
+button[data-prev=dieyin] .kb-skin-prev::before{border-radius:99px;transform:rotate(-6deg);width:16px}
+button[data-prev=graphite] .kb-skin-prev{border-radius:0}
+button[data-prev=graphite] .kb-skin-prev::before{width:3px;height:8px;background:var(--sd-b)}
+button[data-prev=graphite] .kb-skin-prev::after{background:color-mix(in oklab,var(--sd-ink,#999),transparent 40%)}

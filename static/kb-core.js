@@ -320,9 +320,9 @@
         var curSkin = window.applySkin && (function () { try { return localStorage.getItem("kb-skin") || "celadon"; } catch (e) { return "celadon"; } })();
         skinSec = '<div class="kb-pref-head">' + util.icon("i-palette", 14) + "界面风格<span class=\"kb-pref-kbd-hint\">深浅色用顶栏太阳按钮切换</span></div>" +
           '<div class="kb-skin-grid kb-pref-skins">' + window.KB_SKINS.map(function (s) {
-            // 双色点用模板字面量整段注入（check_dangling_tokens 的正则不识别跨字符串拼接的 style 值）
-            return `<button type="button" class="kb-skin-card${s.id === curSkin ? " on" : ""}" data-skin="${util.esc(s.id)}">
-              <span class="kb-skin-dot" style="--sd-a:${s.a};--sd-b:${s.b}"></span>
+            // 预览缩略图样式变量用模板字面量整段注入（check_dangling_tokens 的正则不识别跨字符串拼接的 style 值）
+            return `<button type="button" class="kb-skin-card${s.id === curSkin ? " on" : ""}" data-skin="${util.esc(s.id)}" data-prev="${util.esc(s.id)}">
+              <span class="kb-skin-prev" style="--sd-bg:${s.bg};--sd-a:${s.a};--sd-b:${s.b};--sd-ink:${s.ink}"></span>
               <span><b>${util.esc(s.name)}</b><i>${util.esc(s.desc)}</i></span></button>`;
           }).join("") + "</div>";
       }

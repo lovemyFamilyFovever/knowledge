@@ -28,15 +28,16 @@ function applyTheme(t) {
   window.dispatchEvent(new CustomEvent("theme-changed", { detail: t }));
   try { localStorage.setItem("kb-theme", t); } catch (e) {}
 }
-/* 任务8：5 版皮肤切换（墨韵/午夜蓝/森绿/暮色玫瑰/石墨 + 默认玄青）
-   2026-09-20：默认皮肤由青瓷绿改为玄青（普鲁士蓝 × 朱砂），与 style.css [2] 基准令牌同步。 */
+/* 风格皮肤六套 v2.0-STYLE（玄青基准 + 纸墨/午夜蓝/手卷/叠印/石墨，各带排印与版式语言）
+   字段：a/b=预览主辅色 bg/ink=预览纸底与墨色。风格层见 skins.css [S]。
+   旧值兼容：localStorage 里的 ink/forest/rose 会经 applySkin 回退到玄青。 */
 const SKINS = [
-  { id: "celadon", name: "玄青", desc: "默认 · 普鲁士 × 朱砂", a: "#1f4e8c", b: "#b23a2a" },
-  { id: "ink", name: "墨韵", desc: "宣纸 × 朱砂", a: "#8c3a2e", b: "#3d5a80" },
-  { id: "midnight", name: "午夜蓝", desc: "工程仪表感", a: "#2563eb", b: "#0891b2" },
-  { id: "forest", name: "森绿", desc: "苔绿 × 菌菇棕", a: "#4a7c59", b: "#b0713a" },
-  { id: "rose", name: "暮色玫瑰", desc: "玫瑰金 × 紫藤", a: "#a34a5e", b: "#7069a8" },
-  { id: "graphite", name: "石墨", desc: "中性 × 橙点缀", a: "#1c1c1a", b: "#c2410c" },
+  { id: "celadon",  name: "玄青",   desc: "基准 · 普鲁士 × 朱砂", a: "#1f4e8c", b: "#b23a2a", bg: "#f6f5f2", ink: "#1a1d21" },
+  { id: "zhimo",    name: "纸墨",   desc: "编辑部衬线 · 大序号",  a: "#c8331f", b: "#2f4d6e", bg: "#ffffff", ink: "#14161a" },
+  { id: "midnight", name: "午夜蓝", desc: "瑞士蓝印 · 空心编号",  a: "#2563eb", b: "#1c2733", bg: "#eef2f7", ink: "#1c2733" },
+  { id: "shoujuan", name: "手卷",   desc: "东方纸墨 · 朱印眉批",  a: "#bf2b1e", b: "#2f4d6e", bg: "#fcfaf4", ink: "#1c1a14" },
+  { id: "dieyin",   name: "叠印",   desc: "Riso 双色 · 硬影贴纸", a: "#1f3a8a", b: "#ff4d8a", bg: "#f7f2e8", ink: "#1f3a8a" },
+  { id: "graphite", name: "石墨",   desc: "工业极简 · 橙带细线",  a: "#1c1c1a", b: "#c2410c", bg: "#f5f5f4", ink: "#1c1c1a" },
 ];
 window.KB_SKINS = SKINS;
 function applySkin(id) {
