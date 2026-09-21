@@ -37,25 +37,23 @@
 .home-hero-visual{position:relative;display:flex;justify-content:center;align-items:center;min-height:320px}
 .home-hero-visual .hero-constellation{width:min(100%,380px);height:auto}
 .parallax-layer{will-change:transform;transform:translate(var(--px,0),var(--py,0))}
-/* ---------- 星座图动效（reduced-motion 下全部静止，静态即终态） ---------- */
-@media (prefers-reduced-motion:no-preference){
-  .cst-links{opacity:.85;stroke-width:1.6}
-  .cst-links path{stroke-dasharray:8 6;animation:cst-dash 1s linear infinite}
-  .cst-links path:nth-child(2){animation-duration:1.6s;animation-direction:reverse}
-  @keyframes cst-dash{to{stroke-dashoffset:-28}}
-  .cst-nodes circle{transform-box:fill-box;transform-origin:center;animation:cst-tw 2.4s ease-in-out infinite}
-  .cst-nodes circle:nth-child(2n){animation-delay:.5s}
-  .cst-nodes circle:nth-child(3n){animation-delay:1.1s}
-  @keyframes cst-tw{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.3;transform:scale(.68)}}
-  .cst-ring{transform-box:view-box;transform-origin:170px 128px;stroke-width:1.6;animation:cst-spin 9s linear infinite}
-  @keyframes cst-spin{to{transform:rotate(360deg)}}
-  .cst-halo{transform-box:fill-box;transform-origin:center;animation:cst-breathe 3.2s ease-in-out infinite}
-  @keyframes cst-breathe{0%,100%{transform:scale(1);opacity:.14}50%{transform:scale(1.5);opacity:.34}}
-  .cst-dot{opacity:0}
-  .cst-dot-a{fill:var(--c-acc);filter:drop-shadow(0 0 6px var(--c-acc));offset-path:path("M170 128 L108 74");animation:cst-run 2.6s cubic-bezier(.4,0,.2,1) infinite}
-  .cst-dot-b{fill:var(--c-info);filter:drop-shadow(0 0 6px var(--c-info));offset-path:path("M170 128 L246 182");animation:cst-run 2.6s cubic-bezier(.4,0,.2,1) 1.3s infinite}
-  @keyframes cst-run{0%{offset-distance:0%;opacity:0;transform:scale(.6)}12%{opacity:1;transform:scale(1)}88%{opacity:1}100%{offset-distance:100%;opacity:0;transform:scale(.6)}}
-}
+/* ---------- 星座图动效（motion-ok 类门禁：系统允许或用户强制开启时挂上；静态即终态） ---------- */
+@keyframes cst-dash{to{stroke-dashoffset:-28}}
+@keyframes cst-tw{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.3;transform:scale(.68)}}
+@keyframes cst-spin{to{transform:rotate(360deg)}}
+@keyframes cst-breathe{0%,100%{transform:scale(1);opacity:.14}50%{transform:scale(1.5);opacity:.34}}
+@keyframes cst-run{0%{offset-distance:0%;opacity:0;transform:scale(.6)}12%{opacity:1;transform:scale(1)}88%{opacity:1}100%{offset-distance:100%;opacity:0;transform:scale(.6)}}
+html.motion-ok .cst-links{opacity:.85;stroke-width:1.6}
+html.motion-ok .cst-links path{stroke-dasharray:8 6;animation:cst-dash 1s linear infinite}
+html.motion-ok .cst-links path:nth-child(2){animation-duration:1.6s;animation-direction:reverse}
+html.motion-ok .cst-nodes circle{transform-box:fill-box;transform-origin:center;animation:cst-tw 2.4s ease-in-out infinite}
+html.motion-ok .cst-nodes circle:nth-child(2n){animation-delay:.5s}
+html.motion-ok .cst-nodes circle:nth-child(3n){animation-delay:1.1s}
+html.motion-ok .cst-ring{transform-box:view-box;transform-origin:170px 128px;stroke-width:1.6;animation:cst-spin 9s linear infinite}
+html.motion-ok .cst-halo{transform-box:fill-box;transform-origin:center;animation:cst-breathe 3.2s ease-in-out infinite}
+html.motion-ok .cst-dot{opacity:0}
+html.motion-ok .cst-dot-a{fill:var(--c-acc);filter:drop-shadow(0 0 6px var(--c-acc));offset-path:path("M170 128 L108 74");animation:cst-run 2.6s cubic-bezier(.4,0,.2,1) infinite}
+html.motion-ok .cst-dot-b{fill:var(--c-info);filter:drop-shadow(0 0 6px var(--c-info));offset-path:path("M170 128 L246 182");animation:cst-run 2.6s cubic-bezier(.4,0,.2,1) 1.3s infinite}
 
 /* ---------- KPI 条（真实数字 countUp） ---------- */
 .kpi-strip{display:grid;grid-template-columns:repeat(4,1fr);border-top:1px solid var(--c-line);
@@ -165,12 +163,12 @@ html.motion-ready .home-pipe[data-reveal].in{opacity:1;transform:none}
 }
 
 @media (prefers-reduced-motion: reduce){
-  html.motion-ready .home-hero [data-reveal],
-  html.motion-ready .kpi-strip [data-reveal],
-  html.motion-ready .dom-cards [data-reveal],
-  html.motion-ready .home-pipe[data-reveal]{opacity:1;transform:none;transition:none}
-  .marquee-track{animation:none;transform:none}
-  .parallax-layer{transform:none !important;will-change:auto}
-  [data-magnetic]{transform:none !important}
-  *,*::before,*::after{animation-duration:.01ms !important;animation-iteration-count:1 !important}
+  html.motion-ready:not(.motion-force) .home-hero [data-reveal],
+  html.motion-ready:not(.motion-force) .kpi-strip [data-reveal],
+  html.motion-ready:not(.motion-force) .dom-cards [data-reveal],
+  html.motion-ready:not(.motion-force) .home-pipe[data-reveal]{opacity:1;transform:none;transition:none}
+  html:not(.motion-force) .marquee-track{animation:none;transform:none}
+  html:not(.motion-force) .parallax-layer{transform:none !important;will-change:auto}
+  html:not(.motion-force) [data-magnetic]{transform:none !important}
+  html:not(.motion-force) *,html:not(.motion-force) *::before,html:not(.motion-force) *::after{animation-duration:.01ms !important;animation-iteration-count:1 !important}
 }

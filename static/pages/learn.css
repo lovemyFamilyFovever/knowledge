@@ -36,7 +36,7 @@
   100%{opacity:1;transform:perspective(900px) rotateX(0) translateY(0)}
 }
 @media (prefers-reduced-motion: reduce){
-  .kb-flip-in,.kb-flip-shown{animation:none;opacity:1;transform:none}
+  html:not(.motion-force) .kb-flip-in,html:not(.motion-force) .kb-flip-shown{animation:none;opacity:1;transform:none}
 }
 
 /* ---- 主 CTA（显示答案 / 跳转原文）：页面级对齐阶段2 .kb-btn 语言 ---- */

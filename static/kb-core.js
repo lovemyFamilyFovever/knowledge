@@ -334,9 +334,17 @@
       };
       var f2 = function (v) { return Number(v).toFixed(2); };
       var px = function (v) { return v + "px"; };
+      var motionOn = false;
+      try { motionOn = localStorage.getItem("kb-force-motion") === "1"; } catch (e) {}
+      var motionSec = '<div class="kb-pref-head">动效</div>' +
+        '<div class="kb-pref-row">' +
+        '  <label for="kb-pref-motion">强制开启动画</label>' +
+        '  <input type="checkbox" id="kb-pref-motion"' + (motionOn ? " checked" : "") + '>' +
+        '  <span class="kb-pref-note">忽略系统"减少动效"设置，勾选后刷新页面生效</span>' +
+        "</div>";
       /* 2026-09-20：抽屉顶部改 tab 切换（用户要求，参考 draw.io 属性面板页签）——
          look=界面风格，type=阅读排版+标题与代码；快捷键页签由 settings.open 追加。 */
-      return '<section class="kb-set-sec" data-sec="look">' + skinSec + "</section>" +
+      return '<section class="kb-set-sec" data-sec="look">' + skinSec + motionSec + "</section>" +
         '<section class="kb-set-sec" data-sec="type" hidden>' +
         '<div class="kb-pref-head">' + util.icon("i-toc-list", 14) + "阅读排版</div>" +
         '<div class="kb-pref-row">' +
@@ -430,6 +438,11 @@
         if (!card || !window.applySkin) return;
         window.applySkin(card.dataset.skin);
         skins.querySelectorAll(".kb-skin-card").forEach(function (x) { x.classList.toggle("on", x === card); });
+      });
+      var motionCb = root.querySelector("#kb-pref-motion");
+      if (motionCb) motionCb.addEventListener("change", function () {
+        try { localStorage.setItem("kb-force-motion", motionCb.checked ? "1" : "0"); } catch (e) {}
+        util.toast(motionCb.checked ? "已强制开启动画，刷新页面生效" : "已恢复跟随系统，刷新页面生效");
       });
       var reset = root.querySelector("#kb-pref-reset");
       if (reset) reset.addEventListener("click", function () {

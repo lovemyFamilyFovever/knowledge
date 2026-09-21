@@ -112,6 +112,6 @@
   .kan-col{min-height:120px}
 }
 @media (prefers-reduced-motion: reduce){
-  .tcloud .t,.merge-card,.kan-item,.kan-col{transition:none}
-  #tag-drawer,.err-wrap{animation:none}
+  html:not(.motion-force) .tcloud .t,html:not(.motion-force) .merge-card,html:not(.motion-force) .kan-item,html:not(.motion-force) .kan-col{transition:none}
+  html:not(.motion-force) #tag-drawer,html:not(.motion-force) .err-wrap{animation:none}
 }

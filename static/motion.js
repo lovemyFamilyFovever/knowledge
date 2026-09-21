@@ -13,6 +13,14 @@
 (function () {
   "use strict";
   var reduced = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  /* 用户在设置里显式开启动画（kb-force-motion）→ 无视系统 reduce，个人自用的 opt-in */
+  try {
+    if (localStorage.getItem("kb-force-motion") === "1") {
+      reduced = false;
+      document.documentElement.classList.add("motion-force");
+    }
+  } catch (e) {}
+  if (!reduced) document.documentElement.classList.add("motion-ok");
   var hasGsap = typeof window.gsap !== "undefined";
   var hasST = hasGsap && typeof window.ScrollTrigger !== "undefined";
   if (hasGsap && hasST) { try { window.gsap.registerPlugin(window.ScrollTrigger); } catch (e) { hasST = false; } }
