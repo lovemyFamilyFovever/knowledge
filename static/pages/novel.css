@@ -13,6 +13,11 @@
 .nv-toolbar .iconbtn{font-size:12px}
 .nv-toolbar .iconbtn.on{border-color:var(--c-acc);color:var(--c-acc);background:var(--acc-soft)}
 .nv-toolbar .iconbtn.busy{opacity:.6}
+.nv-pager{display:inline-flex;align-items:center;flex:none}
+.nv-pager .iconbtn{border-radius:0;margin:0}
+.nv-pager .iconbtn:first-child{border-top-left-radius:var(--rd-ctl);border-bottom-left-radius:var(--rd-ctl)}
+.nv-pager .iconbtn:last-child{border-top-right-radius:var(--rd-ctl);border-bottom-right-radius:var(--rd-ctl);border-left:none;margin-left:-1px}
+.nv-pager .iconbtn:hover{position:relative;z-index:1}
 .nv-pos{font:500 11.5px/1.4 var(--f-mono);color:var(--muted);min-width:0;flex:1;text-align:center;white-space:normal;word-break:break-word}
 .nv-body-row{flex:1;min-height:0;display:flex;gap:12px;align-items:stretch}
 /* 阅读舞台：护眼色只染这里，不碰全站 token */

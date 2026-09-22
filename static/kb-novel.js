@@ -333,10 +333,9 @@
     var prevTxt = pg === "page" ? "上页" : "上章";
     var nextTxt = pg === "page" ? "下页" : "下章";
     return '<div class="nv-toolbar">' +
-      (pg ? '<button class="iconbtn nv-prev-chap" title="' + (pg === "page" ? "上一页" : "上一章") + '">' + icon("chev-left", 13) + " " + prevTxt + "</button>" : "") +
+      (pg ? '<span class="nv-pager"><button class="iconbtn nv-prev-chap" title="' + (pg === "page" ? "上一页" : "上一章") + '">' + icon("chev-left", 13) + " " + prevTxt + "</button>" +
+        '<button class="iconbtn nv-next-chap" title="' + (pg === "page" ? "下一页" : "下一章") + '">' + nextTxt + " " + icon("chev-right", 13) + "</button></span>" : "") +
       '<span class="nv-pos" id="nv-pos">—</span>' +
-      (pg ? '<button class="iconbtn nv-next-chap" title="' + (pg === "page" ? "下一页" : "下一章") + '">' + nextTxt + " " + icon("chev-right", 13) + "</button>" : "") +
-      '<span class="spacer" style="flex:1"></span>' +
       '<button class="iconbtn nv-pref-btn" title="小说排版设置">' + icon("palette", 13) + " 排版</button>" +
       '<button class="iconbtn nv-find-btn" title="书内搜索">' + icon("search-magnifier", 13) + " 搜索</button>" +
       '<button class="iconbtn nv-note-btn" title="给当前章写章评">' + icon("edit", 13) + " 章评</button>" +
