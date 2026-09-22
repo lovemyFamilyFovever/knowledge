@@ -4,6 +4,10 @@
    ============================================================ */
 
 .land-main{grid-template-columns:280px minmax(0,1fr)}
+/* 阅读器主栅格在文档页是「目录 | 列表 | 正文 | 右栏」，收起/沉浸态各有规则；
+   占位页只有两列，不逐态覆盖的话，收起左栏时那条 264px 右栏列会变成空白带。 */
+.land-main.left-off{grid-template-columns:46px minmax(0,1fr)}
+.land-main.immersive{grid-template-columns:0 minmax(0,1fr)}
 
 .land-panel{display:flex;flex-direction:column;min-height:0;overflow:hidden}
 .land-grid{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,340px) minmax(0,1fr);
@@ -51,11 +55,10 @@
    这样看到的是完整可交互的图（切引导视图 / 追踪 / 导出都在），而不是截图或裁切。 */
 .land-view{display:flex;flex-direction:column;min-width:0}
 /* 取景框：iframe 内部按 archify 交付尺寸 1440x900 排版，再用双轴容器查询取
-   「宽够放」与「高够放」里较小的那个缩放比，既撑满父元素又不裁切图形。 */
-.land-frame{flex:1;min-height:0;position:relative;overflow:hidden;background:var(--c-panel);
-  border:1px solid var(--c-line);border-radius:12px;
-  box-shadow:0 4px 18px color-mix(in oklab,var(--c-ink),transparent 94%);
-  container-type:size}
+   「宽够放」与「高够放」里较小的那个缩放比，既撑满父元素又不裁切图形。
+   外层不再画边框/投影——archify 面板自带一圈，双层框看着像套了两层窗口。 */
+.land-frame{flex:1;min-height:0;position:relative;overflow:hidden;background:transparent;
+  border:0;border-radius:12px;container-type:size}
 .land-frame iframe{position:absolute;left:0;top:0;width:1440px;
   /* 高度按取景框真实宽高比反推：1440 × (框高/框宽)，按宽缩放后纵向刚好铺满，不留空带 */
   height:calc(1440px * 100cqh / 100cqw);border:0;
@@ -72,4 +75,9 @@
 @media (max-width:1180px){
   .land-grid{grid-template-columns:minmax(0,1fr);overflow-y:auto}
   .land-frame{min-height:360px}
+}
+/* 1280 断点内文档页栅格会扩成四列（目录|列表|正文|右栏），占位页始终两列 */
+@media (max-width:1280px){
+  .land-main,.land-main.left-off,.land-main.list-off,.land-main.left-off.list-off{
+    grid-template-columns:220px minmax(0,1fr)}
 }
