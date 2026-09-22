@@ -172,6 +172,10 @@ h1,h2,h3,h4{font-family:var(--f-disp);font-weight:600;letter-spacing:.01em;font-
 /* [5] 背景层 ===== aurora/grain 退役为平面薄板（DOM 保留，视觉归零）===== */
 .aurora{position:fixed;inset:0;z-index:0;overflow:hidden;pointer-events:none;background:var(--c-bg)}
 .aurora::before{content:none}
+/* 蒲公英粒子连线：面板不透明、栏间仅 8px 缝，放内容背后等于看不见，故浮在内容之上
+   （z 高于 main=4、低于顶栏=7）。pointer-events:none 保证不挡任何交互；
+   默认只在占位页与总览页开启，正文阅读面不挂。 */
+.kb-particles{position:fixed;inset:0;z-index:5;pointer-events:none;opacity:.8}
 .grain{position:fixed;inset:0;z-index:1;pointer-events:none;opacity:var(--grain);
   background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='.6'/%3E%3C/svg%3E")}
 /* [6] 顶栏 shell（INSTRUMENT：平面仪表条 + 结界线，玻璃退役） ===== */

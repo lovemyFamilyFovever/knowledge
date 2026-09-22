@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% block bodyattrs %}data-kb-particles="1" data-kb-count="120" data-kb-link="1"{% endblock %}
 {% block title %}总览 · 知库{% endblock %}
 {# 页面级样式放进 <head>：避免首帧只吃到 style.css / kb-core.css，
    页面内的裸 <svg><use/></svg> 按替换元素默认尺寸渲染成 300×150 巨幅图标（FOUC）。 #}
