@@ -246,6 +246,52 @@ def test_parse_interview_i5() -> None:
           f"got {[c.front[:6] for c in cards[:3]]}")
 
 
+def test_parse_interview_i5b() -> None:
+    """I-5b 无编号单题式（v4）：一文件一题的 `### 题干｜难度`，题号按顺序补。"""
+    sample = """---
+title: "10.1.0 使用Redis有哪些好处？"
+tags: []
+source: "github"
+---
+
+### 使用 Redis 有哪些好处？｜中级
+
+核心结论：快、数据结构丰富、可持久化，适合做热点数据缓存层。
+
+- 纯内存读写，单线程模型省掉上下文切换与锁竞争
+- 支持 string/hash/list/set/zset 与过期策略
+
+> 🎯 关键要点
+> - 一句话：把「计算」换成「查表」，用内存换 CPU
+
+### Redis 和 Memcached 怎么选？｜初级
+
+Redis 有数据结构与持久化，Memcached 只有 KV 与 LRU。
+"""
+    cards = parse_file("interview/bigtech/10.Redis篇/10.1.0 使用Redis有哪些好处？.md", sample)
+    check("I-5b：无编号题面也能抽卡", len(cards) == 2, f"got {len(cards)}")
+    check("I-5b：题号按出现顺序补齐", [c.front[:3] for c in cards] == ["Q1.", "Q2."],
+          f"got {[c.front[:6] for c in cards]}")
+    check("I-5b：难度后缀不进 front", all("｜" not in c.front for c in cards))
+    check("I-5b：difficulty 来自后缀", [c.difficulty for c in cards] == ["medium", "easy"],
+          f"got {[c.difficulty for c in cards]}")
+    check("I-5b：term 取 frontmatter title",
+          all(c.term == "10.1.0 使用Redis有哪些好处？" for c in cards))
+    check("I-5b：has_answer=1", all(c.has_answer == 1 for c in cards))
+    # 反例：无难度后缀的普通三级标题（答案内部的小标题）不得当成题面
+    neg = """---
+title: "反例"
+tags: []
+---
+
+### 实现要点
+
+只是正文里的小标题，没有难度后缀。
+"""
+    check("I-5b：无难度后缀的 h3 不产卡（防误判）",
+          parse_file("interview/x/反例.md", neg) == [], "普通 h3 被误当题面")
+
+
 def test_parse_interview_i4() -> None:
     """I-4 编号问答式（2026-09-18 统一为 I-5 渲染约定）：`### N. 题面｜初级|中级|高级` + `**答案要点：**` / `**参考答案：**`。"""
     rel = "interview/ai-agent/AI Agent开发面试题库 - 详细答案解析.md"
@@ -811,6 +857,7 @@ def main() -> int:
     test_parse_interview_i3()
     test_parse_interview_i4()
     test_parse_interview_i5()
+    test_parse_interview_i5b()
     test_baike_b_term_cleaning()
     test_i3_difficulty_backfill()
     test_parser_version_bumped()

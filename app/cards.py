@@ -23,6 +23,7 @@ parse_file(rel, raw) 是纯函数：同样输入永远得到同样输出，便�
     interview I-4  编号问答式：`### Q1: xxx` + `**参考答案：**` / `**答案要点：**`
     interview I-5  编号标题式：`### N. 题面｜初级|中级|高级` + 紧随其后的答案正文
                    （阅读器渲染约定，2026-09-18 起面试语料统一采用）
+    interview I-5b 无编号单题式：`### 题面｜初级|中级|高级`（一文件一题的短条目）
 """
 import hashlib
 import json
@@ -44,7 +45,9 @@ from app.store import parse_frontmatter
 #   v3  ① 新增 I-5（`### N. 题干｜难度`，面试语料 2026-09-18 统一改用的渲染约定）
 #       ② front 与 I-3/I-4 同口径（`Q{no}. 题面`），题干未变的题目 card_id 保持不变；
 #          题干编号被重排过的题目会换 card_id，旧卡软下线（经查无复习进度落在这些题上）。
-CARDS_PARSER_VERSION = 3
+#   v4  新增 I-5b：无编号单题式 `### 题干｜难度`（interview/bigtech 一文件一题的导入稿）。
+#       题号按出现顺序补 1..n，card_id 口径与 I-5 一致；带难度后缀才认，故既有语料不受影响。
+CARDS_PARSER_VERSION = 4
 
 # 只有这两个域会产出卡片；其余域（articles/projects/career/…）不抽。
 CARD_DOMAINS: tuple[str, ...] = ("baike", "interview")
@@ -110,6 +113,10 @@ RE_I3_DIFF = re.compile(r"^(简单|中等|困难|初级|中级|高级)$")
 # 竖线允许全角「｜」/半角「|」，难度后缀必须在行尾）
 RE_I5_Q = re.compile(r"^###\s+(\d+)\s*[.、]\s*(.+?)\s*$", re.M)
 RE_I5_DIFF = re.compile(r"[｜|]\s*(初级|中级|高级)\s*$")
+# interview I-5b：无编号单题式 `### 题干｜初级|中级|高级`（v4）。
+# 「一文件一题」的短条目（interview/bigtech 导入稿）没有题号，但仍是同一种渲染约定。
+# 必须带难度后缀才认——否则答案正文里的普通三级标题会被当成题面。
+RE_I5_Q_BARE = re.compile(r"^###\s+(\S.*?[｜|]\s*(?:初级|中级|高级)\s*)$", re.M)
 RE_I3_TEMPLATE = re.compile(r"^💡?\s*回答模板\s*[\d一二三四五六七八九十]+\s*[:：]?\s*(.*)$")
 WIKILINK = re.compile(r"!?\[\[([^\[\]|#]+)(?:#[^\[\]|]*)?(?:\|[^\[\]]*)?\]\]")
 # 行首粗体小节（收集多行值时到此为止）
@@ -615,15 +622,23 @@ def _parse_i5(rel: str, domain: str, sub: str, tags: str, fm: dict, clean: str) 
     2026-09-18 面试语料统一改为该排版（`##` 小节 + `### N. 题干｜难度` + `> 🎯/🔍` 提示框），
     答案正文直接跟在题干之后；难度后缀行尾剥离后走 DIFF_MAP 回填 difficulty。
     front 与 I-3/I-4 保持同一口径（`Q{no}. {题面}`），使题干未变的题目 card_id 不变。
+
+    v4 起兼容 I-5b「无编号单题式」`### 题干｜难度`：一文件一题的导入稿没有题号，
+    按出现顺序补 1..n。为避免把答案里的普通三级标题误判为题面，无编号形态
+    **强制要求行尾难度后缀**。
     """
     term = _term_of(fm, clean, rel)
     q_matches = list(RE_I5_Q.finditer(clean))
+    numbered = bool(q_matches)
+    if not numbered:
+        q_matches = list(RE_I5_Q_BARE.finditer(clean))
     if not q_matches:
         return []
     cards: list[Card] = []
     for i, m in enumerate(q_matches):
-        no = int(m.group(1))
-        stem = RE_I5_DIFF.sub("", m.group(2)).strip()
+        no = int(m.group(1)) if numbered else i + 1
+        tail = m.group(2) if numbered else m.group(1)
+        stem = RE_I5_DIFF.sub("", tail).strip()
         if not stem:
             continue
         end = q_matches[i + 1].start() if i + 1 < len(q_matches) else len(clean)
@@ -634,7 +649,7 @@ def _parse_i5(rel: str, domain: str, sub: str, tags: str, fm: dict, clean: str) 
             region = region[:m_h2.start()]
 
         difficulty = ""
-        md = RE_I5_DIFF.search(m.group(2))
+        md = RE_I5_DIFF.search(tail)
         if md:
             difficulty = DIFF_MAP.get(md.group(1), "")
 
