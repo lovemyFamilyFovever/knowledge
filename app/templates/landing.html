@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block bodyattrs %}data-kb-particles="1" data-kb-count="120" data-kb-link="1"{% endblock %}
+{% block bodyattrs %}data-kb-particles="1" data-kb-count="85" data-kb-link="1"{% endblock %}
 {% block title %}知库 · 从这里开始{% endblock %}
 {% block head %}<link rel="stylesheet" href="/static/pages/landing.css?v={{ av('pages/landing.css') }}">{% endblock %}
 {% block body %}
@@ -35,12 +35,13 @@
           <kbd>↵</kbd>
         </form>
         <div class="land-list">
-          <a href="#" id="land-continue" hidden><svg class="i i-13"><use href="#i-history-clock"/></svg>继续上次阅读<span class="land-li-meta" id="land-continue-title"></span></a>
+          <a href="#" id="land-continue" hidden><svg class="i i-13"><use href="#i-history-clock"/></svg>继续上次阅读</a>
           <a href="/inbox"><svg class="i i-13"><use href="#i-inbox-tray"/></svg>进入收件箱<span class="land-li-meta">{{ inbox_n }} 条待归档</span></a>
           <a href="/stats"><svg class="i i-13"><use href="#i-stats-chart"/></svg>本月阅读统计<span class="land-li-meta">{{ month }}</span></a>
           <a href="/glossary"><svg class="i i-13"><use href="#i-backlink-graph"/></svg>开始一次串学漫游<span class="land-li-meta">术语门户</span></a>
         </div>
         <div class="land-keys"><kbd>/</kbd> 搜索 <kbd>g</kbd><kbd>t</kbd> 术语 <kbd>?</kbd> 快捷键</div>
+        <div class="land-cards" id="land-cards"></div>
       </div>
       <div class="land-view">
         <div class="land-kicker"><span class="land-dot"></span>系统全景 · 引导视图 3 章</div>
@@ -58,28 +59,64 @@
 (function () {
   try {
     var last = localStorage.getItem("kb-last-doc");
-    if (!last) return;
-    var a = document.getElementById("land-continue"), t = document.getElementById("land-continue-title");
-    if (!a) return;
+    var a = document.getElementById("land-continue");
+    if (!last || !a) return;
     a.href = last; a.hidden = false;
-    if (t) t.textContent = decodeURIComponent((last.split("/").pop() || "").replace(/\.md$/, ""));
   } catch (e) {}
 })();
 
-/* 架构图取景框主题联动：archify viewer 只认自己的 data-theme，不随阅读器换肤，
-   暗色皮肤下框里会是刺眼的白图。iframe 与本页同源，直接把主题写过去并持续跟随。 */
+/* 架构图取景框联动：iframe 与本页同源，所以直接改它，不动 archify 交付物本身。
+   1) 主题跟随阅读器换肤（viewer 只认自己的 data-theme）
+   2) 打开 archify 自带的 data-present 舞台模式：图区 flex:1 撑满、其卡片行自动隐藏
+   3) 注入一条样式把工具栏从右上挪到右下（标题留在左上）
+   4) 把它隐藏掉的三张结论卡搬到左栏底部渲染，内容仍以 archify 为唯一事实源 */
 (function () {
   var f = document.querySelector(".land-frame iframe");
   if (!f) return;
+
+  function harvestCards(doc) {
+    var host = document.getElementById("land-cards");
+    if (!host || host.childElementCount) return;
+    var cards = doc.querySelectorAll(".cards > *");
+    if (!cards.length) return;
+    Array.prototype.forEach.call(cards, function (c) {
+      var t = c.querySelector("h3, .card-title, strong, b");
+      var items = c.querySelectorAll("li");
+      var box = document.createElement("div");
+      box.className = "land-card";
+      var b = document.createElement("b");
+      b.textContent = (t ? t.textContent : c.textContent).trim().slice(0, 24);
+      box.appendChild(b);
+      if (items.length) {
+        var ul = document.createElement("ul");
+        Array.prototype.forEach.call(items, function (li) {
+          var e = document.createElement("li");
+          e.textContent = li.textContent.replace(/^[\s•·]+/, "").trim();
+          ul.appendChild(e);
+        });
+        box.appendChild(ul);
+      }
+      host.appendChild(box);
+    });
+  }
+
   function sync() {
     var dark = document.documentElement.getAttribute("data-theme") === "dark";
     var want = dark ? "dark" : "light";
     try {
       var d = f.contentDocument;
-      if (d && d.documentElement && d.documentElement.getAttribute("data-theme") !== want) {
-        d.documentElement.setAttribute("data-theme", want);
-      }
+      if (!d || !d.documentElement) return;
+      d.documentElement.setAttribute("data-theme", want);
+      d.documentElement.setAttribute("data-present", "true");
       localStorage.setItem("archify-theme", want);
+      if (!d.getElementById("kb-land-style")) {
+        var st = d.createElement("style");
+        st.id = "kb-land-style";
+        /* 工具栏挪到右下；舞台模式已负责撑满与隐藏卡片 */
+        st.textContent = '.toolbar{top:auto!important;bottom:.75rem!important;right:.75rem!important}';
+        d.head.appendChild(st);
+      }
+      harvestCards(d);
     } catch (e) {}
   }
   f.addEventListener("load", sync);

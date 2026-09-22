@@ -19,7 +19,7 @@
   var reduced = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
   if (reduced && !root.classList.contains("motion-force")) return;
 
-  var COUNT = parseInt(body.getAttribute("data-kb-count") || "120", 10);
+  var COUNT = parseInt(body.getAttribute("data-kb-count") || "85", 10);
   var LINK = body.hasAttribute("data-kb-link");            /* 是否画粒子间连线 */
   var mountSel = body.getAttribute("data-kb-mount");
   var MOUNT = (mountSel && document.querySelector(mountSel)) || null;   /* 空串会让 querySelector 抛错，必须先判空 */
@@ -64,7 +64,7 @@
     dots.length = 0;
     for (var i = 0; i < COUNT; i++) {
       dots.push({ x: Math.random() * W, y: Math.random() * H,
-                  xa: 2 * Math.random() - 1, ya: 2 * Math.random() - 1, max: 13000 });
+                  xa: 2 * Math.random() - 1, ya: 2 * Math.random() - 1, max: 9000 });
     }
   }
 

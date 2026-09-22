@@ -50,12 +50,24 @@
    iframe 按 archify 交付尺寸 1440x900 渲染，再用容器查询把整幅等比缩进面板，
    这样看到的是完整可交互的图（切引导视图 / 追踪 / 导出都在），而不是截图或裁切。 */
 .land-view{display:flex;flex-direction:column;min-width:0}
-.land-frame{align-self:flex-start;width:100%;position:relative;overflow:hidden;background:var(--c-panel);
+/* 取景框：iframe 内部按 archify 交付尺寸 1440x900 排版，再用双轴容器查询取
+   「宽够放」与「高够放」里较小的那个缩放比，既撑满父元素又不裁切图形。 */
+.land-frame{flex:1;min-height:0;position:relative;overflow:hidden;background:var(--c-panel);
   border:1px solid var(--c-line);border-radius:12px;margin-top:10px;
   box-shadow:0 4px 18px color-mix(in oklab,var(--c-ink),transparent 94%);
-  container-type:inline-size;aspect-ratio:1440/900}
-.land-frame iframe{position:absolute;left:0;top:0;width:1440px;height:900px;border:0;
+  container-type:size}
+.land-frame iframe{position:absolute;left:0;top:0;width:1440px;
+  /* 高度按取景框真实宽高比反推：1440 × (框高/框宽)，按宽缩放后纵向刚好铺满，不留空带 */
+  height:calc(1440px * 100cqh / 100cqw);border:0;
   transform:scale(calc(100cqw / 1440px));transform-origin:0 0}
+
+/* 左栏底部：三张结论卡（内容从架构图 .cards 里取，避免两处手写走样） */
+.land-cards{margin-top:auto;padding-top:18px;display:flex;flex-direction:column;gap:8px}
+.land-card{border:1px solid var(--c-line);border-radius:8px;background:var(--c-panel);padding:9px 11px}
+.land-card b{display:flex;align-items:center;gap:7px;font-size:12.5px;font-weight:700;color:var(--c-ink)}
+.land-card b::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--c-acc);flex:none}
+.land-card ul{margin:5px 0 0;padding-left:15px}
+.land-card li{font-size:11.5px;line-height:1.6;color:var(--muted)}
 
 @media (max-width:1180px){
   .land-grid{grid-template-columns:minmax(0,1fr);overflow-y:auto}
