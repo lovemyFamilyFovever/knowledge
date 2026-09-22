@@ -97,6 +97,7 @@
     "interview/management": "管理面",
     "interview/architecture": "架构面",
     "interview/algorithms": "算法面试",
+    "interview/bigtech": "大厂面试题",
     "ai-assets/_root": "总览",
     "_root": "总览",
     "articles/backend/C#": "C#C#",
@@ -108,7 +109,8 @@
     "myblog": "博客",
     "desktop": "桌面",
     "knowledge": "知识库自产",
-    "dsh-memory": "Agent 记忆"
+    "dsh-memory": "Agent 记忆",
+    "github": "GitHub 开源"
   },
   "status": {
     "imported": "已导入",
