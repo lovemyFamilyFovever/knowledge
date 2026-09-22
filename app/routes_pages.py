@@ -80,13 +80,13 @@ def _chrome_counts() -> dict:
 # ---------------- 首页 / 总览 ----------------
 @pages_bp.route("/")
 def index():
+    """`/` 是占位页，不再默认打开"第一个域的第一个子域的第一篇"——那是排序副产物。"""
     domains = _domains_cached()
     if not domains:
         abort(404, "content/ 语料为空")
-    d0, s0 = domains[0]["id"], domains[0]["subs"][0]
-    if s0["docs"]:
-        return redirect(f"/doc/{d0}/{s0['id']}/{s0['docs'][0]['name']}")
-    return redirect(f"/browse/{d0}/{s0['id']}")
+    stats = _corpus_stats()
+    return render_template("landing.html", domains=domains, n_md=stats["n_md"],
+                           inbox_n=stats["inbox"], month=time.strftime("%Y 年 %m 月"))
 
 
 @pages_bp.route("/home")

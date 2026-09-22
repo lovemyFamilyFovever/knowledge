@@ -1,0 +1,333 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "知库 · 单机知识管线",
+    "locale": "zh-CN",
+    "animation": "trace",
+    "quality_profile": "showcase",
+    "output": "zhiku-pipeline.html",
+    "views": [
+      {
+        "id": "write-path",
+        "label": "写入路径",
+        "focus": [
+          "author",
+          "inbox",
+          "corpus"
+        ],
+        "note": "新语料只能从 _inbox 进，归档后落 content/。"
+      },
+      {
+        "id": "derive",
+        "label": "派生索引",
+        "focus": [
+          "corpus",
+          "store",
+          "fts",
+          "rag",
+          "app"
+        ],
+        "note": "索引是可删缓存，任何时候能从语料重建。"
+      },
+      {
+        "id": "publish",
+        "label": "公开面",
+        "focus": [
+          "corpus",
+          "publish",
+          "site"
+        ],
+        "note": "白名单同步，盗版书库与私人项目永不外发。"
+      }
+    ]
+  },
+  "components": [
+    {
+      "id": "author",
+      "type": "external",
+      "label": "投稿端",
+      "sublabel": "剪藏 / 手写",
+      "pos": [
+        40,
+        270
+      ],
+      "size": [
+        120,
+        60
+      ]
+    },
+    {
+      "id": "inbox",
+      "type": "messagebus",
+      "label": "content/_inbox",
+      "sublabel": "唯一入口",
+      "pos": [
+        240,
+        270
+      ],
+      "size": [
+        148,
+        60
+      ]
+    },
+    {
+      "id": "corpus",
+      "type": "database",
+      "label": "content/",
+      "sublabel": "Markdown 唯一事实源",
+      "pos": [
+        460,
+        270
+      ],
+      "size": [
+        164,
+        62
+      ],
+      "tag": "不可再生"
+    },
+    {
+      "id": "taxonomy",
+      "type": "database",
+      "label": "taxonomy.json",
+      "sublabel": "分类学权威",
+      "pos": [
+        460,
+        120
+      ],
+      "size": [
+        164,
+        62
+      ]
+    },
+    {
+      "id": "store",
+      "type": "backend",
+      "label": "app/store.py",
+      "sublabel": "扫描 · frontmatter",
+      "pos": [
+        700,
+        270
+      ],
+      "size": [
+        160,
+        62
+      ]
+    },
+    {
+      "id": "fts",
+      "type": "database",
+      "label": "indexes/index.db",
+      "sublabel": "FTS5 全文 + 双链",
+      "pos": [
+        700,
+        420
+      ],
+      "size": [
+        160,
+        62
+      ],
+      "tag": "派生"
+    },
+    {
+      "id": "reader",
+      "type": "frontend",
+      "label": "浏览器阅读器",
+      "sublabel": "127.0.0.1:5001",
+      "pos": [
+        940,
+        120
+      ],
+      "size": [
+        160,
+        62
+      ]
+    },
+    {
+      "id": "rag",
+      "type": "database",
+      "label": "indexes/rag.db",
+      "sublabel": "sqlite-vec 向量",
+      "pos": [
+        940,
+        420
+      ],
+      "size": [
+        160,
+        62
+      ],
+      "tag": "派生"
+    },
+    {
+      "id": "app",
+      "type": "backend",
+      "label": "app/app.py",
+      "sublabel": "Flask 路由编排",
+      "pos": [
+        940,
+        270
+      ],
+      "size": [
+        160,
+        62
+      ]
+    },
+    {
+      "id": "publish",
+      "type": "backend",
+      "label": "publish_site.py",
+      "sublabel": "白名单同步",
+      "pos": [
+        460,
+        570
+      ],
+      "size": [
+        164,
+        62
+      ]
+    },
+    {
+      "id": "site",
+      "type": "cloud",
+      "label": "garden 公开站",
+      "sublabel": "GitHub Pages",
+      "pos": [
+        700,
+        570
+      ],
+      "size": [
+        160,
+        62
+      ]
+    }
+  ],
+  "boundaries": [
+    {
+      "kind": "security-group",
+      "label": "本机运行 · 语料不出网",
+      "wraps": [
+        "inbox",
+        "corpus",
+        "taxonomy",
+        "store",
+        "fts",
+        "rag",
+        "app",
+        "reader"
+      ],
+      "pad": 22
+    },
+    {
+      "kind": "region",
+      "label": "公开面",
+      "wraps": [
+        "publish",
+        "site"
+      ],
+      "pad": 18
+    }
+  ],
+  "connections": [
+    {
+      "from": "author",
+      "to": "inbox",
+      "label": "投递",
+      "variant": "emphasis"
+    },
+    {
+      "from": "inbox",
+      "to": "corpus",
+      "label": "归档写回",
+      "variant": "emphasis"
+    },
+    {
+      "from": "corpus",
+      "to": "store",
+      "label": "读正文",
+      "variant": "emphasis"
+    },
+    {
+      "from": "taxonomy",
+      "to": "store",
+      "label": "装载分类",
+      "variant": "dashed",
+      "toSide": "top"
+    },
+    {
+      "from": "store",
+      "to": "app",
+      "label": "语料视图",
+      "variant": "emphasis"
+    },
+    {
+      "from": "app",
+      "to": "reader",
+      "label": "HTTP 本地",
+      "variant": "emphasis"
+    },
+    {
+      "from": "store",
+      "to": "fts",
+      "label": "建索引",
+      "variant": "dashed",
+      "labelAt": [
+        780,
+        358
+      ]
+    },
+    {
+      "from": "fts",
+      "to": "rag",
+      "label": "切块嵌入",
+      "variant": "dashed"
+    },
+    {
+      "from": "rag",
+      "to": "app",
+      "label": "语义检索",
+      "variant": "dashed"
+    },
+    {
+      "from": "corpus",
+      "to": "publish",
+      "label": "白名单",
+      "variant": "security",
+      "labelAt": [
+        542,
+        358
+      ]
+    },
+    {
+      "from": "publish",
+      "to": "site",
+      "label": "build + push",
+      "variant": "security"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "唯一事实源",
+      "items": [
+        "content/ 下 md/html 不可再生",
+        "新语料一律走 _inbox；编辑直接写回文件系统"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "纯派生缓存",
+      "items": [
+        "index.db / rag.db 可随时删除重建",
+        "切块或嵌入逻辑变更递增 RAG_CODE_VERSION"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "公开边界",
+      "items": [
+        "发布走白名单同步，非默认全量",
+        "小说（盗版书库）/ 漫画 / projects 永不外发"
+      ]
+    }
+  ]
+}

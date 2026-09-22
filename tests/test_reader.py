@@ -85,7 +85,9 @@ def main() -> int:
         c = app.test_client()
 
         r = c.get("/")
-        check("/ 重定向到首篇", r.status_code == 302 and "/doc/ai/llm-and-agents/A" in r.headers["Location"])
+        land = r.get_data(as_text=True)
+        check("/ 渲染占位页而非跳首篇", r.status_code == 200 and "从一次检索开始" in land
+              and 'action="/search"' in land and "/static/archify/zhiku-pipeline.html" in land)
 
         r = c.get("/doc/ai/llm-and-agents/A")
         body = r.get_data(as_text=True)

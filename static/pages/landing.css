@@ -1,0 +1,63 @@
+/* ============================================================
+   landing.css —— `/` 占位页（P2 分栏：左检索命令 · 右系统全景图）
+   挂载：landing.html；令牌全部取阅读器变量，换肤自动跟随。
+   ============================================================ */
+
+.land-main{grid-template-columns:280px minmax(0,1fr)}
+
+.land-panel{display:flex;flex-direction:column;min-height:0;overflow:hidden}
+.land-grid{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,340px) minmax(0,1fr);
+  gap:18px;padding:20px}
+
+/* 小标题：主色圆点 + mono 大字距 */
+.land-kicker{display:flex;align-items:center;gap:8px;font:700 10.5px/1 var(--f-mono);letter-spacing:.16em;
+  text-transform:uppercase;color:var(--muted)}
+.land-dot{width:7px;height:7px;border-radius:50%;background:var(--c-acc);flex:none}
+.land-title{font-family:var(--f-disp);font-weight:700;font-size:23px;line-height:1.25;
+  letter-spacing:.01em;color:var(--c-ink);margin:10px 0 12px}
+
+/* 检索条 */
+.land-box{display:flex;align-items:center;gap:11px;padding:13px 16px;background:var(--c-panel);
+  border:1px solid var(--c-line2);border-radius:10px;transition:border-color var(--dur-1),box-shadow var(--dur-1)}
+.land-box:focus-within{border-color:var(--c-acc);box-shadow:0 2px 12px color-mix(in oklab,var(--c-acc),transparent 88%)}
+.land-box svg{color:var(--c-acc);flex:none}
+.land-box input{flex:1;min-width:0;border:0;outline:none;background:none;color:var(--c-ink);
+  font:14px var(--f-body);letter-spacing:.01em}
+.land-box input::placeholder{color:var(--faint)}
+.land-box kbd{font:500 10.5px/1 var(--f-mono);color:var(--faint);border:1px solid var(--c-line);
+  border-radius:var(--rd-ctl);padding:3px 6px;background:var(--c-panel)}
+
+/* 命令列表：条目不加边框（靠发丝分隔），hover 才给底色 */
+.land-list{margin-top:12px;background:var(--c-panel);border:1px solid var(--c-line);border-radius:10px;overflow:hidden}
+.land-list a{display:flex;align-items:center;gap:11px;padding:12px 15px;font-size:13.5px;font-weight:600;
+  color:var(--c-ink);text-decoration:none;border-bottom:1px solid var(--c-line);transition:background var(--dur-1)}
+.land-list a:last-child{border-bottom:0}
+.land-list a[hidden]{display:none}  /* display:flex 会压过 hidden 属性，必须显式关掉 */
+.land-list a:hover{background:var(--c-sunk)}
+.land-list a svg{color:var(--muted);flex:none}
+.land-list a:hover svg{color:var(--c-acc)}
+.land-li-meta{margin-left:auto;font:500 11px var(--f-mono);color:var(--faint);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:46%}
+
+.land-keys{margin-top:14px;font:500 11px var(--f-mono);color:var(--faint);display:flex;gap:7px;align-items:center}
+.land-keys kbd{font:600 10.5px/1 var(--f-mono);color:var(--muted);border:1px solid var(--c-line2);
+  border-radius:var(--rd-ctl);padding:3px 6px;background:var(--c-panel)}
+
+/* 左栏纵向排布：与右栏顶端对齐（居中会和图的标题错位） */
+.land-side{display:flex;flex-direction:column;justify-content:flex-start;min-width:0;padding-top:2px}
+
+/* 右栏：架构图取景框
+   iframe 按 archify 交付尺寸 1440x900 渲染，再用容器查询把整幅等比缩进面板，
+   这样看到的是完整可交互的图（切引导视图 / 追踪 / 导出都在），而不是截图或裁切。 */
+.land-view{display:flex;flex-direction:column;min-width:0}
+.land-frame{align-self:flex-start;width:100%;position:relative;overflow:hidden;background:var(--c-panel);
+  border:1px solid var(--c-line);border-radius:12px;margin-top:10px;
+  box-shadow:0 4px 18px color-mix(in oklab,var(--c-ink),transparent 94%);
+  container-type:inline-size;aspect-ratio:1440/900}
+.land-frame iframe{position:absolute;left:0;top:0;width:1440px;height:900px;border:0;
+  transform:scale(calc(100cqw / 1440px));transform-origin:0 0}
+
+@media (max-width:1180px){
+  .land-grid{grid-template-columns:minmax(0,1fr);overflow-y:auto}
+  .land-frame{min-height:360px}
+}

@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+{% block title %}知库 · 从这里开始{% endblock %}
+{% block head %}<link rel="stylesheet" href="/static/pages/landing.css?v={{ av('pages/landing.css') }}">{% endblock %}
+{% block body %}
+<main class="land-main">
+  <section class="panel wb-panel" id="p-left" data-reveal data-reveal-y="14">
+    <div class="panel-h">分类目录<span class="cnt" id="tree-total">{{ n_md }}</span><button class="fold" onclick="togglePanel('left')" title="收起左栏" aria-label="收起左栏"><svg class="i i-12"><use href="#i-fold-l"/></svg></button></div>
+    <nav class="tree" id="tree" aria-label="分类目录">
+      {% for d in domains %}
+      <div class="dom" style="--dh:{{ HUES[d.id] }}" data-dom="{{ d.id }}">
+        <a class="dom-head" href="/browse/{{ d.id }}/{{ d.subs[0].id }}" role="button" aria-expanded="false" title="{{ d.label }} · 点击展开/收起">
+          <span class="dom-glyph"><svg><use href="#i-{{ d.id }}"/></svg></span>
+          <span class="dom-name" title="{{ d.label }}">{{ d.label }}</span><span class="dom-n">{{ d.n }}</span>
+        </a>
+        <div class="subs">
+          {% for s in d.subs %}
+          <a class="sub" href="/browse/{{ d.id }}/{{ s.id }}" title="{{ s.label }} · 点击展开/收起" role="button"><span class="sub-ic" title="子目录"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="#i-folder"/></svg></span><span class="sub-t">{{ s.label }}</span><span class="n">{{ s.n }}</span></a>
+          {% endfor %}
+        </div>
+      </div>
+      {% endfor %}
+    </nav>
+    <button class="unfold" onclick="togglePanel('left')" title="展开左栏" aria-label="展开左栏"><svg class="i"><use href="#i-fold-r"/></svg></button>
+  </section>
+
+  <section class="panel land-panel" id="p-land" data-reveal data-reveal-y="14">
+    <div class="land-grid">
+      <div class="land-side">
+        <div class="land-kicker"><span class="land-dot"></span>未打开文档</div>
+        <h1 class="land-title">从一次检索开始</h1>
+        <form class="land-box" action="/search" method="get" role="search">
+          <svg class="i i-16"><use href="#i-search-magnifier"/></svg>
+          <input name="q" placeholder="检索标题 / 正文 / 标签…" autocomplete="off" aria-label="检索知识库">
+          <kbd>↵</kbd>
+        </form>
+        <div class="land-list">
+          <a href="#" id="land-continue" hidden><svg class="i i-13"><use href="#i-history-clock"/></svg>继续上次阅读<span class="land-li-meta" id="land-continue-title"></span></a>
+          <a href="/inbox"><svg class="i i-13"><use href="#i-inbox-tray"/></svg>进入收件箱<span class="land-li-meta">{{ inbox_n }} 条待归档</span></a>
+          <a href="/stats"><svg class="i i-13"><use href="#i-stats-chart"/></svg>本月阅读统计<span class="land-li-meta">{{ month }}</span></a>
+          <a href="/glossary"><svg class="i i-13"><use href="#i-backlink-graph"/></svg>开始一次串学漫游<span class="land-li-meta">术语门户</span></a>
+        </div>
+        <div class="land-keys"><kbd>/</kbd> 搜索 <kbd>g</kbd><kbd>t</kbd> 术语 <kbd>?</kbd> 快捷键</div>
+      </div>
+      <div class="land-view">
+        <div class="land-kicker"><span class="land-dot"></span>系统全景 · 引导视图 3 章</div>
+        <div class="land-frame">
+          <iframe src="/static/archify/zhiku-pipeline.html" title="知库 · 单机知识管线架构图" loading="lazy"></iframe>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+{% endblock %}
+{% block scripts %}
+<script>
+/* 继续阅读：与首页同一数据源（app.js 在每次成功打开文档时写 kb-last-doc） */
+(function () {
+  try {
+    var last = localStorage.getItem("kb-last-doc");
+    if (!last) return;
+    var a = document.getElementById("land-continue"), t = document.getElementById("land-continue-title");
+    if (!a) return;
+    a.href = last; a.hidden = false;
+    if (t) t.textContent = decodeURIComponent((last.split("/").pop() || "").replace(/\.md$/, ""));
+  } catch (e) {}
+})();
+
+/* 架构图取景框主题联动：archify viewer 只认自己的 data-theme，不随阅读器换肤，
+   暗色皮肤下框里会是刺眼的白图。iframe 与本页同源，直接把主题写过去并持续跟随。 */
+(function () {
+  var f = document.querySelector(".land-frame iframe");
+  if (!f) return;
+  function sync() {
+    var dark = document.documentElement.getAttribute("data-theme") === "dark";
+    var want = dark ? "dark" : "light";
+    try {
+      var d = f.contentDocument;
+      if (d && d.documentElement && d.documentElement.getAttribute("data-theme") !== want) {
+        d.documentElement.setAttribute("data-theme", want);
+      }
+      localStorage.setItem("archify-theme", want);
+    } catch (e) {}
+  }
+  f.addEventListener("load", sync);
+  if (window.MutationObserver) {
+    new MutationObserver(sync).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+  }
+  sync();
+})();
+</script>
+{% endblock %}
