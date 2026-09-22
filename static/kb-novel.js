@@ -832,9 +832,13 @@
         setTimeout(injectTheme, 350); // relocated 时 section iframe 可能尚未挂载
       }
       applyTheme();
+      var lastFlow = p.flow === "page" ? "paginated" : "scrolled-doc";
       var prefH = function () {
         var q = N.get();
-        rendition.flow(q.flow === "page" ? "paginated" : "scrolled-doc");
+        var wantFlow = q.flow === "page" ? "paginated" : "scrolled-doc";
+        /* 只有 flow 真变了才重建视图——rendition.flow() 会触发 relocated 覆盖续读位置，
+           若每次改字号/宽度/主题都调用它，进度就被重置回章节开头。 */
+        if (wantFlow !== lastFlow) { lastFlow = wantFlow; rendition.flow(wantFlow); }
         applyTheme();
       };
       document.addEventListener("kb-novel-pref", prefH);
