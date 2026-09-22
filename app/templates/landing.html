@@ -44,7 +44,6 @@
         <div class="land-cards" id="land-cards"></div>
       </div>
       <div class="land-view">
-        <div class="land-kicker"><span class="land-dot"></span>系统全景 · 引导视图 3 章</div>
         <div class="land-frame">
           <iframe src="/static/archify/zhiku-pipeline.html" title="知库 · 单机知识管线架构图" loading="lazy"></iframe>
         </div>
@@ -109,13 +108,11 @@
       d.documentElement.setAttribute("data-theme", want);
       d.documentElement.setAttribute("data-present", "true");
       localStorage.setItem("archify-theme", want);
-      if (!d.getElementById("kb-land-style")) {
-        var st = d.createElement("style");
-        st.id = "kb-land-style";
-        /* 工具栏挪到右下；舞台模式已负责撑满与隐藏卡片 */
-        st.textContent = '.toolbar{top:auto!important;bottom:.75rem!important;right:.75rem!important}';
-        d.head.appendChild(st);
-      }
+      /* 顶栏一行：左标题 + 右五个按钮。archify 的 .header 本就是标题行，
+         工具栏 fixed 右上、舞台模式给 header 留了 padding-right 避让，
+         所以只需把它的标题换成我们的文案，不再于外层重复写一行。 */
+      var h1 = d.querySelector(".header h1");
+      if (h1 && h1.textContent.indexOf("系统全景") < 0) h1.textContent = "系统全景 · 引导视图 3 章";
       harvestCards(d);
     } catch (e) {}
   }

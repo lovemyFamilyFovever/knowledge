@@ -53,7 +53,7 @@
 /* 取景框：iframe 内部按 archify 交付尺寸 1440x900 排版，再用双轴容器查询取
    「宽够放」与「高够放」里较小的那个缩放比，既撑满父元素又不裁切图形。 */
 .land-frame{flex:1;min-height:0;position:relative;overflow:hidden;background:var(--c-panel);
-  border:1px solid var(--c-line);border-radius:12px;margin-top:10px;
+  border:1px solid var(--c-line);border-radius:12px;
   box-shadow:0 4px 18px color-mix(in oklab,var(--c-ink),transparent 94%);
   container-type:size}
 .land-frame iframe{position:absolute;left:0;top:0;width:1440px;
