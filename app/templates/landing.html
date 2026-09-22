@@ -45,7 +45,9 @@
       </div>
       <div class="land-view">
         <div class="land-frame">
-          <iframe src="/static/archify/zhiku-pipeline.html" title="知库 · 单机知识管线架构图" loading="lazy"></iframe>
+          {# present=1 由 archify 自己的 head 脚本落地，比父页 load 后再补属性稳；
+             父页 sync() 仍会兜底设一次，防止有人直接改 src。 #}
+          <iframe src="/static/archify/zhiku-pipeline.html?present=1" title="知库 · 单机知识管线架构图" loading="lazy"></iframe>
         </div>
       </div>
     </div>
@@ -108,9 +110,20 @@
       d.documentElement.setAttribute("data-theme", want);
       d.documentElement.setAttribute("data-present", "true");
       localStorage.setItem("archify-theme", want);
-      /* 顶栏一行：左标题 + 右五个按钮。archify 的 .header 本就是标题行，
-         工具栏 fixed 右上、舞台模式给 header 留了 padding-right 避让，
-         所以只需把它的标题换成我们的文案，不再于外层重复写一行。 */
+      /* 顶栏一行：左标题 + 右两组控件。archify 的 .header 本就是标题行，
+         .toolbar（浅色/风格/动态/演示/导出）fixed 右上；这里把 .diagram-nav
+         （路径/地图/透镜/查找/缩放）也钉到它左边同一行，并取消舞台模式
+         为底部操作条预留的空间——图因此比原来再高出约 3.5 rem。 */
+      if (!d.getElementById("kb-land-style")) {
+        var st = d.createElement("style");
+        st.id = "kb-land-style";
+        st.textContent =
+          ".diagram-nav{position:fixed!important;top:1.15rem!important;right:27rem!important;"
+          + "bottom:auto!important;left:auto!important}"
+          + ".diagram-container{--archify-nav-reserve:0px!important}"
+          + "html[data-present] .header{padding-right:46rem!important}";
+        d.head.appendChild(st);
+      }
       var h1 = d.querySelector(".header h1");
       if (h1 && h1.textContent.indexOf("系统全景") < 0) h1.textContent = "系统全景 · 引导视图 3 章";
       harvestCards(d);
@@ -120,7 +133,18 @@
   if (window.MutationObserver) {
     new MutationObserver(sync).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
   }
-  sync();
+  /* 静态资源命中缓存时，架构图会在父页脚本执行前就 load 完——load 事件不会再有。
+     所以先补一次，再短轮询到它真的可读写为止（上限 3s，防死循环）。 */
+  var tries = 0;
+  function poll() {
+    sync();
+    var d = null;
+    try { d = f.contentDocument; } catch (e) {}
+    if (d && d.getElementById("kb-land-style")) return;
+    if (++tries > 25) return;
+    setTimeout(poll, 120);
+  }
+  poll();
 })();
 </script>
 {% endblock %}
