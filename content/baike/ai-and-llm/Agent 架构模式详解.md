@@ -91,8 +91,14 @@ flowchart TD
 
 ## 面试速答
 
-> 🎯 Agent 架构是规范 LLM 思考与执行的控制流。基线是 ReAct（边想边做）；长流程用 Plan-and-Execute；可验证试错用 Reflexion（语言记忆）；省 Token 用 ReWOO（规划执行解耦）；高可靠探索用 LATS（树搜索）。核心是在可靠性、成本、延迟间做取舍。
+> 🎯 Agent 架构是规范 LLM 思考与执行的控制流。基线是 ReAct（边想边做）；
+> 
+> 🎯 长流程用 Plan-and-Execute；可验证试错用 Reflexion（语言记忆）；
+> 
+> 🎯 省 Token 用 ReWOO（规划执行解耦）；高可靠探索用 LATS（树搜索）。核心是在可靠性、成本、延迟间做取舍。
+> 
 > 🔍 追问：ReAct 容易陷入死循环，工程上怎么兜底？（答：最大步数限制、重复 Action 检测、强制 Replan）
+> 
 > 🔍 追问：Plan-and-Execute 如果第一步计划就错了怎么办？（答：引入 Replan 机制，Executor 发现异常时触发重新规划）
 
 ## 相关术语
