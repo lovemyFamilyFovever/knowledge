@@ -165,9 +165,13 @@
           + "margin:0;max-width:100%}"
           /* 顶栏两组：1.3rem ≈ 屏显 13.3px；内边距收紧给标题留位 */
           + ".toolbar button{font-size:1.3rem;padding-inline:.5rem}"
-          + ".diagram-nav button{font-size:1.3rem;min-width:2.3rem;padding-inline:.3rem}"
+          + ".diagram-nav button{font-size:1.3rem;min-width:2.1rem;padding-inline:.3rem}"
+          + ".diagram-nav-icon{width:1.15rem;height:1.15rem}"
           + ".diagram-nav-percent{font-size:1.25rem}"
           + ".diagram-nav-detail{font-size:1.2rem}"
+          /* 章节条：archify 给每章 width:100%，放进 flex 行后三章被等分撑满，
+             标题贴左、计数贴右，宽框下中间裂出一大段空白看着像散架。收成随内容。 */
+          + ".guided-view-chapter{width:auto}"
           /* 常驻的引导视图行：章节条、播放/复制、delta 计数 */
           + ".guided-views button,.guided-view-copy{font-size:1.3rem}"
           + ".guided-view-index,.guided-view-meta,.guided-view-copy small,"
@@ -197,7 +201,10 @@
           + ".overview-map h2{font-size:1rem!important}"
           + ".guided-view-meta,.guided-view-copy>strong,.share-chapter-copy strong,"
           + ".share-chapter-copy small{white-space:nowrap}"
-          + ".diagram-container{--archify-nav-reserve:0px!important}";
+          + ".diagram-container{--archify-nav-reserve:0px!important}"
+          /* 亮色下 archify 的 --bg 是 #f8fafc，会在白面板外圈出一层灰边；
+             阅读器本体是白的，这里跟着抹平（暗色主题不动）。 */
+          + "html[data-theme=\"light\"]{--bg:#ffffff}";
         d.head.appendChild(st);
       }
       var h1 = d.querySelector(".header h1");
