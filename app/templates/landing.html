@@ -169,13 +169,20 @@
           + ".diagram-nav-icon{width:1.15rem;height:1.15rem}"
           + ".diagram-nav-percent{font-size:1.25rem}"
           + ".diagram-nav-detail{font-size:1.2rem}"
-          /* 章节条：archify 给每章 width:100%，放进 flex 行后三章被等分撑满，
-             标题贴左、计数贴右，宽框下中间裂出一大段空白看着像散架。收成随内容。 */
-          + ".guided-view-chapter{width:auto}"
+          /* 章节条错乱有三层：① .guided-view-chapter 写死 width:100%；
+             ② 它的 li 是 flex:1 1 0 + min-width:9.5rem —— 三章被等分撑满整条，
+             标题贴左、焦点计数贴右，中间裂一大段空白；只改 ① 的话按钮收拢了、
+             坑位还等分，三章反而像被风吹散。③ 序号徽章是 1.32rem 的圆圈，
+             跟着主档 1.3rem 涨号后数字溢出圆圈压住标题（截图里 01/02/03 与文字粘连）。 */
+          + ".guided-view-chapters li{flex:0 0 auto;min-width:0}"
+          + ".guided-view-chapter{width:auto;gap:.3rem;"
+          + "grid-template-columns:2.05rem minmax(0,auto) auto}"
+          + ".guided-view-chapter-index{font-size:1.25rem!important;"
+          + "width:1.95rem;height:1.95rem}"
           /* 常驻的引导视图行：章节条、播放/复制、delta 计数 */
           + ".guided-views button,.guided-view-copy{font-size:1.3rem}"
           + ".guided-view-index,.guided-view-meta,.guided-view-copy small,"
-          + ".guided-story-caption small,.guided-view-chapter-index,"
+          + ".guided-story-caption small,"
           + ".guided-view-chapter-title,.guided-view-stop,.guided-story-caption-index,"
           + ".share-chapter-count,.share-chapter-state,.share-chapter-index,"
           + ".share-chapter-copy small,.share-chapter-route{font-size:1.3rem!important}"
