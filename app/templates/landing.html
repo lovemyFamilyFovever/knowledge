@@ -101,6 +101,23 @@
     });
   }
 
+  /* 屏显字号恒定：取景框把 1440 内部像素按框宽整体缩放（scale = 框宽 ÷ 1440），
+     窗口越宽 scale 越大，同一个 rem 落到的物理字号就越大——实测 2000 宽的窗口
+     下 chrome 文字 23px（糊脸），1440 宽下 13px。所以根字号跟着 scale 反比走：
+     主档 1.3rem 目标屏显 13.3px ⇒ root = 10.23 ÷ scale，两端夹住，
+     避免极端窗口下 chrome 失控。面板的 zoom 乘在这个根字号上，同样恒定。 */
+  function fitType() {
+    try {
+      var de = f.contentDocument && f.contentDocument.documentElement;
+      var w = f.getBoundingClientRect().width;
+      if (!de || !w) return;
+      var root = Math.max(11, Math.min(21, 10.23 / (w / 1440)));
+      de.style.fontSize = root.toFixed(2) + "px";
+      /* chrome 是 fixed 的，偏移不在根字号流里，单独用 --kb-u 补偿 */
+      de.style.setProperty("--kb-u", (root / 20).toFixed(3));
+    } catch (e) {}
+  }
+
   function sync() {
     var dark = document.documentElement.getAttribute("data-theme") === "dark";
     var want = dark ? "dark" : "light";
@@ -140,7 +157,8 @@
            SVG 节点文字用无单位 user unit，不吃 rem，图本身不受影响。 */
         st.textContent =
           "html{font-size:20px}"
-          + "#kb-land-top{position:fixed;top:.45rem;right:.7rem;z-index:120;display:flex;"
+          + "#kb-land-top{position:fixed;top:calc(.45rem * var(--kb-u, 1));right:calc(.7rem * var(--kb-u, 1));"
+          + "z-index:120;display:flex;"
           + "flex-wrap:wrap;justify-content:flex-end;align-items:center;gap:.4rem;"
           + "max-width:calc(100% - 12rem)}"
           + "#kb-land-top .toolbar,#kb-land-top .diagram-nav{position:static;inset:auto;"
@@ -185,8 +203,14 @@
       var h1 = d.querySelector(".header h1");
       if (h1 && h1.textContent.indexOf("系统全景") < 0) h1.textContent = "系统全景";
       harvestCards(d);
+      fitType();
     } catch (e) {}
   }
+  var fitRaf = 0;
+  window.addEventListener("resize", function () {
+    if (fitRaf) cancelAnimationFrame(fitRaf);
+    fitRaf = requestAnimationFrame(function () { fitRaf = 0; fitType(); });
+  }, { passive: true });
   f.addEventListener("load", sync);
   if (window.MutationObserver) {
     new MutationObserver(sync).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
