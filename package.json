@@ -4,7 +4,7 @@
   "private": true,
   "description": "知库 Knowledge — 本地知识库阅读器（工具链载体：ESLint / stylelint 等 devDependencies）",
   "scripts": {
-    "lint:js": "eslint static/app.js static/kb-core.js static/motion.js static/pages/*.js",
+    "lint:js": "eslint static/app.js static/kb-core.js static/kb-novel.js static/motion.js static/pages/*.js",
     "lint:css": "stylelint \"static/**/*.css\"",
     "lint:py": "python -m ruff check .",
     "lint": "npm run lint:js && npm run lint:css"

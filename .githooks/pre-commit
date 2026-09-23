@@ -59,6 +59,20 @@ if [ -f "tests/test_govern.py" ]; then
   $PY tests/test_govern.py || exit 1
 fi
 
+# JS/CSS 静态检查（P1 补漏 2026-09-23）：此前 static/kb-novel.js 整份漏出 eslint 覆盖面，
+# 且钩子完全不跑 eslint/stylelint。依赖是 devDependencies(node_modules) 而非 pip，
+# 所以单独探测：缺 node/npm 或缺 node_modules 就打 SKIP 继续——绝不让钩子因环境问题
+# 一跑就挂（历史教训：钩子挂 = 等于没有钩子）。文件清单以 package.json 的 lint:js 为
+# 唯一事实源，不在这里重复维护一份。
+if command -v node >/dev/null 2>&1 && command -v npm >/dev/null 2>&1 && [ -d "node_modules" ]; then
+  echo "[pre-commit] running eslint (npm run lint:js)..."
+  npm run --silent lint:js || exit 1
+  echo "[pre-commit] running stylelint (npm run lint:css)..."
+  npm run --silent lint:css || exit 1
+else
+  echo "[pre-commit] SKIP eslint/stylelint: node/npm or node_modules not available."
+fi
+
 # 悬空令牌检查（批6 整行删除回归教训）：var() 使用必须有定义/fallback/运行时注入兜底，
 # 差集非空即拒绝提交。纯标准库，不依赖 flask，与上方解释器探测解耦。
 echo "[pre-commit] running dangling-token check..."
