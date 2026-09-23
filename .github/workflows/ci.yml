@@ -13,14 +13,24 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.13"
-      - name: Install deps (reader + RAG)
+      - name: Install deps (reader + RAG + ruff)
         run: |
           python -m pip install --upgrade pip
-          python -m pip install -r requirements/requirements.txt -r requirements/requirements-rag.txt
+          python -m pip install -r requirements/requirements.txt -r requirements/requirements-rag.txt ruff
+      # 与 .githooks/pre-commit 保持同一条链：CI 覆盖面不得小于本地钩子
+      # （P1 §6 发现 1：此前 CI 不跑 ruff，5 套 smoke 只跑 3 套 → 本地拦住、CI 放行）
+      - name: ruff (regression net)
+        run: python -m ruff check .
       - name: Reader smoke
         run: python tests/test_reader.py
       - name: Scaffolder smoke
         run: python tests/test_new_project.py
+      - name: Learn/review smoke
+        run: python tests/test_learn.py
+      - name: Govern/stats smoke
+        run: python tests/test_govern.py
+      - name: Invariants gate (AGENTS 1-8)
+        run: python tests/test_invariants.py
       - name: RAG smoke (model not preloaded; download via mirror)
         env:
           HF_ENDPOINT: https://hf-mirror.com

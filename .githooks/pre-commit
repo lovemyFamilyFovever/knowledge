@@ -73,10 +73,23 @@ else
   echo "[pre-commit] SKIP eslint/stylelint: node/npm or node_modules not available."
 fi
 
+# 不变量门禁（P2）：AGENTS.md 的 8 条不变量落成可执行断言（tests/test_invariants.py），
+# 与下方 rag-version 静态检查配套 —— 前者管行为（软删/唯一真相/`_` 目录不进索引…），
+# 后者管"改了切块分词却忘递增 RAG_CODE_VERSION"这种只有静态能拦的形态。
+if [ -f "tests/test_invariants.py" ]; then
+  echo "[pre-commit] running invariants gate..."
+  $PY tests/test_invariants.py || exit 1
+fi
+
 # 悬空令牌检查（批6 整行删除回归教训）：var() 使用必须有定义/fallback/运行时注入兜底，
 # 差集非空即拒绝提交。纯标准库，不依赖 flask，与上方解释器探测解耦。
 echo "[pre-commit] running dangling-token check..."
 $PY scripts/check_dangling_tokens.py || exit 1
+
+# RAG_CODE_VERSION 静态检查（不变量 7）：切块/分词函数体有改动而版本号未递增 → 拒绝。
+# 自己判 SKIP：非 git 仓库/读不到 HEAD 时放行，不因环境问题挂钩子。
+echo "[pre-commit] running RAG_CODE_VERSION check..."
+$PY scripts/check_rag_version.py || exit 1
 
 echo "[pre-commit] running RAG smoke (SKIP if deps missing)..."
 $PY tests/test_rag.py || exit 1
