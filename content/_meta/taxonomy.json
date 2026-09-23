@@ -28,6 +28,9 @@
     "ai-assets": {
       "label": "AI 资产",
       "hue": 262
+    },
+    "小说": {
+      "label": "网文"
     }
   },
   "subs": {
@@ -83,7 +86,6 @@
     "resume": "简历",
     "management": "管理",
     "interview/ai-agent": "AI Agent 面试",
-    "interview/business": "业务面",
     "interview/css-html": "CSS 与 HTML 面",
     "interview/engineering": "工程面",
     "interview/node-fullstack": "Node 与全栈面",
@@ -102,7 +104,8 @@
     "_root": "总览",
     "articles/backend/C#": "C#C#",
     "articles/backend/11": "11",
-    "ai-assets/提示词": "prompt"
+    "ai-assets/提示词": "prompt",
+    "career/AI-conversation": "AI会话"
   },
   "sources": {
     "baike": "百科大全",
