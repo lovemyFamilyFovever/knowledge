@@ -18,11 +18,34 @@ try:
     # 这里显式 import，缺它时走统一 SKIP——否则测试跑到 end-to-end 才 ModuleNotFoundError
     # （2026-09-13 GitHub Desktop 提交实测：PATH python 有 flask/tokenizers 无 onnxruntime）
     import onnxruntime  # noqa: F401
-    from app.rag import (OnnxEmbedder, RagStore, markdown_split, sync_rag,
-                         query_rag, HFTokenizer)
+    from app.rag import (OnnxEmbedder, RagStore, markdown_split, model_files_ready,
+                         sync_rag, query_rag, HFTokenizer)
 except Exception as e:  # 依赖缺失：跳过（基础阅读器不依赖 RAG）
     print(f"SKIP: RAG 依赖不可用（{e}）")
     sys.exit(0)
+
+
+def test_model_files_ready():
+    """`model_files_ready` 是 /api/rag/status 的降级闸门：判错一次，用户就会在一个
+    只读 GET 上触发 94MB 下载并被拖住 71.8s（覆盖台账 P4 发现 #3）。
+
+    P6 实测这个谓词 0 断言（4 个变异体全存活），故三态钉死：一个都没有 / 齐备且非空 /
+    其中一个被截断成 0 字节，只有第二种才许判「就绪」。
+    """
+    from app.rag import MODEL_FILES
+    locals_ = sorted(set(MODEL_FILES.values()))
+    with tempfile.TemporaryDirectory() as td:
+        root = Path(td)
+        assert not model_files_ready(root), "空目录必须判未就绪"
+        for name in locals_:
+            (root / name).parent.mkdir(parents=True, exist_ok=True)
+            (root / name).write_bytes(b"x")          # 1 字节：既要「存在」也要「非空」
+        assert model_files_ready(root), "全部在位且非空 → 应判就绪"
+        (root / locals_[0]).write_bytes(b"")
+        assert not model_files_ready(root), "有 0 字节文件（下载被截断）→ 应判未就绪"
+        (root / locals_[0]).write_bytes(b"x")
+        assert model_files_ready(root), "补齐后应恢复就绪"
+    print("ok  model_files_ready: 缺文件 / 齐备 / 空文件 三态判定正确（状态查询不会误触发下载）")
 
 
 def test_markdown_split():
@@ -83,6 +106,7 @@ def test_end_to_end_semantic_search():
 
 
 if __name__ == "__main__":
+    test_model_files_ready()
     test_markdown_split()
     test_tokenizer_matches_wordpiece_reference()
     test_end_to_end_semantic_search()

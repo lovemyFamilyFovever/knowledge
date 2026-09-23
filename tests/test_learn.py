@@ -24,7 +24,8 @@ CONTENT = ROOT / "content"
 
 from app.cards import (CARDS_PARSER_VERSION, fingerprint, make_card_id, norm,  # noqa: E402
                        parse_file)
-from app.sm2 import DEFAULT_STATE, EF_MIN, Q_MAP, schedule  # noqa: E402
+from app.sm2 import (DEFAULT_STATE, EF_MIN, Q_MAP, is_mastered, q_from_label,  # noqa: E402
+                     schedule)
 
 passed = failed = 0
 
@@ -406,6 +407,34 @@ def test_card_id_stable() -> None:
 
 
 # ---------------------------------------------------------------- ② SM-2
+def test_is_mastered() -> None:
+    """「已掌握」判定的独立口径（DB 的 mastered 列由它派生）。
+
+    P6 实测：这个函数在 8 套 smoke 下**一次都没被执行过**，17 个变异体集体存活——
+    它是全仓最大的一处"有实现、有消费方、零断言"。下面的边界把它钉住。
+    """
+    check("间隔与次数双双达标 → 已掌握", is_mastered({"interval": 21, "reps": 3}) == 1,
+          f"got {is_mastered({'interval': 21, 'reps': 3})}")
+    check("只差间隔一天（20 天，次数再多）→ 未掌握", is_mastered({"interval": 20, "reps": 9}) == 0)
+    check("只差次数一次（ reps=2，间隔再长）→ 未掌握", is_mastered({"interval": 99, "reps": 2}) == 0)
+    check("空状态 → 未掌握（缺字段按 0 处理，不能默认成已掌握）", is_mastered({}) == 0)
+    check("None / 0 等假值字段 → 未掌握", is_mastered({"interval": None, "reps": None}) == 0)
+    # 上限状态下仍与 schedule 的 mastered 口径一致
+    check("上限 365 天 + 次数达标 → 已掌握", is_mastered({"interval": 365, "reps": 9}) == 1)
+    # 同一公式有两份实现（schedule 内联一份 / is_mastered 独立一份）：它们必须逐点相等，
+    # 否则会出现"卡片列表说已掌握、统计页说没掌握"的分叉。用 schedule 真实产出的状态回灌。
+    st = {"ef": 2.5, "interval": 0, "reps": 0, "lapses": 0}
+    seen = []
+    for _ in range(8):
+        nxt = schedule(st, 4, time.time())
+        seen.append((nxt["interval"], nxt["reps"], nxt["mastered"]))
+        check(f"is_mastered 与 schedule 的 mastered 逐点相等 {nxt['interval']}/{nxt['reps']}",
+              is_mastered(nxt) == nxt["mastered"], f"got {seen[-1]}")
+        st = {"ef": nxt["ef"], "interval": nxt["interval"], "reps": nxt["reps"], "lapses": 0}
+    check("回灌覆盖到 mastered 由 0 翻 1 的那一步",
+          [m for *_, m in seen] == [0, 0, 0, 1, 1, 1, 1, 1], f"got {[m for *_, m in seen]}")
+
+
 def _advance(state: dict, qs: list[int], now: float | None = None) -> dict:
     now = now if now is not None else time.time()
     st = dict(state)
@@ -440,6 +469,58 @@ def test_sm2() -> None:
           f"got {r}")
     r = schedule({"ef": 2.5, "interval": 15, "reps": 3, "lapses": 0}, 2, now)
     check("q=2 也算遗忘（lapses+1）且 ef 不变", r["lapses"] == 1 and r["ef"] == 2.5, f"got {r}")
+
+    # —— 分界线 q=3：UI 上「困难」按钮的真实取值（Q_MAP["hard"]=3），它是唯一走成功分支的最小评分。
+    # P6 变异测试实测：把 `q < 3` 写成 `q <= 3` 或 `q < 4`，8 套 smoke 全绿——因为其余断言只喂
+    # q∈{0,2,4,5}，恰好跳过 3。下面这组断言就是那条边界的锁：改错必须红。
+    r3 = schedule({"ef": 2.5, "interval": 15, "reps": 3, "lapses": 0}, 3, now)
+    check("q=3（hard）算成功推进：不清零 interval/reps、不加 lapse",
+          (r3["interval"], r3["reps"], r3["lapses"]) == (38, 4, 0), f"got {r3}")
+    check("q=3 的 ef 按 Δ(3)=-0.14 下调（与 q=4 的 ef 不变区分开）",
+          abs(r3["ef"] - 2.36) < 1e-9, f"got {r3['ef']}")
+    check("q=3 与 q=2 落在分界线两侧（2 遗忘 / 3 成功）",
+          r3["reps"] == 4 and r3["lapses"] == 0 and
+          schedule({"ef": 2.5, "interval": 15, "reps": 3, "lapses": 0}, 2, now)["lapses"] == 1)
+    check("q=3 与 q_from_label('hard') 同源（按钮语义改动会连带断言）",
+          q_from_label("hard") == 3 and Q_MAP["hard"] == 3)
+
+    # 评分取值域的两端：越界必须抛错，不能"看起来能用"。P6 实测把 `0 <= q <= 5` 改成
+    # `-1 <= q` 或 `q <= 6` 时 8 套全绿——即 q=-1 / q=6 会被当成合法评分静默推进排程。
+    for bad in (-1, 6):
+        try:
+            schedule(st, bad, now)
+            check(f"q={bad} 越界必须抛 ValueError", False, "未抛错")
+        except ValueError:
+            check(f"q={bad} 越界抛 ValueError（评分域两端各钉一颗）", True)
+    # 非 int 入参（表单/JSON 常把数字送成字符串）必须走同一条 ValueError，
+    # 不能落到 `0 <= "4" <= 5` 的 TypeError 上——那会让接口吐出 500。
+    for bad in ("4", None, 3.0, True, False):
+        try:
+            schedule(st, bad, now)
+            check(f"q={bad!r} 非 int 必须抛 ValueError", False, "未抛错")
+        except ValueError:
+            check(f"q={bad!r} 非 int 抛 ValueError（不是 TypeError）", True)
+        except TypeError as e:
+            check(f"q={bad!r} 非 int 抛 ValueError（不是 TypeError）", False, f"抛了 TypeError: {e}")
+
+    # 「第一次成功」固定回到 1 天，与入参 interval 无关（SM-2 语义：新卡先给 1 天）。
+    first_ok = schedule({"ef": 2.5, "interval": 8, "reps": 0, "lapses": 0}, 4, now)
+    check("reps 0→1 的首次成功一律 interval=1（哪怕入参 interval=8）",
+          (first_ok["interval"], first_ok["reps"]) == (1, 1), f"got {first_ok}")
+    second_ok = schedule({"ef": 2.5, "interval": 8, "reps": 1, "lapses": 0}, 4, now)
+    check("第二次成功固定 6 天（不看旧 interval）",
+          (second_ok["interval"], second_ok["reps"]) == (6, 2), f"got {second_ok}")
+
+    # 「已掌握」的天线必须含 21 本身（>= 而非 >）。SM-2 的自然推进序列落在 1/6/15/38…
+    # 永远踩不到 21，所以只有手工造一个正好 21 天的状态才测得到这条边界。
+    at21 = schedule({"ef": 2.6, "interval": 8, "reps": 2, "lapses": 0}, 4, now)
+    check("间隔正好 21 天 + reps 3 → 已掌握（边界含等号）",
+          at21["interval"] == 21 and at21["mastered"] == 1 and is_mastered(at21) == 1,
+          f"got {at21['interval']}/{at21['mastered']}")
+    below = schedule({"ef": 2.5, "interval": 8, "reps": 2, "lapses": 0}, 4, now)
+    check("间隔 20 天 → 尚未掌握（差一天也不算）",
+          below["interval"] == 20 and below["mastered"] == 0 and is_mastered(below) == 0,
+          f"got {below['interval']}/{below['mastered']}")
 
     st = {"ef": 2.5, "interval": 0, "reps": 0, "lapses": 0}
     efs = []
@@ -865,6 +946,7 @@ def main() -> int:
     test_card_id_stable()
     print("== ② SM-2 ==")
     test_sm2()
+    test_is_mastered()
     print("== ③ LearnStore ==")
     test_sqlite_busy_timeout()
     test_learn_store()
