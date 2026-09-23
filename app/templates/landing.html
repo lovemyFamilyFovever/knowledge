@@ -132,49 +132,58 @@
         var st = d.createElement("style");
         st.id = "kb-land-style";
         /* 取景框把 1440 内部像素缩到 ~736 CSS 像素（×0.51），archify 控件默认
-           字号屏显只有 4.5~6.5px。根字号抬到 20px 让整套 chrome 等比放大一档，
-           再对最小的那几档单独补到 18~21px（屏显约 10px，才是能看的中文）：
-           导航按钮、菜单副标题、常驻的引导视图章节条。SVG 里的节点文字用无单位
-           user unit，不吃 rem，所以图本身不受影响。
-           浮层面板（透镜/查找/路径/指南/雷达/聚焦条）走 zoom 而不是逐条 font-size
-           ——内部 eyebrow、正文、计数、按钮的字号层级原样放大，也不跟 archify 自己
-           更具体的选择器抢优先级。 */
+           字号屏显只有 4.5~6.5px。目标带：所有 chrome 文字屏显 13~15px。
+           未缩放层屏显 = rem × 20 × 0.51 ≈ rem × 10.2 → 13px 档取 1.3rem；
+           浮层面板（透镜/查找/路径/指南/雷达/聚焦条/吐司）走 zoom:1.45，
+           保住内部层级、也不跟 archify 更具体的选择器抢优先级，
+           其内 micro 档（eyebrow/状态/计数/副文案）屏显 = rem × 14.8 → 0.9rem。
+           SVG 节点文字用无单位 user unit，不吃 rem，图本身不受影响。 */
         st.textContent =
           "html{font-size:20px}"
           + "#kb-land-top{position:fixed;top:.45rem;right:.7rem;z-index:120;display:flex;"
           + "flex-wrap:wrap;justify-content:flex-end;align-items:center;gap:.4rem;"
-          + "max-width:calc(100% - 22rem)}"
+          + "max-width:calc(100% - 12rem)}"
           + "#kb-land-top .toolbar,#kb-land-top .diagram-nav{position:static;inset:auto;"
           + "margin:0;max-width:100%}"
-          + ".toolbar button{font-size:1.02rem}"
-          + ".diagram-nav button{font-size:1.02rem;min-width:2.1rem;padding-inline:.42rem}"
-          + ".diagram-nav-percent{font-size:1rem}"
-          + ".diagram-nav-detail{font-size:.8rem}"
-          + ".guided-views button,.guided-view-copy{font-size:.95rem}"
-          + ".export-item-copy strong,.preset-option-copy strong{font-size:1.02rem}"
-          + ".toolbar .export-menu-heading,.toolbar .export-menu .hint,"
-          + ".export-item-copy .hint,.preset-option-copy small{font-size:.9rem!important}"
-          + ".export-menu-header strong{font-size:1.05rem!important}"
-          + ".export-menu-header span,.export-menu-header kbd,.preset-menu-heading span,"
+          /* 顶栏两组：1.3rem ≈ 屏显 13.3px；内边距收紧给标题留位 */
+          + ".toolbar button{font-size:1.3rem;padding-inline:.5rem}"
+          + ".diagram-nav button{font-size:1.3rem;min-width:2.3rem;padding-inline:.3rem}"
+          + ".diagram-nav-percent{font-size:1.25rem}"
+          + ".diagram-nav-detail{font-size:1.2rem}"
+          /* 常驻的引导视图行：章节条、播放/复制、delta 计数 */
+          + ".guided-views button,.guided-view-copy{font-size:1.3rem}"
           + ".guided-view-index,.guided-view-meta,.guided-view-copy small,"
-          + ".guided-story-caption small{font-size:.9rem!important}"
-          + ".guided-view-chapter-index,.guided-view-chapter-title,.guided-view-stop,"
-          + ".guided-story-caption-index,.share-chapter-count,.share-chapter-state,"
-          + ".share-chapter-index,.share-chapter-copy small,.share-chapter-route{font-size:.92rem!important}"
-          + ".guided-view-label,.guided-view-play-label,.guided-view-beat-link-label,"
-          + ".guided-view-play-icon,.guided-view-chapter-delta,"
-          + ".guided-view-chapter-delta span,.share-chapter-label,"
+          + ".guided-story-caption small,.guided-view-chapter-index,"
+          + ".guided-view-chapter-title,.guided-view-stop,.guided-story-caption-index,"
+          + ".share-chapter-count,.share-chapter-state,.share-chapter-index,"
+          + ".share-chapter-copy small,.share-chapter-route{font-size:1.3rem!important}"
+          + ".guided-view-chapter-delta,.guided-view-chapter-delta span,"
           + "#guided-view-label,#guided-view-play-label,#guided-view-beat-link-label,"
           + "#guided-view-play-icon,#share-chapter-label,"
-          + ".guided-view-beat-link span,.guided-view-play span{font-size:.95rem!important}"
-          + ".header h1{font-size:1.35rem}"
+          + ".guided-view-beat-link span,.guided-view-play span{font-size:1.3rem!important}"
+          /* 导出 / 视觉风格菜单 */
+          + ".export-item-copy strong,.preset-option-copy strong,"
+          + ".export-menu-header strong{font-size:1.3rem!important}"
+          + ".export-menu-heading,.export-item-copy .hint,.preset-option-copy small,"
+          + ".export-menu-header span,.export-menu-header kbd,.preset-menu-heading span,"
+          + ".export-menu kbd{font-size:1.25rem!important}"
+          + ".header h1{font-size:1.3rem}"
+          /* 浮层面板整体 zoom + micro 档补齐 */
           + ".semantic-lens,.node-finder,.route-probe,.diagram-guide,.overview-map,"
-          + ".focus-chip,.archify-toast{zoom:1.85}"
+          + ".focus-chip,.archify-toast{zoom:1.45}"
+          + ".semantic-lens *,.node-finder *,.route-probe *,.diagram-guide *,"
+          + ".overview-map *,.focus-chip *,.archify-toast *{font-size:.9rem!important}"
+          + ".semantic-lens-title,.route-probe-title,.diagram-guide-title,"
+          + ".node-finder-head strong,.overview-map-head strong,"
+          + ".semantic-lens h2,.node-finder h2,.route-probe h2,.diagram-guide h2,"
+          + ".overview-map h2{font-size:1rem!important}"
+          + ".guided-view-meta,.guided-view-copy>strong,.share-chapter-copy strong,"
+          + ".share-chapter-copy small{white-space:nowrap}"
           + ".diagram-container{--archify-nav-reserve:0px!important}";
         d.head.appendChild(st);
       }
       var h1 = d.querySelector(".header h1");
-      if (h1 && h1.textContent.indexOf("系统全景") < 0) h1.textContent = "系统全景 · 引导视图 3 章";
+      if (h1 && h1.textContent.indexOf("系统全景") < 0) h1.textContent = "系统全景";
       harvestCards(d);
     } catch (e) {}
   }
