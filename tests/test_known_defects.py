@@ -1,12 +1,13 @@
 # -*- coding: utf-8 -*-
-"""已知缺陷复现探针 —— **本轮为红**，修复后转绿并接进 pre-commit。
+"""已知缺陷复现探针（P4 发现 → 修复轮的回归锚点）——现已全绿，挂进 pre-commit 与 ci.yml。
 
-本文件**故意不挂进 .githooks/pre-commit**：它是彻查 P4 轮「先写红断言、修复留待
-单独一轮」的产物。挂上去会让每次提交都被已知缺陷卡死（钩子一挂就等于没有钩子）。
-修复那轮把两条改绿后，再把本文件加进钩子与 ci.yml。
+来历：P4 轮先在这里写下两条红断言（D1 空子域 /browse 500、D2 resolve 前缀分歧致
+/api/rmdir · /api/import 500）。按手册「先写红断言、修复留待单独一轮」的纪律，
+当时**故意不挂钩子**（红断言挂上去会让每次提交都被已知缺陷卡死，钩子一挂等于没有钩子）。
+修复轮把两条改绿后，本文件接入钩子与 CI —— 从此这两个缺陷若被重新引入，提交即被拦下。
 
 用法：python tests/test_known_defects.py
-退出码：0 = 两条都已修；1 = 仍有缺陷未修（当前预期）。
+退出码：0 = 两条都已修复；1 = 缺陷回归。
 
 不含任何对真实 content/ 的读写：全部用 tempfile 迷你语料。
 """
@@ -108,10 +109,12 @@ def d2_resolve_prefix() -> None:
                f"status={r1.status_code}")
         record("D2", "/api/import 在 resolve 前缀分歧下不应 5xx", r2.status_code < 500,
                f"status={r2.status_code}")
-        # import 的额外伤害：文件已落盘但接口报 500 → 用户重试 → 每试一次多一个 ~2/~3 副本
+        # 修复后的契约：接口成功 ⇒ 文件恰好落一份（旧缺陷是"文件已落盘却报 500"，
+        # 用户重试后每试一次多一个 ~2/~3 副本）。这里断言成功与份数一致，
+        # 若有人把"先落盘后抛错"重新引入，要么状态非 200、要么副本堆积，两条都会红。
         dup = sorted(p.name for p in (real / "content" / "ai").rglob("探针*.md"))
-        record("D2", "/api/import 报错时文件不应已落盘（半途生效 → 重试堆积副本）",
-               not dup, f"已落盘={dup}")
+        record("D2", "/api/import 成功且只落一份（无 ~2/~3 副本堆积）",
+               r2.status_code == 200 and len(dup) == 1, f"已落盘={dup}")
     finally:
         if link.exists() or link.is_symlink():
             try:

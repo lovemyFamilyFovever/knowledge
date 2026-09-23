@@ -89,6 +89,14 @@ if [ -f "tests/test_e2e_smoke.py" ]; then
   $PY tests/test_e2e_smoke.py || exit 1
 fi
 
+# 已知缺陷回归锚（P4 发现 → 修复轮转绿后接入）：空子域 /browse 500、
+# resolve 前缀分歧致 /api/rmdir · /api/import 500。P4 轮曾故意不挂（红断言会卡死
+# 每次提交），两条改绿后接入 —— 若被重新引入，提交即被拦下。
+if [ -f "tests/test_known_defects.py" ]; then
+  echo "[pre-commit] running known-defects regression..."
+  $PY tests/test_known_defects.py || exit 1
+fi
+
 # 悬空令牌检查（批6 整行删除回归教训）：var() 使用必须有定义/fallback/运行时注入兜底，
 # 差集非空即拒绝提交。纯标准库，不依赖 flask，与上方解释器探测解耦。
 echo "[pre-commit] running dangling-token check..."

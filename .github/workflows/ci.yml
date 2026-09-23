@@ -33,6 +33,8 @@ jobs:
         run: python tests/test_invariants.py
       - name: E2E endpoint smoke (58 routes, tempfile corpus)
         run: python tests/test_e2e_smoke.py
+      - name: Known-defects regression (empty-sub 500 / resolve-prefix 500)
+        run: python tests/test_known_defects.py
       - name: RAG smoke (model not preloaded; download via mirror)
         env:
           HF_ENDPOINT: https://hf-mirror.com

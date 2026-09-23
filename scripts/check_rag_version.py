@@ -124,10 +124,18 @@ def main() -> int:
         print("[rag-version] ok: app/rag.py 本次无改动")
         return 0
 
-    # 新版源码优先取暂存区 blob（提交时以暂存内容为准），取不到再退回工作区文件
-    idx = _git("show", f":{RAG_REL}")
-    new_src = idx.stdout if idx.returncode == 0 else (ROOT / RAG_REL).read_text(
-        encoding="utf-8", errors="replace")
+    # 新版源码必须与上面选用的 diff 同源：
+    #   有暂存改动 → diff 是 --cached，源码取暂存区 blob（`:path`）；
+    #   无暂存改动 → diff 是工作区 vs HEAD，源码必须取**工作区文件**。
+    # 曾经无条件优先取 `:path`：未暂存时索引即 HEAD 版，于是拿 HEAD 的行号去套
+    # 工作区 diff 的新行号，错位命中相邻函数 → 误报（实测 _flush 被误判）。
+    wt = ROOT / RAG_REL
+    if staged:
+        idx = _git("show", f":{RAG_REL}")
+        new_src = idx.stdout if idx.returncode == 0 else wt.read_text(
+            encoding="utf-8", errors="replace")
+    else:
+        new_src = wt.read_text(encoding="utf-8", errors="replace")
 
     res = analyze(head_src, new_src, diff.stdout)
     if res["parse_failed"]:

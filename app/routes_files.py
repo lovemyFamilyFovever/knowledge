@@ -276,8 +276,8 @@ def api_rmdir():
     if not target.is_dir():
         return jsonify({"ok": False, "error": "not found: 目录不存在（可能已被删除）"}), 404
 
-    rel_dir = target.relative_to(content.resolve())
-    docs = [p.relative_to(content.resolve()).as_posix()
+    rel_dir = target.relative_to(content)
+    docs = [p.relative_to(content).as_posix()
             for p in target.rglob("*.md") if not p.name.endswith(".notes.md")]
     trash = content / "_trash" / time.strftime("%Y%m%d-%H%M%S")
     dest = _free_path(trash / rel_dir)

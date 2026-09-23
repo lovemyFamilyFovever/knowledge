@@ -141,7 +141,7 @@ def _workbench_empty(domain, sub, sobj):
     finally:
         con.close()
     empty_doc = {
-        "rel": f"{domain}/{sub}/", "title": sobj["label"], "fm": {}, "md": None,
+        "rel": f"{domain}/{sub}/", "title": sobj["label"], "name": "", "fm": {}, "md": None,
         "is_html": False, "has_html": False, "html_rel": None, "favorite": False,
         "domain": domain, "sub": sub, "domain_label": domain_label(load_taxonomy(content), domain),
         "sub_label": sobj["label"], "source_label": "空目录", "notes": [], "info_rows": [],
@@ -151,7 +151,8 @@ def _workbench_empty(domain, sub, sobj):
                            cur={"domain": domain, "sub": sub, "name": ""},
                            docs=[], sub_label=sobj["label"], doc=empty_doc, n_fav=n_fav,
                            info_rows=[], doc_json=json.dumps(empty_doc, ensure_ascii=False).replace("<", "\\u003c"),
-                           fts_n=fts_n, inbox_n=inbox_count(content))
+                           fts_n=fts_n, inbox_n=inbox_count(content),
+                           n_md=sum(1 for _ in md_files(content)))
 
 
 def _workbench(domain, sub, name):
@@ -176,7 +177,8 @@ def _workbench(domain, sub, name):
                            docs=sobj["docs"], sub_label=sobj["label"], doc=doc, n_fav=n_fav,
                            info_rows=info_rows,
                            doc_json=json.dumps({**doc, "info_rows": info_rows}, ensure_ascii=False).replace("<", "\\u003c"),
-                           fts_n=fts_n, inbox_n=inbox_n)
+                           fts_n=fts_n, inbox_n=inbox_n,
+                           n_md=sum(1 for _ in md_files(content)))
 
 
 @pages_bp.route("/doc/<domain>/<sub>/<path:name>")

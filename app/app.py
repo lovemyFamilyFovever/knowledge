@@ -59,12 +59,12 @@ from app.fts import (  # noqa: F401
 
 # ---------------- 本地向量检索（可选依赖，缺失时自动降级纯 FTS） ----------------
 try:
-    from app.rag import (OnnxEmbedder, RagStore, query_rag, rag_status,
-                         sync_rag)
+    from app.rag import (OnnxEmbedder, RagStore, model_files_ready, query_rag,
+                         rag_status, sync_rag)
     _RAG_IMPORT_ERROR = None
 except Exception as _e:  # ImportError 及其依赖链上的任何加载失败
     OnnxEmbedder = RagStore = None
-    query_rag = sync_rag = rag_status = None
+    query_rag = sync_rag = rag_status = model_files_ready = None
     _RAG_IMPORT_ERROR = str(_e)
 
 # 阅读统计（v1，设计定稿见 docs/统计数据模型-定稿.md；库损坏时静默降级为无统计）
@@ -127,6 +127,16 @@ def create_app(root: Path | None = None) -> Flask:
                 logger.warning("RAG 初始化失败，语义检索降级纯 FTS", exc_info=True)
                 rag_state["embedder"] = rag_state["store"] = None
             return rag_state["embedder"], rag_state["store"]
+
+    def rag_model_ready() -> bool:
+        """模型文件是否已在位（不触网、不加载）。只给 /api/rag/status 用来决定
+        是否值得构造 embedder —— 状态查询不该触发 94MB 下载（P4 发现 #3）。"""
+        if model_files_ready is None:
+            return False
+        try:
+            return model_files_ready(root / "app" / "rag_models")
+        except OSError:
+            return False
 
     # 单一 watcher：每 30 秒统一驱动 FTS 与向量索引的增量同步
     # （拆分前是两套独立轮询，失效判据不同步会导致短窗内搜索/语义结果矛盾）
@@ -250,6 +260,7 @@ def create_app(root: Path | None = None) -> Flask:
         "safe_rel": safe_rel,
         "collect_doc": collect_doc,
         "get_rag": get_rag,
+        "rag_model_ready": rag_model_ready,
         "query_rag": query_rag,
         "rag_status": rag_status,
         "rag_import_error": _RAG_IMPORT_ERROR,

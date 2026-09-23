@@ -44,6 +44,12 @@ def api_rag_status():
     if rag_status is None:  # rag 组件导入失败：如实上报，不炸 500
         return jsonify({"enabled": False, "chunks": 0, "model": "",
                         "detail": _hooks().get("rag_import_error")})
+    # 模型文件不在位时就地报未就绪，**不构造 embedder**——否则这个只读 GET 会触发
+    # 94MB 模型下载并把请求线程阻塞 70s 以上（P4 发现 #3）。下载留给真正的检索请求。
+    ready = _hooks().get("rag_model_ready")
+    if ready is not None and not ready():
+        return jsonify({"enabled": False, "chunks": 0, "model": "",
+                        "detail": "模型文件未就绪（app/rag_models 缺 model.onnx / tokenizer.json）"})
     get_rag = _hooks().get("get_rag")
     _emb, rstore = get_rag() if get_rag else (None, None)
     st = rag_status(rstore)

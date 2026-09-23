@@ -302,7 +302,7 @@ def api_import():
         except OSError as e:
             skipped.append(f"{raw}（{e.strerror or e}）")
             continue
-        rel = target.relative_to(content.resolve()).as_posix()
+        rel = target.relative_to(content).as_posix()
         upsert_doc_in_index(indexes, rel, target, body)
         imported.append(rel)
 

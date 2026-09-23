@@ -32,6 +32,16 @@ MODEL_ID = "Xenova/bge-small-zh-v1.5"   # 含 ONNX 的社区转换版
 MODEL_REVISION = "main"
 HF_ENDPOINT = "https://hf-mirror.com"   # 大陆可达镜像；模型只需下载一次
 MODEL_FILES = {"onnx/model.onnx": "model.onnx", "tokenizer.json": "tokenizer.json"}
+# 单次 HTTP 超时。原先 120s：冷启动时一个只读的状态查询会把调用线程拖住 72s 以上
+# （实测 71.8s，见覆盖台账 P4 发现 #3），故收紧到 30s。
+MODEL_DOWNLOAD_TIMEOUT_S = 30
+
+
+def model_files_ready(model_dir: Path) -> bool:
+    """模型文件是否已在位（不触网、不加载 ONNX）。状态查询据此判断，
+    避免一个只读 GET 触发 94MB 下载并阻塞——那是启动/查询路径该做的事，不是状态查询的事。"""
+    return all((model_dir / local).is_file() and (model_dir / local).stat().st_size > 0
+               for local in MODEL_FILES.values())
 
 DIM = 512          # bge-small-zh-v1.5 隐藏维度
 MAX_TOKENS = 512   # 模型硬上限（含 [CLS]/[SEP]）
@@ -182,7 +192,7 @@ def download_model(model_dir: Path) -> None:
         url = f"{HF_ENDPOINT}/{MODEL_ID}/resolve/{MODEL_REVISION}/{remote}"
         tmp = dest.with_suffix(dest.suffix + ".part")
         req = urllib.request.Request(url, headers={"User-Agent": MODEL_UA})
-        with urllib.request.urlopen(req, timeout=120) as resp, tmp.open("wb") as f:
+        with urllib.request.urlopen(req, timeout=MODEL_DOWNLOAD_TIMEOUT_S) as resp, tmp.open("wb") as f:
             while True:
                 block = resp.read(1 << 16)
                 if not block:
