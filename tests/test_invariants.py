@@ -225,6 +225,8 @@ AUDIT_ALLOWED = {
     ("scripts/remap_taxonomy.py", "move"): 1,          # taxonomy 重映射搬目录
     ("tests/test_learn.py", "unlink"): 2,              # 临时语料 / 派生库自清理
     ("tests/test_reader.py", "unlink"): 2,             # 临时语料：模拟外部删除 + 探针清理
+    ("tests/test_known_defects.py", "os_rmdir"): 1,    # 摘 junction 链（不穿透删目标，是 rmtree 前的安全前置）
+    ("tests/test_known_defects.py", "rmtree"): 1,      # 临时目录（tempfile.mkdtemp）自清理
 }
 AUDIT_SELF = "tests/test_invariants.py"   # 本文件自身含这些字面量，排除以免自指
 

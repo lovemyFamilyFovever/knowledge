@@ -81,6 +81,14 @@ if [ -f "tests/test_invariants.py" ]; then
   $PY tests/test_invariants.py || exit 1
 fi
 
+# 端到端端点冒烟（P4）：把覆盖台账 §1 的 58 个路由全打一遍（含 25 个此前零覆盖的
+# 写类接口），断 2xx / ok:true / 磁盘状态真变 / 非法入参 4xx 且不泄露绝对路径。
+# tempfile 迷你语料，零网络、零端口、约 3s，可直接进钩子。
+if [ -f "tests/test_e2e_smoke.py" ]; then
+  echo "[pre-commit] running e2e endpoint smoke..."
+  $PY tests/test_e2e_smoke.py || exit 1
+fi
+
 # 悬空令牌检查（批6 整行删除回归教训）：var() 使用必须有定义/fallback/运行时注入兜底，
 # 差集非空即拒绝提交。纯标准库，不依赖 flask，与上方解释器探测解耦。
 echo "[pre-commit] running dangling-token check..."
