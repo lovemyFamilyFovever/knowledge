@@ -1070,15 +1070,15 @@ class LearnStore:
                 con.close()
         except sqlite3.Error:
             maps = ({}, {}, {})
+        # by_path 已由 fts.resolve_maps_from_db 统一成「去掉 .md 的完整相对路径 → 路径」，
+        # 与 build_index / upsert_doc_in_index 同构（旧版这里要自己补一张别名表）
         by_path, by_stem, by_title = maps
-        # resolve_maps_from_db 的 by_path 键是完整 path，这里补一个「去掉 .md」的别名表
-        by_path_alias = {k.rsplit(".md", 1)[0]: k for k in by_path}
         pool = self._suggest_pool()  # B10：整篇只构建一次候选集
         # 同名断链可能出现多次：建议按 raw 缓存，避免重复打分
         sug_cache: dict[str, tuple[str, int]] = {}
         dead: list[dict] = []
         for raw in links:
-            target = fts.resolve_wikilink(raw, by_path_alias, by_stem, by_title)
+            target = fts.resolve_wikilink(raw, by_path, by_stem, by_title)
             if target:
                 continue
             if raw not in sug_cache:

@@ -67,7 +67,9 @@ def schedule(st: dict, q: int, now: float) -> dict:
         ef = max(EF_MIN, min(EF_MAX, ef + delta))
 
     iv = min(iv, MAX_INTERVAL)
-    mastered = 1 if (iv >= MASTER_INTERVAL and reps >= MASTER_REPS) else 0
+    # 「已掌握」口径只有一处实现：is_mastered()。历史上这里内联过同款公式，
+    # 于是 is_mastered() 变成无人调用的第二份副本（改一处不会让另一处跟着变）。
+    mastered = is_mastered({"interval": iv, "reps": reps})
     return {
         "ef": round(ef, 4),
         "interval": iv,

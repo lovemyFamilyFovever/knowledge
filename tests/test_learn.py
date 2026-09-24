@@ -421,8 +421,8 @@ def test_is_mastered() -> None:
     check("None / 0 等假值字段 → 未掌握", is_mastered({"interval": None, "reps": None}) == 0)
     # 上限状态下仍与 schedule 的 mastered 口径一致
     check("上限 365 天 + 次数达标 → 已掌握", is_mastered({"interval": 365, "reps": 9}) == 1)
-    # 同一公式有两份实现（schedule 内联一份 / is_mastered 独立一份）：它们必须逐点相等，
-    # 否则会出现"卡片列表说已掌握、统计页说没掌握"的分叉。用 schedule 真实产出的状态回灌。
+    # 「已掌握」口径现在只有一处实现（schedule() 直接调 is_mastered()，见 sm2.py:70 的注释）。
+    # 下面这组回灌断言因此是**防分叉哨兵**：哪天有人把公式再内联回去并写错，逐点相等就会红。
     st = {"ef": 2.5, "interval": 0, "reps": 0, "lapses": 0}
     seen = []
     for _ in range(8):

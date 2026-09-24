@@ -123,11 +123,14 @@ def resolve_wikilink(raw: str, by_path: dict, by_stem: dict, by_title: dict) -> 
 
 def resolve_maps_from_db(con):
     # 从 docs 索引表构建解析映射；标题字段已 cjk_space，需 cjk_clean 还原后再匹配
+    # by_path 的口径与 build_index 一致：**去掉 .md 的完整相对路径 → 该相对路径**。
+    # （resolve_wikilink 会先把链接原文的 .md 剥掉再查表，所以键必须不带 .md；
+    #   旧实现在这里用「带 .md 的路径 → 标题」，导致两个调用方各自补别名表。）
     by_path: dict = {}
     by_stem: dict = {}
     by_title: dict = {}
     for path_, db_title in con.execute("SELECT path, title FROM docs"):
-        by_path[path_] = db_title
+        by_path[path_.rsplit(".md", 1)[0]] = path_
         stem = path_.rsplit("/", 1)[-1]
         if stem.endswith(".md"):
             stem = stem[:-3]
@@ -230,12 +233,10 @@ def upsert_doc_in_index(indexes: Path, rel_posix: str, p: Path, body: str) -> No
         con.execute("INSERT INTO docs(path,title,tags,body) VALUES(?,?,?,?)",
                     (rel_posix, cjk_space(title), cjk_space(tag_str), cjk_space(body2)))
         con.execute("DELETE FROM links WHERE src=?", (rel_posix,))
-        _, by_stem, by_title = resolve_maps_from_db(con)
-        # B12：与 build_index 同构 —— 完整相对路径键（不带 .md）。
-        # 旧实现用「文件名去扩展名」当键，[[career/journal/xxx]] 这类路径式目标
-        # 在每次保存后的 30s 窗口里被标成未解析（双链面板/全局统计读数失真）。
-        by_path = {(p.rsplit(".md", 1)[0]): p
-                   for (p,) in con.execute("SELECT path FROM docs")}
+        by_path, by_stem, by_title = resolve_maps_from_db(con)
+        # B12：与 build_index 同构 —— 完整相对路径键（不带 .md），由 resolve_maps_from_db 统一给出。
+        # 旧实现在这里另建一张表（且曾用「文件名去扩展名」当键），[[career/journal/xxx]] 这类路径式
+        # 目标在每次保存后的 30s 窗口里被标成未解析（双链面板/全局统计读数失真）。
         for raw in extract_wikilinks(body2):
             dst = resolve_wikilink(raw, by_path, by_stem, by_title)
             dst_title = ""
