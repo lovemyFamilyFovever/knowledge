@@ -357,6 +357,18 @@ def test_i5() -> None:
                 if re.search(r"^DOMAIN_LABELS\s*=", f.read_text(encoding="utf-8"), re.M)]
         check("I5 域字典全仓只有 store.py 一处定义（无第二份权威）", defs == ["store.py"], defs)
 
+        # 搜索浮层的域筛选钮是**模板里硬编码的一份域清单**（base.html 的 data-scope），
+        # 它是 taxonomy.json 之外的第三份名单，一旦键名对不上，用户点它就是 0 结果 ——
+        # 2026-09-24 实测「AI 资产」发的是 domain=ai，而 taxonomy 里的键是 ai-assets（已修 + 上锁）。
+        # 只读模板与 taxonomy 元数据，不读任何语料正文。
+        chips = re.findall(r'data-scope="([^"]*)"',
+                           (ROOT / "app" / "templates" / "base.html").read_text(encoding="utf-8"))
+        tax_real = set(json.loads((ROOT / "content" / "_meta" / "taxonomy.json")
+                                  .read_text(encoding="utf-8"))["domains"])
+        bogus = [c for c in chips if c and c not in {"fav", "unmastered"} and c not in tax_real]
+        check("I5 浮层 data-scope 全部命中 taxonomy 的域键（或两个特殊值）", not bogus,
+              f"chip={bogus} taxonomy={sorted(tax_real)}")
+
 
 def time_now() -> float:
     import time
