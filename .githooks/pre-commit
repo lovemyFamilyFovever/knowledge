@@ -65,6 +65,18 @@ if [ -f "tests/test_js_props.py" ]; then
   $PY tests/test_js_props.py || exit 1
 fi
 
+# 视觉回归批处理（彻查 P5）：只在本次提交真的碰了 CSS/JS/模板时才跑——
+# 它要起浏览器（约 40s），每次提交都跑会让人开始 --no-verify。
+# 基线在 tests/ui-baselines/（合成语料截图，不含任何真实内容）；矩阵或样式变了用
+# `python tests/test_ui_regress.py --update` 重新落基线，改前先用 --stability 证明截图是确定的。
+UI_STAGED=$(git diff --cached --name-only --diff-filter=ACMR -- 'static/*.css' 'static/*.js' 'app/templates/*.html' | head -1)
+if [ -n "$UI_STAGED" ]; then
+  echo "[pre-commit] UI files staged -> running visual regression (P5)..."
+  $PY tests/test_ui_regress.py || exit 1
+else
+  echo "[pre-commit] SKIP visual regression: no css/js/template file staged."
+fi
+
 if [ -f "tests/test_new_project.py" ]; then
   echo "[pre-commit] running scaffolder smoke..."
   $PY tests/test_new_project.py || exit 1

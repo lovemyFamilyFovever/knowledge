@@ -231,6 +231,9 @@ AUDIT_ALLOWED = {
     # 从仓库复制过去的 static/ 副本），且尾部有一条断言亲自证明"删除目标在系统临时目录下、
     # 仓库 content/ 完好"，不是随手一把梭。
     ("tests/test_js_props.py", "rmtree"): 1,
+    # P5 视觉回归：两处 —— ① .qa/p5/actual* 截图目录重截前清空（.qa 不进 git、非语料）；
+    # ② tempfile.mkdtemp 的临时 KB_ROOT 自清理（同 test_js_props 的判定，尾部同样有断言）。
+    ("tests/test_ui_regress.py", "rmtree"): 2,
 }
 AUDIT_SELF = "tests/test_invariants.py"   # 本文件自身含这些字面量，排除以免自指
 

@@ -34,19 +34,25 @@
 import json
 import os
 import shutil
-import socket
 import subprocess
 import sys
 import tempfile
-import time
 import zipfile
 import io
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from _tmpapp import chrome_path, free_port, kill_instance, port_open, start_instance  # noqa: E402
+
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
-PORT = 5031
-BASE = f"http://127.0.0.1:{PORT}"
+# 端口在 main() 里由 free_port() 现挑（绝不写死 5031，也绝不落在用户的 5001 上），
+# 所以 BASE 是函数而不是模块常量。
+PORT = None
+
+
+def base() -> str:
+    return f"http://127.0.0.1:{PORT}"
 QA = ROOT / ".qa" / "p3b"
 
 passed = failed = 0
@@ -201,28 +207,8 @@ def write_fixtures(root: Path):
     return d
 
 
-# ---------------------------------------------------------------- 端口与临时实例
-def port_open(p):
-    with socket.socket() as s:
-        s.settimeout(0.4)
-        return s.connect_ex(("127.0.0.1", p)) == 0
-
-
-def start_instance(root: Path):
-    QA.mkdir(parents=True, exist_ok=True)
-    env = dict(os.environ, KB_ROOT=str(root), PYTHONIOENCODING="utf-8")
-    log = open(QA / "instance.log", "wb")
-    proc = subprocess.Popen([sys.executable, "-c",
-                             "import sys;sys.path.insert(0,r'%s');"
-                             "from app.app import create_app;a=create_app();"
-                             "a.run(host='127.0.0.1',port=%d,debug=False)" % (str(ROOT), PORT)],
-                            cwd=str(ROOT), env=env, stdout=log, stderr=log)
-    for _ in range(60):
-        if port_open(PORT):
-            return proc
-        time.sleep(0.5)
-    proc.kill()
-    raise RuntimeError("临时实例没起来，看 .qa/p3b/instance.log")
+# ---------------------------------------------------------- 端口与临时实例：见 tests/_tmpapp.py
+# （起实例这段现在由 P3-B 与 P5 共用，安全约束只写一处：端口现挑、禁占 5001、只指临时 KB_ROOT）
 
 
 JS_BODY = r"""
@@ -389,12 +375,11 @@ def build_expr():
 
 
 def main():
+    global PORT
     if not shutil.which("node"):
         print("SKIP: 找不到 node")
         return 0
-    chrome = [Path("C:/Program Files/Google/Chrome/Application/chrome.exe"),
-              Path("C:/Program Files (x86)/Google/Chrome/Application/chrome.exe")]
-    if not any(c.exists() for c in chrome):
+    if not chrome_path():
         print("SKIP: 找不到 Chrome")
         return 0
 
@@ -408,12 +393,16 @@ def main():
         (tmp / "content" / "_meta").mkdir(parents=True, exist_ok=True)
         (tmp / "content" / "_meta" / "taxonomy.json").write_text(
             '{"domains": {}}', encoding="utf-8")
-        proc = start_instance(tmp)
-        check("临时实例起来了（没碰用户的 5001）", port_open(PORT))
+        PORT = free_port()
+        QA.mkdir(parents=True, exist_ok=True)
+        check("端口是现挑的且不是用户的 5001/5000/5031",
+              PORT not in (5000, 5001, 5031), f"port={PORT}")
+        proc = start_instance(tmp, PORT, log_path=QA / "instance.log")
+        check("临时实例起来了", port_open(PORT))
 
         expr = build_expr()
         r = subprocess.run(["node", str(ROOT / "scripts" / "agent" / "evalcdp.mjs"),
-                            BASE + "/", "@" + str(expr)],
+                            base() + "/", "@" + str(expr)],
                            cwd=str(ROOT), capture_output=True, text=True,
                            encoding="utf-8", errors="replace", timeout=300,
                            env=dict(os.environ, KB_EVAL_WAIT_MS="6000", KB_EVAL_OUT_CHARS="20000"))
@@ -499,12 +488,7 @@ def main():
               f"{len(FIXTURES)} epub + {len(TXT_FIXTURES)} txt + {len(CHAPTER_TEXTS)} 切分文本 "
               f"+ {len(probes)} 个续读位置探针")
     finally:
-        if proc:
-            proc.kill()
-            try:
-                proc.wait(timeout=10)
-            except Exception:
-                pass
+        kill_instance(proc)
         shutil.rmtree(tmp, ignore_errors=True)
         # 这条不是装饰：本套是仓库里少数会"物理删整棵树"的测试，一旦被改成删 ROOT
         # 就是灾难（I4 白名单要求逐点判定）。断言删除目标确实在系统临时目录下。
