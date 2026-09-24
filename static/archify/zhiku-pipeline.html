@@ -652,8 +652,13 @@
     }
 
     html[data-present="true"]:not([data-embed="true"]) #btn-present {
-      border-color: var(--frontend-stroke);
-      color: var(--frontend-stroke);
+      /* [本地定制 · 知库 landing] 取景框本身就是舞台态，这颗开关无意义且危险：
+         点它 = setActive(false) → 摘掉 data-present → 退回阅读版式，而外层 iframe
+         按 present 版式定高，整块布局会崩。重新 deliver 会覆盖本注释，副本见
+         docs/archify/landing-chrome-overrides.css。零闪动：首帧就没有这颗按钮，
+         不需要父页注样式、也不需要 MutationObserver 兜底（两种都试过，都会把
+         "改一帧"的跳变请回来）。按 Escape 退出后本规则失效，按钮自己回来。 */
+      display: none;
     }
 
     /* The reader owns only the outer scale. Wide diagrams keep one authored

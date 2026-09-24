@@ -1,0 +1,24 @@
+/* 知库 landing 取景框对 archify 交付件的本地定制副本。
+   static/archify/zhiku-pipeline.html 由 archify deliver 生成，重新交付会覆盖这些改动，
+   所以在此留一份可重放的记录。 */
+
+/* [1] present（舞台/嵌入）态不渲染"演示/退出演示"按钮
+       位置：紧跟 html[data-present="true"]:not([data-embed="true"]) #btn-present 原规则
+       原因：取景框本身即舞台态；点它会 setActive(false) 摘掉 data-present，
+             退回阅读版式，而外层 iframe 按 present 版式定高，整块布局会崩。
+       零闪动：首帧就没有这颗按钮，不需要父页注样式，也不需要 MutationObserver 兜底
+             （那两种做法都试过，都会把"改一帧"的跳变请回来）。 */
+html[data-present="true"]:not([data-embed="true"]) #btn-present {
+  display: none;
+}
+
+/* 待做（本轮试过 CSS-only，失败已回退，需要改结构而非样式）：
+   - 标题缩小并移到左下角
+   - 右上工具组 + 引导视图章节条 合并到底部同一行
+   - 章节条四张卡片宽度收拢
+   失败原因：三者分属不同定位上下文（.toolbar 是 .container 外的 fixed、
+   .guided-views 在 .container 流内、.diagram-nav 是面板内 absolute），
+   强行 fixed+left/right 会让章节条按内容收缩成竖排、工具组掉到视口下沿。
+   正解：在交付件里加一个底部 bar 的 DOM 包裹层，把 .toolbar 与 .guided-views 收进去。
+   另：图例（<g data-legend>）画在 SVG 内部，不属于 chrome，spec 的 meta.legend
+   只支持 mode/label 显隐、不支持摆放位置 —— "改一行并居中"要到渲染器/spec 层另议。 */
