@@ -12,6 +12,7 @@
     ① `/raw` 路径校验（app.py::safe_rel）：任意恶意输入只能"落在 content/ 内"或"被明确拒绝"，不得 500
     ② frontmatter 解析 <-> 写回 round-trip：任意 title/tags/status 写进去读出来等价，正文零污染
     ③ taxonomy 子域改名：dry-run 不动盘；apply 后文件数守恒、无丢失
+    ③b 整域改名（rename_domain）：同上，另断旁挂/媒体随目录走、taxonomy 键与 scoped subs 前缀跟着迁移
     ④ fts 双链与 CJK 空格：任意文本不抛异常；围栏/行内 code 里的 [[...]] 不算链接；cjk_clean 可逆
     ⑤ rag 切块：任意输入不崩、块长不越界、正文不丢字（缺依赖时整条 SKIP）
     ⑥ sm2 排程：任意评分序列不出现负数/NaN/越界，非法评分必须被拒
@@ -28,14 +29,15 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 import itertools
+import json
 
 from app import fts  # noqa: E402
 from app.app import create_app  # noqa: E402
 from app.fts import FENCE_RE, INLINE_CODE_RE
 from app.sm2 import (EF_MAX, EF_MIN, MAX_INTERVAL, DEFAULT_STATE,  # noqa: E402
                      is_mastered, schedule)
-from app.store import (dump_frontmatter, is_visible_doc, md_files,  # noqa: E402
-                       parse_frontmatter, rename_sub)
+from app.store import (SKIP_DIRS, dump_frontmatter, is_visible_doc, md_files,  # noqa: E402
+                       parse_frontmatter, rename_domain, rename_sub)
 
 SEED = 20260924
 N = 240
@@ -257,6 +259,85 @@ def check_rename(case):
     return True, ""
 
 
+# ---------------------------------------------------------------- ③b 整域改名守恒
+# rename_domain（store.py:801）此前**一条断言都没有**（台账 §5 唯一没锁的写类改名）。
+# 它和 rename_sub 是"同款契约、两份实现"，所以判据照抄 ③，另加三条只有整域搬移才会碰的东西：
+# 旁挂/媒体随目录整体走、taxonomy 的 domains 键迁移、scoped subs 前缀跟着改。
+def gen_rename_dom(i):
+    rng = random.Random(SEED + i * 7919 + 13)
+    n_docs = rng.randint(0, 5)
+    n_side = rng.randint(0, 2)
+    n_media = rng.randint(0, 2)
+    new_dom = rng.choice(["ai2", "新域", "a-b", "with/slash", "_lead", "", "含 空格",
+                          sorted(SKIP_DIRS)[0]])
+    make_dst = rng.random() < .2          # 目标已存在 → 必须拒绝（不做合并）
+    return n_docs, n_side, n_media, new_dom, make_dst
+
+
+def check_rename_dom(case):
+    n_docs, n_side, n_media, new_dom, make_dst = case
+    with tempfile.TemporaryDirectory() as td:
+        content = Path(td) / "content"
+        src = content / "ai" / "sub1"
+        src.mkdir(parents=True)
+        (content / "ai" / "media").mkdir()
+        for k in range(n_docs):
+            (src / f"doc{k}.md").write_text(f"---\ntitle: 篇{k}\n---\n\n正文{k}\n", encoding="utf-8")
+        for k in range(n_side):
+            (src / f"doc0.notes.md").write_text(f"备注{k}\n", encoding="utf-8")
+        for k in range(n_media):
+            (content / "ai" / "media" / f"pic{k}.png").write_bytes(b"\x89PNG\r\n\x1a\n")
+        tax_path = content / "_meta" / "taxonomy.json"
+        tax_path.parent.mkdir()
+        tax_path.write_text(json.dumps(
+            {"domains": {"ai": {"label": "AI", "hue": 200}}, "subs": {"ai/sub1": "老子域"}},
+            ensure_ascii=False), encoding="utf-8")
+
+        def snapshot():
+            return sorted(p.relative_to(content).as_posix() for p in content.rglob("*") if p.is_file())
+
+        before = snapshot()
+        n_visible_before = len([rel for _, rel in md_files(content)])
+        n_payload_before = len([x for x in before if x != "_meta/taxonomy.json"])
+        try:
+            plan = rename_domain(content, "ai", new_dom, apply=False)
+        except (ValueError, FileNotFoundError):
+            return True, ""                                    # 非法名/目标已存在/源不存在 = 拒了才对
+        except Exception as e:                                    # noqa: BLE001
+            return False, f"dry-run 抛 {type(e).__name__}: {e}"
+        if snapshot() != before:
+            return False, f"dry-run 竟然动了盘：{before} -> {snapshot()}"
+        if not isinstance(plan, dict) or plan.get("apply") is not False:
+            return False, f"dry-run 返回值不对：{plan!r}"
+        try:
+            got = rename_domain(content, "ai", new_dom, apply=True)
+        except Exception as e:                                    # noqa: BLE001
+            return False, f"apply 抛 {type(e).__name__}: {e}"
+        if (content / "ai").exists():
+            return False, "旧域目录还在（整域搬移没做完）"
+        after = snapshot()
+        if len([x for x in after if x != "_meta/taxonomy.json"]) != n_payload_before:
+            return False, f"文件总数不守恒（旁挂/媒体漏搬或凭空多出）：{n_payload_before} -> {after}"
+        if len([rel for _, rel in md_files(content)]) != n_visible_before:
+            return False, f"改名前后正式篇数不守恒：{n_visible_before} -> {got}"
+        if got.get("n_docs") != plan.get("n_docs"):
+            return False, f"dry-run 与 apply 的 n_docs 不一致：{plan.get('n_docs')} vs {got.get('n_docs')}"
+        for rel in after:
+            if rel.startswith("ai/"):
+                return False, f"还有文件留在旧域下：{rel}"
+        tax = json.loads(tax_path.read_text(encoding="utf-8"))
+        if "ai" in tax.get("domains", {}) or new_dom not in tax.get("domains", {}):
+            return False, f"taxonomy domains 没迁移：{tax.get('domains')}"
+        if tax.get("domains", {}).get(new_dom, {}).get("label") != "AI":
+            return False, f"新域丢了显示名/色相：{tax.get('domains')}"
+        if "ai/sub1" in tax.get("subs", {}) or f"{new_dom}/sub1" not in tax.get("subs", {}):
+            return False, f"scoped subs 前缀没跟着改：{tax.get('subs')}"
+        for _, rel in md_files(content):
+            if not is_visible_doc(rel):
+                return False, f"改名后产出了不可见文档 {rel}"
+    return True, ""
+
+
 # ---------------------------------------------------------------- ④ 双链提取 / CJK 可逆
 def gen_links(i):
     rng = random.Random(SEED + i * 40503)
@@ -463,7 +544,25 @@ PINNED = [
     ("① 路径校验：.. 绕回 content 内的不存在路径 → 404",
      "ai/llm/../../outside.md",
      lambda rel: _client404().get("/raw/" + rel).status_code == 404),
+    ("③b 整域改名后 scoped 子域键仍带 '/'（曾写成 ai2sub1，子域显示名静默失效）",
+     "ai2",
+     lambda new: _subs_after_rename_domain(new) == {f"{new}/sub1": "老子域"}),
 ]
+
+
+def _subs_after_rename_domain(new_dom):
+    """固化区专用：造一个带 scoped subs 的最小语料，整域改名后把 subs 读回来。"""
+    with tempfile.TemporaryDirectory() as td:
+        content = Path(td) / "content"
+        (content / "ai" / "sub1").mkdir(parents=True)
+        (content / "ai" / "sub1" / "A.md").write_text("---\ntitle: A\n---\n\nx\n", encoding="utf-8")
+        tax = content / "_meta" / "taxonomy.json"
+        tax.parent.mkdir()
+        tax.write_text(json.dumps({"domains": {"ai": {"label": "AI"}},
+                                   "subs": {"ai/sub1": "老子域"}}, ensure_ascii=False),
+                       encoding="utf-8")
+        rename_domain(content, "ai", new_dom, apply=True)
+        return json.loads(tax.read_text(encoding="utf-8"))["subs"]
 
 _CLIENT = {}
 
@@ -498,6 +597,8 @@ def main():
     prop("② frontmatter round-trip", gen_fm, check_fm)
     print("== ③ taxonomy 子域改名守恒 ==")
     prop("③ rename_sub dry-run/apply 守恒", gen_rename, check_rename)
+    print("== ③b 整域改名守恒 ==")
+    prop("③b rename_domain dry-run/apply 守恒", gen_rename_dom, check_rename_dom)
     print("== ④ 双链提取与 CJK 空格可逆 ==")
     prop("④a extract_wikilinks 不抛且忽略 code", gen_links, check_links)
     prop("④b cjk_clean(cjk_space(s)) == s", gen_cjk, check_cjk)

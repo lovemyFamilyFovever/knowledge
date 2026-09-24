@@ -854,7 +854,10 @@ def rename_domain(content: Path, old_dom: str, new_dom: str, label: str = "",
         tax["domains"] = doms
         pre = f"{old_dom}/"
         subs = tax.get("subs") or {}
-        tax["subs"] = {(new_dom + k[len(pre):] if k.startswith(pre) else k): v
+        # 必须补回分隔符：消费侧查的是 f"{domain}/{sub}"（routes_learn.py:47、
+        # routes_search.py:65、learn.py:1118），写成 new_dom + 余下部分会让所有
+        # scoped 子域显示名在整域改名后静默退回目录名（性质测试 ③b 抓到，已固化进 PINNED）。
+        tax["subs"] = {(f"{new_dom}/{k[len(pre):]}" if k.startswith(pre) else k): v
                        for k, v in subs.items()}
         tax_path.write_text(json.dumps(tax, ensure_ascii=False, indent=2) + "\n",
                             encoding="utf-8")
