@@ -132,6 +132,12 @@ fi
 
 # 悬空令牌检查（批6 整行删除回归教训）：var() 使用必须有定义/fallback/运行时注入兜底，
 # 差集非空即拒绝提交。纯标准库，不依赖 flask，与上方解释器探测解耦。
+# 台账对账（轮次 17 补）：§0 的最新数字必须等于按 §1~§5「状态」列重算的数。
+# 起因是 §6 第 21 行那次事故——回填时改错了列，§0 写着 76、表格算出来是 81，
+# 手写数没有任何一格在表格里背书。纯文本解析、零依赖、毫秒级，所以无条件跑。
+echo "[pre-commit] running ledger reconciliation..."
+$PY scripts/check_ledger_counts.py || exit 1
+
 echo "[pre-commit] running dangling-token check..."
 $PY scripts/check_dangling_tokens.py || exit 1
 

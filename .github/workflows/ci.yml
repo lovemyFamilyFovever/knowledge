@@ -21,6 +21,14 @@ jobs:
       # （P1 §6 发现 1：此前 CI 不跑 ruff，5 套 smoke 只跑 3 套 → 本地拦住、CI 放行）
       - name: ruff (regression net)
         run: python -m ruff check .
+      # 两条与 diff 无关的静态检查（本地钩子一直在跑，CI 此前漏了）：
+      # 台账 §0 数字 vs §1~§5 状态列对账、CSS 悬空令牌。
+      # 不接 check_rag_version.py —— 它靠"工作区/暂存 vs HEAD"的 diff，在全新 checkout 里恒为空转，
+      # 接进来只会造一个"看起来在跑其实没跑"的假门禁（该局限已记在台账 §7）。
+      - name: Ledger reconciliation (check §0 numbers vs §1~§5 status columns)
+        run: python scripts/check_ledger_counts.py
+      - name: Dangling CSS tokens check
+        run: python scripts/check_dangling_tokens.py
       - name: Reader smoke
         run: python tests/test_reader.py
       - name: Predicate smoke (store/fts 判定谓词 · P6 存活清单回填)
