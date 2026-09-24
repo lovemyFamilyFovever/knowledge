@@ -23,6 +23,8 @@ jobs:
         run: python -m ruff check .
       - name: Reader smoke
         run: python tests/test_reader.py
+      - name: Predicate smoke (store/fts 判定谓词 · P6 存活清单回填)
+        run: python tests/test_predicates.py
       - name: Scaffolder smoke
         run: python tests/test_new_project.py
       - name: Learn/review smoke

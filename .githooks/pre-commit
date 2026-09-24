@@ -44,6 +44,12 @@ $PY -m ruff check . || exit 1
 echo "[pre-commit] running reader smoke..."
 $PY tests/test_reader.py || exit 1
 
+# 判定谓词层（P6 变异测试按存活清单回填的断言：store/fts 的布尔与边界判据）
+if [ -f "tests/test_predicates.py" ]; then
+  echo "[pre-commit] running predicate smoke..."
+  $PY tests/test_predicates.py || exit 1
+fi
+
 if [ -f "tests/test_new_project.py" ]; then
   echo "[pre-commit] running scaffolder smoke..."
   $PY tests/test_new_project.py || exit 1
