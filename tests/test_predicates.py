@@ -335,6 +335,71 @@ def test_snippet_wiki_alias() -> None:
           f"got {_clean_snippet('前 [[目标]] 后')!r}")
 
 
+def test_rag_cfg_and_stream() -> None:
+    """轮次 10：把 `tokenizer.json` 的解析与下载写盘拆成纯函数后，两条原先杀不掉的判据可测了。
+
+    - #135 `nrm.get("type") == "BertNormalizer"`：真模型那份恰好 `lowercase=false`，
+      所以"取反"在真数据上分不出来；现在用假 cfg 各测一次。
+    - #139 `cls_id is None or sep_id is None`：真 vocab 两个都在位；现在缺一个就必须抛。
+    - #140 `if not block: break`：真下载才会走到；现在喂假 resp 即可，**不联网**。
+    """
+    try:
+        from app.rag import drain_stream, parse_tokenizer_json
+    except Exception as e:                                     # numpy 缺失
+        print(f"  SKIP rag 配置/写盘断言（依赖不可用：{e}）")
+        return
+    vocab = {"[UNK]": 0, "[CLS]": 1, "[SEP]": 2, "他": 3}
+    ok = {"model": {"type": "WordPiece", "vocab": vocab},
+          "normalizer": {"type": "BertNormalizer", "lowercase": True}}
+    cfg = parse_tokenizer_json(ok)
+    check("parse_tokenizer_json：BertNormalizer 的 lowercase=true 会被忠实读取",
+          cfg["lowercase"] is True and cfg["unk_id"] == 0 and cfg["cls_id"] == 1
+          and cfg["sep_id"] == 2, f"got {cfg}")
+    check("parse_tokenizer_json：缺省项按文档默认（cont=## / clean_text / handle_chinese）",
+          cfg["cont"] == "##" and cfg["clean_text"] is True
+          and cfg["handle_chinese_chars"] is True
+          and cfg["max_input_chars_per_word"] == 100, f"got {cfg}")
+    not_bert = {"model": ok["model"], "normalizer": {"type": "Sequence", "lowercase": True}}
+    check("parse_tokenizer_json：非 BertNormalizer 时 lowercase 必须为 False（== 判据不能反）",
+          parse_tokenizer_json(not_bert)["lowercase"] is False)
+    check("parse_tokenizer_json：BertNormalizer 但没写 lowercase → False（不能默认成要小写）",
+          parse_tokenizer_json({"model": ok["model"],
+                                "normalizer": {"type": "BertNormalizer"}})["lowercase"] is False)
+    for name, bad in (("BPE 模型", {"model": {"type": "BPE", "vocab": vocab}}),
+                      ("缺 [CLS]", {"model": {"type": "WordPiece",
+                                              "vocab": {"[UNK]": 0, "[SEP]": 2}}}),
+                      ("缺 [SEP]", {"model": {"type": "WordPiece",
+                                              "vocab": {"[UNK]": 0, "[CLS]": 1}}})):
+        try:
+            parse_tokenizer_json(bad)
+            check(f"parse_tokenizer_json：{name} → 抛 ValueError", False, "没抛错")
+        except ValueError:
+            check(f"parse_tokenizer_json：{name} → 抛 ValueError（不是 KeyError）", True)
+
+    class _Resp:
+        def __init__(self, chunks):
+            self._c = list(chunks)
+
+        def read(self, _n):
+            return self._c.pop(0) if self._c else b""
+
+    with tempfile.TemporaryDirectory() as td:
+        dest = Path(td) / "part.bin"
+        n = drain_stream(_Resp([b"abc", b"de"]), dest)
+        check("drain_stream：分块写全并返回总长（读到空块才停）",
+              n == 5 and dest.read_bytes() == b"abcde", f"got {n}")
+        empty = Path(td) / "empty.bin"
+        check("drain_stream：首块即空 → 写 0 字节而不是死循环",
+              drain_stream(_Resp([]), empty) == 0 and empty.read_bytes() == b"",
+              f"got {empty.read_bytes()!r}")
+        parts = Path(td) / "big.bin"
+        blob = bytes(bytearray(range(256))) * 700          # >64KB，跨多个读块
+        n2 = drain_stream(_Resp([blob[i:i + 30000] for i in range(0, len(blob), 30000)]), parts)
+        check("drain_stream：跨多块拼接后字节完全一致（下载不被截断）",
+              n2 == len(blob) and parts.read_bytes() == blob, f"got {n2}")
+
+
+
 # ---------------------------------------------------------------- learn：卡片库重扫判据
 def _baike_md(term: str, def_len: int = 20, traps=()) -> str:
     body = "".join(f"- {t}\n" for t in traps)
@@ -654,6 +719,8 @@ def main() -> int:
     test_no_content_and_retired_counter()
     print("== rag：切块与分词纯函数 ==")
     test_rag_pure_helpers()
+    print("== rag：tokenizer 配置与写盘 ==")
+    test_rag_cfg_and_stream()
     print("== cards：抽卡切块边界 ==")
     test_cards_boundaries()
     print(f"\n{passed} passed, {failed} failed")

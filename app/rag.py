@@ -71,6 +71,39 @@ _PUNCT_CHARS = set(
 )
 
 
+def parse_tokenizer_json(data: dict) -> dict:
+    """tokenizer.json 的 dict → 分词器配置（纯函数，不碰模型文件也不联网）。
+
+    从 `HFTokenizer.__init__` 里拆出来是为了能单独跑两个分支：真实那份 json
+    恰好 `lowercase=false` 且 `[CLS]/[SEP]` 都在位，所以"小写化只在 BertNormalizer
+    下生效"和"缺 CLS/SEP 要报错"这两条判据在真数据上永远分不出对错。
+
+    Raises:
+        ValueError: 模型类型不是 WordPiece，或 vocab 缺 `[CLS]`/`[SEP]`。
+    """
+    model = data.get("model") or {}
+    if model.get("type") != "WordPiece":
+        raise ValueError(f"unsupported tokenizer model type: {model.get('type')}")
+    vocab: dict[str, int] = model["vocab"]
+    unk = model.get("unk_token", "[UNK]")
+    nrm = data.get("normalizer") or {}
+    # 忠实读取 json：Xenova 版 lowercase=false（实测 The→[UNK]，与参考一致）。
+    # ⚠️ 不能强制小写：该模型就是以未小写输入训练/转换的。
+    lowercase = bool(nrm.get("lowercase", False)) if nrm.get("type") == "BertNormalizer" else False
+    cls_id, sep_id = vocab.get("[CLS]"), vocab.get("[SEP]")
+    if cls_id is None or sep_id is None:
+        raise ValueError("vocab missing [CLS]/[SEP]")
+    return {
+        "vocab": vocab, "unk": unk, "unk_id": vocab[unk],
+        "max_input_chars_per_word": int(model.get("max_input_chars_per_word", 100)),
+        "cont": model.get("continuing_subword_prefix", "##"),
+        "lowercase": lowercase,
+        "clean_text": bool(nrm.get("clean_text", True)),
+        "handle_chinese_chars": bool(nrm.get("handle_chinese_chars", True)),
+        "cls_id": cls_id, "sep_id": sep_id,
+    }
+
+
 class HFTokenizer:
     """tokenizer.json（WordPiece）最小实现。与 Rust tokenizers 的 BERT 管线逐
     token 对齐（已用 tokenizers 库交叉验证）：BertNormalizer（clean_text +
@@ -84,25 +117,21 @@ class HFTokenizer:
                    (0xF900, 0xFAFF), (0x2F800, 0x2FA1F))
 
     def __init__(self, tok_path: Path):
-        data = json.loads(tok_path.read_text(encoding="utf-8"))
-        model = data.get("model", {})
-        if model.get("type") != "WordPiece":
-            raise ValueError(f"unsupported tokenizer model type: {model.get('type')}")
-        self.vocab: dict[str, int] = model["vocab"]
-        self.unk = model.get("unk_token", "[UNK]")
-        self.unk_id = self.vocab[self.unk]
-        self.max_input_chars_per_word = int(model.get("max_input_chars_per_word", 100))
-        self.cont = model.get("continuing_subword_prefix", "##")
-        nrm = data.get("normalizer", {})
-        # 忠实读取 json：Xenova 版 lowercase=false（实测 The→[UNK]，与参考一致）。
-        # ⚠️ 不能强制小写：该模型就是以未小写输入训练/转换的。
-        self.lowercase = bool(nrm.get("lowercase", False)) if nrm.get("type") == "BertNormalizer" else False
-        self.clean_text = bool(nrm.get("clean_text", True))
-        self.handle_chinese_chars = bool(nrm.get("handle_chinese_chars", True))
-        self.cls_id = self.vocab.get("[CLS]")
-        self.sep_id = self.vocab.get("[SEP]")
-        if self.cls_id is None or self.sep_id is None:
-            raise ValueError("vocab missing [CLS]/[SEP]")
+        # 配置解析抽成纯函数 parse_tokenizer_json()：原先这些判据只在**真实那份
+        # tokenizer.json** 上跑过（lowercase 恰好是 false、[CLS]/[SEP] 恰好在位），
+        # 于是 `type == "BertNormalizer"` 取反、`cls is None or sep is None` 取 and
+        # 这类变异体在真数据上分不出来（P6 存活体 #135/#139）。拆出来后两个分支都能各测一次。
+        cfg = parse_tokenizer_json(json.loads(tok_path.read_text(encoding="utf-8")))
+        self.vocab: dict[str, int] = cfg["vocab"]
+        self.unk = cfg["unk"]
+        self.unk_id = cfg["unk_id"]
+        self.max_input_chars_per_word = cfg["max_input_chars_per_word"]
+        self.cont = cfg["cont"]
+        self.lowercase = cfg["lowercase"]
+        self.clean_text = cfg["clean_text"]
+        self.handle_chinese_chars = cfg["handle_chinese_chars"]
+        self.cls_id = cfg["cls_id"]
+        self.sep_id = cfg["sep_id"]
 
     @classmethod
     def _is_cjk(cls, ch: str) -> bool:
@@ -182,6 +211,23 @@ MODEL_UA = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
             "(KHTML, like Gecko) Chrome/126.0 Safari/537.36")  # 镜像站拦默认 UA
 
 
+def drain_stream(resp, dest: Path) -> int:
+    """把 `resp` 的字节分块写进 `dest`，返回写入总长（纯 IO 助手，不联网）。
+
+    从 `download_model()` 里拆出来是为了能喂一个假 `resp` 单测「读到空块才停」这条判据：
+    原先它只在真下载时跑，去掉 `not` 的变异体在本机永远杀不掉（P6 存活体 #140）。
+    """
+    total = 0
+    with dest.open("wb") as f:
+        while True:
+            block = resp.read(1 << 16)
+            if not block:
+                break
+            f.write(block)
+            total += len(block)
+    return total
+
+
 def download_model(model_dir: Path) -> None:
     """首次运行下载 model.onnx + tokenizer.json；已存在则跳过（离线可用）。"""
     model_dir.mkdir(parents=True, exist_ok=True)
@@ -192,12 +238,8 @@ def download_model(model_dir: Path) -> None:
         url = f"{HF_ENDPOINT}/{MODEL_ID}/resolve/{MODEL_REVISION}/{remote}"
         tmp = dest.with_suffix(dest.suffix + ".part")
         req = urllib.request.Request(url, headers={"User-Agent": MODEL_UA})
-        with urllib.request.urlopen(req, timeout=MODEL_DOWNLOAD_TIMEOUT_S) as resp, tmp.open("wb") as f:
-            while True:
-                block = resp.read(1 << 16)
-                if not block:
-                    break
-                f.write(block)
+        with urllib.request.urlopen(req, timeout=MODEL_DOWNLOAD_TIMEOUT_S) as resp:
+            drain_stream(resp, tmp)
         tmp.replace(dest)
 
 
