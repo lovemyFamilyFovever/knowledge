@@ -501,6 +501,128 @@ def build_toc_expr():
     return f
 
 
+# ---------------------------------------------------------------- 正文预处理（§5 最后一行 JS）
+# 手册 P0 说这两个函数"模块内、未挂 window"，实测**不成立**：`static/app.js` 是顶层经典脚本，
+# `function sanitizeFences` / `function enhanceArticleDOM` 直接成为 window 上的全局，
+# 所以不用为了测试去改产品代码（零风险）。
+#
+# 两条判据各抓什么：
+#   · sanitizeFences 只该改"闭栏的缩进"，所以**行数不变、非空白字符多重集不变、且幂等**；
+#     任何"顺手删了点东西"的实现都会在这里露出来（它改的是要写回渲染管线的原文）。
+#   · enhanceArticleDOM 是纯打补丁，**跑两遍必须和跑一遍一样**（幂等），
+#     且每种标记各只产出一个结构（卡片/徽章/代码壳/表格壳/四类引用）。
+ENH_JS = r"""
+(async function () {
+  var out = {globals: {}, f: {n: 0, threw: [], bad: [], golden: []}, e: {}, err: ''};
+  function prng(seed) { var x = seed >>> 0; return function () { x = (x * 1664525 + 1013904223) >>> 0; return x / 4294967296; }; }
+  try {
+    out.globals.sanitizeFences = typeof window.sanitizeFences;
+    out.globals.enhanceArticleDOM = typeof window.enhanceArticleDOM;
+    if (out.globals.sanitizeFences !== 'function' || out.globals.enhanceArticleDOM !== 'function') {
+      out.err = '两个预处理函数不在 window 上：' + JSON.stringify(out.globals);
+      return JSON.stringify(out);
+    }
+    // —— 1) sanitizeFences ——
+    var samples = [
+      '', '   ', '```js\ncode\n```', '正文\n  ```\n  x\n  ```\n',
+      '- a\n  ```py\n  print(1)\n  ```\n',                 // 列表内缩进开栏 + 缩进闭栏
+      '- a\n  ```py\n  print(1)\n```',                     // 闭栏顶格（幽灵块的成因）
+      '```\n  ```\n```\n',                                 // 三层嵌套
+      '~ ~\n```\ntext', '```', '``````', '\t```\n x\n\t```',
+      '中文 ``` 混排\n  ```\n', '`'.repeat(3000),
+      'a\n'.repeat(4000) + '  ```\n',
+      '未闭合\n```open\n没有闭栏'
+    ];
+    var rnd = prng(20260924);
+    var pool = ['`', '~', ' ', '\t', '\n', 'a', '中', '\\', '*', '#', '>'];
+    for (var r = 0; r < 120; r++) {
+      var s = '', L = 1 + Math.floor(rnd() * 60);
+      for (var k = 0; k < L; k++) s += pool[Math.floor(rnd() * pool.length)];
+      samples.push(s);
+    }
+    function chars(t) { return (t || '').replace(/\s+/g, '').split('').sort().join(''); }
+    samples.forEach(function (src) {
+      out.f.n++;
+      var got;
+      try { got = window.sanitizeFences(src); }
+      catch (e) { out.f.threw.push(String(e && e.message || e).slice(0, 60)); return; }
+      if (typeof got !== 'string') { out.f.bad.push('返回不是字符串'); return; }
+      if (got.split('\n').length !== src.split('\n').length) { out.f.bad.push('行数变了'); return; }
+      if (chars(got) !== chars(src)) { out.f.bad.push('非空白字符被增删'); return; }
+      var again;
+      try { again = window.sanitizeFences(got); } catch (e2) { out.f.threw.push('二次调用抛错'); return; }
+      if (again !== got) out.f.bad.push('不幂等');
+    });
+    // 金样例：判据不能是"输出里有没有缩进围栏"（那串输入本来就有缩进的**开栏**，
+    // 我把对齐那行删掉时这条照样通过 —— 实测漏过一次），必须逐字比期望输出。
+    out.f.golden = [
+      // 顶格闭栏 → 必须对齐到开栏的两格缩进
+      {in: '- a\n  ```py\n  print(1)\n```', want: '- a\n  ```py\n  print(1)\n  ```'},
+      // 已经对齐的闭栏 → 一个字符都不该动
+      {in: '正文\n  ```\n  x\n  ```\n', want: '正文\n  ```\n  x\n  ```\n'},
+      // 顶格开栏的普通围栏 → 不该被"修"成缩进
+      {in: '```js\ncode\n```', want: '```js\ncode\n```'},
+      // 波浪号围栏：闭栏与开栏不同字符时不该被当成闭栏
+      {in: '~~~\na\n```\nb\n~~~', want: '~~~\na\n```\nb\n~~~'},
+    ].map(function (c) {
+      var got = window.sanitizeFences(c.in);
+      return {in: c.in, got: got, ok: got === c.want};
+    });
+    // —— 2) enhanceArticleDOM ——
+    function build() {
+      var host = document.createElement('div');
+      host.innerHTML =
+        '<div class="a-body">' +
+        '<h1>大标题</h1><p>游离段</p>' +
+        '<h2>小节一</h2><p>A</p><h3>1. 题干示例｜中级</h3><p>B</p>' +
+        '<h2>小节二</h2><blockquote>\uD83D\uDCA1 提示</blockquote>' +
+        '<blockquote>⚠️ 警告</blockquote><blockquote>\uD83C\uDFAF 关键要点</blockquote>' +
+        '<blockquote>\uD83D\uDD0D 追问</blockquote>' +
+        '<pre><code class="language-python">x = 1</code></pre>' +
+        '<table><tr><td>a</td></tr></table>' +
+        '<ul><li><input type="checkbox"> 待办</li></ul>' +
+        '</div>';
+      return host;
+    }
+    function tally(host) {
+      function n(sel) { return host.querySelectorAll(sel).length; }
+      return {
+        cards: n('.a-body .sec-card'), badgeM: n('.a-body h3 .badge.m'),
+        tip: n('blockquote.tip'), warn: n('blockquote.warn'),
+        kp: n('blockquote.kp'), fu: n('blockquote.fu'),
+        code: n('.a-body .codeblock'), tbl: n('.a-body .tbl-wrap'),
+        task: n('li.task-list-item'),
+        h1out: n('.a-body > h1'), grouped: n('.a-body[data-sec-grouped]'),
+        gh: (function () { var h = host.querySelector('.a-body h2'); return h ? h.style.getPropertyValue('--gh') : ''; })(),
+        id: (function () { var h = host.querySelector('.a-body h2'); return h ? (h.id || '') : ''; })()
+      };
+    }
+    var h1 = build();
+    window.enhanceArticleDOM(h1);
+    out.e.once = tally(h1);
+    window.enhanceArticleDOM(h1);
+    out.e.twice = tally(h1);
+    // 空壳与畸形输入不得抛
+    var weird = [document.createElement('div'),
+                 (function () { var d = document.createElement('div'); d.innerHTML = '<div class="a-body"></div>'; return d; })(),
+                 (function () { var d = document.createElement('div'); d.innerHTML = '<div class="a-body"><pre><code></code></pre><h3>｜高级</h3></div>'; return d; })()];
+    out.e.weirdThrew = [];
+    weird.forEach(function (d) {
+      try { window.enhanceArticleDOM(d); } catch (e) { out.e.weirdThrew.push(String(e && e.message || e).slice(0, 60)); }
+    });
+  } catch (e) { out.err = String(e && e.message || e).slice(0, 120); }
+  return JSON.stringify(out);
+})()
+"""
+
+
+def build_enh_expr():
+    QA.mkdir(parents=True, exist_ok=True)
+    f = QA / "expr-enh.js"
+    f.write_text(ENH_JS, encoding="utf-8")
+    return f
+
+
 def run_expr(url, expr_file):
     return subprocess.run(["node", str(ROOT / "scripts" / "agent" / "evalcdp.mjs"),
                            url, "@" + str(expr_file)],
@@ -665,8 +787,36 @@ def main():
         check("滚动确实换了条目（不是永远高亮同一条）", int(toc.get("moved", 0)) >= 2,
               f"不同条目数={toc.get('moved')} steps={toc.get('steps')}")
 
-        mine = [split_console_errs(x)[0] for x in (console_errs, race_errs, toc_errs)]
-        theirs = [split_console_errs(x)[1] for x in (console_errs, race_errs, toc_errs)]
+        # —— 正文预处理（sanitizeFences / enhanceArticleDOM）：换第四个页面跑
+        enh, enh_errs = parse_eval(run_expr(base() + "/doc/ui-x/notes/%E7%9B%AE%E5%BD%95%E8%B7%9F%E9%9A%8F%E6%A0%B7%E6%9C%AC.md",
+                                            build_enh_expr()))
+        check("两个预处理函数确实在 window 上（手册说没挂，实测挂了）",
+              enh.get("globals", {}) == {"sanitizeFences": "function", "enhanceArticleDOM": "function"}
+              and not enh.get("err"), f"{enh.get('globals')} err={enh.get('err')}")
+        f = enh.get("f", {})
+        check(f"sanitizeFences 对 {f.get('n')} 个样本（含 120 个随机串）均不抛",
+              not f.get("threw"), f"{f.get('threw')}")
+        check("sanitizeFences 不改行数、不增删非空白字符、且幂等",
+              not f.get("bad"), f"{(f.get('bad') or [])[:4]} 共 {len(f.get('bad') or [])} 例")
+        gold_bad = [g for g in f.get("golden", []) if not g.get("ok")]
+        check("sanitizeFences 四条金样例逐字正确（顶格闭栏对齐 / 已对齐不动 / 顶格开栏不动 / 异字符不当闭栏）",
+              len(f.get("golden", [])) == 4 and not gold_bad,
+              f"不符={[(g['in'][:26], g['got'][:26]) for g in gold_bad]}")
+        once, twice = enh.get("e", {}).get("once", {}), enh.get("e", {}).get("twice", {})
+        want_e = {"cards": 2, "badgeM": 1, "tip": 1, "warn": 1, "kp": 1, "fu": 1,
+                  "code": 1, "tbl": 1, "task": 1, "h1out": 1, "grouped": 1}
+        wrong_e = {k: (once.get(k), v) for k, v in want_e.items() if once.get(k) != v}
+        check("enhanceArticleDOM 每种标记各产出一个结构（2 卡 / 1 徽章 / 4 类引用 / 代码壳 / 表格壳 / 任务项）",
+              not wrong_e, f"实际/期望 {wrong_e} 全量={once}")
+        check("enhanceArticleDOM 幂等：跑两遍与跑一遍完全相同",
+              once and once == twice, f"once={once} twice={twice}")
+        check("h2 拿到稳定色相 --gh 与可定位 id（闪卡跳转原文的锚点）",
+              bool(once.get("gh")) and bool(once.get("id")), f"gh={once.get('gh')} id={once.get('id')}")
+        check("空壳 / 无 .a-body / 空 code 等畸形容器不抛",
+              not enh.get("e", {}).get("weirdThrew"), f"{enh.get('e', {}).get('weirdThrew')}")
+
+        mine = [split_console_errs(x)[0] for x in (console_errs, race_errs, toc_errs, enh_errs)]
+        theirs = [split_console_errs(x)[1] for x in (console_errs, race_errs, toc_errs, enh_errs)]
         mine_txt = "\n".join(x for x in mine if x)
         check("三个页面均无本套该管的未捕获异常/警告", mine_txt == "", f"CONSOLE_ERRORS: {mine_txt[:300]}")
         for t in [x for x in theirs if x]:
