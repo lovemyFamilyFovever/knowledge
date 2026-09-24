@@ -124,3 +124,4 @@ requirements/       依赖清单（requirements.txt 核心 / -rag.txt 语义检�
 - 禁止在 `content/` 根目录散放文件；一切新语料走 `_inbox`。
 - 不要移除或绕过「写回文件系统」的任何一条路径（api_save / api_note / api_favorite / api_move / api_delete）。
 - 不要在没有跑测试的情况下宣称"完成"。
+- **不要去读 `content/小说/` 的正文，也不要写任何以真实书库为输入的脚本**（用户 2026-09-24 明确定的边界，理由是里面有成人向书籍）。所有测试与自动化的样本一律**合成**（现造在 `tempfile` 里，见 `tests/test_js_props.py` 的畸形 zip/txt、`tests/test_ui_regress.py` 的 `content/ui-r` + 三章假小说）。这条边界不因"只读不写""本地不外传"而放宽，也**不要再提议**"拿真实书库跑一遍解析器/坏书清单"这类事。
