@@ -190,6 +190,27 @@ collected: 2026-01-08
 躺在 `content/_inbox/` 里等归档的一条，用来渲染收件箱列表行（含大小与"归档/删除"动作位）。
 """
 
+# I-5 编号标题式（`### N. 题干｜难度`）—— cards.py 只对 baike/interview 抽卡，
+# 没有这篇的话 `/quiz` 永远停在空态，那个镜头就白拍。
+#
+# **只能有一道题**：`learn.py::due_slate` 对新卡是 `ORDER BY RANDOM()`（新卡随机抽是有意的产品行为），
+# 两张以上新卡时"第一张卡是谁"每次都不一样，镜头必然闪（实测 quiz_card AE=1174，
+# 差异 bbox 正好压在题干那两行）。baike 那份也只出一张卡，才让 review_* 两个镜头稳了 5 轮。
+DOC_INTERVIEW = """---
+title: 前端面试题样本
+source: knowledge
+collected: 2026-01-10
+tags: [面试, 前端]
+status: stable
+---
+
+# 前端面试题样本
+
+### 1. 事件循环里微任务和宏任务谁先跑｜中级
+
+微任务先跑完，再取一个宏任务。`Promise.then` 属于微任务，`setTimeout` 属于宏任务。
+"""
+
 DOC_BAIKE = """---
 title: 向量数据库
 source: knowledge
@@ -223,14 +244,15 @@ CORPUS = {
     # 就必须有一个 baike 词条 —— 没有它，/review 永远停在"暂时没有可学的卡"空态，
     # 那两张截图测的就不是卡片与记分，而是空态。
     "content/baike/term/向量数据库.md": DOC_BAIKE,
+    "content/interview/fe/事件循环.md": DOC_INTERVIEW,
     "content/_inbox/待归档条目.md": DOC_INBOX,
 }
 
 TAXONOMY = {
     "domains": {"ui-r": {"label": "视觉基线", "hue": 158}, "nv-r": {"label": "基线书库", "hue": 200},
-                "baike": {"label": "术语", "hue": 30}},
+                "baike": {"label": "术语", "hue": 30}, "interview": {"label": "面试", "hue": 340}},
     "subs": {"ui-r/notes": "排版样本", "ui-r/empty-sub": "空子域", "nv-r/books": "长篇",
-             "baike/term": "词条"},
+             "baike/term": "词条", "interview/fe": "前端"},
     "sources": {"knowledge": "知库自建", "desktop": "桌面"},
     "status": {"stable": "已核对"},
 }
@@ -301,6 +323,17 @@ SHOTS = [
           why="显示答案→点「困难」记分后的稳定态（q=3 那条 P6 抓过的边界）"),
     _shot("stats_pinned_month", "/stats?ym=2026-01", settle=6500,
           why="月度报表：ym 钉死在没有阅读数据的过去月，避开跨月与当月漂移"),
+    # —— 第三批：把 §2 剩下的交互控件补完（治理页动作态 / 标签合并选择条 / 出题卡 / 搜索浮层）——
+    _shot("governance_dead_selected", "/governance",
+          click='#gov-scan-btn,#dead-all', settle=6500, click_wait=2500,
+          why="扫描后勾「全选」：断链动作钮（转为纯文本 / 移除链接标记）由 disabled 变可用"),
+    _shot("tags_merge_bar", "/tags", click='.t-check', settle=5000, click_wait=2000,
+          why="标签页勾中一个标签 → 底部合并选择条出现（未选择/清除/合并到…）"),
+    _shot("quiz_card", "/quiz", settle=6500,
+          why="面试题卡（I-5 编号标题式抽出的卡）：题干 + 评分两档 + 侧栏"),
+    _shot("search_overlay", "/doc/ui-r/notes/alpha.md",
+          click='#searchbox,.kb-eng-chip[data-eng="hybrid"]', settle=5000, click_wait=2200,
+          why="就地搜索浮层打开 + 引擎 chip 切到「混合 Hybrid」的选中态"),
 ]
 
 

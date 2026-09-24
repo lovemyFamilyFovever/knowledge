@@ -211,6 +211,10 @@ tags: [检索]
 **一句话定义：** 把文本变成坐标、按距离找相似内容的存储。
 """
 
+# TOC 跟随断言用的长文档：五个小节、每节够长，滚动能真正跨过 top≤96 那条线。
+TOC_DOC = ("---\ntitle: 目录跟随样本\n---\n\n# 大标题\n"
+           + "".join(f"\n## 第{i}节\n\n" + ("正文行。\n" * 18) for i in range(1, 6)))
+
 
 def write_fixtures(root: Path):
     d = root / "content" / "小说" / "p3b"
@@ -444,6 +448,59 @@ def build_race_expr():
     return f
 
 
+# ---------------------------------------------------------------- TOC 跟随判据（§6 第 25 行）
+# 断言的不是"长什么样"（那是 P5 的活），而是**规则本身**：
+# 当前节 = 最后一个已经滚过顶线（top ≤ 96）的标题。这里在浏览器里独立复算一遍期望值，
+# 再和页面真正高亮的那条比。app.js 若退回旧的"IO entries 里最后一个 isIntersecting 获胜"，
+# 滚动中段就会高亮错条目，本探针立刻红。
+TOC_JS = r"""
+(async function () {
+  var out = {links: 0, steps: [], moved: 0, err: ''};
+  function sleep(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
+  function txt(n) { return ((n && n.textContent) || '').replace(/\s+/g, ''); }
+  try {
+    await sleep(1800);                                    // 等 enhanceArticleDOM + buildToc
+    var art = document.querySelector('.article');
+    var links = Array.prototype.slice.call(document.querySelectorAll('#pane-toc a'));
+    var heads = Array.prototype.slice.call(
+      document.querySelectorAll('#article .a-body h1, #article .a-body h2, #article .a-body h3'));
+    out.links = links.length;
+    if (links.length < 3 || heads.length < 3) {
+      out.err = 'TOC 条目不足 3 条（样本或渲染没生效）: links=' + links.length + ' heads=' + heads.length;
+      return JSON.stringify(out);
+    }
+    function want() {                                     // 独立复算判据
+      var cur = 0;
+      for (var i = 0; i < heads.length; i++) { if (heads[i].getBoundingClientRect().top <= 96) cur = i; }
+      return txt(links[Math.min(cur, links.length - 1)]);
+    }
+    function act() { return txt(document.querySelector('#pane-toc a.on')); }
+    var seen = {};
+    // 必须"滚一格 → 等 IO 落一格 → 量一格"。一口气把 scrollTop 设完再回头量，
+    // 量到的每一格都是最后一档的几何（我第一版就这么错着，want 全是同一个值）。
+    var ys = [0, 400, 800, 1116, 1600];
+    for (var i = 0; i < ys.length; i++) {
+      art.scrollTop = ys[i];
+      art.dispatchEvent(new Event('scroll'));
+      await sleep(600);
+      var st = {y: art.scrollTop, act: act(), want: want()};
+      if (st.act) seen[st.act] = 1;
+      out.steps.push(st);
+    }
+    out.moved = Object.keys(seen).length;
+  } catch (e) { out.err = String(e && e.message || e).slice(0, 90); }
+  return JSON.stringify(out);
+})()
+"""
+
+
+def build_toc_expr():
+    QA.mkdir(parents=True, exist_ok=True)
+    f = QA / "expr-toc.js"
+    f.write_text(TOC_JS, encoding="utf-8")
+    return f
+
+
 def run_expr(url, expr_file):
     return subprocess.run(["node", str(ROOT / "scripts" / "agent" / "evalcdp.mjs"),
                            url, "@" + str(expr_file)],
@@ -462,6 +519,24 @@ def parse_eval(r):
     except Exception as e:                            # noqa: BLE001
         check("CDP 返回能解析", False, f"{e} / {blob[:200]} {(r.stderr or '')[-200:]}")
         return {}, errs
+
+
+def split_console_errs(errs):
+    """把 console 报错分成"本套该管的"和"来自 archify 交付件的"。
+
+    首页 iframe 里嵌的是 `static/archify/*.html`，那是另一条线（架构图）的产物，
+    它自己报错不该把书库测试判红 —— 2026-09-24 实测就被另一会话未提交的 WIP 顶红过一次
+    （`zhiku-pipeline.html:13607` 的 null.querySelector）。
+    判据是**栈帧是否全部落在 archify 里**：只要有一帧来自 app.js / kb-*.js / 页面本身，
+    就照常算失败，不做无脑放行。
+    """
+    lines = [l.strip() for l in (errs or "").splitlines() if l.strip()]
+    if not lines or lines == ["none"]:
+        return "", ""
+    frames = [l for l in lines if l.startswith("at ")]
+    if frames and all("static/archify/" in f for f in frames):
+        return "", "\n".join(lines)
+    return "\n".join(lines), ""
 
 
 def main():
@@ -487,6 +562,10 @@ def main():
         (tmp / "content" / "baike" / "term").mkdir(parents=True, exist_ok=True)
         (tmp / "content" / "baike" / "term" / "向量数据库.md").write_text(
             BAIKE_DOC, encoding="utf-8")
+        # TOC 跟随探针用的长文档（§6 第 25 行的判据断言）
+        (tmp / "content" / "ui-x" / "notes").mkdir(parents=True, exist_ok=True)
+        (tmp / "content" / "ui-x" / "notes" / "目录跟随样本.md").write_text(
+            TOC_DOC, encoding="utf-8")
         PORT = free_port()
         QA.mkdir(parents=True, exist_ok=True)
         check("端口是现挑的且不是用户的 5001/5000/5031",
@@ -575,7 +654,24 @@ def main():
         check("done 态后统计刷新不再覆盖副标题（showDone 与 refreshStats 两个写者不打架）",
               race.get("afterDone", "") == "本轮完成1张·已全部过完", f"afterDone={race.get('afterDone')!r}")
 
-        check("页面无未捕获异常/警告", console_errs in ("none", ""), f"CONSOLE_ERRORS: {console_errs[:300]}")
+        # —— TOC 跟随判据：换第三个页面（长文档）再跑一次
+        toc, toc_errs = parse_eval(run_expr(base() + "/doc/ui-x/notes/%E7%9B%AE%E5%BD%95%E8%B7%9F%E9%9A%8F%E6%A0%B7%E6%9C%AC.md",
+                                            build_toc_expr()))
+        check("TOC 探针跑起来了（目录 ≥3 条且渲染生效）", not toc.get("err"),
+              f"{toc.get('err')} / links={toc.get('links')} / CONSOLE_ERRORS: {toc_errs[:140]}")
+        bad_steps = [st for st in toc.get("steps", []) if st.get("act") != st.get("want")]
+        check("每个滚动位置高亮的都是判据算出的那一节（top≤96 的最后一个标题）",
+              bool(toc.get("steps")) and not bad_steps, f"错位={bad_steps} 全部={toc.get('steps')}")
+        check("滚动确实换了条目（不是永远高亮同一条）", int(toc.get("moved", 0)) >= 2,
+              f"不同条目数={toc.get('moved')} steps={toc.get('steps')}")
+
+        mine = [split_console_errs(x)[0] for x in (console_errs, race_errs, toc_errs)]
+        theirs = [split_console_errs(x)[1] for x in (console_errs, race_errs, toc_errs)]
+        mine_txt = "\n".join(x for x in mine if x)
+        check("三个页面均无本套该管的未捕获异常/警告", mine_txt == "", f"CONSOLE_ERRORS: {mine_txt[:300]}")
+        for t in [x for x in theirs if x]:
+            print(f"  NOTE 排除来自 static/archify/* 的报错（另一条线在改，不算本套）："
+                  f"{_safe(t.splitlines()[0][:110])}")
         print(f"\n浏览器侧总耗时 {data.get('ms')} ms；样本 "
               f"{len(FIXTURES)} epub + {len(TXT_FIXTURES)} txt + {len(CHAPTER_TEXTS)} 切分文本 "
               f"+ {len(probes)} 个续读位置探针")

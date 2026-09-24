@@ -34,6 +34,7 @@ python tests\test_ui_regress.py --update       #   确认改动无误后，用�
 python tests\test_rag.py                       # RAG smoke（缺依赖自动 SKIP）
 python scripts\rag_search.py "查询" --json     # 语义检索 CLI / Agent 入口
 python scripts\govern_tags.py census|similar|merge|rename-sub   # 标签治理（merge/rename-sub 先预览后 --apply；详见 --help）
+python scripts\check_ledger_counts.py             # 台账对账：§0 数字必须等于按 §1~§5 状态列重算的数（已入 pre-commit + CI）
 python scripts\publish_site.py [--dry-run]   # 发布管线：白名单同步 content/ → 本地 Quartz 站仓（E:\GitHub\knowledge-site），排除 漫画/projects/小说
 ```
 
@@ -67,7 +68,7 @@ Agent 的**常驻工具脚本**统一收在 `scripts/agent/`（2026-09-18 从旧
 两个 scan 脚本的扫描根默认按脚本位置推导到仓库根下的 `content/`（不再写死盘符），传 argv[1] 可覆盖。
 
 **UI 回归纪律（2026-09-18 起，ImageMagick 已装；2026-09-24 起有截图矩阵基线）**：改动 UI（css/js 模板/渲染逻辑）后，除 smoke 截图外，对受影响页面执行
-0. **首选一条命令**：`python tests\test_ui_regress.py` —— 合成语料的临时实例 + 18 张「页面 × 主题 × 点击态」截图，与 `tests/ui-baselines/` **逐像素**比对（阈值 AE ≤ 2 像素；实测两次截图的噪声地板 0~1 像素）。pre-commit 在本次提交含 css/js/模板文件时**自动跑它**。刷新基线用 `--update`（改完确认无误后），动矩阵/换环境先跑 `--stability` 证明截图本身是确定的。
+0. **首选一条命令**：`python tests\test_ui_regress.py` —— 合成语料的临时实例 + 22 张「页面 × 主题 × 点击态」截图，与 `tests/ui-baselines/` **逐像素**比对（阈值 AE ≤ 2 像素；实测两次截图的噪声地板 0~1 像素）。pre-commit 在本次提交含 css/js/模板文件时**自动跑它**。刷新基线用 `--update`（改完确认无误后），动矩阵/换环境先跑 `--stability` 证明截图本身是确定的。
 1. 改前基线已留在 `.qa/qa-shots/` 时：`node scripts/agent/imgdiff.mjs 基线.png 新.png`（**默认 2% 容差只适合肉眼复核**；作判定用请传 `0%` 并按差异像素数看，实测 2% 会把真回归读成绿，见第 3 条）；
 2. 无基线则先 `shot.mjs` 补拍明暗两态入档；
 3. 差异热图里出现**不该变的区域变红** = 改 A 崩 B，修完再交。**不要用"调大 fuzz"去压噪点**（旧版本这条写的是 `imgdiff a b 5%`，2026-09-24 撤销）：实测 2% 容差 + "差异占比"会把一次真实的模板改字读成绿（AE 只有 75 像素），噪点该靠"钉死动态内容"消除（见 `test_ui_regress.py` 的 FREEZE 与 `clickWait`），而不是靠放大容差。
