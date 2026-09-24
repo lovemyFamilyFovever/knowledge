@@ -50,6 +50,12 @@ if [ -f "tests/test_predicates.py" ]; then
   $PY tests/test_predicates.py || exit 1
 fi
 
+# 性质测试（彻查 P3）：路径校验 / frontmatter 往返 / 改名守恒 / 双链 / 切块 / 排程 的任意输入不变量
+if [ -f "tests/test_properties.py" ]; then
+  echo "[pre-commit] running property tests..."
+  $PY tests/test_properties.py || exit 1
+fi
+
 if [ -f "tests/test_new_project.py" ]; then
   echo "[pre-commit] running scaffolder smoke..."
   $PY tests/test_new_project.py || exit 1

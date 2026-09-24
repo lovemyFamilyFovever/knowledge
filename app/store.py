@@ -149,6 +149,19 @@ def obsidian_vault_connected(content: Path) -> bool:
 
 
 # ---------------- frontmatter ----------------
+def _unquote(val: str) -> str:
+    """脱掉**成对**的首尾引号；非成对的一律不动。
+
+    旧实现是 `val.strip("\"'")`，而 `strip` 会把首尾所有引号字符一并剥掉：
+    `source: "单引号 'x'"` 读回来变成 `单引号 'x`（末尾撇号被吃掉）。
+    frontmatter 是"读 → 改 → 写回"的往返路径，这一格字符丢失会在每次保存时
+    真的写进语料（AGENTS 不变量 1：文件是唯一事实源，读到什么就得写回什么）。
+    """
+    if len(val) >= 2 and val[0] == val[-1] and val[0] in "\"'":
+        return val[1:-1]
+    return val
+
+
 def parse_frontmatter(text: str) -> tuple[dict, str]:
     """Parse the leading `---` block into a dict; unknown keys are preserved."""
     m = FM_RE.match(text)
@@ -162,11 +175,11 @@ def parse_frontmatter(text: str) -> tuple[dict, str]:
         key, val = key.strip(), val.strip()
         if val.startswith("[") and val.endswith("]"):
             inner = val[1:-1].strip()
-            fm[key] = [x.strip().strip("\"'") for x in inner.split(",") if x.strip()] if inner else []
+            fm[key] = [_unquote(x.strip()) for x in inner.split(",") if x.strip()] if inner else []
         elif val.lower() in ("true", "false"):
             fm[key] = val.lower() == "true"
         else:
-            fm[key] = val.strip("\"'")
+            fm[key] = _unquote(val)
     return fm, text[m.end():]
 
 

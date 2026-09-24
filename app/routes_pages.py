@@ -196,6 +196,11 @@ def raw(rel):
     需求#6：图片扩展名（MEDIA_EXTS）同样直服，供正文相对图片 /raw 直通。
     需求#12：书库格式直服（.txt/.epub/.pdf/.xlsx）—— 阅读器前端按类型分流渲染。"""
     p = _safe_rel(rel, SERVABLE_EXTS | MEDIA_EXTS | LIBRARY_EXTS)
+    # safe_rel 只管"没越界 + 扩展名可直服"，不管文件在不在：文件被改名/删除后
+    # （正文里的相对图片、书签里的旧路径、`..` 绕回 content 内的不存在路径）
+    # send_file 会抛 FileNotFoundError → 用户看到一个 500 白屏页，而正确答案是 404。
+    if not p.is_file():
+        abort(404)
     if p.suffix == ".html":
         html = p.read_text(encoding="utf-8", errors="replace")
         html = _rewrite_html_assets(html)
