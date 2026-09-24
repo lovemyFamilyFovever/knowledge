@@ -23,7 +23,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 LEDGER = ROOT / "测试文件" / "覆盖台账.md"
 
-COVERED = {"E2E", "单测", "门禁", "已覆盖", "人工"}
+COVERED = {"E2E", "单测", "门禁", "已覆盖", "人工", "基线"}   # 基线 = P5 截图矩阵逐像素锁住交互后状态
 NA = "不适用"
 SECTIONS = {"1": "端点", "2": "UI 控件", "3": "文件类型", "4": "不变量", "5": "解析入口"}
 
