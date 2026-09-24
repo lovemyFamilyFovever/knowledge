@@ -227,6 +227,10 @@ AUDIT_ALLOWED = {
     ("tests/test_reader.py", "unlink"): 2,             # 临时语料：模拟外部删除 + 探针清理
     ("tests/test_known_defects.py", "os_rmdir"): 1,    # 摘 junction 链（不穿透删目标，是 rmtree 前的安全前置）
     ("tests/test_known_defects.py", "rmtree"): 1,      # 临时目录（tempfile.mkdtemp）自清理
+    # P3-B JS 性质测试：删的是 tempfile.mkdtemp 起的临时 KB_ROOT（内含自建的 content/ 与
+    # 从仓库复制过去的 static/ 副本），且尾部有一条断言亲自证明"删除目标在系统临时目录下、
+    # 仓库 content/ 完好"，不是随手一把梭。
+    ("tests/test_js_props.py", "rmtree"): 1,
 }
 AUDIT_SELF = "tests/test_invariants.py"   # 本文件自身含这些字面量，排除以免自指
 

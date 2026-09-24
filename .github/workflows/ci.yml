@@ -39,6 +39,10 @@ jobs:
         run: python tests/test_e2e_smoke.py
       - name: Known-defects regression (empty-sub 500 / resolve-prefix 500)
         run: python tests/test_known_defects.py
+      # 彻查 P3-B：浏览器侧书库解析性质测试。脚本自己探测 node/Chrome，
+      # 缺任一个就打 SKIP 返回 0 —— 挂进来只为满足"CI 覆盖面不得小于本地钩子"。
+      - name: JS property tests in real browser (SKIP without node/Chrome)
+        run: python tests/test_js_props.py
       - name: RAG smoke (model not preloaded; download via mirror)
         env:
           HF_ENDPOINT: https://hf-mirror.com

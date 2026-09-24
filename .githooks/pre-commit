@@ -56,6 +56,15 @@ if [ -f "tests/test_properties.py" ]; then
   $PY tests/test_properties.py || exit 1
 fi
 
+# JS 侧性质测试（彻查 P3-B）：畸形 epub / 任意字节 txt / 任意章节文本喂进**真浏览器**
+# （临时 KB_ROOT + 临时实例 + CDP）。书库解析线（decodeTxt / normalizeEpubBytes /
+# buildChapters）的三个历史线上 bug 全在这里，Python 侧够不着。
+# 探测留给脚本自己做（缺 node 或 Chrome 就打 SKIP 并返回 0）——钩子挂 = 没有钩子。
+if [ -f "tests/test_js_props.py" ]; then
+  echo "[pre-commit] running JS property tests (browser, SKIP if no node/Chrome)..."
+  $PY tests/test_js_props.py || exit 1
+fi
+
 if [ -f "tests/test_new_project.py" ]; then
   echo "[pre-commit] running scaffolder smoke..."
   $PY tests/test_new_project.py || exit 1

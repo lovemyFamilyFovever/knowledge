@@ -399,8 +399,8 @@
   }
   N.decodeTxt = decodeTxt;
 
-  function buildChapters(text) {
-    var lines = text.split(/\r?\n/);
+  function buildChapters(text, fallbackTitle) {
+    var lines = String(text == null ? "" : text).split(/\r?\n/);
     var chaps = [], cur = { title: "", start: 0, lines: [] };
     lines.forEach(function (ln, i) {
       if (CHAP_RE.test(ln) && ln.trim().length <= 42) {
@@ -410,7 +410,10 @@
     });
     if (cur.lines.length || cur.title) chaps.push(cur);
     if (chaps.filter(function (c) { return c.title; }).length < 2) {
-      chaps = [{ title: DOC.title || "全文", start: 0, lines: lines }];
+      // 兜底标题由调用方传入；不传时退回闭包里的 DOC.title，最后才是"全文"。
+      // （原先直接读全局 DOC，任何独立测试都得先造假 DOC —— 现在可以显式喂。）
+      var fb = fallbackTitle || (typeof DOC !== "undefined" && DOC && DOC.title) || "全文";
+      chaps = [{ title: fb, start: 0, lines: lines }];
     }
     chaps.forEach(function (c) {
       c.paras = c.lines.join("\n").replace(/^\n+/, "").split(/\n+/).filter(function (p) { return p.trim(); });
@@ -426,7 +429,7 @@
       return r.arrayBuffer();
     }).then(decodeTxt).then(function (text) {
       if (!wrap.isConnected) return;
-      var chaps = buildChapters(text);
+      var chaps = buildChapters(text, DOC.title);
       var paged = N.get().flow === "page";
       wrap.innerHTML = '<div class="nv-reader">' + toolbarHTML({ pager: paged ? "chap" : false, autoScroll: !paged }) +
         '<div class="nv-body-row">' +
@@ -726,7 +729,11 @@
      解法：把 OPF/NCX 里那些"编码查不到、解码能查到"的 href 就地解码，使 spine/nav/zip 三者一致。
      仅当确有此类条目才重建并回传 ArrayBuffer（正常书返回 null，零改动）；ePub 只认 ArrayBuffer，blob URL 会卡死。 */
   async function normalizeEpub(rawHref) {
-    var buf = await (await fetch(rawHref)).arrayBuffer();
+    return normalizeEpubBytes(await (await fetch(rawHref)).arrayBuffer());
+  }
+  /* 字节版与"取 URL"版拆开：畸形样本（截断 zip、缺 container.xml、href 指向不存在条目、
+     OPF/NCX 编码不一致…）可以直接喂字节，不必先上传成真书再抓回来。 */
+  async function normalizeEpubBytes(buf) {
     var zip = await window.JSZip.loadAsync(buf);
     var container = zip.file("META-INF/container.xml");
     if (!container) return null;
@@ -768,6 +775,13 @@
     return zip.generateAsync({ type: "arraybuffer", compression: "STORE" });
   }
   function decodeAmp(s) { return s.replace(/&amp;/g, "&"); }
+
+  /* 彻查 P3-B：把书库解析入口挂到 KBNOVEL 上，浏览器侧性质测试（tests/test_js_props.py）
+     才能用现造畸形样本直接调，不需要先造一本真书再抓回来。 */
+  N.normalizeEpubBytes = normalizeEpubBytes;
+  N.buildChapters = buildChapters;
+  N.CHAP_RE = CHAP_RE;
+  N.ensureEpubLib = ensureEpubLib;
 
   N.renderEpub = function (wrap, rawHref, rel) {
     autoStop(); tts.stop();
