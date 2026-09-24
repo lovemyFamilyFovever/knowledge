@@ -425,7 +425,20 @@ def test_ensure_synced_criteria() -> None:
             check("_candidate_files 仍按域过滤（新增非候选域后候选数不变）",
                   len(ls._candidate_files(content)) == n_before)
 
-            # #110 `_tag_list` 的 `str(raw or "")` → `and`：任何非空 tags 都会被切成空列表
+            # 轮次 10：原先 `content = Path(content or self.content)` + `content is None or
+            # not content.is_dir()` 是一个**永不可达**的守卫 —— 两者都为 None 时 Path(None)
+            # 先抛 TypeError（接口层面就是一个 500），而不为 None 时该判据恒假。
+            # 简化成两个独立分支后，这两条断言才有得可断。
+            ls.meta_set(META_SYNCED_AT, str(time.time() + 10_000))
+            try:
+                ls.sync(content / "不存在")
+                check("sync：目录不存在 → CorpusEmpty（而不是往下走去扫空）", False, "没抛错")
+            except CorpusEmpty as e:
+                check("sync：目录不存在 → CorpusEmpty", "不存在" in str(e), f"got {e}")
+            except TypeError as e:
+                check("sync：目录不存在 → CorpusEmpty（不是 TypeError）", False, f"TypeError: {e}")
+
+                        # #110 `_tag_list` 的 `str(raw or "")` → `and`：任何非空 tags 都会被切成空列表
             check("_tag_list：逗号分隔正常拆开（`raw or \"\"` 改成 `and` 后这里会变空列表）",
                   _tag_list("AI,Agent") == ["AI", "Agent"], f"got {_tag_list('AI,Agent')}")
             check("_tag_list：None / 空串 → 空列表（不抛、不产出 \"None\"）",
@@ -467,6 +480,60 @@ def test_learn_meta_roundtrip() -> None:
                   ls.meta_get("没这个键") is None)
         finally:
             ls.close()
+
+
+def test_no_content_and_retired_counter() -> None:
+    """轮次 10 的两处简化：① 未指定语料目录时的分支现在真的能走到；
+    ② `retired = max(cur.rowcount, 0)` 取代了被 `and` 短路吃掉的冗余判据。"""
+    with tempfile.TemporaryDirectory() as td:
+        root = Path(td)
+        idx = root / "indexes"
+        bare = LearnStore(idx, None)          # 构造时就没给语料目录
+        try:
+            try:
+                bare.sync()
+                check("sync()：从未指定语料目录 → CorpusEmpty（旧写法在这里抛 TypeError→500）",
+                      False, "没抛错")
+            except CorpusEmpty:
+                check("sync()：从未指定语料目录 → CorpusEmpty（旧写法在这里抛 TypeError→500）", True)
+            except TypeError as e:
+                check("sync()：从未指定语料目录 → CorpusEmpty（旧写法在这里抛 TypeError→500）",
+                      False, f"TypeError: {e}")
+            check("ensure_synced()：未指定语料目录 → 返回 None 而不炸（读接口不该 500）",
+                  bare.ensure_synced() is None)
+        finally:
+            bare.close()
+
+    with tempfile.TemporaryDirectory() as td:
+        root = Path(td)
+        content, idx = root / "content", root / "indexes"
+        d = content / "baike" / "algorithms"
+        d.mkdir(parents=True)
+        mk(d, "a.md", _baike_md("甲"))
+        ls = LearnStore(idx, content)
+        try:
+            r1 = ls.sync(content)
+            check("首次 sync：没有旧卡可下线 → retired == 0（`max(rowcount, 0)` 的下界）",
+                  r1["retired"] == 0, f"got {r1['retired']}")
+            r2 = ls.sync(content)
+            check("连续第二次 sync：语料没变 → retired 仍为 0（不能是 -1 / 1 这类噪声）",
+                  r2["retired"] == 0, f"got {r2['retired']}")
+            # 造一次真下线：把某篇卡从语料里去掉后重扫
+            mk(d, "b.md", _baike_md("乙"))
+            ls.sync(content)
+            n_before = int(ls.con.execute("SELECT count(*) FROM cards WHERE active=1")
+                           .fetchone()[0])
+            mk(content / "baike" / "algorithms", "b.md",
+               _baike_md("乙改", 20))          # 换内容 → 旧 card_id 不再被 touch
+            r3 = ls.sync(content)
+            n_after = int(ls.con.execute("SELECT count(*) FROM cards WHERE active=1")
+                          .fetchone()[0])
+            check("真有卡下线时 retired 计数正确（上界也能测）",
+                  r3["retired"] >= 1 and n_after <= n_before,
+                  f"retired={r3['retired']} n {n_before}->{n_after}")
+        finally:
+            ls.close()
+
 
 
 # ---------------------------------------------------------------- cards：抽卡切块的边界
@@ -583,6 +650,8 @@ def main() -> int:
     test_ensure_synced_criteria()
     print("== learn：meta_get 读写 ==")
     test_learn_meta_roundtrip()
+    print("== learn：未指定语料与 retired 计数 ==")
+    test_no_content_and_retired_counter()
     print("== rag：切块与分词纯函数 ==")
     test_rag_pure_helpers()
     print("== cards：抽卡切块边界 ==")

@@ -258,11 +258,13 @@ def _all_sec_values(text: str, rx: re.Pattern = RE_SEC,
     """返回 [(小节键名原文, 值)]，按出现顺序；用于 baike B / interview I-1 一次扫完所有小节。"""
     lines = text.splitlines()
     out: list[tuple[str, str]] = []
-    skip_to = -1
     n_groups = rx.groups
+    # 这里曾有一句 `if i <= skip_to: continue` 配 `skip_to = i`：`i` 单调递增、而 skip_to 只被
+    # 设成"刚匹配那一行"的行号，条件永不成立 —— 死守卫，只会给读者一种"已消费行被跳过了"的错觉
+    # （P6 变异测试里它是条永远杀不掉的存活体）。真的不需要跳过：多行值是 _collect_following
+    # 采的，它以 RE_BOLD_HEAD（^\*\*）为停止标记，而 RE_SEC 必须以 `**` 开头 ——
+    # 被采集掉的值行按定义不可能再匹配 RE_SEC，所以不会被重复计成一个小节。
     for i, ln in enumerate(lines):
-        if i <= skip_to:
-            continue
         m = rx.match(ln)
         if not m:
             continue
@@ -271,7 +273,6 @@ def _all_sec_values(text: str, rx: re.Pattern = RE_SEC,
         if not val:
             val = _collect_following(lines, i + 1, allow_bullets=allow_bullets)
         out.append((key, val))
-        skip_to = i
     return out
 
 

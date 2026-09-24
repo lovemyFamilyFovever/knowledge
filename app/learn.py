@@ -242,8 +242,15 @@ class LearnStore:
             SyncBusy: 已有 sync 在跑。
             CorpusEmpty: 候选语料为空。
         """
-        content = Path(content or self.content)
-        if content is None or not content.is_dir():
+        # 旧写法是 `content = Path(content or self.content)` 再判 `content is None or not is_dir()`：
+        # 两者都为 None 时 Path(None) 先抛 TypeError（一个 500），那道 `is None` 守卫**永远走不到**；
+        # 而不为 None 时它恒假，整个 `or` 就被下游"候选语料为空"兜住 —— 一个既不可达也冗余的判据。
+        # 现在拆成两个各自独立成立的分支，坏输入按契约抛 CorpusEmpty。
+        raw = content if content is not None else self.content
+        if raw is None:
+            raise CorpusEmpty("未指定 content/ 目录")
+        content = Path(raw)
+        if not content.is_dir():
             raise CorpusEmpty("content/ 不存在或为空")
         if not _SYNC_LOCK.acquire(blocking=False):
             raise SyncBusy("上一次抽卡同步尚未结束，请稍后再试")
@@ -294,7 +301,10 @@ class LearnStore:
                              card.fingerprint, now, card.card_id))
 
             cur.execute("UPDATE cards SET active=0 WHERE last_seen < ? AND active=1", (now,))
-            retired = cur.rowcount if cur.rowcount and cur.rowcount > 0 else 0
+            # 旧写法 `cur.rowcount if cur.rowcount and cur.rowcount > 0 else 0`：前半段 `and`
+            # 已把 0 / None 短路掉，后面的 `> 0` 永远没有区分能力（`>` 改成 `>=` 也测不出来）。
+            # sqlite 的 rowcount 只会是 -1（未知）或 ≥0，取非负即等价且可测。
+            retired = max(cur.rowcount, 0)
             self.con.commit()
 
             by_kind: dict[str, int] = {}
@@ -340,7 +350,10 @@ class LearnStore:
 
         Returns: 触发了同步则返回 sync() 的结果，否则 None。
         """
-        content = Path(content or self.content)
+        raw = content if content is not None else self.content
+        if raw is None:
+            return None          # 没配语料目录：读钩子放行，让写路径去报明确错误
+        content = Path(raw)      # 同 sync()：旧写法 Path(None) 会先抛 TypeError
         try:
             total = int(self.con.execute(
                 "SELECT count(*) FROM cards WHERE active=1").fetchone()[0])
