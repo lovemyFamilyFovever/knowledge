@@ -196,6 +196,21 @@ CHAPTER_TEXTS = {
 # 各切分样本期望的"带标题章数"（trailing-title / preamble 见上：它们专门盯末章与过渡 push）
 EXPECT_TITLED = {"one-chapter": 1, "trailing-title": 2, "preamble": 2, "crlf": 2}
 
+# 一个真会出卡的 baike 词条：`cards.py` 只对 baike/interview 抽卡，复习页要能测就得有它。
+BAIKE_DOC = """---
+title: 向量数据库
+source: knowledge
+collected: 2026-01-09
+tags: [检索]
+---
+
+# 向量数据库
+
+## 定义
+
+**一句话定义：** 把文本变成坐标、按距离找相似内容的存储。
+"""
+
 
 def write_fixtures(root: Path):
     d = root / "content" / "小说" / "p3b"
@@ -374,6 +389,81 @@ def build_expr():
     return f
 
 
+# ---------------------------------------------------------------- 复习页统计竞态（§6 第 24 行）
+# refreshStats 有两个并发来源（进页面一次、每次记分一次），没有序号守卫时"谁后到谁写 DOM"。
+# 这里不换网络：直接替掉 window.KB.api.today（learn.js 调用时才取属性，所以补丁生效），
+# 灌两个假响应 —— **先发的那个慢、后发的那个快**，于是"后到的"是旧数据。
+# 有守卫：副标题取新数据（7/42%）；把守卫去掉：副标题被旧数据覆盖（满屏 99）。
+RACE_JS = r"""
+(async function () {
+  var out = {calls: 0, seq: 0, sub: '', afterDone: '', ready: false};
+  function sleep(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
+  var sub = document.getElementById('kb-learn-sub');
+  if (!sub || !window.KB || !window.KB.api || !window.KBLEARN) { out.err = '页面未就绪（缺 KBLEARN/KB.api）'; return JSON.stringify(out); }
+  for (var i = 0; i < 60 && !/张/.test(sub.textContent || ''); i++) await sleep(200);
+  out.ready = /张/.test(sub.textContent || '');
+  if (!out.ready) { out.err = '队列没出卡（副标题只在有当前卡时写）'; return JSON.stringify(out); }
+  var real = window.KB.api.today, n = 0;
+  window.KB.api.today = function () {
+    n++;
+    var mine = n;
+    return new Promise(function (res) {
+      setTimeout(function () {
+        res({ stats: mine === 1
+          ? { due_n: 99, new_left: 99, streak_days: 99, mastered_pct: 99, done_today: 99 }
+          : { due_n: 7, new_left: 3, streak_days: 2, mastered_pct: 42, done_today: 1 } });
+      }, mine === 1 ? 600 : 50);
+    });
+  };
+  window.KBLEARN.refreshStats();
+  window.KBLEARN.refreshStats();
+  await sleep(1500);
+  out.calls = n;
+  out.seq = window.KBLEARN.statsSeq();
+  out.sub = (sub.textContent || '').replace(/\s+/g, '');
+  // 阶段 2：done 态（showDone 写过"本轮完成…"）之后，统计刷新不得再把这行改回队列口径。
+  // 这一行有两个写者（refreshStats 与 showDone），只加 seq 守卫时两者仍会按异步先后互相覆盖。
+  if (window.KBLEARN.setDone) {
+    sub.textContent = '本轮完成 1 张 · 已全部过完';
+    window.KBLEARN.setDone(true);
+    window.KBLEARN.refreshStats();
+    await sleep(700);
+    out.afterDone = (sub.textContent || '').replace(/\s+/g, '');
+    window.KBLEARN.setDone(false);
+  } else { out.err2 = 'KBLEARN.setDone 未导出'; }
+  window.KB.api.today = real;
+  return JSON.stringify(out);
+})()
+"""
+
+
+def build_race_expr():
+    QA.mkdir(parents=True, exist_ok=True)
+    f = QA / "expr-race.js"
+    f.write_text(RACE_JS, encoding="utf-8")
+    return f
+
+
+def run_expr(url, expr_file):
+    return subprocess.run(["node", str(ROOT / "scripts" / "agent" / "evalcdp.mjs"),
+                           url, "@" + str(expr_file)],
+                          cwd=str(ROOT), capture_output=True, text=True,
+                          encoding="utf-8", errors="replace", timeout=300,
+                          env=dict(os.environ, KB_EVAL_WAIT_MS="6000", KB_EVAL_OUT_CHARS="20000"))
+
+
+def parse_eval(r):
+    """把 evalcdp 的 `EVAL: ... CONSOLE_ERRORS: ...` 输出拆成 (json, console 报错文本)。"""
+    out = r.stdout or ""
+    blob = out.split("EVAL:", 1)[1].split("CONSOLE_ERRORS:", 1)[0].strip() if "EVAL:" in out else ""
+    errs = out.split("CONSOLE_ERRORS:", 1)[1].strip() if "CONSOLE_ERRORS:" in out else "?"
+    try:
+        return (json.loads(json.loads(blob)) if blob else {}), errs
+    except Exception as e:                            # noqa: BLE001
+        check("CDP 返回能解析", False, f"{e} / {blob[:200]} {(r.stderr or '')[-200:]}")
+        return {}, errs
+
+
 def main():
     global PORT
     if not shutil.which("node"):
@@ -393,6 +483,10 @@ def main():
         (tmp / "content" / "_meta").mkdir(parents=True, exist_ok=True)
         (tmp / "content" / "_meta" / "taxonomy.json").write_text(
             '{"domains": {}}', encoding="utf-8")
+        # 复习页竞态探针要有一张真卡：cards.py 只对 baike/interview 抽卡
+        (tmp / "content" / "baike" / "term").mkdir(parents=True, exist_ok=True)
+        (tmp / "content" / "baike" / "term" / "向量数据库.md").write_text(
+            BAIKE_DOC, encoding="utf-8")
         PORT = free_port()
         QA.mkdir(parents=True, exist_ok=True)
         check("端口是现挑的且不是用户的 5001/5000/5031",
@@ -401,20 +495,7 @@ def main():
         check("临时实例起来了", port_open(PORT))
 
         expr = build_expr()
-        r = subprocess.run(["node", str(ROOT / "scripts" / "agent" / "evalcdp.mjs"),
-                            base() + "/", "@" + str(expr)],
-                           cwd=str(ROOT), capture_output=True, text=True,
-                           encoding="utf-8", errors="replace", timeout=300,
-                           env=dict(os.environ, KB_EVAL_WAIT_MS="6000", KB_EVAL_OUT_CHARS="20000"))
-        out = r.stdout or ""
-        blob = out.split("EVAL:", 1)[1].split("CONSOLE_ERRORS:", 1)[0].strip() if "EVAL:" in out else ""
-        console_errs = out.split("CONSOLE_ERRORS:", 1)[1].strip() if "CONSOLE_ERRORS:" in out else "?"
-        data = {}
-        try:
-            data = json.loads(json.loads(blob)) if blob else {}
-        except Exception as e:                                # noqa: BLE001
-            check("CDP 返回能解析", False, f"{e} / {blob[:200]} {r.stderr[-300:]}")
-            return 1
+        data, console_errs = parse_eval(run_expr(base() + "/", expr))
         epub, txt, chap = data.get("epub", {}), data.get("txt", {}), data.get("chap", {})
         pos = data.get("pos", {})
 
@@ -482,6 +563,17 @@ def main():
         check("savePos/loadPos 对 9 种输入均不抛（含循环引用/坏 JSON/超长 rel）", not threw, f"{threw}")
         wrong = {k: pos[k] for k in probes if pos.get(k) is not True}
         check("9 条 pos 探针结果全为 true（值对，不只是不抛）", not wrong, f"{wrong}")
+
+        # —— 复习页统计竞态：换第二个页面（/review）再跑一次 CDP
+        race, race_errs = parse_eval(run_expr(base() + "/review", build_race_expr()))
+        check("review 页探针跑起来了（KBLEARN 已导出、队列出了卡）",
+              race.get("ready") is True, f"{race} / CONSOLE_ERRORS: {race_errs[:160]}")
+        check("探针确实发出了两次 today 请求", race.get("calls") == 2, f"{race}")
+        sub_txt = str(race.get("sub", ""))
+        check("后发的新响应赢：副标题取 7/42%（不是慢到的旧响应 99）",
+              "99" not in sub_txt and "到期7张" in sub_txt and "42%" in sub_txt, f"sub={sub_txt!r}")
+        check("done 态后统计刷新不再覆盖副标题（showDone 与 refreshStats 两个写者不打架）",
+              race.get("afterDone", "") == "本轮完成1张·已全部过完", f"afterDone={race.get('afterDone')!r}")
 
         check("页面无未捕获异常/警告", console_errs in ("none", ""), f"CONSOLE_ERRORS: {console_errs[:300]}")
         print(f"\n浏览器侧总耗时 {data.get('ms')} ms；样本 "

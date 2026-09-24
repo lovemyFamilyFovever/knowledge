@@ -75,7 +75,7 @@
 
   /* ---------------- 状态 ---------------- */
   var S = {
-    queue: [], idx: 0, cur: null, revealed: false,
+    queue: [], idx: 0, cur: null, revealed: false, done: false,
     graded: {}, busy: false, fetching: false,
     sub: "", domain: "", subs: [],
     stats: { due_n: 0, new_n: 0, total_n: 0 },
@@ -153,6 +153,7 @@
     var card = S.queue[S.idx];
     if (!card) { showDone(); return; }
     S.cur = card;
+    S.done = false;
     S.revealed = false;
     S.startedAt = Date.now();
 
@@ -268,6 +269,7 @@
   }
 
   function showDone() {
+    S.done = true;
     el.card.hidden = true;
     el.cta.innerHTML = "";
     el.grades.hidden = true;
@@ -409,24 +411,42 @@
     }).join("");
   }
 
+  /* 统计刷新有**两个并发来源**：进页面时一次（loadQueue 之后）、每次记分后又一次。
+     没有序号守卫时就是"谁的响应后到谁写 DOM"：记分最后一张卡后，副标题会在
+     「本轮完成 1 张 · 已全部过完」和「到期 0 张 · 未学 0 张 …」之间随机定格 ——
+     同一个动作两种结果（2026-09-24 P5 视觉矩阵的 review_graded 镜头靠 AE=637 的反复不稳定钓出来的，
+     台账 §6 第 24 行）。修法：每次刷新领一个自增序号，回调发现自己已被更新的一次取代就放弃写。 */
+  var statsSeq = 0;
+
   function refreshStats() {
+    var seq = ++statsSeq;
+    var stale = function () { return seq !== statsSeq; };
     var dom = S.domain || (IS_QUIZ ? "interview" : "baike");
     API.today({ domain: dom }).then(function (j) {
+      if (stale()) return;
       var st = j.stats || {};
       var total = (st.done_today || 0) + (st.due_n || 0);
       if (total > 0) setRing(100 * (st.done_today || 0) / total, Math.round(100 * (st.done_today || 0) / total) + "%", "今日进度");
       else setRing(st.mastered_pct || 0, (st.mastered_pct || 0) + "%", "总掌握度");
       renderStats(st);
-      if (el.sub && S.cur) {
+      // 副标题有两个写者：这里（队列口径）和 showDone()（本轮完成/队列为空）。
+      // 记分最后一张卡后 advance() 会走 loadQueue→showDone，两个异步谁先落不定，
+      // 所以**一旦进入 done 态，统计刷新就不许再改这一行**（P5 的 review_graded
+      // 镜头实测：只加 seq 守卫仍反复 AE=637，补上这条才彻底稳定）。
+      if (el.sub && S.cur && !S.done) {
         el.sub.innerHTML = "到期 " + U.esc(st.due_n) + " 张 · 未学 " + U.esc(st.new_left) +
           " 张 · 连续 " + U.esc(st.streak_days) + " 天 · 掌握度 " + U.esc(st.mastered_pct) + "%";
       }
     }).catch(function () { /* 侧栏统计失败不打断做题 */ });
 
     API.mastery({ scope: "sub", domain: dom }).then(function (j) {
+      if (stale()) return;
       S.subs = j.items || [];
       renderFilters();
-    }).catch(function () { el.filters.innerHTML = '<span style="font-size:11.5px;color:var(--faint)">掌握度暂不可用</span>'; });
+    }).catch(function () {
+      if (stale()) return;
+      el.filters.innerHTML = '<span style="font-size:11.5px;color:var(--faint)">掌握度暂不可用</span>';
+    });
   }
 
   function renderFilters() {
@@ -483,4 +503,14 @@
     showCard();
     refreshStats();
   });
+
+  /* 彻查 P5：挂一个最小可测面。tests/test_js_props.py 的"统计竞态"探针会
+     临时替换 window.KB.api.today（learn.js 调用时才取属性，所以补丁生效）灌两个
+     "慢的旧响应 / 快的新响应"，断言副标题取的是新的那次；再把状态摆成 done 态，
+     断言统计刷新不许覆盖 showDone 写的那行。去掉 seq 守卫或 `!S.done` 判据，探针立刻变红。 */
+  window.KBLEARN = {
+    refreshStats: refreshStats,
+    statsSeq: function () { return statsSeq; },
+    setDone: function (v) { S.done = !!v; },
+  };
 })();

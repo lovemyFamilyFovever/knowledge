@@ -697,6 +697,20 @@ function buildToc() {
   }
   function tocOn(a) { $$("#pane-toc a").forEach(x => x.classList.remove("on")); if (a) a.classList.add("on"); }
 
+  /** 当前小节 = 最后一个已经滚到视口顶部（top ≤ 96）的标题。
+      两条渲染路径（内联 HTML 的 shadow 分支、Markdown 的 IO 分支）**共用这一个判据**：
+      几何判据是幂等的——排版中途多算一次也只是还没收敛，排版完成后收敛到同一个答案；
+      而旧的"IO 回调里最后一个 isIntersecting 的条目获胜"取决于条目批次顺序与回调时机，
+      实测同一篇文档两次打开会高亮不同条目（P5 视觉矩阵 doc_md_dark 两次截图 AE=964，见台账 §6 第 25 行）。 */
+  function tocSync(pairs) {
+    let cur = pairs[0];
+    for (const p of pairs) {
+      const r = p[0].getBoundingClientRect();
+      if (r.top <= 96) cur = p; else break;
+    }
+    tocOn(cur[1]);
+  }
+
   // 内联 HTML 片段走 Shadow DOM：标题在 shadowRoot 内，普通 querySelectorAll 够不到
   const host = $("#article .html-inline");
   const sroot = host && host.shadowRoot ? host.shadowRoot : null;
@@ -715,14 +729,7 @@ function buildToc() {
       pairs.push([h, a]);
     });
     const scroller = document.querySelector(".article");
-    const spy = () => {
-      let cur = pairs[0];
-      for (const p of pairs) {
-        const r = p[0].getBoundingClientRect();
-        if (r.top <= 96) cur = p; else break;
-      }
-      tocOn(cur[1]);
-    };
+    const spy = () => tocSync(pairs);
     if (scroller) { scroller.addEventListener("scroll", spy, { passive: true }); _tocScrollSpy = () => scroller.removeEventListener("scroll", spy); }
     tocOn(pairs[0][1]);
     renderTocSpark();
@@ -743,13 +750,8 @@ function buildToc() {
     pane.appendChild(a);
     pairs.push([h, a]);
   });
-  const spy = new IntersectionObserver(entries => {
-    entries.forEach(en => {
-      if (!en.isIntersecting) return;
-      const hit = pairs.find(([h]) => h === en.target);
-      if (hit) tocOn(hit[1]);
-    });
-  }, { root: document.querySelector(".article"), rootMargin: "0px 0px -72% 0px", threshold: 0 });
+  const spy = new IntersectionObserver(() => tocSync(pairs),
+    { root: document.querySelector(".article"), rootMargin: "0px 0px -72% 0px", threshold: 0 });
   heads.forEach(h => spy.observe(h));
   tocOn(pairs[0][1]);
   renderTocSpark();

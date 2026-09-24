@@ -272,7 +272,7 @@ SHOTS = [
     _shot("doc_md_via_toggle", "/doc/ui-r/notes/beta.md", click="#kb-md-src-btn",
           why="点「Markdown 源」后的第二视图"),
     _shot("doc_tags_pane", "/doc/ui-r/notes/alpha.md", click='.rtab[data-pane="info"]',
-          why="右侧面板切到标签页（树 + 标签编辑态）"),
+          click_wait=2500, why="右侧面板切到标签页（树 + 标签编辑态）"),
     _shot("browse_empty_sub", "/browse/ui-r/empty-sub", why="空子域空态（D1 那次的回归面）"),
     _shot("novel_txt", "/doc/nv-r/books/%E9%95%BF%E5%A4%9C.txt", why="书库 txt：章节切分与阅读排版"),
     _shot("novel_txt_prefs", "/doc/nv-r/books/%E9%95%BF%E5%A4%9C.txt", click=".nv-pref-btn",
@@ -294,11 +294,10 @@ SHOTS = [
           # 记分后副标题会先短暂显示"本轮完成 1 张 · 已全部过完"，随后队列刷新才落到稳定态。
           # 实测（同一实例连截 3s / 8s / 15s）：3s 与 8s 差 2786 像素，8s 与 15s **AE=0** → 8 秒后已收敛。
           click_wait=8000,
-          # 但 8 秒也只是"通常收敛"：首屏 refreshStats 的请求与记分后的请求是并发的，
-          # **谁后到不确定**，副标题会在「队列…」与「本轮完成…」之间随机定格（实测 AE=637 反复出现，
-          # 见 §6 第 24 行）。这是应用侧的竞态，本轮不修 UI，只把这一行从该镜头排除，
-          # 记分后的真正看点（环形进度 100% / 空态卡 / 侧栏统计）仍留在画面里。
-          freeze="#kb-learn-sub{display:none!important}",
+          # 曾额外 freeze 过 #kb-learn-sub：`refreshStats` 两个并发请求无序号守卫，
+          # 迟到的旧响应会把这一行覆盖成"到期 0 张…"，同一动作两种结果（§6 第 24 行）。
+          # 2026-09-24 修掉竞态（learn.js 加 seq 守卫 + test_js_props 的"统计竞态"探针锁住）后
+          # freeze 已撤回 —— 这行重新回到基线里，它红就说明竞态回来了。
           why="显示答案→点「困难」记分后的稳定态（q=3 那条 P6 抓过的边界）"),
     _shot("stats_pinned_month", "/stats?ym=2026-01", settle=6500,
           why="月度报表：ym 钉死在没有阅读数据的过去月，避开跨月与当月漂移"),
@@ -428,11 +427,13 @@ def main():
         return 1
 
     actual = capture("actual", SHOTS)
+    floor = {}
     if stability:
         again = capture("actual2", SHOTS)
         print("\n[stability] 同一份代码两次截图互比（这一步红 = harness 不确定，基线无意义）")
         for s in SHOTS:
             ae, info = compare(actual / f"{s['name']}.png", again / f"{s['name']}.png")
+            floor[s["name"]] = ae if ae is not None else -1
             check(f"[确定] {s['name']}：两次截图差异像素数 {ae} <= {MAX_DIFF_AE}",
                   ae is not None and 0 <= ae <= MAX_DIFF_AE, info)
     else:
@@ -447,6 +448,21 @@ def main():
             ae, info = compare(BASELINES / f"{s['name']}.png", actual / f"{s['name']}.png")
             check(f"{s['name']}（{s['why']}）差异像素数 {ae}",
                   ae is not None and 0 <= ae <= MAX_DIFF_AE, info)
+
+    if stability and floor:
+        QA.mkdir(parents=True, exist_ok=True)
+        f = QA / "floor.json"
+        prev = {}
+        if f.exists():
+            try:
+                prev = json.loads(f.read_text(encoding="utf-8"))
+            except Exception:                         # noqa: BLE001
+                prev = {}
+        merged = {k: max(int(prev.get(k, 0)), v) for k, v in floor.items()}
+        f.write_text(json.dumps(merged, ensure_ascii=False, indent=1), encoding="utf-8")
+        worst = sorted(merged.items(), key=lambda kv: -kv[1])[:5]
+        print("\n[噪声地板] 历轮累计每镜头最大 AE（像素）：" +
+              "、".join(f"{k}={v}" for k, v in worst) + f"（阈值 {MAX_DIFF_AE}）")
 
     print(f"\n{passed} passed, {failed} failed")
     print(f"实际截图与差异热图：{QA}")
