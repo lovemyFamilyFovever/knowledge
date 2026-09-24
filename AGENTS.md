@@ -57,7 +57,7 @@ Agent 的**常驻工具脚本**统一收在 `scripts/agent/`（2026-09-18 从旧
 
 | 常驻工具 | 用途 |
 |------|------|
-| `scripts/agent/shot.mjs` | 零依赖 CDP 截图：`node scripts/agent/shot.mjs <url> <out.png> [w] [h] [clickSel]`，`clickSel` 传 CSS 选择器可先点击再截图（验证按钮交互态）；`node scripts/agent/shot.mjs --batch manifest.json` 批量截（一个 Chrome、多标签页，清单里可带 `init`=页面脚本前注入的 JS，用来钉死主题等确定态） |
+| `scripts/agent/shot.mjs` | 零依赖 CDP 截图：`node scripts/agent/shot.mjs <url> <out.png> [w] [h] [clickSel]`，`clickSel` 传 CSS 选择器可先点击再截图（验证按钮交互态）；`node scripts/agent/shot.mjs --batch manifest.json` 批量截（一个 Chrome、多标签页，清单里可带 `init`=页面脚本前注入的 JS，用来钉死主题等确定态；`clickWait`=每次点击后等待的毫秒数，点了会发请求再重绘的按钮要给到 2500~8000，否则截到的是重绘前后的随机一侧） |
 | `scripts/agent/imgdiff.mjs` | 截图像素对比：`node scripts/agent/imgdiff.mjs <a.png> <b.png> [ignoreRegions]`，产出差异热图并输出差异占比；UI 改动后**必须**跑（见下方 UI 回归纪律） |
 | `scripts/agent/evalcdp.mjs` | CDP 执行任意 JS 并回显返回值 + console 报错：`node scripts/agent/evalcdp.mjs <url> "<js表达式>"`，查"改了没生效"类问题利器 |
 | `scripts/agent/verifyall.mjs` | 双阶段全状态断言模板（同页两阶段 evaluate，如 pretty/md 视图切换），按需改表达式复用 |
@@ -67,10 +67,10 @@ Agent 的**常驻工具脚本**统一收在 `scripts/agent/`（2026-09-18 从旧
 两个 scan 脚本的扫描根默认按脚本位置推导到仓库根下的 `content/`（不再写死盘符），传 argv[1] 可覆盖。
 
 **UI 回归纪律（2026-09-18 起，ImageMagick 已装；2026-09-24 起有截图矩阵基线）**：改动 UI（css/js 模板/渲染逻辑）后，除 smoke 截图外，对受影响页面执行
-0. **首选一条命令**：`python tests\test_ui_regress.py` —— 合成语料的临时实例 + 8 张「页面 × 主题 × 点击态」截图，与 `tests/ui-baselines/` **逐像素**比对（阈值 AE ≤ 2 像素；实测两次截图的噪声地板 0~1 像素）。pre-commit 在本次提交含 css/js/模板文件时**自动跑它**。刷新基线用 `--update`（改完确认无误后），动矩阵/换环境先跑 `--stability` 证明截图本身是确定的。
-1. 改前基线已留在 `.qa/qa-shots/` 时：`node scripts/agent/imgdiff.mjs 基线.png 新.png`（默认 2% 容差）；
+0. **首选一条命令**：`python tests\test_ui_regress.py` —— 合成语料的临时实例 + 18 张「页面 × 主题 × 点击态」截图，与 `tests/ui-baselines/` **逐像素**比对（阈值 AE ≤ 2 像素；实测两次截图的噪声地板 0~1 像素）。pre-commit 在本次提交含 css/js/模板文件时**自动跑它**。刷新基线用 `--update`（改完确认无误后），动矩阵/换环境先跑 `--stability` 证明截图本身是确定的。
+1. 改前基线已留在 `.qa/qa-shots/` 时：`node scripts/agent/imgdiff.mjs 基线.png 新.png`（**默认 2% 容差只适合肉眼复核**；作判定用请传 `0%` 并按差异像素数看，实测 2% 会把真回归读成绿，见第 3 条）；
 2. 无基线则先 `shot.mjs` 补拍明暗两态入档；
-3. 差异热图里出现**不该变的区域变红** = 改 A 崩 B，修完再交。动效/图表时序造成的细碎噪点用调大 fuzz 抑制（如 `imgdiff a b 5%`），不要为过 diff 把真回归糊掉。
+3. 差异热图里出现**不该变的区域变红** = 改 A 崩 B，修完再交。**不要用"调大 fuzz"去压噪点**（旧版本这条写的是 `imgdiff a b 5%`，2026-09-24 撤销）：实测 2% 容差 + "差异占比"会把一次真实的模板改字读成绿（AE 只有 75 像素），噪点该靠"钉死动态内容"消除（见 `test_ui_regress.py` 的 FREEZE 与 `clickWait`），而不是靠放大容差。
 
 | 临时产物（`.qa/`） | 用途 |
 |------|------|

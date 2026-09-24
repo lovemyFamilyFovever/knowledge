@@ -14,8 +14,9 @@
   · 语料**全部现造**在临时 KB_ROOT 下的合成小库（见 CORPUS），一个字节的真实 content/ 都不进画面
     —— 基线 PNG 要提交进 git，画面里不能出现用户的内容与标题；
   · 实例端口现挑，绝不占用户的 5001（见 tests/_tmpapp.py）；
-  · 一切动态内容（时间、阅读统计、动效）必须在截图前被钉死或排除，否则基线每天红。
-    /stats 因随月份变化**故意不在矩阵里**。
+  · 一切动态内容（时间、阅读统计、耗时计数、动效）必须在截图前被钉死或显式冻结，否则基线每天红。
+    `/stats` 只有用 `?ym=` 钉死到**没有阅读数据的过去月**才进得了矩阵；搜索页的 `took_ms`
+    一类运行时计数由 FREEZE_CSS 直接隐掉（见那里的注释）。
 """
 import json
 import os
@@ -24,6 +25,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import time
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -158,19 +160,78 @@ NOVEL_TXT = """第一章 长夜将尽
 山也带着自己的影子，影子比人长。
 """
 
+DOC_FAV = """---
+title: 收藏样本
+source: knowledge
+collected: 2026-01-07
+tags: [收藏, 渲染]
+favorite: true
+status: stable
+---
+
+# 收藏样本
+
+`favorite: true` 的样本，专门给 `/favorites` 一行可渲染的东西；正文有一节，让复习队列也收得到它。
+
+## 收藏页要渲染的东西
+
+- 域标签、子域标签、标题、路径都要出现；
+- 取消收藏后这页会变空，所以这行的视觉回归是有意义的。
+"""
+
+DOC_INBOX = """---
+title: 待归档条目
+source: desktop
+collected: 2026-01-08
+---
+
+# 待归档条目
+
+躺在 `content/_inbox/` 里等归档的一条，用来渲染收件箱列表行（含大小与"归档/删除"动作位）。
+"""
+
+DOC_BAIKE = """---
+title: 向量数据库
+source: knowledge
+collected: 2026-01-09
+tags: [检索]
+status: stable
+---
+
+# 向量数据库
+
+## 定义
+
+**一句话定义：** 把文本变成坐标、按距离找相似内容的存储。
+
+## 常见误区
+
+**误区：** 向量检索会取代关键词检索。
+
+**正解：** 精确匹配（ID、错误码、函数名）仍是倒排索引更准，两者是互补不是替代。
+"""
+
 CORPUS = {
     "content/ui-r/notes/alpha.md": DOC_RICH,
     "content/ui-r/notes/beta.md": DOC_B,
     "content/ui-r/notes/beta.html": DOC_HTML_PRETTY,
+    "content/ui-r/notes/gamma.md": DOC_FAV,
     "content/ui-r/notes/alpha.md.notes.md": DOC_NOTES_SIDE,
     "content/ui-r/empty-sub/": None,             # None = 只建目录（空子域工作台）
     "content/nv-r/books/长夜.txt": NOVEL_TXT,
+    # `cards.py` 只对 baike / interview 两个域抽卡（CARD_DOMAINS），所以复习页要出卡
+    # 就必须有一个 baike 词条 —— 没有它，/review 永远停在"暂时没有可学的卡"空态，
+    # 那两张截图测的就不是卡片与记分，而是空态。
+    "content/baike/term/向量数据库.md": DOC_BAIKE,
+    "content/_inbox/待归档条目.md": DOC_INBOX,
 }
 
 TAXONOMY = {
-    "domains": {"ui-r": {"label": "视觉基线", "hue": 158}, "nv-r": {"label": "基线书库", "hue": 200}},
-    "subs": {"ui-r/notes": "排版样本", "ui-r/empty-sub": "空子域", "nv-r/books": "长篇"},
-    "sources": {"knowledge": "知库自建"},
+    "domains": {"ui-r": {"label": "视觉基线", "hue": 158}, "nv-r": {"label": "基线书库", "hue": 200},
+                "baike": {"label": "术语", "hue": 30}},
+    "subs": {"ui-r/notes": "排版样本", "ui-r/empty-sub": "空子域", "nv-r/books": "长篇",
+             "baike/term": "词条"},
+    "sources": {"knowledge": "知库自建", "desktop": "桌面"},
     "status": {"stable": "已核对"},
 }
 
@@ -178,11 +239,20 @@ TAXONOMY = {
 # theme 通过 addScriptToEvaluateOnNewDocument 在页面脚本前写 localStorage 钉死，
 # 不依赖"上次点击留下的状态"。
 #
-# FREEZE 里只放**运行时计数器**：TOC 下方"近 7 日阅读"柱状图读的是 reading.db，
-# 而每次截图本身就会往 reading.db 追加一条 open 事件 —— 第一次截和第二次截的柱子高度必然不同。
-# 实测（--stability）不冻结它时同一份代码两次截图差 0.0637%，热图整块红都在右下角。
-# 代价说清楚：**这块的视觉回归由本矩阵放弃**，它的正确性另有 e2e 断言兜（/api/learn/recent_read）。
-FREEZE_CSS = "#kb-toc-spark{display:none!important}"
+# FREEZE 里只放**运行时计数器**：
+#   · TOC 下方"近 7 日阅读"柱状图读的是 reading.db，而每次截图本身就会往 reading.db 追加一条
+#     open 事件 —— 第一次截和第二次截的柱子高度必然不同（实测不冻结时两次截图差 0.0637%，
+#     热图整块红都在右下角）。
+#   · 搜索页的 `.srch-meta`（"共 N 条 · X ms · 全文"）与结果头 `.rc-head .n` 带后端 `took_ms`，
+#     同一查询两次也能差几毫秒 —— 数字一变整行文字重排，AE 直接上 300。
+#   · `#toast` 是**按墙上时钟自动消失**的浮层（记分后弹"1 天后再见"）：截图快慢一点，
+#     它在与不在就不同，实测让 review_graded 两次差 637 像素。
+# 代价说清楚：**这几块的视觉回归由本矩阵放弃**，它们的正确性另有 e2e 断言兜
+# （/api/learn/recent_read、/api/search 的 took_ms/total 字段在 test_e2e_smoke 里）。
+FREEZE_CSS = ("#kb-toc-spark{display:none!important}"
+              ".srch-meta{display:none!important}"
+              ".rc-head .n{display:none!important}"
+              "#toast{display:none!important}")
 INIT_TMPL = ("try{localStorage.setItem('kb-theme','%s');"
              "localStorage.setItem('kb-force-motion','0');}catch(e){}"
              "document.addEventListener('DOMContentLoaded',function(){"
@@ -190,8 +260,9 @@ INIT_TMPL = ("try{localStorage.setItem('kb-theme','%s');"
              "s.textContent=%s;(document.head||document.documentElement).appendChild(s);});")
 
 
-def _shot(name, path, theme="light", click="", settle=3500, why=""):
-    return {"name": name, "path": path, "theme": theme, "click": click, "settle": settle, "why": why}
+def _shot(name, path, theme="light", click="", settle=3500, why="", click_wait=None, freeze=""):
+    return {"name": name, "path": path, "theme": theme, "click": click, "settle": settle,
+            "why": why, "click_wait": click_wait, "freeze": freeze}
 
 
 SHOTS = [
@@ -206,6 +277,31 @@ SHOTS = [
     _shot("novel_txt", "/doc/nv-r/books/%E9%95%BF%E5%A4%9C.txt", why="书库 txt：章节切分与阅读排版"),
     _shot("novel_txt_prefs", "/doc/nv-r/books/%E9%95%BF%E5%A4%9C.txt", click=".nv-pref-btn",
           why="小说「排版」抽屉打开态（滑杆/选项）"),
+    # —— 第二批：把 §2 里那批"只断言了控件存在"的页面与交互态逐个变成画面基线 ——
+    _shot("inbox_list", "/inbox", why="收件箱列表行（归档/删除动作位）"),
+    _shot("favorites_page", "/favorites", why="收藏页（favorite:true 那篇渲染出的行）"),
+    _shot("tags_page", "/tags", why="标签页：标签表 + 合并选择条"),
+    _shot("governance_idle", "/governance", why="治理驾驶舱首屏「尚未扫描」空态"),
+    _shot("governance_scanned", "/governance", click="#gov-scan-btn", settle=6500, click_wait=2500,
+          why="点「重新扫描」后的三桶结果页（断链/孤儿/近义标签）"),
+    _shot("governance_orphan_tab", "/governance",
+          click='#gov-scan-btn,.gov-tab[data-bucket="orphans"]', settle=6500, click_wait=2500,
+          why="扫描后切到「孤儿文档」桶（bucket 动作钮）"),
+    _shot("search_results", "/search?q=%E6%8F%90%E7%A4%BA%E6%A1%86",
+          why="FTS 搜索结果卡片：命中高亮 + 跳转链接"),
+    _shot("review_card", "/review", settle=6500, why="复习页：今日队列 + 卡片正面 + 环形进度"),
+    _shot("review_graded", "/review", click='#kb-reveal,.kb-grade[data-q="3"]', settle=6500,
+          # 记分后副标题会先短暂显示"本轮完成 1 张 · 已全部过完"，随后队列刷新才落到稳定态。
+          # 实测（同一实例连截 3s / 8s / 15s）：3s 与 8s 差 2786 像素，8s 与 15s **AE=0** → 8 秒后已收敛。
+          click_wait=8000,
+          # 但 8 秒也只是"通常收敛"：首屏 refreshStats 的请求与记分后的请求是并发的，
+          # **谁后到不确定**，副标题会在「队列…」与「本轮完成…」之间随机定格（实测 AE=637 反复出现，
+          # 见 §6 第 24 行）。这是应用侧的竞态，本轮不修 UI，只把这一行从该镜头排除，
+          # 记分后的真正看点（环形进度 100% / 空态卡 / 侧栏统计）仍留在画面里。
+          freeze="#kb-learn-sub{display:none!important}",
+          why="显示答案→点「困难」记分后的稳定态（q=3 那条 P6 抓过的边界）"),
+    _shot("stats_pinned_month", "/stats?ym=2026-01", settle=6500,
+          why="月度报表：ym 钉死在没有阅读数据的过去月，避开跨月与当月漂移"),
 ]
 
 
@@ -226,35 +322,74 @@ def make_manifest(base_url, out_dir, shots):
     out_dir.mkdir(parents=True, exist_ok=True)
     jobs = []
     for s in shots:
-        jobs.append({"url": base_url + s["path"], "out": str(out_dir / f"{s['name']}.png"),
-                     "w": 1440, "h": 900, "click": s["click"], "settle": s["settle"],
-                     "init": INIT_TMPL % (s["theme"], json.dumps(FREEZE_CSS))})
+        job = {"url": base_url + s["path"], "out": str(out_dir / f"{s['name']}.png"),
+               "w": 1440, "h": 900, "click": s["click"], "settle": s["settle"],
+               "init": INIT_TMPL % (s["theme"], json.dumps(FREEZE_CSS + s.get("freeze", "")))}
+        if s.get("click_wait") is not None:
+            job["clickWait"] = s["click_wait"]
+        jobs.append(job)
     f = out_dir.parent / f"manifest-{out_dir.name}.json"
     f.write_text(json.dumps({"shots": jobs}, ensure_ascii=False), encoding="utf-8")
     return f
 
 
-def capture(base_url, tag, shots):
-    """跑 shot.mjs 批量模式，返回实际图目录。"""
-    out_dir = QA / tag
-    if out_dir.exists():
-        shutil.rmtree(out_dir)
-    mf = make_manifest(base_url, out_dir, shots)
-    r = subprocess.run(["node", str(ROOT / "scripts" / "agent" / "shot.mjs"), "--batch", str(mf)],
-                       cwd=str(ROOT), capture_output=True, text=True,
-                       encoding="utf-8", errors="replace", timeout=600)
-    for line in (r.stdout or "").splitlines():
-        if line.startswith("FAIL"):
-            print(f"    {_safe(line)}")
-    got = sorted(p.name for p in out_dir.glob("*.png"))
-    check(f"[{tag}] 截图矩阵 {len(shots)} 张全部产出",
-          got == sorted(f"{s['name']}.png" for s in shots),
-          f"got={got} rc={r.returncode} {(r.stderr or '')[-200:]}")
-    # 空白页也是"确定"的 —— 光比差异会把它读成绿。这里加一条最便宜的绊线：
-    # 1440×900 的纯白页 PNG 只有十几 KB，渲染过的页面在 70~170KB（实测基线区间）。
-    thin = {p.name: p.stat().st_size for p in out_dir.glob("*.png") if p.stat().st_size < 40000}
-    check(f"[{tag}] 无空白截图（每张 >40KB，实测基线 71~170KB）", not thin, f"{thin}")
-    return out_dir
+def capture(tag, shots):
+    """**自带一套临时根 + 临时实例**地截完矩阵，返回实际图目录。
+
+    为什么不共享实例（第一版就是共享的）：矩阵里有会**改状态**的点击 ——
+    复习页点「困难」写 learn.db 的排程、打开文档写 reading.db。两次截图共用一个实例时，
+    第二次的环形进度/今日队列必然和第一次不同，`--stability` 就会红，而红的是 harness 不是代码。
+    每次截完换一座干净的临时根，才是"同一份代码截两遍"的本义。
+    """
+    global PORT
+    tmp = Path(tempfile.mkdtemp(prefix=f"p5-{tag}-"))
+    proc = None
+    try:
+        build_corpus(tmp)
+        # create_app 的 static_folder 是 <KB_ROOT>/static：临时根没它就全 404（P3-B 同款坑）
+        shutil.copytree(ROOT / "static", tmp / "static")
+        PORT = free_port()
+        QA.mkdir(parents=True, exist_ok=True)
+        check(f"[{tag}] 端口现挑且不落在用户常驻端口", PORT not in (5000, 5001, 5031), f"port={PORT}")
+        proc = start_instance(tmp, PORT, log_path=QA / f"instance-{tag}.log")
+        base = f"http://127.0.0.1:{PORT}"
+        check(f"[{tag}] 临时实例起来了", port_open(PORT))
+        # 页面可达性各断一条：404/500 会让"截图一致但全是错误页"这种假绿成为可能
+        for path in ("/doc/ui-r/notes/alpha.md", "/browse/ui-r/empty-sub", "/review", "/stats?ym=2026-01"):
+            code = subprocess.run(["node", "-e",
+                                   f"fetch({json.dumps(base + path)}).then(r=>console.log(r.status))"],
+                                  capture_output=True, text=True, encoding="utf-8",
+                                  errors="replace", timeout=90)
+            check(f"[{tag}] 页面可访问 {path}", (code.stdout or "").strip() == "200",
+                  f"got={(code.stdout or code.stderr).strip()[-80:]}")
+        out_dir = QA / tag
+        if out_dir.exists():
+            shutil.rmtree(out_dir)
+        mf = make_manifest(base, out_dir, shots)
+        t0 = time.time()
+        r = subprocess.run(["node", str(ROOT / "scripts" / "agent" / "shot.mjs"), "--batch", str(mf)],
+                           cwd=str(ROOT), capture_output=True, text=True,
+                           encoding="utf-8", errors="replace", timeout=900)
+        for line in (r.stdout or "").splitlines():
+            if line.startswith("FAIL"):
+                print(f"    {_safe(line)}")
+        got = sorted(p.name for p in out_dir.glob("*.png"))
+        check(f"[{tag}] 截图矩阵 {len(shots)} 张全部产出",
+              got == sorted(f"{s['name']}.png" for s in shots),
+              f"got={got} rc={r.returncode} {(r.stderr or '')[-200:]}")
+        # 空白页也是"确定"的 —— 光比差异会把它读成绿。这里加一条最便宜的绊线：
+        # 实测 1440×900 纯白页 PNG 只有 1033 字节，而矩阵里最小的合法截图（收藏页）是 37KB，
+        # 所以 20KB 这条线既拦得住白屏/错误页，又不会误伤内容稀疏的页面。
+        thin = {p.name: p.stat().st_size for p in out_dir.glob("*.png") if p.stat().st_size < 20000}
+        check(f"[{tag}] 无空白截图（每张 >20KB；纯白页实测 1KB，最小合法页 37KB）", not thin, f"{thin}")
+        print(f"  [{tag}] 截图耗时 {round(time.time() - t0)}s")
+        return out_dir
+    finally:
+        kill_instance(proc)
+        shutil.rmtree(tmp, ignore_errors=True)
+        check(f"[{tag}] 清理只删掉了系统临时目录下的临时根", not tmp.exists()
+              and str(tmp).startswith(tempfile.gettempdir())
+              and (ROOT / "content").is_dir(), f"tmp={tmp}")
 
 
 AE_RE = re.compile(r"AE=(-?\d+)")
@@ -276,7 +411,6 @@ def compare(a: Path, b: Path):
 
 
 def main():
-    global PORT
     if not node_available():
         print("SKIP: 找不到 node"); return 0
     if not chrome_path():
@@ -293,52 +427,26 @@ def main():
               f"先跑 --stability 证明 harness 确定，再跑 --update 落基线。")
         return 1
 
-    tmp = Path(tempfile.mkdtemp(prefix="p5-root-"))
-    proc = None
-    try:
-        build_corpus(tmp)
-        # create_app 的 static_folder 是 <KB_ROOT>/static：临时根没它就全 404（P3-B 同款坑）
-        shutil.copytree(ROOT / "static", tmp / "static")
-        PORT = free_port()
-        QA.mkdir(parents=True, exist_ok=True)
-        check("端口现挑且不落在用户常驻端口", PORT not in (5000, 5001, 5031), f"port={PORT}")
-        proc = start_instance(tmp, PORT, log_path=QA / "instance.log")
-        base = f"http://127.0.0.1:{PORT}"
-        check("临时实例起来了", port_open(PORT))
-        # 页面可达性先各断一条：404 会让"截图一致但全白屏"这种假绿成为可能
-        for path in ("/doc/ui-r/notes/alpha.md", "/browse/ui-r/empty-sub"):
-            code = subprocess.run(["node", "-e",
-                                   f"fetch({json.dumps(base + path)}).then(r=>console.log(r.status))"],
-                                  capture_output=True, text=True, timeout=60)
-            check(f"页面可访问 {path}", (code.stdout or "").strip() == "200",
-                  f"got={(code.stdout or code.stderr).strip()[-80:]}")
-
-        actual = capture(base, "actual", SHOTS)
-        if stability:
-            again = capture(base, "actual2", SHOTS)
-            print("\n[stability] 同一份代码两次截图互比（这一步红 = harness 不确定，基线无意义）")
+    actual = capture("actual", SHOTS)
+    if stability:
+        again = capture("actual2", SHOTS)
+        print("\n[stability] 同一份代码两次截图互比（这一步红 = harness 不确定，基线无意义）")
+        for s in SHOTS:
+            ae, info = compare(actual / f"{s['name']}.png", again / f"{s['name']}.png")
+            check(f"[确定] {s['name']}：两次截图差异像素数 {ae} <= {MAX_DIFF_AE}",
+                  ae is not None and 0 <= ae <= MAX_DIFF_AE, info)
+    else:
+        BASELINES.mkdir(parents=True, exist_ok=True)
+        if update:
             for s in SHOTS:
-                ae, info = compare(actual / f"{s['name']}.png", again / f"{s['name']}.png")
-                check(f"[确定] {s['name']}：两次截图差异像素数 {ae} <= {MAX_DIFF_AE}",
-                      ae is not None and 0 <= ae <= MAX_DIFF_AE, info)
-        else:
-            BASELINES.mkdir(parents=True, exist_ok=True)
-            if update:
-                for s in SHOTS:
-                    shutil.copyfile(actual / f"{s['name']}.png", BASELINES / f"{s['name']}.png")
-                print(f"\n[update] 已把 {len(SHOTS)} 张截图写入基线目录 {BASELINES}")
-                return 0
-            print(f"\n[check] 与基线比对（fuzz={FUZZ}，阈值 AE <= {MAX_DIFF_AE} 像素）")
-            for s in SHOTS:
-                ae, info = compare(BASELINES / f"{s['name']}.png", actual / f"{s['name']}.png")
-                check(f"{s['name']}（{s['why']}）差异像素数 {ae}",
-                      ae is not None and 0 <= ae <= MAX_DIFF_AE, info)
-    finally:
-        kill_instance(proc)
-        shutil.rmtree(tmp, ignore_errors=True)
-        check("清理只删掉了系统临时目录下的临时根", not tmp.exists()
-              and str(tmp).startswith(tempfile.gettempdir())
-              and (ROOT / "content").is_dir(), f"tmp={tmp}")
+                shutil.copyfile(actual / f"{s['name']}.png", BASELINES / f"{s['name']}.png")
+            print(f"\n[update] 已把 {len(SHOTS)} 张截图写入基线目录 {BASELINES}")
+            return 0
+        print(f"\n[check] 与基线比对（fuzz={FUZZ}，阈值 AE <= {MAX_DIFF_AE} 像素）")
+        for s in SHOTS:
+            ae, info = compare(BASELINES / f"{s['name']}.png", actual / f"{s['name']}.png")
+            check(f"{s['name']}（{s['why']}）差异像素数 {ae}",
+                  ae is not None and 0 <= ae <= MAX_DIFF_AE, info)
 
     print(f"\n{passed} passed, {failed} failed")
     print(f"实际截图与差异热图：{QA}")

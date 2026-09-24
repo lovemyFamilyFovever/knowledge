@@ -64,12 +64,15 @@ async function openTab(url) {
   return { ws, send, targetId: tab.id };
 }
 
-async function clickAll(send, clickSel) {
+async function clickAll(send, clickSel, clickWait) {
+  const wait = clickWait == null ? 700 : clickWait;
   for (const sel of String(clickSel || '').split(',')) {
     if (!sel.trim()) continue;
     await send('Runtime.evaluate', {
       expression: `document.querySelector(${JSON.stringify(sel.trim())})?.click()` });
-    await sleep(700);
+    // 700ms 是"过渡动画跑完"的经验值；点了会发请求再重绘的按钮（记分、扫描）要另给余量，
+    // 否则截到的是"重绘前/后"的随机一侧 —— P5 实测 review_graded 因此两次差 637 像素。
+    await sleep(wait);
   }
 }
 
@@ -100,7 +103,7 @@ async function shoot(job) {
     await send('Emulation.setDeviceMetricsOverride',
       { width: +w, height: +h, deviceScaleFactor: 1, mobile: false });
     await settle(send, job.settle == null ? 3500 : job.settle);
-    await clickAll(send, job.click);
+    await clickAll(send, job.click, job.clickWait);
     const shot = await send('Page.captureScreenshot', { format: 'png' });
     fs.mkdirSync(path.dirname(job.out), { recursive: true });
     fs.writeFileSync(job.out, Buffer.from(shot.result.data, 'base64'));
