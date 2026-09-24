@@ -66,11 +66,13 @@
   } catch (e) {}
 })();
 
-/* 架构图取景框联动：iframe 与本页同源，所以直接改它，不动 archify 交付物本身。
-   1) 主题跟随阅读器换肤（viewer 只认自己的 data-theme）
-   2) 打开 archify 自带的 data-present 舞台模式：图区 flex:1 撑满、其卡片行自动隐藏
-   3) 注入一条样式把工具栏从右上挪到右下（标题留在左上）
-   4) 把它隐藏掉的三张结论卡搬到左栏底部渲染，内容仍以 archify 为唯一事实源 */
+/* 架构图取景框联动：iframe 与本页同源，但**只借这份同源做两件 archify 自己做不到的事**，
+   它的外观一概不改（标题、控件位置、字号、底色全部交还 archify 原生）：
+   1) 主题跟随阅读器换肤（viewer 只认自己的 data-theme / localStorage）
+   2) 把它在 data-present 舞台模式下藏掉的三张结论卡搬到左栏底部渲染，
+      内容仍以 archify 为唯一事实源
+   曾经还有第 3 件——注入样式压 chrome 字号 + 搬工具栏 + 改标题，已整条撤除：
+   跨文档改写只能发生在首帧之后，改了就必然看得见一跳。详见下面 sync() 上方的实测记录。 */
 (function () {
   var f = document.querySelector(".land-frame iframe");
   if (!f) return;
@@ -101,143 +103,48 @@
     });
   }
 
-  /* 屏显字号恒定：取景框把 1440 内部像素按框宽整体缩放（scale = 框宽 ÷ 1440），
-     窗口越宽 scale 越大，同一个 rem 落到的物理字号就越大——实测 2000 宽的窗口
-     下 chrome 文字 23px（糊脸），1440 宽下 13px。所以根字号跟着 scale 反比走：
-     主档 1.3rem 目标屏显 13.3px ⇒ root = 10.23 ÷ scale，两端夹住，
-     避免极端窗口下 chrome 失控。面板的 zoom 乘在这个根字号上，同样恒定。 */
-  function fitType() {
-    try {
-      var de = f.contentDocument && f.contentDocument.documentElement;
-      var w = f.getBoundingClientRect().width;
-      if (!de || !w) return;
-      var root = Math.max(11, Math.min(21, 10.23 / (w / 1440)));
-      de.style.fontSize = root.toFixed(2) + "px";
-      /* chrome 是 fixed 的，偏移不在根字号流里，单独用 --kb-u 补偿 */
-      de.style.setProperty("--kb-u", (root / 20).toFixed(3));
-    } catch (e) {}
-  }
+  /* 架构图 chrome 一律走 archify 原生形态：不改标题、不搬控件、不压字号、不抹灰底。
+     父页只补两件 archify 自己做不到的小事——同步明暗主题、把它在 present 模式下
+     藏掉的三张结论卡搬到左栏渲染。
 
+     为什么"什么都不改"才是对的：跨文档改写只能发生在 iframe 首帧之后，所以只要改，
+     就必然看得见"原生一瞬 → 改写后"那一跳。2026-09-25 实测三态（2000 宽窗口）：
+     300ms 空白 / 3s 原生（标题屏显 ~23px）/ 9s 注入后（~14px，取景框那圈灰边也被
+     --bg:#fff 抹掉）——用户判定原生那态才是要的，于是整条 #kb-land-style 字号注入
+     与 fitType() 一并撤掉：首帧即终帧，闪动从根上没了。
+
+     代价（已知，别再当 bug 回查）：窗口窄到 ~1440（框宽 706、缩放 0.49）时 archify
+     chrome 屏显只有 10~12px，偏小。真要治得回 archify 的 spec/交付物里做——在父页
+     打补丁就等于把这一跳请回来。 */
   function sync() {
     var dark = document.documentElement.getAttribute("data-theme") === "dark";
     var want = dark ? "dark" : "light";
-    try {
-      var d = f.contentDocument;
-      if (!d || !d.documentElement) return;
-      d.documentElement.setAttribute("data-theme", want);
-      d.documentElement.setAttribute("data-present", "true");
-      localStorage.setItem("archify-theme", want);
-      /* 顶栏一行：左标题 + 右两组控件。archify 的 .header 本就是标题行；
-         .toolbar（浅色/风格/动态/演示/导出）与 .diagram-nav（路径/地图/透镜/
-         查找/缩放）原来一个 fixed 右上、一个 absolute 右下，这里把两者搬进同
-         一个 fixed flex 行——省掉脆弱的 right 偏移计算，放大字号后也不会重叠。 */
-      var row = d.getElementById("kb-land-top");
-      var tb = d.querySelector(".toolbar");
-      var nv = d.querySelector(".diagram-nav");
-      if (tb && nv) {
-        if (!row) {
-          row = d.createElement("div");
-          row.id = "kb-land-top";
-          d.body.appendChild(row);
-        }
-        if (!row.childElementCount) {
-          row.appendChild(nv);
-          row.appendChild(tb);
-        }
-      }
-      if (!d.getElementById("kb-land-style")) {
-        var st = d.createElement("style");
-        st.id = "kb-land-style";
-        /* 取景框把 1440 内部像素缩到 ~736 CSS 像素（×0.51），archify 控件默认
-           字号屏显只有 4.5~6.5px。目标带：所有 chrome 文字屏显 13~15px。
-           未缩放层屏显 = rem × 20 × 0.51 ≈ rem × 10.2 → 13px 档取 1.3rem；
-           浮层面板（透镜/查找/路径/指南/雷达/聚焦条/吐司）走 zoom:1.45，
-           保住内部层级、也不跟 archify 更具体的选择器抢优先级，
-           其内 micro 档（eyebrow/状态/计数/副文案）屏显 = rem × 14.8 → 0.9rem。
-           SVG 节点文字用无单位 user unit，不吃 rem，图本身不受影响。 */
-        st.textContent =
-          "html{font-size:20px}"
-          + "#kb-land-top{position:fixed;top:calc(.45rem * var(--kb-u, 1));right:calc(.7rem * var(--kb-u, 1));"
-          + "z-index:120;display:flex;"
-          + "flex-wrap:wrap;justify-content:flex-end;align-items:center;gap:.4rem;"
-          + "max-width:calc(100% - 12rem)}"
-          + "#kb-land-top .toolbar,#kb-land-top .diagram-nav{position:static;inset:auto;"
-          + "margin:0;max-width:100%}"
-          /* 顶栏两组：1.3rem ≈ 屏显 13.3px；内边距收紧给标题留位 */
-          + ".toolbar button{font-size:1.3rem;padding-inline:.5rem}"
-          + ".diagram-nav button{font-size:1.3rem;min-width:2.1rem;padding-inline:.3rem}"
-          + ".diagram-nav-icon{width:1.15rem;height:1.15rem}"
-          + ".diagram-nav-percent{font-size:1.25rem}"
-          + ".diagram-nav-detail{font-size:1.2rem}"
-          /* 章节条错乱有三层：① .guided-view-chapter 写死 width:100%；
-             ② 它的 li 是 flex:1 1 0 + min-width:9.5rem —— 三章被等分撑满整条，
-             标题贴左、焦点计数贴右，中间裂一大段空白；只改 ① 的话按钮收拢了、
-             坑位还等分，三章反而像被风吹散。③ 序号徽章是 1.32rem 的圆圈，
-             跟着主档 1.3rem 涨号后数字溢出圆圈压住标题（截图里 01/02/03 与文字粘连）。 */
-          + ".guided-view-chapters li{flex:0 0 auto;min-width:0}"
-          + ".guided-view-chapter{width:auto;gap:.3rem;"
-          + "grid-template-columns:2.05rem minmax(0,auto) auto}"
-          + ".guided-view-chapter-index{font-size:1.25rem!important;"
-          + "width:1.95rem;height:1.95rem}"
-          /* 常驻的引导视图行：章节条、播放/复制、delta 计数 */
-          + ".guided-views button,.guided-view-copy{font-size:1.3rem}"
-          + ".guided-view-index,.guided-view-meta,.guided-view-copy small,"
-          + ".guided-story-caption small,"
-          + ".guided-view-chapter-title,.guided-view-stop,.guided-story-caption-index,"
-          + ".share-chapter-count,.share-chapter-state,.share-chapter-index,"
-          + ".share-chapter-copy small,.share-chapter-route{font-size:1.3rem!important}"
-          + ".guided-view-chapter-delta,.guided-view-chapter-delta span,"
-          + "#guided-view-label,#guided-view-play-label,#guided-view-beat-link-label,"
-          + "#guided-view-play-icon,#share-chapter-label,"
-          + ".guided-view-beat-link span,.guided-view-play span{font-size:1.3rem!important}"
-          /* 导出 / 视觉风格菜单 */
-          + ".export-item-copy strong,.preset-option-copy strong,"
-          + ".export-menu-header strong{font-size:1.3rem!important}"
-          + ".export-menu-heading,.export-item-copy .hint,.preset-option-copy small,"
-          + ".export-menu-header span,.export-menu-header kbd,.preset-menu-heading span,"
-          + ".export-menu kbd{font-size:1.25rem!important}"
-          + ".header h1{font-size:1.3rem}"
-          /* 浮层面板整体 zoom + micro 档补齐 */
-          + ".semantic-lens,.node-finder,.route-probe,.diagram-guide,.overview-map,"
-          + ".focus-chip,.archify-toast{zoom:1.45}"
-          + ".semantic-lens *,.node-finder *,.route-probe *,.diagram-guide *,"
-          + ".overview-map *,.focus-chip *,.archify-toast *{font-size:.9rem!important}"
-          + ".semantic-lens-title,.route-probe-title,.diagram-guide-title,"
-          + ".node-finder-head strong,.overview-map-head strong,"
-          + ".semantic-lens h2,.node-finder h2,.route-probe h2,.diagram-guide h2,"
-          + ".overview-map h2{font-size:1rem!important}"
-          + ".guided-view-meta,.guided-view-copy>strong,.share-chapter-copy strong,"
-          + ".share-chapter-copy small{white-space:nowrap}"
-          + ".diagram-container{--archify-nav-reserve:0px!important}"
-          /* 亮色下 archify 的 --bg 是 #f8fafc，会在白面板外圈出一层灰边；
-             阅读器本体是白的，这里跟着抹平（暗色主题不动）。 */
-          + "html[data-theme=\"light\"]{--bg:#ffffff}";
-        d.head.appendChild(st);
-      }
-      var h1 = d.querySelector(".header h1");
-      if (h1 && h1.textContent.indexOf("系统全景") < 0) h1.textContent = "系统全景";
-      harvestCards(d);
-      fitType();
-    } catch (e) {}
+    var d = null;
+    try { d = f.contentDocument; } catch (e) { return false; }
+    /* 只认 archify 自己的地标：about:blank 与半截文档一律跳过、继续轮询。
+       上一版就栽在这——往 about:blank 里注样式，注完就判定"已同步"并停止轮询，
+       等 archify 真文档画出来，人看到的仍是未处理的态（闪动没被门挡住）。 */
+    if (!d || !d.querySelector || !d.querySelector(".toolbar")) return false;
+    d.documentElement.setAttribute("data-theme", want);
+    /* 兜底：?present=1 已由 archify 自己在 head 里落地（zhiku-pipeline.html:21），
+       这行防的是有人改 iframe src 把参数弄丢。 */
+    d.documentElement.setAttribute("data-present", "true");
+    localStorage.setItem("archify-theme", want);
+    harvestCards(d);
+    return true;
   }
-  var fitRaf = 0;
-  window.addEventListener("resize", function () {
-    if (fitRaf) cancelAnimationFrame(fitRaf);
-    fitRaf = requestAnimationFrame(function () { fitRaf = 0; fitType(); });
-  }, { passive: true });
   f.addEventListener("load", sync);
   if (window.MutationObserver) {
-    new MutationObserver(sync).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+    new MutationObserver(function () { sync(); }).observe(document.documentElement,
+      { attributes: true, attributeFilter: ["data-theme"] });
   }
-  /* 静态资源命中缓存时，架构图会在父页脚本执行前就 load 完——load 事件不会再有。
-     所以先补一次，再短轮询到它真的可读写为止（上限 3s，防死循环）。 */
+  /* 静态资源命中缓存时架构图可能在本脚本执行前就 load 完，load 事件不会再触发；
+     而它 1MB 上下、冷缓存下要好几秒才就位，所以轮询到 archify 地标出现为止。
+     这里不再需要"露脸门"：既然不改它的外观，原生那一帧就是终态，没东西要遮。 */
   var tries = 0;
   function poll() {
-    sync();
-    var d = null;
-    try { d = f.contentDocument; } catch (e) {}
-    if (d && d.getElementById("kb-land-style")) return;
-    if (++tries > 25) return;
+    if (sync()) return;
+    if (++tries > 100) return;   // ~12s 仍不就绪：多半 archify 压根没加载出来，别再空转
     setTimeout(poll, 120);
   }
   poll();

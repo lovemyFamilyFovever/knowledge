@@ -63,6 +63,9 @@
   /* 高度按取景框真实宽高比反推：1440 × (框高/框宽)，按宽缩放后纵向刚好铺满，不留空带 */
   height:calc(1440px * 100cqh / 100cqw);border:0;
   transform:scale(calc(100cqw / 1440px));transform-origin:0 0}
+  /* 这里曾加过一道 opacity:0 → .kb-shown 淡入门，用来遮住"父页注入样式改写 chrome"
+     的那一跳。2026-09-25 注入链整条撤除后它失去意义（首帧即终帧，没东西要遮），
+     而且实测门会开得太早反而把原生那帧放出去——别再往回加。 */
 
 /* 左栏底部：三张结论卡（内容从架构图 .cards 里取，避免两处手写走样） */
 .land-cards{margin-top:auto;padding-top:18px;display:flex;flex-direction:column;gap:8px}
