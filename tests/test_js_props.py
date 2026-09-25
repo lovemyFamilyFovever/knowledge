@@ -478,12 +478,22 @@ TOC_JS = r"""
     var seen = {};
     // 必须"滚一格 → 等 IO 落一格 → 量一格"。一口气把 scrollTop 设完再回头量，
     // 量到的每一格都是最后一档的几何（我第一版就这么错着，want 全是同一个值）。
+    out.vw = window.innerWidth; out.vh = window.innerHeight;
+    out.sh = art.scrollHeight; out.ch = art.clientHeight;
     var ys = [0, 400, 800, 1116, 1600];
     for (var i = 0; i < ys.length; i++) {
       art.scrollTop = ys[i];
       art.dispatchEvent(new Event('scroll'));
-      await sleep(600);
-      var st = {y: art.scrollTop, act: act(), want: want()};
+      // **等收敛，不等固定时长**：Markdown 那一支的高亮只由 IntersectionObserver 驱动
+      // （app.js:753），合成 scroll 事件它根本不监听，回调落在第几帧看机器负载。
+      // 旧写法"sleep(600) 后量一次"在 pre-commit 的高负载时刻会假红 ——
+      // 轮次 29 实测：钩子里这 2 条红，单独连跑两次 47/47 全绿。
+      // 判据一个字没放松：**必须收敛到几何判据算出的那一节**；真坏了是"永远不收敛"，照样红。
+      var waited = 0, st = {y: art.scrollTop, act: act(), want: want(), waited: 0};
+      while (st.act !== st.want && waited < 3000) {
+        await sleep(100); waited += 100;
+        st = {y: art.scrollTop, act: act(), want: want(), waited: waited};
+      }
       if (st.act) seen[st.act] = 1;
       out.steps.push(st);
     }
@@ -782,8 +792,10 @@ def main():
         check("TOC 探针跑起来了（目录 ≥3 条且渲染生效）", not toc.get("err"),
               f"{toc.get('err')} / links={toc.get('links')} / CONSOLE_ERRORS: {toc_errs[:140]}")
         bad_steps = [st for st in toc.get("steps", []) if st.get("act") != st.get("want")]
-        check("每个滚动位置高亮的都是判据算出的那一节（top≤96 的最后一个标题）",
-              bool(toc.get("steps")) and not bad_steps, f"错位={bad_steps} 全部={toc.get('steps')}")
+        check("每个滚动位置高亮的都能收敛到判据算出的那一节（top≤96 的最后一个标题）",
+              bool(toc.get("steps")) and not bad_steps,
+              f"错位={bad_steps} 全部={toc.get('steps')} "
+              f"视口={toc.get('vw')}x{toc.get('vh')} 滚动高={toc.get('sh')}/{toc.get('ch')}")
         check("滚动确实换了条目（不是永远高亮同一条）", int(toc.get("moved", 0)) >= 2,
               f"不同条目数={toc.get('moved')} steps={toc.get('steps')}")
 

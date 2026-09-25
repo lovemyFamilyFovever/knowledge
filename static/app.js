@@ -1043,11 +1043,21 @@ function renderTree() {
         /* 用户要求：目录中的文档项不再显示标签 chips（三级尤其拥挤）。
            改为「文件类型前缀图标」（md/txt/epub/pdf/图片…），一图标顶一行信息。 */
         const ic = fileIconId(doc.name);
+        /* 当前文档的高亮：**拿链接比链接**，不比名字。
+           旧写法是 `CUR.name === doc.name`，而 CUR.name 来自 DOC.name（=URL 里的文件名，
+           带扩展名，如 `alpha.md`），树里的 doc.name 却是**不含 .md** 的键（长这样是因为
+           链接要 `docUrl(... + '.md')` 再被 docUrl 削掉后缀）—— 两边永远对不上，
+           于是打开任何一篇文档，左树都没有"你在这儿"（.doc.active 恒空）。
+           比 href 同时覆盖 md / txt / html 三种命名，不再依赖两边的字符串约定。 */
+        /* 直载 /doc/xxx/alpha.md 时 location.pathname **带** .md，而 href 是 docUrl 产物（削掉后缀）
+           —— 所以比对前给两边同一份规范化，否则 SPA 切页有高亮、直接打开/刷新就没高亮。 */
+        const here = location.pathname.replace(/\.md$/, "");
+        const isActive = cur && href === here;
         /* 美化版/HTML 仍给一个角标（不影响类型图标语义） */
         const badges = (doc.has_html || doc.is_html)
           ? `<span class="doc-flag" title="${doc.is_html ? "HTML 文档" : "有美化版"}">${icon("external-link", 11)}</span>` : "";
         return `
-        <a class="doc ${cur && CUR.name === doc.name ? "active" : ""} ${dir ? "in-subdir" : ""}" data-name="${esc(doc.name)}" data-dom="${esc(d.id)}" data-sub="${esc(s.id)}" draggable="true" style="--deep:${deep}" href="${href}" title="${esc(doc.name)}">
+        <a class="doc ${isActive ? "active" : ""} ${dir ? "in-subdir" : ""}" data-name="${esc(doc.name)}" data-dom="${esc(d.id)}" data-sub="${esc(s.id)}" draggable="true" style="--deep:${deep}" href="${href}" title="${esc(doc.name)}">
           <div class="doc-t"><span class="doc-ic" title="${esc(fileIconTitle(doc.name))}">${icon(ic, 11)}</span>${badges}<span class="doc-t-txt">${esc(leaf)}</span></div>
         </a>`;
       };

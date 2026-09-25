@@ -1662,6 +1662,307 @@ def probe_orphan_expand(base, tmp):
           e.get("after_scan"))
 
 
+# ================================================================ 探针 16：crumb 标签 chips / 标签钮 / 编辑器提示 / 左树打开
+# 台账 §2 四行：「#crumb-tags 标签 chips」「标签 jumpToTagEdit()」「编辑器 #ed-hint」
+# 「域内文档 .doc 打开」。这一组的共同点是"看着在、点了不知道去哪"。
+CRUMB_JS = PRELUDE + r"""
+  const T = e => ((e && e.textContent) || '').replace(/\s+/g, ' ').trim();
+  for (let i = 0; i < 80 && !q('#crumb-tags'); i++) await sleep(150);
+  await sleep(600);
+  out.chips = [...document.querySelectorAll('#crumb-tags .tag-chip')]
+    .map(x => T(x));
+  out.chips_html_len = ((q('#crumb-tags') || {}).innerHTML || '').length;
+  const tagBtn = [...document.querySelectorAll('#crumb .seg-btn, .crumb .seg-btn')]
+    .filter(b => T(b).indexOf('标签') >= 0)[0];
+  out.tag_btn = tagBtn ? T(tagBtn) : '';
+  out.info_tab_active_before = !!document.querySelector('.rtab[data-pane="info"].active');
+  out.inputrow_hidden_before = !!(q('#tag-inputrow') && q('#tag-inputrow').hidden);
+  if (tagBtn) tagBtn.click();
+  await sleep(700);
+  out.info_tab_active = !!document.querySelector('.rtab[data-pane="info"].active');
+  out.pane_info_active = !!document.querySelector('#pane-info.active');
+  out.inputrow_hidden_after = !!(q('#tag-inputrow') && q('#kb-tag-in, #tag-in') && q('#tag-inputrow').hidden);
+  out.focus_after = document.activeElement ? document.activeElement.id : '';
+  out.add_btn = !!q('#tag-add-btn');
+  // 再点一次：输入框已在 → 走"只聚焦不重开"那一支
+  if (tagBtn) tagBtn.click();
+  await sleep(500);
+  out.focus_second = document.activeElement ? document.activeElement.id : '';
+  out.inputrow_still_open = !!(q('#tag-inputrow') && !q('#tag-inputrow').hidden);
+  // 元信息表（同一页顺手断，右栏这时已经切到 info 页）
+  out.kv = [...document.querySelectorAll('#pane-info .rp-card .kv')]
+    .map(x => [T(x.querySelector('.k')), T(x.querySelector('.v'))]);
+  // 编辑器提示：开 → 可见；关 → 收起
+  out.hint_before = q('#ed-hint') ? (q('#ed-hint').style.display || '(空=跟随CSS)') : null;
+  const editBtn = [...document.querySelectorAll('#crumb .seg-btn, .crumb .seg-btn')]
+    .filter(b => T(b).indexOf('编辑') >= 0)[0];
+  out.edit_btn = editBtn ? T(editBtn) : '';
+  if (editBtn) editBtn.click();
+  for (let i = 0; i < 40 && !(q('#editor') && q('#editor').classList.contains('show')); i++) await sleep(150);
+  out.editor_open = !!(q('#editor') && q('#editor').classList.contains('show'));
+  out.hint_open = q('#ed-hint') ? (q('#ed-hint').style.display || '') : null;
+  out.hint_text = txt('#ed-hint');
+  window.tryCloseEditor ? window.tryCloseEditor() : (document.querySelector('#ed-cancel') || {click() {}}).click();
+  await sleep(600);
+  out.hint_closed = q('#ed-hint') ? (q('#ed-hint').style.display || '') : null;
+  out.editor_closed = !(q('#editor') && q('#editor').classList.contains('show'));
+  return JSON.stringify(out);
+})()"""
+
+def probe_head_chips(base):
+    print("== 16 crumb 标签 chips / jumpToTagEdit / 元信息表 / 编辑器提示 ==")
+    doc = json.loads(urllib_get(base + "/api/doc?domain=ui-r&sub=notes&name=alpha") or "{}")
+    want_tags = [t for t in ((doc.get("doc") or {}).get("fm") or {}).get("tags", [])] if (doc.get("doc") or {}).get("fm") else []
+    want_kv = [[k, v] for k, v in (doc.get("info_rows") or [])]
+    d = run_expr(base + "/doc/ui-r/notes/alpha.md", CRUMB_JS)
+    chips = [c.strip("#") for c in (d.get("chips") or [])]
+    check("crumb 标签：渲染出的 chips 与 frontmatter 的 tags 逐项一致（不是写死三份）",
+          d.get("chips_html_len", 0) > 0 and sorted(chips) == sorted(want_tags) and len(want_tags) >= 2,
+          {"dom": chips, "api": want_tags})
+    check("crumb 标签：「标签」钮在位（它是跳右栏编辑的唯一入口）",
+          "标签" in (d.get("tag_btn") or ""), d.get("tag_btn"))
+    check("jumpToTagEdit：右栏切到「信息」页签（pane 与 rtab 同时 active）",
+          d.get("info_tab_active_before") is False and d.get("info_tab_active") is True
+          and d.get("pane_info_active") is True, d)
+    check("jumpToTagEdit：标签输入行被自动展开（原来 hidden，点完不 hidden）",
+          d.get("inputrow_hidden_before") is True and d.get("inputrow_hidden_after") is False
+          and d.get("add_btn") is True, d)
+    check("jumpToTagEdit：焦点真的落到输入框（rAF 延后那一帧在无头里也成立）",
+          d.get("focus_after") == "tag-in" and d.get("focus_second") == "tag-in",
+          {"first": d.get("focus_after"), "second": d.get("focus_second")})
+    check("元信息表：来源/原始位置/收录日期/状态/大小 五行都在，值逐项等于 /api/doc 的 info_rows",
+          d.get("kv") == want_kv and len(want_kv) == 5, {"dom": d.get("kv"), "api": want_kv})
+    check("编辑器提示：开编辑态前是收着的，开完可见且文案讲清了 frontmatter 契约",
+          d.get("hint_before") == "none" and (d.get("hint_open") or "") in ("", "block")
+          and "frontmatter" in (d.get("hint_text") or "").lower(),
+          {"before": d.get("hint_before"), "open": d.get("hint_open"), "text": d.get("hint_text")})
+    check("编辑器提示：关编辑器时提示一起收起（不留一块没人认领的说明区）",
+          d.get("editor_closed") is True and d.get("hint_closed") == "none", d)
+
+
+TREE_JS = PRELUDE + r"""
+  const T = e => ((e && e.textContent) || '').replace(/\s+/g, ' ').trim();
+  for (let i = 0; i < 80 && !q('#tree .doc'); i++) await sleep(150);
+  await sleep(700);
+  out.path = location.pathname;
+  out.doc_title = document.title;
+  out.sb = txt('#sb-path');
+  out.head = txt('#article h1') || txt('#article .a-title');
+  out.active_now = [...document.querySelectorAll('#tree .doc.active')].map(a => a.dataset.name);
+  out.tree_has_beta = !!document.querySelector('#tree .doc[data-name="beta"]');
+  out.tree_docs = [...document.querySelectorAll('#tree .doc')].map(a => a.dataset.name);
+  return JSON.stringify(out);
+})()"""
+
+
+def probe_tree_open(base):
+    print("== 16b 左分类树 · 域内文档 .doc 打开（点了真的换文档） ==")
+    # 树默认全部收起（app.js 的既定行为），所以先把 ui-r 域"展开"写进 localStorage 再进页面
+    init = "try{localStorage.setItem('kb-tree-open', JSON.stringify(['ui-r']));}catch(e){}"
+    url = base + "/doc/ui-r/notes/alpha.md"
+    before = run_expr(url, TREE_JS, init=init)
+    after = run_expr(url, TREE_JS, click='#tree .doc[data-name="beta"]', init=init)
+    check("左树：域展开后子域里的文档逐条成节点（alpha/beta/gamma 都在）",
+          before.get("tree_has_beta") is True
+          and {"alpha", "beta", "gamma"} <= set(before.get("tree_docs") or []), before)
+    check("左树：当前打开的那一篇在树上带 .active（本轮修的就是它恒空 —— 见 §6 第 37 行）",
+          before.get("active_now") == ["alpha"], {"active": before.get("active_now")})
+    # SPA 切页后状态栏那行写的是**不带 .md** 的名字（服务端直载时才是 alpha.md）——
+    # 两种形态都算"换到了那一篇"，这里只断它提到了 beta 且不再提 alpha。
+    check("左树：点文档节点真的换页（URL 与底部状态栏的路径一起变成那一篇，docUrl 削掉 .md 后缀）",
+          (after.get("path") or "").endswith("/doc/ui-r/notes/beta")
+          and "beta" in (after.get("sb") or "") and "alpha" not in (after.get("sb") or ""),
+          {"path": after.get("path"), "sb": after.get("sb")})
+    check("左树：换页后高亮跟着搬到那一条（不是只有画面换了、树还标着旧文档）",
+          after.get("active_now") == ["beta"], {"active": after.get("active_now")})
+
+
+# ================================================================ 探针 17：新标签页 /raw + 美化版只读态
+PRETTY_JS = PRELUDE + r"""
+  const T = e => ((e && e.textContent) || '').replace(/\s+/g, ' ').trim();
+  for (let i = 0; i < 80 && !q('#crumb'); i++) await sleep(150);
+  await sleep(700);
+  out.path = location.pathname;
+  const segT = b => T(b);
+  out.segs = [...document.querySelectorAll('#crumb .seg-btn')].map(segT);
+  const raw = document.querySelector('#crumb a.seg-btn[href^="/raw/"]');
+  out.raw_href = raw ? raw.getAttribute('href') : null;
+  out.raw_target = raw ? raw.getAttribute('target') : null;
+  out.has_edit = out.segs.some(s => s.indexOf('编辑') >= 0 && s.indexOf('标签') < 0);
+  out.has_del = out.segs.some(s => s.indexOf('删除') >= 0);
+  out.has_tagbtn = out.segs.some(s => s.indexOf('标签') >= 0);
+  const infoTab = document.querySelector('.rtab[data-pane="info"]');
+  if (infoTab) infoTab.click();
+  await sleep(600);
+  out.readonly = !!document.querySelector('#pane-info .tag-edit.readonly');
+  out.add_btn = !!document.querySelector('#pane-info #tag-add-btn');
+  out.rm_btns = document.querySelectorAll('#pane-info .tagchip-x').length;
+  out.tag_state = T(document.querySelector('#pane-info .tag-empty'));
+  out.chips_in_crumb = [...document.querySelectorAll('#crumb-tags .tag-chip')].map(T);
+  out.pretty_mode = !!(document.querySelector('#article') || {}).classList
+    && document.querySelector('#article').classList.contains('pretty-mode');
+  // 完整 HTML 文档 → mountHtmlDoc 把 #html-render 整个换成 <iframe class="html-frame" sandbox=…>；
+  // 作用域片段 → 换成 .html-inline 的 Shadow DOM 宿主。两种都算"内嵌渲染成功"。
+  const fr = document.querySelector('#article iframe.html-frame');
+  out.frame_src = fr ? (fr.getAttribute('src') || '') : null;
+  out.frame_sandbox = fr ? (fr.getAttribute('sandbox') || '') : null;
+  out.inline_host = !!document.querySelector('#article .html-inline');
+  out.skeleton_gone = !document.querySelector('#article .kb-skeleton');
+  return JSON.stringify(out);
+})()"""
+
+
+def probe_pretty(base):
+    print("== 17 同名美化版：新标签页出口 + 美化版只读态 ==")
+    md = run_expr(base + "/doc/ui-r/notes/beta.md", PRETTY_JS)
+    check("新标签页：有美化版的 .md 在 crumb 上给出 /raw/<同名 .html> 出口且新开标签",
+          md.get("raw_href") == "/raw/ui-r/notes/beta.html" and md.get("raw_target") == "_blank", md)
+    body = urllib_get(base + md["raw_href"]) if md.get("raw_href") else ""
+    check("新标签页指向的那个 /raw 地址真的能取到美化版本体（不是 404 也不是 md 原文）",
+          "美化版（iframe 直服）" in body and "排版约定样本-B" not in body, body[:140])
+    check("美化版视图默认走内嵌渲染（.pretty-mode + 骨架屏换成 iframe/Shadow，不是停在骨架）",
+          md.get("pretty_mode") is True and (md.get("frame_src") == "/raw/ui-r/notes/beta.html"
+          or md.get("inline_host") is True) and md.get("skeleton_gone") is True, md)
+    check("美化版 iframe 带 sandbox（同域只放行 same-origin + popups，不给脚本）",
+          (md.get("frame_src") or "").startswith("/raw/")
+          and md.get("frame_sandbox") == "allow-same-origin allow-popups",
+          {"src": md.get("frame_src"), "sandbox": md.get("frame_sandbox")})
+    check("可写的那一侧（.md）编辑/删除/标签三个钮齐全（对照组：美化版必须没有）",
+          md.get("has_edit") is True and md.get("has_del") is True and md.get("has_tagbtn") is True,
+          md.get("segs"))
+    html = run_expr(base + "/doc/ui-r/notes/beta.html", PRETTY_JS)
+    check("美化版只读态：.html 本体不给出「编辑」「删除」「标签」三个写入口",
+          html.get("has_edit") is False and html.get("has_del") is False
+          and html.get("has_tagbtn") is False, html.get("segs"))
+    check("美化版只读态：右栏标签区是 readonly（没有添加钮、没有逐条移除叉）",
+          html.get("readonly") is True and html.get("add_btn") is False
+          and html.get("rm_btns") == 0, html)
+    check("美化版只读态：空态文案说实话（「美化版不支持在线编辑标签」而不是「还没有标签」）",
+          "美化版" in (html.get("tag_state") or ""), html.get("tag_state"))
+
+
+# ================================================================ 探针 18：#kb-finish-bar 读完 / 掌握
+FINISH_JS = PRELUDE + r"""
+  const T = e => ((e && e.textContent) || '').replace(/\s+/g, ' ').trim();
+  const rb = () => q('#mark-read-btn'), mb = () => q('#mark-mastered-bar, #mark-mastered-btn');
+  for (let i = 0; i < 80 && !rb(); i++) await sleep(150);
+  await sleep(700);
+  out.bar_present = !!q('#kb-finish-bar');
+  const snap = () => ({r_on: rb().classList.contains('mark-on'), r_txt: T(rb()),
+                       m_on: mb().classList.contains('mark-on'), m_txt: T(mb())});
+  out.s0 = snap();
+  rb().click();
+  for (let i = 0; i < 40 && !rb().classList.contains('mark-on'); i++) await sleep(150);
+  out.t_read = txt('#toast');
+  out.s1 = snap();
+  mb().click();
+  for (let i = 0; i < 40 && !mb().classList.contains('mark-on'); i++) await sleep(150);
+  out.s2 = snap();
+  out.t_mastered = txt('#toast');
+  rb().click();                        // 取消"读完" —— 契约：掌握一并取消
+  for (let i = 0; i < 40 && rb().classList.contains('mark-on'); i++) await sleep(150);
+  await sleep(400);
+  out.s3 = snap();
+  out.t_unread = txt('#toast');
+  out.disabled_after = rb().disabled;
+  return JSON.stringify(out);
+})()"""
+
+
+def probe_finish_bar(base, tmp):
+    print("== 18 正文底部「读完 / 已掌握」条（写 reading.db，不写语料） ==")
+    f = tmp / "content" / "ui-r" / "notes" / "alpha.md"
+    before = f.read_bytes()
+    d = run_expr(base + "/doc/ui-r/notes/alpha.md", FINISH_JS)
+    check("读完条：条与两个钮在正文末尾渲染出来", d.get("bar_present") is True, d)
+    check("读完条：初始两个钮都是未标记态（文案没有 ✓、没有 .mark-on）",
+          d.get("s0", {}).get("r_on") is False and "✓" not in (d.get("s0", {}).get("r_txt") or ""),
+          d.get("s0"))
+    check("读完条：点「已读完」→ .mark-on + 文案翻成「✓ 已读完」+ toast 回执",
+          d.get("s1", {}).get("r_on") is True and "已读完" in (d.get("s1", {}).get("r_txt") or "")
+          and "✓" in (d.get("s1", {}).get("r_txt") or "")
+          and "已标记读完" in (d.get("t_read") or ""), {"s1": d.get("s1"), "toast": d.get("t_read")})
+    check("掌握条：点「已掌握」独立生效（术语门户据此显示已掌握）",
+          d.get("s2", {}).get("m_on") is True and "已掌握" in (d.get("t_mastered") or ""),
+          {"s2": d.get("s2"), "toast": d.get("t_mastered")})
+    check("取消「已读完」必须连带取消「已掌握」（两个标记是一个学习闭环，不能留半截）",
+          d.get("s3", {}).get("r_on") is False and d.get("s3", {}).get("m_on") is False
+          and "一并取消" in (d.get("t_unread") or ""), {"s3": d.get("s3"), "toast": d.get("t_unread")})
+    check("标记写的是派生库：那篇 md 的字节一个都没变",
+          f.read_bytes() == before, "frontmatter/正文被标记动作改写过")
+    srv = json.loads(urllib_get(base + "/api/docmark?path=" + quote("ui-r/notes/alpha.md")) or "{}")
+    check("标记的最终状态与后端一致（服务端 read/mastered 都是 False）",
+          srv.get("ok") is True and not srv.get("read") and not srv.get("mastered"), srv)
+
+
+# ================================================================ 探针 19：#kb-toc-spark 近 7 日阅读
+# 台账 §2 行「正文区 · #kb-toc-spark」——轮次 21 曾把它列为"主动放弃"（读 reading.db、
+# 像素基线里被 FREEZE_CSS 隐掉）。现在两档都补上：先经 /api/track（应用自己的写路径）
+# 造两天的事件断"有数据时画得出、数字对得上"，再用 init 打桩让接口回全 0，断空态文案。
+SPARK_SEED_JS = PRELUDE + r"""
+  const post = (path, event) => fetch('/api/track', {method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({path, event, seconds: 60})}).then(r => r.json());
+  out.a = await post('ui-r/notes/alpha.md', 'open');
+  out.b = await post('ui-r/notes/beta.md', 'open');
+  out.c = await post('ui-r/notes/gamma.md', 'open');
+  out.d = await post('ui-r/notes/gamma.md', 'finish');
+  return JSON.stringify(out);
+})()"""
+
+SPARK_JS = PRELUDE + r"""
+  const T = e => ((e && e.textContent) || '').replace(/\s+/g, ' ').trim();
+  for (let i = 0; i < 80 && !q('#kb-toc-spark'); i++) await sleep(150);
+  await sleep(1200);
+  const host = q('#kb-toc-spark');
+  out.host_present = !!host;
+  out.meta = txt('.kb-toc-spark-meta');
+  out.empty_txt = txt('.kb-toc-spark-empty');
+  const cv = host ? host.querySelector('canvas') : null;
+  out.canvas = !!cv;
+  out.aria = cv ? (cv.getAttribute('aria-label') || '') : '';
+  const ch = window.Chart && cv ? window.Chart.getChart(cv) : null;
+  out.labels = ch ? ch.data.labels : null;
+  out.data = ch ? ch.data.datasets[0].data : null;
+  return JSON.stringify(out);
+})()"""
+
+
+def probe_toc_spark(base):
+    print("== 19 目录火花 #kb-toc-spark（近 7 日阅读：有数据画柱 / 全 0 说没阅读） ==")
+    run_expr(base + "/doc/ui-r/notes/alpha.md", SPARK_SEED_JS)
+    api = json.loads(urllib_get(base + "/api/learn/recent_read") or "{}")
+    days = api.get("days") or []
+    d = run_expr(base + "/doc/ui-r/notes/alpha.md", SPARK_JS)
+    counts = [x.get("count") for x in days]
+    check("目录火花：右栏目录下方长出了 #kb-toc-spark 容器", d.get("host_present") is True, d)
+    check("目录火花：有数据时是 canvas 柱图（带无障碍标签），不是占位文字",
+          d.get("canvas") is True and "近 7 日阅读篇数" in (d.get("aria") or ""), d)
+    check("目录火花：柱子的 7 个日标签与逐日篇数 == /api/learn/recent_read（不编数、不合并）",
+          d.get("labels") == [str(x.get("date", ""))[8:10] for x in days]
+          and d.get("data") == counts and len(counts) == 7,
+          {"labels": d.get("labels"), "data": d.get("data"), "api": counts})
+    peak = max(counts) if counts else 0
+    avg = (sum(counts) / len(counts)) if counts else 0
+    check("目录火花：meta 那行写着峰值与日均，数字来自同一份序列",
+          f"峰值 {peak} 篇" in (d.get("meta") or "") and f"日均 {avg:.1f} 篇" in (d.get("meta") or ""),
+          {"meta": d.get("meta"), "peak": peak, "avg": round(avg, 1)})
+    # 空态：把 /api/learn/recent_read 打桩成全 0（只动这一条 URL，其余照常）
+    stub = ("(function(){const f=window.fetch;window.fetch=function(u,o){"
+            "if(String(u).indexOf('/api/learn/recent_read')>=0){"
+            "return Promise.resolve(new Response(JSON.stringify({ok:true,days:"
+            "Array.from({length:7},(_,i)=>({date:'2026-09-' + (10+i),count:0})),total:0}),"
+            "{status:200,headers:{'Content-Type':'application/json'}}));}"
+            "return f.apply(window,arguments);};})()")
+    e = run_expr(base + "/doc/ui-r/notes/alpha.md", SPARK_JS, init=stub)
+    check("目录火花：全 0 序列必须落到「近 7 日暂无阅读」空态（不许留一根空柱子或转圈的省略号）",
+          "近 7 日暂无阅读" in (e.get("empty_txt") or "") and e.get("canvas") is False,
+          {"empty": e.get("empty_txt"), "canvas": e.get("canvas"), "meta": e.get("meta")})
+
+
+# ================================================================ 探针 20：左树打开见 probe_tree_open
+
+
 def only(name) -> bool:
     """开发期单跑某一探针：`python tests/test_ui_behavior.py nav`。
     不带参数 = 全跑（pre-commit / CI 走的就是全跑）。"""
@@ -1715,6 +2016,11 @@ def main() -> int:
         run_probe("glossary", probe_glossary, base)     # 读 + 一次「加入复习」记分（baike 卡）
         run_probe("mock", probe_mock, base)             # 读 + 面试卡记分；14b 只读 /search
         run_probe("orphans", probe_orphan_expand, base, tmp)   # 只写 localStorage 白名单
+        run_probe("chips", probe_head_chips, base)             # 只读：chips / 右栏跳转 / 元信息 / 编辑提示
+        run_probe("tree", probe_tree_open, base)          # 只读：点树里的文档真的换页
+        run_probe("pretty", probe_pretty, base)           # 只读：美化版出口与只读态
+        run_probe("finish", probe_finish_bar, base, tmp)  # 写 reading.db 的 doc_marks（不动语料）
+        run_probe("spark", probe_toc_spark, base)         # 写 reading.db 的事件（派生库，不动语料）
         run_probe("newdoc", probe_newdoc, base, tmp)    # 写：在空子域里建一篇
         run_probe("inbox", probe_inbox, base, tmp)      # 写：_trash 软删 + 物理 purge（只动 _inbox 两个靶子）
         run_probe("crumb", probe_crumb_delete, base, tmp)    # 写：删 gamma
