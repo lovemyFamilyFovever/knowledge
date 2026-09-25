@@ -33,7 +33,7 @@ python tests\test_js_props.py                  # 浏览器侧书库解析性质�
 python tests\test_ui_regress.py                # 视觉回归批处理（P5：22 张截图 vs tests/ui-baselines/ 基线 + 10 条顶栏几何断言）
 python tests\test_ui_regress.py --stability    #   只验"两次截图逐像素相同"（改矩阵/环境后先跑这个）
 python tests\test_ui_regress.py --update       #   确认改动无误后，用本次截图刷新基线
-python tests\test_ui_behavior.py               # UI 行为回归（356 断言 · 台账 §2 已升 E2E 的 58 行控件"点了到底有没有反应"；轮次 32 起 §2 的 110 行已全部下完判语；缺 node/Chrome 自动 SKIP）
+python tests\test_ui_behavior.py               # UI 行为回归（360 断言 · 台账 §2 已升 E2E 的 58 行控件"点了到底有没有反应"；轮次 32 起 §2 的 110 行已全部下完判语。轮次 33 提速：一台 Chrome 跑完整套（会话档），185s/趟，作业间自动清存储保隔离；回退一次一档 `set KB_BEHAVIOR_SESSION=0`；缺 node/Chrome 自动 SKIP）
 python tests\test_rag.py                       # RAG smoke（缺依赖自动 SKIP）
 python scripts\rag_search.py "查询" --json     # 语义检索 CLI / Agent 入口
 python scripts\govern_tags.py census|similar|merge|rename-sub   # 标签治理（merge/rename-sub 先预览后 --apply；详见 --help）

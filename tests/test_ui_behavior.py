@@ -25,9 +25,12 @@
     （否则这台机器哪天配了 key，本套就会真的去请求外部 LLM）；
   · 语料一律合成，不读 content/小说（禁区）。
 """
+import atexit
 import json
 import os
+import queue
 import re
+import threading
 import shutil
 import subprocess
 import sys
@@ -247,7 +250,124 @@ def build_root(tmp: Path):
 PROBE_WIDTH = 1600
 
 
-def run_expr(url, js, width=PROBE_WIDTH, click="", click_wait=1800, init=""):
+class CdpSession:
+    """一台 Chrome 跑完整套探针（轮次 33）。
+
+    为什么要它：一次一档的 `geom.mjs` 每次求值都要付 **Chrome 冷启动 3~4s + 建/删 profile +
+    2.5s settle**，实测平均 6.5~11s/次 × 45 次 ≈ 全套 484s 的全部。求值本身是毫秒级的。
+
+    复用浏览器会改掉一件事：**隔离**。原来每趟新 profile = localStorage 是干净的；
+    共用一台浏览器如果不清存储，上一趟写进 localStorage 的偏好会串到下一趟，
+    于是"默认态"其实是脏的 —— 那不是提速，是假绿。所以每个作业开始前按 `fresh`
+    清一次 origin 存储 + cookies（geom.mjs 的 runJob 里做），并且这个隔离本身有断言锁着
+    （见 probe_isolation）。`init` 也逐作业注册/注销，不共享。
+    """
+
+    def __init__(self):
+        self.proc = None
+        self.q = queue.Queue()
+        self.job_id = 0
+        self.reader = None
+        self.stderr_path = QA / "geom-session.log"
+        self.restarts = 0
+
+    def start(self):
+        QA.mkdir(parents=True, exist_ok=True)
+        err = open(self.stderr_path, "ab")
+        self.proc = subprocess.Popen(
+            ["node", str(ROOT / "scripts" / "agent" / "geom.mjs"), "--session"],
+            cwd=str(ROOT), stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+            stderr=err, text=True, encoding="utf-8", errors="replace",
+            env=dict(os.environ))
+        # **必须等 ready 握手**：实测在 Node 接管 stdin 之前写进管道的作业会被丢掉
+        # （延后 4s 再写就正常、立刻写就永远没有回复）。丢掉一条作业 = 白等 300s 超时，
+        # 而且是"套件卡在第一个探针"这种最难查的形状。
+        deadline = time.time() + 60
+        while time.time() < deadline:
+            if self.proc.poll() is not None:
+                raise RuntimeError("CDP 会话启动即退出（rc=%s），看 %s"
+                                   % (self.proc.returncode, self.stderr_path))
+            line = self.proc.stdout.readline()
+            if not line:
+                continue
+            try:
+                row = json.loads(line)
+            except ValueError:
+                continue
+            if row.get("session") == "ready":
+                break
+        else:
+            raise RuntimeError("CDP 会话 60s 内没有 ready 握手")
+        self.reader = threading.Thread(target=self._pump, daemon=True)
+        self.reader.start()
+
+    def _pump(self):
+        for line in self.proc.stdout:
+            if line and line.strip():
+                self.q.put(line)
+
+    def alive(self):
+        return bool(self.proc) and self.proc.poll() is None
+
+    def close(self):
+        if not self.proc:
+            return
+        try:
+            self.proc.stdin.close()
+        except Exception:                                # noqa: BLE001
+            pass
+        try:
+            self.proc.wait(timeout=20)
+        except Exception:                                # noqa: BLE001
+            # 会话档不会走到这里；真卡住就杀掉 node（Chrome 由 geom 的 finally 收）
+            try:
+                self.proc.kill()
+            except Exception:                            # noqa: BLE001
+                pass
+
+    def job(self, url, js, width, click, click_wait, init, fresh, timeout=300):
+        """提交一个作业，回一行结果 dict。进程死了就重启一次（不让门禁整挂）。"""
+        for attempt in (0, 1):
+            if not self.alive():
+                if attempt:
+                    raise RuntimeError("CDP 会话两次都起不来")
+                self.restarts += 1
+                self.start()
+            self.job_id += 1
+            jid = self.job_id
+            payload = {"id": jid, "url": url, "expr": js, "width": width,
+                       "click": click, "click_wait": click_wait, "init": init,
+                       "fresh": fresh}
+            self.proc.stdin.write(json.dumps(payload, ensure_ascii=False) + "\n")
+            self.proc.stdin.flush()
+            deadline = time.time() + timeout
+            while time.time() < deadline:
+                try:
+                    line = self.q.get(timeout=1.0)
+                except queue.Empty:
+                    if not self.alive():
+                        break                            # 进程没了 → 重启重试
+                    continue
+                try:
+                    row = json.loads(line)
+                except ValueError:
+                    continue
+                if row.get("id") == jid:
+                    return row
+            else:
+                # 超时：杀掉重来，别让整套卡死
+                self.close()
+                continue
+            self.close()
+        raise RuntimeError("CDP 会话不可用")
+
+
+_SESSION = CdpSession()
+USE_SESSION = os.environ.get("KB_BEHAVIOR_SESSION", "1") != "0"
+atexit.register(_SESSION.close)
+
+
+def run_expr(url, js, width=PROBE_WIDTH, click="", click_wait=1800, init="", fresh=True):
     """在指定视口宽度下求值一个 async 表达式（表达式须 return 一个 JSON 字符串）。
 
     `click` 非空时先点这些选择器（逗号分隔）再求值 —— 点击引发整页导航也没关系，
@@ -258,22 +378,29 @@ def run_expr(url, js, width=PROBE_WIDTH, click="", click_wait=1800, init=""):
     QA.mkdir(parents=True, exist_ok=True)
     f = QA / "behavior-expr.js"
     f.write_text(js, encoding="utf-8")
+    if init:
+        # 两条路共用同一道闸：会话档也必须先验桩的语法（坏桩会被 CDP 静默丢弃 = 假绿）
+        check_init_syntax(init)
+    if USE_SESSION:
+        try:
+            row = _SESSION.job(url, js, width, click, click_wait, init, fresh)
+        except Exception as e:                            # noqa: BLE001
+            check("CDP 会话可用（否则退回一次一档）", False, _safe(repr(e))[:160])
+            row = None
+        if row is not None and "value" in row:
+            try:
+                return json.loads(row["value"])
+            except ValueError as e:
+                check("CDP 探针返回值能解析", False, f"{e} / {str(row)[:200]}")
+                return {}
+        if row is not None:
+            check("CDP 探针表达式执行无异常", False, _safe(row))
+            return {}
     env = dict(os.environ)
     if click:
         env["KB_GEOM_CLICK"] = click
         env["KB_GEOM_CLICK_WAIT"] = str(click_wait)
     if init:
-        # 注入桩必须先过语法自检：CDP 的 addScriptToEvaluateOnNewDocument 碰到 SyntaxError
-        # 是**静默不执行**的（Chrome 不报错、页面照常跑），于是"打了桩之后仍然绿"的断言
-        # 全是假的。2026-09-25 轮次 32 就栽在这上面 —— 多出来的一个右括号让掌握度空态桩
-        # 整段没执行，页面读的是真接口，那条"空列表→一句人话"永远不可能成立，却差点蒙过去。
-        f2 = QA / "behavior-init.js"
-        f2.write_text(init, encoding="utf-8")
-        chk = subprocess.run(["node", "--check", str(f2)], cwd=str(ROOT),
-                             capture_output=True, text=True,
-                             encoding="utf-8", errors="replace", timeout=60)
-        check("探针注入桩（init）语法正确", chk.returncode == 0,
-              _safe((chk.stderr or "")[-240:]))
         env["KB_GEOM_INIT"] = init
     r = subprocess.run(
         ["node", str(ROOT / "scripts" / "agent" / "geom.mjs"), url, str(width), "@" + str(f)],
@@ -291,6 +418,25 @@ def run_expr(url, js, width=PROBE_WIDTH, click="", click_wait=1800, init=""):
     if "error" in row:
         check("CDP 探针表达式执行无异常", False, _safe(row))
     return row
+
+
+def check_init_syntax(init):
+    """注入桩必须先过语法自检。
+
+    CDP 的 addScriptToEvaluateOnNewDocument 碰到 SyntaxError 是**静默不执行**的
+    （Chrome 不报错、页面照常跑），于是"打了桩之后仍然绿"的断言全是假的。
+    2026-09-25 轮次 32 就栽在这上面 —— 多出来的一个右括号让掌握度空态桩整段没执行，
+    页面读的是真接口，那条"空列表 → 一句人话"永远不可能成立，却差点蒙过去。
+    """
+    QA.mkdir(parents=True, exist_ok=True)
+    f2 = QA / "behavior-init.js"
+    f2.write_text(init, encoding="utf-8")
+    chk = subprocess.run(["node", "--check", str(f2)], cwd=str(ROOT),
+                         capture_output=True, text=True,
+                         encoding="utf-8", errors="replace", timeout=60)
+    check("探针注入桩（init）语法正确", chk.returncode == 0,
+          _safe((chk.stderr or "")[-240:]))
+    return chk.returncode == 0
 
 
 PRELUDE = """(async () => {
@@ -2976,6 +3122,41 @@ def probe_tag_merge(base, tmp):
 
 
 
+# ---------------------------------------------------------------- 探针 25：会话隔离护栏
+# 这条不测产品，测的是**提速改动本身**：本套大量判据默认"localStorage 是干净的"
+# （默认排版、默认小说偏好、空看板）。一次一档时那是白来的（每趟新 profile），
+# 复用一台浏览器就必须有人盯着 —— 少一次清存储，"默认态"就是脏的，而且是绿着变脏。
+ISO_WRITE = PRELUDE + r"""
+  localStorage.setItem('kb-isolation-canary', 'leaked');
+  out.canary = localStorage.getItem('kb-isolation-canary');
+  return JSON.stringify(out);
+})()"""
+
+ISO_READ = PRELUDE + r"""
+  out.canary = localStorage.getItem('kb-isolation-canary');
+  out.keys = Object.keys(localStorage).length;
+  return JSON.stringify(out);
+})()"""
+
+
+def probe_isolation(base):
+    print("== 25 会话隔离护栏（复用浏览器以后，\"每趟干净\"必须自证） ==")
+    page = base + "/doc/ui-r/notes/alpha.md"
+    w1 = run_expr(page, ISO_WRITE)
+    check("隔离护栏：这一趟写得进 localStorage（写不进去则后面三条都是空判）",
+          w1.get("canary") == "leaked", w1)
+    r1 = run_expr(page, ISO_READ)
+    check("隔离护栏：下一趟读不到上一趟写的 canary（默认 fresh=True 真的在清存储）",
+          r1.get("canary") is None, r1)
+    run_expr(page, ISO_WRITE, fresh=False)
+    r2 = run_expr(page, ISO_READ, fresh=False)
+    check("隔离护栏：`fresh=False` 那一档确实**不**清存储（旋钮是真旋钮，不摆设）",
+          r2.get("canary") == "leaked", r2)
+    r3 = run_expr(page, ISO_READ)
+    check("隔离护栏：脏读不会顺着往下传（再回到默认档，canary 又没了）",
+          r3.get("canary") is None, r3)
+
+
 def only(name) -> bool:
     """开发期单跑某一探针：`python tests/test_ui_behavior.py nav`。
     不带参数 = 全跑（pre-commit / CI 走的就是全跑）。"""
@@ -3039,6 +3220,7 @@ def main() -> int:
         run_probe("novelbar", probe_novel_bar, base, tmp)  # 写：章评落旁挂 + 朗读/滚动/下载
         run_probe("stats", probe_stats, base, tmp)  # 写：/api/track 造当月事件后看统计页
         run_probe("tagmerge", probe_tag_merge, base, tmp)  # 写：标签合并两段确认（真改 frontmatter）
+        run_probe("isolation", probe_isolation, base)      # 只读：复用浏览器的隔离性自证
         run_probe("newdoc", probe_newdoc, base, tmp)    # 写：在空子域里建一篇
         run_probe("inbox", probe_inbox, base, tmp)      # 写：_trash 软删 + 物理 purge（只动 _inbox 两个靶子）
         run_probe("crumb", probe_crumb_delete, base, tmp)    # 写：删 gamma

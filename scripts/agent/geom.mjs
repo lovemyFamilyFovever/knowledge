@@ -12,13 +12,22 @@ const PORT_PREF = +(process.env.KB_GEOM_PORT || 9338);
 const PORT = await pickPort(PORT_PREF);
 if (PORT !== PORT_PREF) console.error(`[geom] 首选调试端口 ${PORT_PREF} 被别的进程占着（多半是上一轮没退干净的 Chrome），已改用 ${PORT} —— 绝不连陌生浏览器`);
 const CDP = `http://127.0.0.1:${PORT}`;
-const [, , url, argW, argExpr] = process.argv;
-if (!url || !argExpr) {
+// —— 会话模式（轮次 33 加）———————————————————————————————————————————————
+// `node geom.mjs --session` 起一台 Chrome 后**常驻**：从 stdin 逐行读作业、逐行回一行 JSON。
+// 为什么要有这一档：一次调用一台浏览器意味着每次付 3~4s 冷启动 + 建/删 profile + 2.5s settle，
+// 第 13 套 40 多次求值里大半时间花在这上面（实测见台账 §7）。
+// 复用带来的语义差别必须补齐：一趟新 profile ≈ 干净的 localStorage/cookie，
+// 所以**每个作业开始前清一次 origin 存储 + cookies**，否则上一趟写进 localStorage 的偏好会串到下一趟
+// （那不是"快一点"，那是假绿）。init 也按作业逐个注册/注销，不共享。
+const SESSION = process.argv[2] === '--session';
+const [url, argW, argExpr] = process.argv.slice(SESSION ? 3 : 2);
+if (!SESSION && (!url || !argExpr)) {
   console.error('usage: node geom.mjs <url> <w1,w2,...> <expr@file|inline>');
+  console.error('       node geom.mjs --session        # 常驻：stdin 逐行读作业，stdout 逐行回 JSON');
   process.exit(2);
 }
 const WIDTHS = (argW || '1440').split(',').map(Number);
-const expr = argExpr.startsWith('@') ? fs.readFileSync(argExpr.slice(1), 'utf8') : argExpr;
+const expr = !argExpr ? '' : (argExpr.startsWith('@') ? fs.readFileSync(argExpr.slice(1), 'utf8') : argExpr);
 
 const CHROME_CANDIDATES = [
   'C:/Program Files/Google/Chrome/Application/chrome.exe',
@@ -86,6 +95,138 @@ async function openTab(u) {
     const mid = ++id; pending.set(mid, ok); ws.send(JSON.stringify({ id: mid, method, params }));
   });
   return { ws, send, targetId: tab.id };
+}
+
+/* 会话模式的一个作业：{id,url,expr,width,settle,click,click_wait,init,fresh}
+   → stdout 回一行 {id,value} 或 {id,error}。错误分类与一次一档完全相同（抛异常 / 返回 undefined
+   必须分辨得开，见轮次 28 那段注释）。 */
+async function runJob(send, job) {
+  /* 每个 CDP 调用都带超时：会话档是"一台浏览器跑完整套"，任何一个方法不回复就会把后面
+     所有探针一起拖死（实测：一次挂住 = 白等 300s，门禁整挂）。宁可红一条也要说清卡在哪个方法。 */
+  const TRACE = !!process.env.KB_GEOM_TRACE;
+  const call = async (method, params = {}, ms = 15000) => {
+    let t;
+    if (TRACE) process.stderr.write(`[job ${job.id}] -> ${method}\n`);
+    const guard = new Promise((_, rej) => { t = setTimeout(() => rej(new Error(`CDP timeout: ${method}`)), ms); });
+    try {
+      const r = await Promise.race([send(method, params), guard]);
+      if (r && r.error) throw new Error(`${method} -> ${r.error.message || JSON.stringify(r.error)}`);
+      if (TRACE) process.stderr.write(`[job ${job.id}] <- ${method} ok\n`);
+      return r;
+    } catch (e) {
+      if (TRACE) process.stderr.write(`[job ${job.id}] !! ${method} ${e.message}\n`);
+      throw e;
+    } finally {
+      clearTimeout(t);
+    }
+  };
+  let initIdentifier = null;
+  try {
+    if (job.init) {
+      const r = await call('Page.addScriptToEvaluateOnNewDocument', { source: job.init });
+      initIdentifier = r?.result?.identifier || null;
+    }
+    /* 清存储 = 补上"每趟新 profile"的隔离语义。漏这一步，上一趟写进 localStorage 的偏好
+       会串到这一趟，测出来的"默认态"其实是脏的 —— 那是假绿，不是提速。 */
+    if (job.fresh !== false) {
+      try { await call('Network.clearBrowserCookies', {}, 5000); } catch { /* 非关键 */ }
+      try {
+        await call('Storage.clearDataForOrigin',
+          { origin: new URL(job.url).origin, storageTypes: 'all' }, 5000);
+      } catch { /* 拿不到该域时至少 cookies 清了 */ }
+    }
+    await call('Page.navigate', { url: job.url });
+    for (let i = 0; i < 80; i++) {
+      const r = await call('Runtime.evaluate', { expression: 'document.readyState', returnByValue: true }, 8000);
+      if (r.result?.result?.value === 'complete') break;
+      await sleep(100);
+    }
+    /* settle 比一次一档的 2500ms 小：字体/CSS/JS 在这台浏览器里已经热过一轮。
+       探针该等的东西由探针自己轮询（本套判据是"等到为止"，不是"等够为止"）。 */
+    await sleep(job.settle == null ? 900 : job.settle);
+    if (job.click) {
+      for (const sel of String(job.click).split(',')) {
+        if (!sel.trim()) continue;
+        await call('Runtime.evaluate', {
+          expression: `document.querySelector(${JSON.stringify(sel.trim())})?.click()` });
+        await sleep(+(job.click_wait || 1500));
+        for (let i = 0; i < 60; i++) {
+          const r = await call('Runtime.evaluate',
+            { expression: 'document.readyState', returnByValue: true }, 8000);
+          if (r.result?.result?.value === 'complete') break;
+          await sleep(150);
+        }
+      }
+      await sleep(job.click_settle == null ? 600 : job.click_settle);
+    }
+    await call('Emulation.setDeviceMetricsOverride', {
+      width: job.width || 1440, height: job.height || 900,
+      deviceScaleFactor: 1, mobile: false
+    });
+    await sleep(job.reflow == null ? 350 : job.reflow);
+    const out = await call('Runtime.evaluate',
+      { expression: job.expr, returnByValue: true, awaitPromise: true }, job.timeout || 120000);
+    const ex = out.exceptionDetails;
+    const isRejected = out.result?.result?.subtype === 'error';
+    if (ex || isRejected) {
+      const detail = { text: ex?.text, class: ex?.className,
+                       desc: (ex?.exception?.description || ex?.exception?.value || '').toString().slice(0, 200),
+                       sub: out.result?.result?.subtype };
+      return { error: ('' + (ex?.exception?.description || ex?.text || 'rejected')).slice(0, 400),
+               detail: JSON.stringify(detail) };
+    }
+    const v = out.result?.result?.value;
+    return v === undefined ? { error: 'undefined' } : { value: v };
+  } finally {
+    if (initIdentifier) {
+      try { await send('Page.removeScriptToEvaluateOnNewDocument', { identifier: initIdentifier }); } catch { /* 已随文档失效 */ }
+    }
+  }
+}
+
+async function runSession() {
+  /* readline 必须**第一件事**就建：实测 Python 若在 Node 接管管道之前就把作业写进 stdin，
+     那几个字节会被丢掉、这一条作业永远没有回复（轮次 33 排查：延后 4s 写就正常）。
+     光靠"早点建接口"还不够保险，所以下面额外发一行 ready 握手，客户端等到它才准写。 */
+  const rl = (await import('readline')).createInterface({ input: process.stdin, crlfDelay: Infinity });
+  process.stdin.resume();
+  for (let i = 0; i < 60; i++) {
+    try { const r = await fetch(`${CDP}/json/version`); if (r.ok) break; } catch { }
+    await sleep(250);
+  }
+  const { ws, send, targetId } = await openTab('about:blank');
+  await send('Page.enable');
+  await send('Network.enable');
+  process.stdout.write(JSON.stringify({ session: 'ready', port: PORT }) + '\n');
+  for await (const line of rl) {
+    if (!line.trim()) continue;
+    let job;
+    try { job = JSON.parse(line); } catch (e) {
+      process.stdout.write(JSON.stringify({ id: null, error: 'bad job json: ' + e.message }) + '\n');
+      continue;
+    }
+    const t0 = Date.now();
+    let res;
+    try { res = await runJob(send, job); } catch (e) { res = { error: String(e?.message || e) }; }
+    process.stdout.write(JSON.stringify({
+      id: job.id, ms: Date.now() - t0, value: res.value, error: res.error, detail: res.detail
+    }) + '\n');
+  }
+  ws.close();
+  try { await fetch(`${CDP}/json/close/${targetId}`); } catch { }
+}
+
+if (SESSION) {
+  try {
+    await runSession();
+  } catch (e) {
+    console.error('SESSION FAIL', e.message);
+    process.exitCode = 1;
+  } finally {
+    killChrome(proc);
+    await rmProfile(profile);
+  }
+  process.exit(process.exitCode || 0);
 }
 
 try {
