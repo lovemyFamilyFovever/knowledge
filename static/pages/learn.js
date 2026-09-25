@@ -66,6 +66,7 @@
     cta: U.$("#kb-learn-cta"),
     grades: U.$("#kb-grades"),
     foot: U.$("#kb-learn-foot"),
+    note: null,                    // 「消息层」：抽题中 / 完成态 / 成绩单（见 stageNote）
     ringFg: U.$("#kb-ring-fg"),
     ringN: U.$("#kb-ring-n"),
     ringL: U.$("#kb-ring-l"),
@@ -84,6 +85,30 @@
   };
 
   function icon(n, s) { return U.icon(n, s); }
+
+  /* ---------------- 消息层（抽题中 / 完成态 / 成绩单） ----------------
+     `#kb-stage` 里躺着的是**常驻**节点：卡片、CTA、评分区、底部条（模板 quiz.html /
+     review.html 第 15~42 行）。旧实现写消息时用 `el.stage.innerHTML = ...`，等于把
+     这四个常驻节点一次性炸掉 —— `el.card`/`el.cta`/`el.grades`/`el.foot` 立刻变成
+     挂在脱离文档的孤儿节点上的引用，之后 showCard() 的所有写入都落在孤儿上：
+     **点「随机抽题开考」后画面永远停在「随机抽题中…」**，答题卡再也不出现
+     （2026-09-25 轮次 28 由行为回归抓到，台账 §6 第 35 行）。
+     改成只切换一个独立的消息层：常驻节点从头到尾都在 DOM 里，显示/隐藏靠 hidden。 */
+  function stageNote(html, extraClass) {
+    var n = el.note;
+    if (!n) {
+      n = document.createElement("div");
+      n.id = "kb-stage-note";
+      n.className = "kb-done";
+      el.stage.insertBefore(n, el.stage.firstChild);
+      el.note = n;
+    }
+    n.className = "kb-done" + (extraClass ? " " + extraClass : "");
+    n.innerHTML = html || "";
+    n.hidden = !html;
+    el.card.hidden = !!html;        // 有消息时把卡片收起来，反之露出来
+    return n;
+  }
 
   /* ---------------- 队列 ---------------- */
   function loadQueue() {
@@ -158,6 +183,7 @@
     S.startedAt = Date.now();
 
     el.card.hidden = false;
+    stageNote("");                 // 卡片上场 → 消息层清空（两者互斥，同一处管）
     el.kicker.textContent = (KIND_LABEL[card.kind] || C.label) + " · " + (card.sub_label || card.sub || "");
     el.term.textContent = card.term || "";
     el.front.textContent = card.front || "";
@@ -278,8 +304,7 @@
     // showCard，全新用户零卡零复习会看到「今日已复习完」（文案撒谎）。没答过任何
     // 一张且队列本就为空 = 没卡可学；答过才算「这批过完」。
     var first = S.doneN === 0 && S.queue.length === 0;
-    el.stage.innerHTML =
-      '<div class="kb-done">' +
+    stageNote(
       '  <div class="kb-done-t">' + U.esc(first ? "暂时没有可学的卡" : C.doneTitle) + "</div>" +
       '  <div class="kb-done-d">' + U.esc(first
         ? "这个筛选下没有到期也没未学的卡。换个子域，或先去总览触发一次抽卡同步。"
@@ -288,8 +313,7 @@
       '    <a class="kb-btn primary" href="' + C.doneHref + '">' + icon("i-progress-ring", 13) + U.esc(C.doneText) + "</a>" +
       '    <a class="kb-btn" href="/glossary">' + icon("i-sort-alpha", 13) + "逛术语百科</a>" +
       '    <a class="kb-btn ghost" href="/home">' + icon("i-folder-open", 13) + "回总览</a>" +
-      "  </div>" +
-      "</div>";
+      "  </div>");
     el.sub.innerHTML = first
       ? '<span class="kb-warn">队列为空</span> · 到期 ' + S.stats.due_n + " · 未学 " + S.stats.new_n
       : "本轮完成 " + S.doneN + " 张 · " + '<span class="kb-ok">已全部过完</span>';
@@ -300,8 +324,8 @@
     S.mock = { n: n, startedAt: Date.now(), answers: [] };
     S.queue = []; S.idx = 0; S.graded = {}; S.doneN = 0; S.cur = null;
     el.sub.textContent = "模拟面试出卷中…";
-    el.stage.innerHTML = '<div class="kb-done"><div class="kb-done-t">随机抽题中…</div></div>';
-    el.card.hidden = true; el.cta.innerHTML = ""; el.grades.hidden = true; el.foot.innerHTML = "";
+    el.cta.innerHTML = ""; el.grades.hidden = true; el.foot.innerHTML = "";
+    stageNote('<div class="kb-done-t">随机抽题中…</div>');
     fetch("/api/learn/mock?n=" + n).then(function (r) { return r.json(); }).then(function (j) {
       if (!j.ok || !(j.cards || []).length) {
         U.toast(j && j.detail ? j.detail : "出卷失败：面试题库为空");
@@ -341,10 +365,8 @@
       return '<div class="kb-rep-row"><span>' + U.esc(k) + "</span><b>" + bySub[k].ok + " / " + bySub[k].n + "</b></div>";
     }).join("");
     var pct = total ? Math.round(100 * ok / total) : 0;
-    el.card.hidden = true;
     el.cta.innerHTML = ""; el.grades.hidden = true; el.foot.innerHTML = "";
-    el.stage.innerHTML =
-      '<div class="kb-done kb-rep">' +
+    stageNote(
       '  <div class="kb-done-t">模拟面试 · 成绩单</div>' +
       '  <div class="kb-rep-score">' + ok + "<i> / " + total + "</i></div>" +
       '  <div class="kb-rep-meta">正确率 <b>' + pct + "%</b> · 用时 " + mm + ":" + ss +
@@ -353,8 +375,7 @@
       '  <div class="kb-done-acts">' +
       '    <button type="button" class="kb-btn primary" id="kb-mock-again">' + icon("i-clock-heartbeat", 13) + "再来一轮</button>" +
       '    <button type="button" class="kb-btn" id="kb-mock-exit">返回普通刷题</button>' +
-      "  </div>" +
-      "</div>";
+      "  </div>", "kb-rep");
     el.sub.innerHTML = "模拟面试完成 · 答对 " + ok + " / " + total + " · 正确率 " + pct + "%";
   }
 

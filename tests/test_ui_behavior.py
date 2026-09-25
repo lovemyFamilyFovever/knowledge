@@ -1,17 +1,22 @@
 # -*- coding: utf-8 -*-
-"""知库 UI 行为回归（第 13 套）—— 台账 §2 那 9 行「未测」控件的交互后状态。
+"""知库 UI 行为回归（第 13 套）—— 台账 §2 那些控件的"点了到底有没有反应"。
 
 运行：python tests/test_ui_behavior.py   （缺 node/Chrome 自动 SKIP）
+      python tests/test_ui_behavior.py mock   开发期单跑某一探针
 
 为什么单独一套而不是塞进 P5：P5 的判据是"和上次像素一样吗"，而"点下去有没有反应"是
 另一类问题 —— 重叠、恒 0 结果、点了没反应这类缺陷在像素基线里是**稳定地错**（台账 §6 第 29 行）。
 本套也不与 test_js_props 合并：那套管的是**解析器**（zip/txt/切块），语义不同，混在一起
 会让"改了书库解析"和"改了按钮行为"都顶起同一套红。
 
-覆盖的 9 行（台账 §2）：
-  1 问吧 showAsk()          2 空态入口 #kb-empty-newdoc    3 编辑器 #ed-del
-  4 [[ 双链补全浮层         5 标签补全浮层                  6 mermaid 点击放大 #kb-zoom-ov
-  7 crumb 删除              8 收件箱 del / purge            9 标签页看板抽屉 #drawer-h/#drawer-docs
+已把台账 §2 的 33 行从"控件在位"升到 `E2E`（轮次 24 起，每轮加一组探针）：
+  轮次 24（9 行）问吧 / 空态新建 / #ed-del / crumb 删除 / [[ 双链补全（CM + textarea 两支）
+                / 标签补全 / mermaid 放大 / 收件箱 del+purge / 标签页看板抽屉
+  轮次 25（9 行）一级导航 4 项 + brand→总览 + 收藏 + 标签 + 治理 + 收件箱入口（**点了真的换页**）
+  轮次 26（7 行）设置抽屉·阅读排版那一组（CSS 变量 + localStorage + 恢复默认 + 刷新后仍生效）
+  轮次 27（2 行）收件箱批量归档 / 单篇 move / 忽略（真落盘 + 规则对下次扫描生效）
+  轮次 28（6 行）首页今日卡 / 术语过滤 / 术语分桶·子域·内联详情 / 串学漫游 / 模拟面试+精确命中
+                / 治理孤儿折叠·豁免 —— 顺手抓到「模拟面试从上线起就没出过题」（§6 第 35 行）
 
 护栏（AGENTS 不变量与手册）：
   · 只打 tempfile 里的合成语料，**绝不读写真实 content/**；写类断言全部落在临时根上；
@@ -106,7 +111,67 @@ EXTRA = {
 </head><body><div class="mermaid-code">graph TD;A--&gt;B;</div>
 <script src="./_shared/js/mermaid.min.js"></script></body></html>
 """,
+    # 第二个 baike 词条，专为**串学漫游**造一条真的能走通的路径：
+    # `cards.py::_related_of` 只认 `## 相关术语` 区块里的 [[双链]]（正文别处的不算），
+    # 所以这里既挂一个**有卡片**的目标（向量数据库 → path 里的真节点），
+    # 也挂一个**没有卡片**的目标（→ dead_ends，页面上渲染成虚线"无卡片"）。
+    "content/baike/term/倒排索引.md": """---
+title: 倒排索引
+source: knowledge
+collected: 2026-01-12
+tags: [检索]
+status: stable
+---
+
+# 倒排索引
+
+## 定义
+
+**一句话定义：** 按词建表、用词直接定位到含它的文档列表的索引结构。
+
+## 常见误区
+
+**误区：** 倒排索引只能做精确匹配。
+
+**正解：** 前缀、模糊与 BM25 排序都建立在它之上，和向量检索是互补关系。
+
+## 相关术语
+
+- [[向量数据库]]
+- [[尚不存在的术语]]
+""",
+    # 第三个词条**故意放进另一个子域**（baike/db）：术语页的「子域切换」只有一个子域时
+    # 点了等于没点，断不出"只剩该子域"这件事。
+    "content/baike/db/布隆过滤器.md": """---
+title: 布隆过滤器
+source: knowledge
+collected: 2026-01-13
+tags: [检索]
+status: stable
+---
+
+# 布隆过滤器
+
+## 定义
+
+**一句话定义：** 用若干个哈希位图判断元素是否可能存在，说"不存在"一定准、说"存在"可能误判。
+
+## 分析
+
+代价是误判率与位图大小此消彼长，所以它只做第一道闸，不做判据。
+""",
 }
+
+# 治理页「展开全部」的靶子：`governance.js::renderOrphans` 的折叠线写死在 **30 篇**
+# （`items.slice(0, 30)` + `hidden = items.length <= 30`），而 P5 的合成语料一共才 6 篇
+# —— 那一档**从来没能进过**，所以钮的展开/收起态一直无人断言。补 34 篇无入链 md。
+ORPHAN_COUNT = 34
+EXTRA.update({
+    f"content/ui-r/orphans/孤{i:02d}.md": (
+        "---\ntitle: 孤儿样本%02d\n---\n\n没有任何文档链向它，"
+        "用来把孤儿列表撑过 30 篇的折叠线。\n" % i)
+    for i in range(1, ORPHAN_COUNT + 1)
+})
 
 
 def build_root(tmp: Path):
@@ -998,6 +1063,605 @@ def probe_drawer(base):
     check("看板抽屉：第三次点击能重新展开（状态可逆，不是一次性）", d.get("reopened") is True, d)
 
 
+# ================================================================ 探针 11：首页「今日学习」卡
+# 台账 §2 行「复习 · 今日卡 #kb-today*」。home.js 自己写着"接口不可用时给人话提示，
+# 绝不写死占位数字"，可**真出数**那一侧没人验过：三格统计、掌握度条、「显示定义」折叠。
+HOME_JS = PRELUDE + r"""
+  const T = e => ((e && e.textContent) || '').replace(/\s+/g, ' ').trim();
+  const host = q('#kb-today');
+  out.host_rendered = !!(host && host.querySelector('#kb-today-date'));
+  if (host && host.scrollIntoView) host.scrollIntoView({block: 'center'});
+  await sleep(400);
+  out.date = txt('#kb-today-date');
+  out.term = txt('#kb-today-term');
+  out.tip = txt('#kb-today-tip');
+  const defEl = q('#kb-today-def'), show = q('#kb-today-show'), docA = q('#kb-today-doc');
+  out.def_text = T(defEl);
+  out.h_before = defEl ? Math.round(defEl.getBoundingClientRect().height) : -1;
+  out.btn_before = T(show);
+  if (show) show.click();
+  await sleep(300);
+  out.h_after = defEl ? Math.round(defEl.getBoundingClientRect().height) : -1;
+  out.btn_after = T(show);
+  if (show) show.click();
+  await sleep(300);
+  out.h_third = defEl ? Math.round(defEl.getBoundingClientRect().height) : -1;
+  out.btn_third = T(show);
+  out.doc_href = docA ? (docA.getAttribute('href') || '') : '';
+  out.doc_target = docA ? (docA.getAttribute('target') || '') : '';
+  out.stats = [...document.querySelectorAll('#kb-today-stats .kb-today-stat')]
+    .map(x => ({v: T(x.querySelector('b')), lab: T(x.querySelector('span'))}));
+  out.bars = [...document.querySelectorAll('#kb-mastery-bars .kb-mastery-row')].map(x => ({
+    lab: T(x.querySelector('.kb-ml')), pct: T(x.querySelector('.kb-mv')),
+    w: x.querySelector('.kb-bar i') ? x.querySelector('.kb-bar i').style.width : '',
+    dh: x.style.getPropertyValue('--dh')
+  }));
+  out.cta = [...document.querySelectorAll('#kb-today .kb-today-cta a')].map(a => a.getAttribute('href'));
+  return JSON.stringify(out);
+})()"""
+
+
+def probe_home_today(base):
+    print("== 11 首页「今日学习」卡 #kb-today*（显示定义 / 跳转原文 / 三格统计 / 掌握度条） ==")
+    api = json.loads(urllib_get(base + "/api/learn/today?domain=baike") or "{}")
+    cards = json.loads(urllib_get(base + "/api/learn/cards?domain=baike&kind=baike_def&limit=50") or "{}")
+    mas = json.loads(urllib_get(base + "/api/learn/mastery?scope=sub&domain=baike") or "{}")
+    by_term = {c.get("term"): c for c in (cards.get("items") or [])}
+    d = run_expr(base + "/home", HOME_JS)
+    st = api.get("stats") or {}
+    check("今日卡：home.js 真的把 #kb-today 骨架渲出来（不是停在模板里的占位）",
+          d.get("host_rendered") is True, d)
+    check("今日卡：日期是服务端下发的 YYYY-MM-DD，与 /api/learn/today 一致",
+          d.get("date") == api.get("date") and len(d.get("date") or "") == 10,
+          {"dom": d.get("date"), "api": api.get("date")})
+    check("今日卡：术语位显示的是真词条（不是「载入中…」/「（暂无卡片）」）",
+          d.get("term") in by_term, {"dom": d.get("term"), "api_terms": sorted(by_term)})
+    shown = by_term.get(d.get("term")) or {}
+    check("今日卡：定义折叠块里的文字就是那张卡的 back（内容真的 flowed 到首页）",
+          bool(d.get("def_text")) and (d.get("def_text") == (shown.get("back") or "").strip()
+                                       or "这张卡还没有摘录内容" in (d.get("def_text") or "")),
+          {"dom": d.get("def_text"), "api": shown.get("back")})
+    check("今日卡：没点之前定义是收着的（高度 0 + 钮写「显示定义」）",
+          d.get("h_before") == 0 and "显示定义" in (d.get("btn_before") or ""), d)
+    check("今日卡：点「显示定义」展开（高度 >0，钮文案翻成「收起定义」）",
+          (d.get("h_after") or 0) > 0 and "收起定义" in (d.get("btn_after") or ""), d)
+    check("今日卡：再点一次能收回去（状态可逆，不是一次性开关）",
+          d.get("h_third") == 0 and "显示定义" in (d.get("btn_third") or ""), d)
+    check("今日卡：「跳转原文」指向那张卡的文档 url 且新开标签（不是回退值 /review）",
+          bool(shown.get("url")) and (shown.get("url") or "").startswith("/doc/")
+          and d.get("doc_href") == shown.get("url") and d.get("doc_target") == "_blank",
+          {"dom": d.get("doc_href"), "target": d.get("doc_target"), "api": shown.get("url")})
+    want_stats = {"待复习": str(st.get("due_n")), "连续天数": str(st.get("streak_days")),
+                  "掌握度": f"{st.get('mastered_pct')}%"}
+    got_stats = {x.get("lab"): x.get("v") for x in (d.get("stats") or [])}
+    check("今日卡：三格统计逐项等于接口给的数字（待复习/连续天数/掌握度，没有占位符）",
+          len(d.get("stats") or []) == 3 and all(got_stats.get(k) == v for k, v in want_stats.items()),
+          {"dom": got_stats, "api": want_stats})
+    exp_bars = sorted(mas.get("items") or [], key=lambda x: -(x.get("total") or 0))[:6]
+    got_bars = d.get("bars") or []
+    ok_bars = (len(got_bars) == len(exp_bars)
+               and all(b.get("pct") == f"{int(x.get('pct') or 0)}%"
+                       and b.get("dh") == str(x.get("hue"))
+                       and b.get("w") == f"{int(x.get('pct') or 0)}%"
+                       for b, x in zip(got_bars, exp_bars)))
+    check("今日卡：掌握度条数 == 接口 items（按 total 排序取前 6），每条的百分比/色相/条宽都对得上",
+          ok_bars, {"dom": got_bars,
+                    "api": [{"id": x.get("id") or x.get("sub"), "pct": x.get("pct"),
+                             "hue": x.get("hue")} for x in exp_bars]})
+    check("今日卡：底部两个 CTA 指向 /review 与 /quiz（首页必须能把人送进复习）",
+          d.get("cta") == ["/review", "/quiz"], d.get("cta"))
+
+
+# ================================================================ 探针 12+13：术语门户 + 串学漫游
+# 台账 §2 三行：「术语 · #kb-gl-q / #kb-gl-clear」「术语 · #kb-gl-buckets/subs/sub/body」
+# 「复习 · 漫游 #kb-roam / #kb-roam-x」。glossary.js 的设计是"全量只拉一次，之后所有过滤
+# 都在前端完成"，所以**必须**断"过滤后留下的正好是该留下的那些"，只断"输入框在位"等于没断。
+GLOSSARY_JS = PRELUDE + r"""
+  const T = e => ((e && e.textContent) || '').replace(/\s+/g, ' ').trim();
+  const terms = () => [...document.querySelectorAll('#kb-gl-body .kb-term')].map(b => b.dataset.term);
+  for (let i = 0; i < 80 && !q('.kb-term'); i++) await sleep(150);
+  out.ready = !!q('.kb-term');
+  out.n_all = terms().length;
+  out.groups_all = document.querySelectorAll('#kb-gl-body .kb-gl-group').length;
+  out.line_all = txt('#kb-gl-sub');
+  out.bucket_labels = [...document.querySelectorAll('#kb-gl-buckets .kb-bucket')]
+    .map(b => ({L: b.dataset.letter, n: Number(T(b.querySelector('.kb-bn'))),
+                zero: b.classList.contains('zero'),
+                ad: b.getAttribute('aria-disabled')}));
+  out.sub_chips = [...document.querySelectorAll('#kb-gl-subs .kb-gl-sub')].map(b => ({s: b.dataset.sub, t: T(b)}));
+
+  const typeQ = async v => { const e = q('#kb-gl-q'); e.value = v;
+                             e.dispatchEvent(new Event('input', {bubbles: true})); await sleep(450); };
+  await typeQ('zzz不存在zzz');
+  out.n_none = terms().length;
+  out.empty_none = txt('.kb-gl-empty');
+  await typeQ('向量');
+  out.n_q = terms().length; out.q_terms = terms(); out.line_q = txt('#kb-gl-sub');
+  const clr = q('#kb-gl-clear');
+  out.clear_present = !!clr;
+  if (clr) clr.click();
+  await sleep(400);
+  out.n_cleared = terms().length;
+  out.q_value = (q('#kb-gl-q') || {}).value;
+  out.focus_after_clear = document.activeElement ? document.activeElement.id : '';
+
+  const nz = [...document.querySelectorAll('#kb-gl-buckets .kb-bucket')]
+    .find(b => b.dataset.letter !== 'all' && !b.classList.contains('zero'));
+  out.letter = nz ? nz.dataset.letter : null;
+  out.letter_n = nz ? Number(T(nz.querySelector('.kb-bn'))) : 0;
+  if (nz) nz.click();
+  await sleep(350);
+  out.n_letter = terms().length; out.letter_terms = terms();
+  out.on_letter = (document.querySelector('#kb-gl-buckets .kb-bucket.on') || {dataset: {}}).dataset.letter || null;
+  const z = [...document.querySelectorAll('#kb-gl-buckets .kb-bucket.zero')][0];
+  out.zero_letter = z ? z.dataset.letter : null;
+  if (z) z.click();
+  await sleep(350);
+  out.n_after_zero = terms().length;
+  out.on_after_zero = (document.querySelector('#kb-gl-buckets .kb-bucket.on') || {dataset: {}}).dataset.letter || null;
+  const allb = document.querySelector('#kb-gl-buckets .kb-bucket[data-letter="all"]');
+  if (allb) allb.click();
+  await sleep(350);
+  out.n_back_all = terms().length;
+
+  const s1 = [...document.querySelectorAll('#kb-gl-subs .kb-gl-sub')].find(b => b.dataset.sub);
+  out.sub_pick = s1 ? s1.dataset.sub : null;
+  if (s1) s1.click();
+  await sleep(350);
+  out.n_sub = terms().length;
+  out.groups_sub = document.querySelectorAll('#kb-gl-body .kb-gl-group').length;
+  out.sub_terms = terms();
+  out.on_sub = (document.querySelector('#kb-gl-subs .kb-gl-sub.on') || {dataset: {}}).dataset.sub || null;
+  const sub0 = document.querySelector('#kb-gl-subs .kb-gl-sub[data-sub=""]');
+  if (sub0) sub0.click();
+  await sleep(350);
+  out.n_sub_back = terms().length;
+
+  const tb = document.querySelector('#kb-gl-body .kb-term[data-term="倒排索引"]');
+  if (tb) tb.click();
+  await sleep(350);
+  out.detail_open = !!q('.kb-term-detail');
+  out.detail_acts = [...document.querySelectorAll('.kb-term-detail .kb-act')].map(a => a.dataset.act);
+  out.detail_text = T(q('.kb-term-detail'));
+  out.term_marked_open = !!(tb && tb.classList.contains('open'));
+  if (tb) tb.click();
+  await sleep(350);
+  out.detail_closed = !q('.kb-term-detail');
+  out.term_unmarked = !document.querySelector('#kb-gl-body .kb-term.open');
+
+  // ---- 串学漫游：从「倒排索引」出发（它的 ## 相关术语 里挂着一个有卡片的 + 一个没卡片的）
+  if (tb) tb.click();
+  await sleep(350);
+  const roamAct = document.querySelector('.kb-term-detail .kb-act[data-act="roam"]');
+  out.roam_act_present = !!roamAct;
+  out.roam_hidden_before = q('#kb-roam') ? !!q('#kb-roam').hidden : null;
+  if (roamAct) roamAct.click();
+  for (let i = 0; i < 60 && !(q('#kb-roam') && !q('#kb-roam').hidden && q('#kb-roam .kb-roam-node')); i++) await sleep(150);
+  out.roam_open = !!(q('#kb-roam') && !q('#kb-roam').hidden);
+  out.roam_head = txt('.kb-roam-h');
+  out.roam_nodes = [...document.querySelectorAll('#kb-roam .kb-roam-node')].map(n => ({
+    // dead 节点是 <span>（不可点），glossary.js 没给它 data-term，名字只在文字里
+    t: n.dataset.term || T(n).split('·')[0].trim(),
+    dead: n.classList.contains('dead'), neu: n.classList.contains('is-new')}));
+  out.roam_search = location.search;
+  out.roam_search = location.search;
+  const reals = [...document.querySelectorAll('#kb-roam .kb-roam-node:not(.dead)')];
+  const pick = reals[reals.length - 1];
+  out.roam_pick = pick ? pick.dataset.term : null;
+  if (pick) pick.click();
+  for (let i = 0; i < 60 && txt('.kb-roam-h').indexOf('「' + (out.roam_pick || '~') + '」') < 0; i++) await sleep(150);
+  await sleep(700);
+  out.roam_head2 = txt('.kb-roam-h');
+  out.roam_search2 = location.search;
+  const rx = q('#kb-roam-x');
+  out.roam_x_present = !!rx;
+  if (rx) rx.click();
+  await sleep(500);
+  out.roam_hidden_after_x = !!(q('#kb-roam') && q('#kb-roam').hidden);
+  out.roam_empty_after_x = !!(q('#kb-roam') && q('#kb-roam').innerHTML === '');
+
+  // ---- 加入复习：状态点必须从「未学」翻成「学习中」（这一步真写 learn.db）
+  const t2 = document.querySelector('#kb-gl-body .kb-term[data-term="布隆过滤器"]')
+    || document.querySelector('#kb-gl-body .kb-term[data-term="向量数据库"]');
+  out.review_term = t2 ? t2.dataset.term : null;
+  out.dot_class_before = t2 && t2.querySelector('.kb-dotm') ? t2.querySelector('.kb-dotm').className : '';
+  if (t2) t2.click();
+  await sleep(350);
+  const rev = document.querySelector('.kb-term-detail .kb-act[data-act="review"]');
+  out.review_act_present = !!rev;
+  if (rev) rev.click();
+  for (let i = 0; i < 60 && txt('#toast').indexOf('已加入复习') < 0; i++) await sleep(150);
+  out.review_toast = txt('#toast');
+  await sleep(500);
+  const t2b = document.querySelector('#kb-gl-body .kb-term[data-term="' + (out.review_term || '~') + '"]');
+  out.dot_class_after = t2b && t2b.querySelector('.kb-dotm') ? t2b.querySelector('.kb-dotm').className : '';
+  return JSON.stringify(out);
+})()"""
+
+
+def probe_glossary(base):
+    print("== 12 术语门户：过滤 / 清空 / 首字母桶 / 子域 / 内联详情 ==")
+    gl = json.loads(urllib_get(base + "/api/glossary?domain=baike") or "{}")
+    flat = gl.get("items_flat") or []
+    api_buckets = {b.get("letter"): b.get("n") for b in (gl.get("buckets") or [])}
+    api_subs = {g.get("sub"): len(g.get("items") or []) for g in (gl.get("groups") or [])}
+    d = run_expr(base + "/glossary", GLOSSARY_JS)
+    check("术语门户：全量拉完并渲染出术语胶囊（骨架屏被替换掉）", d.get("ready") is True, d)
+    check("术语门户：胶囊数 == /api/glossary 的 items_flat 条数（不重复请求，也不漏项）",
+          d.get("n_all") == len(flat) and len(flat) >= 3, {"dom": d.get("n_all"), "api": len(flat)})
+    check("术语门户：计数行写着总数与当前显示数",
+          f"共 {len(flat)} 个术语" in (d.get("line_all") or "")
+          and f"当前显示 {len(flat)} 个" in (d.get("line_all") or ""), d.get("line_all"))
+    by_letter = {b.get("L"): b.get("n") for b in (d.get("bucket_labels") or [])}
+    check("术语门户：每个首字母桶上的数字 == 接口 buckets（接口没列的字母显示 0）",
+          all(by_letter.get(k, 0) == v for k, v in api_buckets.items())
+          and all(b.get("n") == 0 for b in (d.get("bucket_labels") or [])
+                  if b.get("L") != "all" and b.get("L") not in api_buckets),
+          {"dom": by_letter, "api": api_buckets})
+    check("术语门户：空桶同时带 .zero 与 aria-disabled（点了不该有反应的钮要在无障碍层说清楚）",
+          all(b.get("zero") is True and b.get("ad") == "true" for b in (d.get("bucket_labels") or [])
+              if b.get("L") != "all" and b.get("n") == 0),
+          [b for b in (d.get("bucket_labels") or []) if b.get("n") == 0][:4])
+    check("术语过滤：无匹配时渲染空态、并把当前筛选回显出来",
+          d.get("n_none") == 0 and "没有符合条件的术语" in (d.get("empty_none") or "")
+          and "zzz不存在zzz" in (d.get("empty_none") or ""), d.get("empty_none"))
+    want_q = sorted(it.get("term") for it in flat if "向量" in (it.get("term") or "").lower())
+    check("术语过滤：输入「向量」只剩真含该词的胶囊（本地过滤口径 = term 子串）",
+          sorted(d.get("q_terms") or []) == want_q and 0 < len(want_q) < len(flat),
+          {"dom": d.get("q_terms"), "api": want_q})
+    check("术语过滤：计数行的「当前显示」跟着变（不是只改网格）",
+          f"当前显示 {len(want_q)} 个" in (d.get("line_q") or ""), d.get("line_q"))
+    check("术语过滤：清空钮清掉输入、列表复原、焦点回到输入框",
+          d.get("clear_present") and d.get("q_value") == ""
+          and d.get("n_cleared") == len(flat) and d.get("focus_after_clear") == "kb-gl-q", d)
+    check("首字母桶：点非空桶后只显示该桶术语、.on 搬过去、条数等于桶计数",
+          d.get("n_letter") == d.get("letter_n") == by_letter.get(d.get("letter"))
+          and d.get("on_letter") == d.get("letter") and len(d.get("letter_terms") or []) > 0, d)
+    check("首字母桶：点空桶（.zero）必须什么都不变（守卫分支真的在）",
+          bool(d.get("zero_letter")) and d.get("n_after_zero") == d.get("n_letter")
+          and d.get("on_after_zero") == d.get("letter"), d)
+    check("首字母桶：点「全部」回到全量", d.get("n_back_all") == len(flat), d)
+    chip_counts = {c.get("s"): int(c.get("t", "").split("·")[-1]) for c in (d.get("sub_chips") or [])[1:]}
+    check("子域切换：钮上写着「子域 · 篇数」，篇数与接口 groups 逐项一致",
+          chip_counts == api_subs and len(api_subs) >= 2, {"dom": chip_counts, "api": api_subs})
+    want_sub = sorted(it.get("term") for it in flat if it.get("sub") == d.get("sub_pick"))
+    check("子域切换：选中一个子域后只剩该子域的术语、只剩 1 个分组、.on 跟着搬",
+          sorted(d.get("sub_terms") or []) == want_sub and d.get("n_sub") == len(want_sub)
+          and d.get("groups_sub") == 1 and d.get("on_sub") == d.get("sub_pick"),
+          {"dom": d.get("sub_terms"), "api": want_sub, "pick": d.get("sub_pick")})
+    check("子域切换：点「全部子域」复原", d.get("n_sub_back") == len(flat), d)
+    check("内联详情：点术语展开详情（三个动作：加入复习 / 跳转原文 / 串学）并给该胶囊打 .open",
+          d.get("detail_open") and d.get("detail_acts") == ["review", "doc", "roam"]
+          and d.get("term_marked_open") is True, d)
+    check("内联详情：里面写着定义摘要与来源路径（不是空壳）",
+          "倒排索引" in (d.get("detail_text") or "") and "baike/term" in (d.get("detail_text") or ""),
+          d.get("detail_text"))
+    check("内联详情：再点同一个术语收起（.open 标记一起撤掉，不留残影）",
+          d.get("detail_closed") is True and d.get("term_unmarked") is True, d)
+
+    print("== 13 串学漫游 #kb-roam / #kb-roam-x + 加入复习 ==")
+    roam = json.loads(urllib_get(base + "/api/learn/roam?from=" + quote("倒排索引") + "&n=6") or "{}")
+    check("串学：详情里的「串学」钮在位，且浮层初始是收着的",
+          d.get("roam_act_present") is True and d.get("roam_hidden_before") is True, d)
+    check("串学：点后浮层展开，标题写明从哪个术语出发",
+          d.get("roam_open") is True and "串学路径" in (d.get("roam_head") or "")
+          and "倒排索引" in (d.get("roam_head") or ""), d.get("roam_head"))
+    api_path = [p.get("term") for p in (roam.get("path") or [])]
+    dom_path = [n.get("t") for n in (d.get("roam_nodes") or []) if not n.get("dead")]
+    check("串学：路径节点与 /api/learn/roam 的 path 逐项一致（起点自己 + 沿 [[双链]] 走到的卡）",
+          dom_path == api_path and len(api_path) >= 2, {"dom": dom_path, "api": api_path})
+    dom_dead = [n.get("t") for n in (d.get("roam_nodes") or []) if n.get("dead")]
+    check("串学：语料里没有卡片的术语渲染成虚线「无卡片」节点，而不是被静默吞掉",
+          dom_dead == (roam.get("dead_ends") or []) and len(dom_dead) >= 1,
+          {"dom": dom_dead, "api": roam.get("dead_ends")})
+    check("串学：URL 带 ?roam=（pushState 进了历史，可分享 / 可后退）",
+          "roam=" in (d.get("roam_search") or ""), d.get("roam_search"))
+    check("串学：点路径上的节点 → 以它为新起点重画（标题跟着换、URL 跟着换）",
+          bool(d.get("roam_pick")) and f"「{d.get('roam_pick')}」" in (d.get("roam_head2") or "")
+          and quote(d.get("roam_pick") or "") in (d.get("roam_search2") or ""),
+          {"pick": d.get("roam_pick"), "head": d.get("roam_head2"), "search": d.get("roam_search2")})
+    check("串学：#kb-roam-x 收起后浮层 hidden 且内容清空（不是留一屏旧路径）",
+          d.get("roam_x_present") and d.get("roam_hidden_after_x") is True
+          and d.get("roam_empty_after_x") is True, d)
+    check("加入复习：详情里点它 → toast 回执 + 该术语状态点从「未学」翻成「学习中」",
+          "已加入复习" in (d.get("review_toast") or "")
+          and "new" in (d.get("dot_class_before") or "")
+          and "learning" in (d.get("dot_class_after") or ""),
+          {"term": d.get("review_term"), "before": d.get("dot_class_before"),
+           "after": d.get("dot_class_after"), "toast": d.get("review_toast")})
+
+
+# ================================================================ 探针 14：模拟面试 + 精确命中
+MOCK_JS = PRELUDE + r"""
+  const T = e => ((e && e.textContent) || '').replace(/\s+/g, ' ').trim();
+  for (let i = 0; i < 80 && !txt('#kb-card-term'); i++) await sleep(150);
+  out.card_term = txt('#kb-card-term');
+  out.boot_card_visible = !!(q('#kb-card') && !q('#kb-card').hidden);
+  out.foot_normal0 = txt('#kb-learn-foot');
+  out.mock_btn_present = !!q('#kb-mock-start');
+  out.chips = [...document.querySelectorAll('.kb-mock-choose button')].map(b => b.dataset.n);
+  out.chip_on0 = (q('.kb-mock-choose button.on') || {dataset: {}}).dataset.n || null;
+  const c5 = document.querySelector('.kb-mock-choose button[data-n="5"]');
+  if (c5) c5.click();
+  await sleep(200);
+  out.chip_on5 = (q('.kb-mock-choose button.on') || {dataset: {}}).dataset.n || null;
+  const c10 = document.querySelector('.kb-mock-choose button[data-n="10"]');
+  if (c10) c10.click();
+  await sleep(200);
+  out.chip_on10 = (q('.kb-mock-choose button.on') || {dataset: {}}).dataset.n || null;
+  const ms = q('#kb-mock-start');
+  out.start_present = !!ms;
+  if (ms) ms.click();
+  out.mid_sub = txt('#kb-learn-sub');                 // 同步读：出卷中…
+  for (let i = 0; i < 60 && txt('#kb-learn-sub').indexOf('计时开始') < 0; i++) await sleep(150);
+  out.started_sub = txt('#kb-learn-sub');
+  out.started_foot = txt('#kb-learn-foot');
+  out.grades_hidden_before = !!(q('#kb-grades') && q('#kb-grades').hidden);
+  out.started_term = txt('#kb-card-term');
+  out.started_cta = txt('#kb-learn-cta');
+  const chip = document.querySelector('#kb-sub-filters .kb-sub-chip[data-sub]:not([data-sub=""])');
+  out.sub_chip_pick = chip ? chip.dataset.sub : null;
+  out.sub_chip0 = (q('#kb-sub-filters .kb-sub-chip.on') || {dataset: {}}).dataset.sub;
+  if (chip) chip.click();
+  await sleep(400);
+  out.mock_block_toast = txt('#toast');
+  out.sub_chip1 = (q('#kb-sub-filters .kb-sub-chip.on') || {dataset: {}}).dataset.sub;
+  const rv1 = q('#kb-reveal'); out.reveal1 = !!rv1;
+  if (rv1) rv1.click();
+  await sleep(250);
+  out.grades_shown = !!(q('#kb-grades') && !q('#kb-grades').hidden);
+  out.grade_labels = [...document.querySelectorAll('.kb-grade')].map(T);
+  const g4 = document.querySelector('.kb-grade[data-q="4"]');
+  if (g4) g4.click();
+  for (let i = 0; i < 60 && !q('.kb-rep'); i++) await sleep(150);
+  out.report1 = !!q('.kb-rep');
+  out.score1 = T(q('.kb-rep-score'));
+  out.meta1 = T(q('.kb-rep-meta'));
+  out.rows1 = [...document.querySelectorAll('.kb-rep-row')].map(T);
+  out.report_sub1 = txt('#kb-learn-sub');
+  out.again_present = !!q('#kb-mock-again');
+  out.exit_present = !!q('#kb-mock-exit');
+  const ag = q('#kb-mock-again');
+  if (ag) ag.click();
+  for (let i = 0; i < 60 && txt('#kb-learn-sub').indexOf('计时开始') < 0; i++) await sleep(150);
+  out.again_sub = txt('#kb-learn-sub');
+  out.again_foot = txt('#kb-learn-foot');
+  out.no_report_mid = !q('.kb-rep');
+  const rv2 = q('#kb-reveal'); out.reveal2 = !!rv2;
+  if (rv2) rv2.click();
+  await sleep(250);
+  const g0 = document.querySelector('.kb-grade[data-q="0"]');
+  if (g0) g0.click();
+  for (let i = 0; i < 60 && !q('.kb-rep'); i++) await sleep(150);
+  await sleep(300);
+  out.score2 = T(q('.kb-rep-score'));
+  out.meta2 = T(q('.kb-rep-meta'));
+  const ex = q('#kb-mock-exit');
+  if (ex) ex.click();
+  for (let i = 0; i < 60 && txt('#kb-learn-sub').indexOf('到期') < 0 && txt('#kb-learn-sub').indexOf('本轮完成') < 0; i++) await sleep(150);
+  out.exit_sub = txt('#kb-learn-sub');
+  out.exit_no_rep = !q('.kb-rep');
+  out.exit_foot = txt('#kb-learn-foot');
+  out.exit_card_visible = !!(q('#kb-card') && !q('#kb-card').hidden);
+  out.exit_term = txt('#kb-card-term');
+  out.card_attached = !!(q('#kb-card') && document.contains(q('#kb-card')));
+  return JSON.stringify(out);
+})()"""
+
+EXACT_JS = PRELUDE + r"""
+  for (let i = 0; i < 60 && !(q('#kb-exact .result') || q('#kb-hits .result')); i++) await sleep(150);
+  out.q1 = new URLSearchParams(location.search).get('q');
+  out.exact_hidden1 = q('#kb-exact') ? !!q('#kb-exact').hidden : null;
+  out.exact_head1 = txt('#kb-exact .rc-head');
+  out.exact_cards1 = document.querySelectorAll('#kb-exact .result').length;
+  out.exact_badge1 = txt('#kb-exact .kb-badge-exact');
+  out.exact_title1 = txt('#kb-exact .result .title');
+  out.hits_cards1 = document.querySelectorAll('#kb-hits .result').length;
+  out.meta1 = txt('.srch-meta');
+  const prev = q('#kb-hits') ? q('#kb-hits').innerHTML : '';
+  history.pushState({}, '', '/search?q=' + encodeURIComponent('提示框'));
+  window.dispatchEvent(new PopStateEvent('popstate'));
+  for (let i = 0; i < 60 && q('#kb-hits') && q('#kb-hits').innerHTML === prev; i++) await sleep(150);
+  await sleep(500);
+  out.q2 = new URLSearchParams(location.search).get('q');
+  out.exact_hidden2 = q('#kb-exact') ? !!q('#kb-exact').hidden : null;
+  out.exact_cards2 = document.querySelectorAll('#kb-exact .result').length;
+  out.hits_cards2 = document.querySelectorAll('#kb-hits .result').length;
+  out.hits_head2 = txt('#kb-hits .rc-head');
+  out.first_title2 = txt('#kb-hits .result .title');
+  return JSON.stringify(out);
+})()"""
+
+
+def probe_mock(base):
+    print("== 14 模拟面试（出卷 → 中途切子域被拦 → 记分 → 成绩单 → 再来一轮 → 返回普通） ==")
+    api = json.loads(urllib_get(base + "/api/learn/mock?n=5") or "{}")
+    n_paper = len(api.get("cards") or [])
+    d = run_expr(base + "/quiz", MOCK_JS)
+    check("模拟面试：入口钮由 learn.js 注入在侧栏（不是模板里写死的）",
+          d.get("mock_btn_present") is True, d)
+    check("模拟面试：卷长可选 5/10/20，默认选中 10",
+          d.get("chips") == ["5", "10", "20"] and d.get("chip_on0") == "10", d)
+    check("模拟面试：点 5 题 .on 搬到 5、点 10 能搬回来（选择态可逆）",
+          d.get("chip_on5") == "5" and d.get("chip_on10") == "10", d)
+    check("模拟面试：点「开考」先进出卷态（同步读到「出卷中…」，不许静默）",
+          "出卷" in (d.get("mid_sub") or ""), d.get("mid_sub"))
+    check("模拟面试：出卷完成后副标题写着题数与计时开始，题数 == /api/learn/mock 实发张数",
+          d.get("started_sub") == f"模拟面试 · {n_paper} 题 · 计时开始" and n_paper >= 1,
+          {"dom": d.get("started_sub"), "api_n": n_paper})
+    check("模拟面试：底部条换成「第 1 / N 题 · 目前答对 0」（不是普通模式那行）",
+          "模拟面试 · 第 1 / " in (d.get("started_foot") or "")
+          and "目前答对 0" in (d.get("started_foot") or ""), d.get("started_foot"))
+    check("模拟面试：中途点子域筛选必须被拦（toast 说明 + .on 不许搬）",
+          "模拟面试进行中" in (d.get("mock_block_toast") or "")
+          and d.get("sub_chip0") == d.get("sub_chip1") != d.get("sub_chip_pick"),
+          {"toast": d.get("mock_block_toast"), "before": d.get("sub_chip0"),
+           "after": d.get("sub_chip1"), "pick": d.get("sub_chip_pick")})
+    check("模拟面试：翻面前评分区收着，翻面后才出，且面试只有两档（不会 / 会）",
+          d.get("grades_hidden_before") is True and d.get("grades_shown") is True
+          and len(d.get("grade_labels") or []) == 2, d.get("grade_labels"))
+    check("模拟面试：答「会」后交卷出成绩单，分数正确率与「已计入复习排期」都在",
+          d.get("report1") is True and d.get("score1") == f"1 / {n_paper}"
+          and "正确率" in (d.get("meta1") or "")
+          and "本次作答已计入复习排期" in (d.get("meta1") or ""),
+          {"score": d.get("score1"), "meta": d.get("meta1")})
+    check("模拟面试：成绩单按子域分行统计（答对 / 总数）",
+          len(d.get("rows1") or []) >= 1 and "/" in (d.get("rows1") or [""])[0], d.get("rows1"))
+    check("模拟面试：成绩单上两个出口钮都在位（再来一轮 / 返回普通刷题）",
+          d.get("again_present") is True and d.get("exit_present") is True, d)
+    check("模拟面试：「再来一轮」重新出卷并清零答卷（答对回到 0、成绩单消失）",
+          "计时开始" in (d.get("again_sub") or "") and "目前答对 0" in (d.get("again_foot") or "")
+          and d.get("no_report_mid") is True, {"sub": d.get("again_sub"), "foot": d.get("again_foot")})
+    check("模拟面试：这轮答「不会」→ 成绩单 0 / N、正确率 0%",
+          d.get("score2") == f"0 / {n_paper}" and "正确率 0%" in (d.get("meta2") or ""),
+          {"score": d.get("score2"), "meta": d.get("meta2")})
+    check("模拟面试：「返回普通刷题」退出模拟态（副标题回到队列口径、成绩单消失、底部条不再写模拟）",
+          ("到期" in (d.get("exit_sub") or "") or "本轮完成" in (d.get("exit_sub") or ""))
+          and d.get("exit_no_rep") is True and "模拟面试" not in (d.get("exit_foot") or ""),
+          {"sub": d.get("exit_sub"), "foot": d.get("exit_foot")})
+    # 这一条是本轮那个真缺陷的**唯一直接证据**：旧实现用 el.stage.innerHTML 写
+    # "抽题中 / 成绩单"，把常驻的 #kb-card（连同 CTA / 评分区 / 底部条）一起炸掉了，
+    # el.* 变成孤儿引用，之后所有渲染都写在看不见的地方。
+    # （退出模拟后卡片是否"可见"取决于队列为空与否 —— 两轮把唯一那道题记分完，
+    #   普通队列这时合法地是空的，所以这里断的是**节点还在文档里 + 开局真的可见**。）
+    check("模拟面试：答题卡是常驻节点 —— 开局可见、跑完整条模拟后 #kb-card 仍在文档里",
+          d.get("boot_card_visible") is True and d.get("card_attached") is True
+          and bool(d.get("exit_term")),
+          {"boot_visible": d.get("boot_card_visible"), "attached": d.get("card_attached"),
+           "term": d.get("exit_term")})
+
+    print("== 14b 搜索页精确命中区 #kb-exact ==")
+    e = run_expr(base + "/search?q=" + quote("向量数据库"), EXACT_JS)
+    check("精确命中：查询词与标题完全一致时 #kb-exact 不隐藏、标题写着「精确命中」",
+          e.get("exact_hidden1") is False and "精确命中" in (e.get("exact_head1") or ""), e)
+    check("精确命中：那一块里就是那篇文档，并带「精确命中」徽章",
+          e.get("exact_cards1") == 1 and "向量数据库" in (e.get("exact_title1") or "")
+          and "精确命中" in (e.get("exact_badge1") or ""), e)
+    check("精确命中：命中区自己声明「标题与查询词完全一致」的口径",
+          "标题与查询词完全一致" in (e.get("exact_head1") or ""), e.get("exact_head1"))
+    check("精确命中：换成只出现在正文里的词，#kb-exact 必须整块收起（不许留空壳）",
+          e.get("exact_hidden2") is True and e.get("exact_cards2") == 0, e)
+    check("精确命中：切换后常规列表仍有结果（不是把结果一起清没了）",
+          (e.get("hits_cards2") or 0) >= 1 and "全部命中" in (e.get("hits_head2") or ""), e)
+
+
+# ================================================================ 探针 15：治理页孤儿折叠 / 豁免
+# 台账 §2 行「治理 · #orphan-expand」。折叠线写死在 30 篇（`items.slice(0, 30)` +
+# `hidden = items.length <= 30`），P5 的语料只有几篇 —— 那一档**从来没进过**。
+ORPHAN_JS = PRELUDE + r"""
+  const T = e => ((e && e.textContent) || '').replace(/\s+/g, ' ').trim();
+  const rows = () => document.querySelectorAll('#list-orphans .gov-item').length;
+  const eb = q('#orphan-expand');
+  const shot = () => ({hidden: !!eb.hidden, text: T(eb), bound: typeof eb.onclick === 'function'});
+  out.expand_before_scan = shot();
+  q('#gov-scan-btn').click();
+  for (let i = 0; i < 120 && !(q('#gov-result') && !q('#gov-result').hidden); i++) await sleep(150);
+  out.scanned = !!(q('#gov-result') && !q('#gov-result').hidden);
+  out.summary = txt('#gov-summary');
+  out.cnt_orphan = T(q('#cnt-orphan'));
+  document.querySelector('.gov-tab[data-bucket="orphans"]').click();
+  await sleep(300);
+  out.pane_on = !!document.querySelector('.gov-tab[data-bucket="orphans"]').classList.contains('on');
+  out.rows_collapsed = rows();
+  out.more_collapsed = T(q('#list-orphans .gov-more'));
+  out.after_scan = shot();
+  eb.click();
+  await sleep(450);
+  out.rows_expanded = rows();
+  out.more_expanded = T(q('#list-orphans .gov-more'));
+  out.text_expanded = T(eb);
+  out.hidden_expanded = !!eb.hidden;
+  eb.click();
+  await sleep(450);
+  out.rows_again = rows();
+  out.text_again = T(eb);
+  out.more_again = T(q('#list-orphans .gov-more'));
+  let clicks = 0;
+  eb.click();                                     // 展开态下逐条豁免，保证每篇都在 DOM 里
+  await sleep(400);
+  while (document.querySelector('#list-orphans .gov-wl') && clicks < 120) {
+    document.querySelector('#list-orphans .gov-wl').click();
+    clicks++;
+    await sleep(50);
+  }
+  out.wl_clicks = clicks;
+  out.ls_wl = JSON.parse(localStorage.getItem('kb-gov-orphan-whitelist') || '[]');
+  out.rows_after_wl = rows();
+  out.none_text = T(q('#list-orphans .gov-none'));
+  out.after_wl = shot();
+  out.toast = T(q('#toast'));
+  return JSON.stringify(out);
+})()"""
+
+
+ORPHAN_EMPTY_JS = PRELUDE + r"""
+  const T = e => ((e && e.textContent) || '').replace(/\s+/g, ' ').trim();
+  const eb = q('#orphan-expand');
+  out.wl_seeded = JSON.parse(localStorage.getItem('kb-gov-orphan-whitelist') || '[]').length;
+  q('#gov-scan-btn').click();
+  for (let i = 0; i < 120 && !(q('#gov-result') && !q('#gov-result').hidden); i++) await sleep(150);
+  document.querySelector('.gov-tab[data-bucket="orphans"]').click();
+  await sleep(350);
+  out.rows = document.querySelectorAll('#list-orphans .gov-item').length;
+  out.none_text = T(q('#list-orphans .gov-none'));
+  out.after_scan = {hidden: !!eb.hidden, text: T(eb), bound: typeof eb.onclick === 'function'};
+  return JSON.stringify(out);
+})()"""
+
+
+def probe_orphan_expand(base, tmp):
+    print("== 15 治理页孤儿桶：>30 篇折叠 / 展开全部 / 逐条豁免到清空 ==")
+    scan = json.loads(urllib_get(base + "/api/governance/scan") or "{}")
+    total = len(scan.get("orphans") or [])
+    d = run_expr(base + "/governance", ORPHAN_JS)
+    check("孤儿折叠：扫描完成后计数 == 接口条数，且必须 >30（否则这一档根本进不去）",
+          d.get("cnt_orphan") == str(total) and total > 30,
+          {"dom": d.get("cnt_orphan"), "api": total})
+    check("孤儿折叠：默认只显示前 30 篇，并写明「还有 N 篇未显示」",
+          d.get("rows_collapsed") == 30 and "还有" in (d.get("more_collapsed") or "")
+          and str(total - 30) in (d.get("more_collapsed") or ""), d.get("more_collapsed"))
+    check("孤儿折叠：>30 时钮可见、文案「展开全部」、且真的绑上了处理函数",
+          d.get("after_scan", {}).get("hidden") is False
+          and "展开全部" in (d.get("after_scan", {}).get("text") or "")
+          and d.get("after_scan", {}).get("bound") is True, d.get("after_scan"))
+    check("孤儿折叠：点「展开全部」列出全部 N 篇、折叠提示消失、文案翻成「收起」",
+          d.get("rows_expanded") == total and (d.get("more_expanded") or "") == ""
+          and "收起" in (d.get("text_expanded") or "") and d.get("hidden_expanded") is False,
+          {"rows": d.get("rows_expanded"), "api": total, "text": d.get("text_expanded")})
+    check("孤儿折叠：点「收起」回到 30 篇、提示回来（状态可逆）",
+          d.get("rows_again") == 30 and "还有" in (d.get("more_again") or "")
+          and "展开全部" in (d.get("text_again") or ""), d.get("more_again"))
+    check("孤儿豁免：逐条点完的次数 == 孤儿总数（每点一次重画一次，没有点到就消失的空档）",
+          d.get("wl_clicks") == total, {"clicks": d.get("wl_clicks"), "api": total})
+    check("孤儿豁免：白名单落在 localStorage，条目数 == 豁免数",
+          len(d.get("ls_wl") or []) == total, {"ls": len(d.get("ls_wl") or []), "api": total})
+    check("孤儿豁免：清空后写明「没有孤儿文档（已豁免 N 篇）」",
+          "没有孤儿文档" in (d.get("none_text") or "") and str(total) in (d.get("none_text") or ""),
+          d.get("none_text"))
+    check("孤儿豁免：列表空了以后「展开全部」必须跟着藏起来（不许留一个点了没反应的钮）",
+          d.get("rows_after_wl") == 0 and d.get("after_wl", {}).get("hidden") is True,
+          d.get("after_wl"))
+    check("豁免只写本地白名单：磁盘上那 34 篇孤儿 md 一篇没少（不改语料）",
+          len(list((tmp / "content" / "ui-r" / "orphans").glob("*.md"))) == ORPHAN_COUNT,
+          len(list((tmp / "content" / "ui-r" / "orphans").glob("*.md"))))
+
+    # 15b **首屏就 0 孤儿**那一档。`renderOrphans` 在 items 为空时是提前 return 的，
+    # 而模板里的 `<button id="orphan-expand">` 没有 hidden 初值 —— 逐条豁免清空时
+    # 上一轮已经把 hidden 设过了（所以 15 里那条是绿的），但"扫出来就是 0 篇"
+    # 根本走不到那一行。用 KB_GEOM_INIT 在页面脚本之前把全量白名单灌进
+    # localStorage，就能把这一档单独造出来测。
+    paths = [o.get("path") for o in (scan.get("orphans") or [])]
+    seed = ("try{localStorage.setItem('kb-gov-orphan-whitelist', %s);}catch(e){}"
+            % json.dumps(json.dumps(paths, ensure_ascii=False)))
+    e = run_expr(base + "/governance", ORPHAN_EMPTY_JS, init=seed)
+    check("孤儿空态（首屏 0 篇）：空态文案写明「没有孤儿文档（已豁免 N 篇）」",
+          "没有孤儿文档" in (e.get("none_text") or "")
+          and str(len(paths)) in (e.get("none_text") or ""), e.get("none_text"))
+    check("孤儿空态（首屏 0 篇）：「展开全部」不许留成一个点了没反应的死钮",
+          e.get("after_scan", {}).get("hidden") is True and (e.get("rows") or 0) == 0,
+          e.get("after_scan"))
+
+
 def only(name) -> bool:
     """开发期单跑某一探针：`python tests/test_ui_behavior.py nav`。
     不带参数 = 全跑（pre-commit / CI 走的就是全跑）。"""
@@ -1047,6 +1711,10 @@ def main() -> int:
         run_probe("asset", probe_asset_rewrite, base)   # 只读 /raw（顺带把 §5 那格补上）
         run_probe("pref", probe_prefs, base)            # 只写 localStorage（不动语料；每趟自带新 profile）
         run_probe("drawer", probe_drawer, base)         # 只读 /tags，但依赖上面的标签还在
+        run_probe("home", probe_home_today, base)       # 只读：首页今日学习卡（必须在下面两个记分探针之前）
+        run_probe("glossary", probe_glossary, base)     # 读 + 一次「加入复习」记分（baike 卡）
+        run_probe("mock", probe_mock, base)             # 读 + 面试卡记分；14b 只读 /search
+        run_probe("orphans", probe_orphan_expand, base, tmp)   # 只写 localStorage 白名单
         run_probe("newdoc", probe_newdoc, base, tmp)    # 写：在空子域里建一篇
         run_probe("inbox", probe_inbox, base, tmp)      # 写：_trash 软删 + 物理 purge（只动 _inbox 两个靶子）
         run_probe("crumb", probe_crumb_delete, base, tmp)    # 写：删 gamma

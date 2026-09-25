@@ -96,8 +96,17 @@ try {
       await sleep(600);  // 断点切换后重排
       const out = await send('Runtime.evaluate',
         { expression: expr, returnByValue: true, awaitPromise: true });
-      if (out.result?.result?.value === undefined) {
-        console.log(JSON.stringify({ vw: w, error: (out.exceptionDetails?.exception?.description || 'undefined').slice(0, 200) }));
+      // 求值失败要能看见：**promise reject 时 Chrome 把 Error 对象原样回传**，
+      // returnByValue 反序列化后是 `{}`（Error 的 message/stack 不是可枚举自有属性）——
+      // 只看 value === undefined 会把"表达式抛了"和"返回了空对象"混成同一种输出，
+      // 测试侧拿到 {} 时完全无从下手（2026-09-25 轮次 28 在这上面耗过一轮）。
+      const ex = out.exceptionDetails;
+      const isRejected = out.result?.result?.subtype === 'error';
+      if (ex || isRejected) {
+        const desc = ex?.exception?.description || ex?.text || 'rejected';
+        console.log(JSON.stringify({ vw: w, error: desc.slice(0, 400) }));
+      } else if (out.result?.result?.value === undefined) {
+        console.log(JSON.stringify({ vw: w, error: 'undefined' }));
       } else {
         console.log(out.result.result.value);
       }

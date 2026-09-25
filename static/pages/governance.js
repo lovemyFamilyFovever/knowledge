@@ -179,6 +179,11 @@
     var items = (DATA.orphans || []).filter(function (o) { return !wl.has(o.path); });
     if (!items.length) {
       list.innerHTML = '<div class="gov-none">没有孤儿文档' + (wl.size ? "（已豁免 " + wl.size + " 篇）" : "") + '。</div>';
+      // 空列表没有"全部"可展开：模板里的 <button id="orphan-expand"> 没有 hidden 初值，
+      // 不在这里收掉的话，"扫出来就是 0 篇"这一档会留一个点了没反应、onclick 也没绑的
+      // 死钮（逐条豁免清空时靠上一轮的赋值侥幸躲过 —— 见台账 §6 第 36 行）。
+      var ebEmpty = $("#orphan-expand");
+      if (ebEmpty) { ebEmpty.hidden = true; ebEmpty.onclick = null; }
       return;
     }
     var shown = orphanExpanded ? items : items.slice(0, 30);
