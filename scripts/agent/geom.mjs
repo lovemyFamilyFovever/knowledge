@@ -56,6 +56,13 @@ try {
   const { ws, send, targetId } = await openTab('about:blank');
   try {
     await send('Page.enable');
+    // 可选的"页面任何脚本之前先注入"：env KB_GEOM_INIT（JS 源码）。
+    // 与 shot.mjs 的 init 同源（Page.addScriptToEvaluateOnNewDocument），
+    // 用来把 localStorage 偏好钉成确定态 —— 例如验"刷新后偏好仍然生效"。
+    const initSrc = process.env.KB_GEOM_INIT || '';
+    if (initSrc) {
+      await send('Page.addScriptToEvaluateOnNewDocument', { source: initSrc });
+    }
     await send('Page.navigate', { url });
     for (let i = 0; i < 40; i++) {
       const r = await send('Runtime.evaluate', { expression: 'document.readyState', returnByValue: true });

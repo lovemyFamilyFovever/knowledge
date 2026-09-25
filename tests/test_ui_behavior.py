@@ -119,12 +119,13 @@ def build_root(tmp: Path):
 PROBE_WIDTH = 1600
 
 
-def run_expr(url, js, width=PROBE_WIDTH, click="", click_wait=1800):
+def run_expr(url, js, width=PROBE_WIDTH, click="", click_wait=1800, init=""):
     """在指定视口宽度下求值一个 async 表达式（表达式须 return 一个 JSON 字符串）。
 
     `click` 非空时先点这些选择器（逗号分隔）再求值 —— 点击引发整页导航也没关系，
     geom.mjs 等的是 readyState，求值发生在导航之后的新文档里，所以"点了到底换没换页"
     能直接断出来（这是本套能覆盖"一级导航"那 8 行的关键）。
+    `init` 非空时在页面任何脚本执行**之前**注入（验"刷新后偏好仍然生效"用）。
     """
     QA.mkdir(parents=True, exist_ok=True)
     f = QA / "behavior-expr.js"
@@ -133,6 +134,8 @@ def run_expr(url, js, width=PROBE_WIDTH, click="", click_wait=1800):
     if click:
         env["KB_GEOM_CLICK"] = click
         env["KB_GEOM_CLICK_WAIT"] = str(click_wait)
+    if init:
+        env["KB_GEOM_INIT"] = init
     r = subprocess.run(
         ["node", str(ROOT / "scripts" / "agent" / "geom.mjs"), url, str(width), "@" + str(f)],
         cwd=str(ROOT), capture_output=True, text=True,
@@ -251,6 +254,154 @@ def probe_nav(base, tmp):
           f"rows={sorted(r.replace('_inbox/', '') for r in rows)} disk={real}")
     check("收件箱列表：备注旁挂 .notes.md 不算待归档条目（与分类树 B2 同一口径）",
           not any(r.endswith(".notes.md") for r in rows), rows)
+
+
+# ---------------------------------------------------------------- 探针 10：阅读排版偏好
+# 这一组是"改了到底生效没有"最典型的地方：七个控件各自写一个 CSS 变量到 documentElement，
+# 偏好落 localStorage，刷新后要仍然生效，恢复默认要能全部退回。历史上 B18 就是"签名失效"
+# 让偏好改了当下看起来有效、刷新就回退 —— 所以**驱动**与**刷新后应用**必须分开各断一次。
+PREF_CASES = [
+    # (偏好键, 控件 id, 事件, 设的值, CSS 变量, 期望变量值, 期望 output 文本)
+    ("scale", "kb-pref-scale", "input", "1.45", "--kb-fs-scale", "1.45", "1.45×"),
+    ("line", "kb-pref-line", "input", "2.1", "--kb-line", "2.1", "2.10"),
+    ("h1s", "kb-pref-h1s", "input", "2.2", "--kb-h1-size", "2.2rem", "2.20"),
+    ("h2s", "kb-pref-h2s", "input", "1.6", "--kb-h2-size", "1.6rem", "1.60"),
+    ("h3s", "kb-pref-h3s", "input", "1.2", "--kb-h3-size", "1.2rem", "1.20"),
+    ("code", "kb-pref-code", "input", "16", "--kb-code-size", "16px", "16px"),
+    ("halign", "kb-pref-halign", "change", "left", "--kb-h1-align", "left", None),
+    ("font", "kb-pref-font", "change", "serif", "--kb-font", "var(--f-disp)", None),
+]
+PREF_DEFAULTS = {"--kb-fs-scale": "1", "--kb-line": "1.75", "--kb-h1-size": "1.55rem",
+                 "--kb-h2-size": "1.3rem", "--kb-h3-size": "1.12rem", "--kb-code-size": "13px",
+                 "--kb-h1-align": "center", "--kb-font": "var(--f-body)"}
+
+PREF_JS = PRELUDE + """
+  const CASES = __CASES__;
+  const VARS = CASES.map(c => c[4]);
+  // 读**内联**写的值（apply() 就是写到 documentElement.style）：getComputedStyle 会把
+  // var(--f-body) 展开成真实字体栈，那已经不是偏好写进去的东西了（第一轮就因此误判"字体没生效"）。
+  const cs = () => document.documentElement.style;
+  const readVars = () => {
+    const o = {};
+    for (const v of VARS) o[v] = cs().getPropertyValue(v).trim();
+    return o;
+  };
+  out.vars_before = readVars();
+  q('#kb-settings-btn').click();
+  await sleep(700);
+  out.drawer_open = !!q('#kb-set-tabs');
+  const tab = q('#kb-set-tabs [data-sec="type"]');
+  out.tab_present = !!tab;
+  if (tab) tab.click();
+  await sleep(400);
+  const sec = q('section[data-sec="type"]');
+  out.type_section_shown = !!sec && sec.hidden === false;
+  out.driven = {};
+  for (const [key, id, ev, val, cssVar, want, outText] of CASES) {
+    const el = q('#' + id);
+    if (!el) { out.driven[key] = { missing: true }; continue; }
+    el.value = val;
+    el.dispatchEvent(new Event(ev, { bubbles: true }));
+    await sleep(220);
+    const o = q('#' + id + '-o');
+    out.driven[key] = {
+      var_now: cs().getPropertyValue(cssVar).trim(),
+      out_now: o ? (o.textContent || '').trim() : null,
+      ls: (JSON.parse(localStorage.getItem('kb-readpref') || '{}')[key] !== undefined)
+          ? String(JSON.parse(localStorage.getItem('kb-readpref'))[key]) : null,
+    };
+  }
+  // 恢复默认：所有变量必须退回 PREF_DEF（style.css [8] 区的原始硬值），localStorage 也要写回默认
+  const rb = q('#kb-pref-reset');
+  out.reset_btn = !!rb;
+  if (rb) rb.click();
+  await sleep(500);
+  out.vars_after_reset = readVars();
+  // 强制动效：勾一下，localStorage 要落 '1'（刷新才生效，所以这里只断写入）
+  const mb = q('#kb-pref-motion');
+  out.motion_present = !!mb;
+  if (mb) { mb.checked = true; mb.dispatchEvent(new Event('change', { bubbles: true })); }
+  await sleep(300);
+  out.motion_ls = localStorage.getItem('kb-force-motion');
+  // 读取系统字体：无头环境没有 queryLocalFonts，必须走"提示不支持"的降级而不是静默
+  const fb = q('#kb-pref-fontsys');
+  out.fontsys_btn = !!fb;
+  out.has_local_fonts = !!window.queryLocalFonts;
+  if (fb) fb.click();
+  await sleep(600);
+  out.fontsys_toast = txt('#toast');
+  out.fontsys_optgroups = document.querySelectorAll('#kb-pref-font optgroup').length;
+  return JSON.stringify(out);
+})()"""
+
+PREF_RELOAD_JS = PRELUDE + """
+  const cs = document.documentElement.style;   // 同 PREF_JS：读 apply() 写的内联原值
+  out.vars = {
+    scale: cs.getPropertyValue('--kb-fs-scale').trim(),
+    line: cs.getPropertyValue('--kb-line').trim(),
+    h1: cs.getPropertyValue('--kb-h1-size').trim(),
+    code: cs.getPropertyValue('--kb-code-size').trim(),
+    halign: cs.getPropertyValue('--kb-h1-align').trim(),
+    font: cs.getPropertyValue('--kb-font').trim(),
+  };
+  const h1 = q('.a-body h1, #article h1, .sec-card h2');
+  out.h1_align_applied = h1 ? getComputedStyle(h1).textAlign : null;
+  out.ls = localStorage.getItem('kb-readpref');
+  return JSON.stringify(out);
+})()"""
+
+
+def probe_prefs(base):
+    print("== 10 阅读排版偏好（七个控件 + 恢复默认 + 刷新后仍然生效） ==")
+    cases_json = json.dumps([[c[0], c[1], c[2], c[3], c[4], c[5], c[6]] for c in PREF_CASES])
+    d = run_expr(base + "/doc/ui-r/notes/alpha.md", PREF_JS.replace("__CASES__", cases_json))
+    check("排版偏好：设置抽屉能打开、且有「排版」分区", d.get("drawer_open") and d.get("tab_present"), d)
+    check("排版偏好：切到「排版」后该分区可见（不是只换了按钮高亮）",
+          d.get("type_section_shown") is True, d)
+    before = d.get("vars_before") or {}
+    check("排版偏好：没动过偏好时，八个变量等于 PREF_DEF（渲染零变化）",
+          all(before.get(k) == v for k, v in PREF_DEFAULTS.items()),
+          {k: (before.get(k), v) for k, v in PREF_DEFAULTS.items() if before.get(k) != v})
+    driven = d.get("driven") or {}
+    for key, _cid, _ev, _val, css_var, want, out_text in PREF_CASES:
+        got = driven.get(key) or {}
+        check(f"排版偏好 {key}：驱动控件后 CSS 变量真的变成 {want}",
+              not got.get("missing") and got.get("var_now") == want, got)
+        if out_text is not None:
+            check(f"排版偏好 {key}：滑杆旁的读数同步更新为 {out_text}",
+                  got.get("out_now") == out_text, got)
+        check(f"排版偏好 {key}：写进了 localStorage（不写语料文件）",
+                  got.get("ls") is not None, got)
+    check("排版偏好：「恢复默认」把所有变量退回原值",
+          d.get("reset_btn") and all((d.get("vars_after_reset") or {}).get(k) == v
+                                    for k, v in PREF_DEFAULTS.items()),
+          d.get("vars_after_reset"))
+    check("强制动效：勾选写进 localStorage kb-force-motion",
+          d.get("motion_present") and d.get("motion_ls") == "1",
+          f"present={d.get('motion_present')} ls={d.get('motion_ls')!r}")
+    # 「读取系统字体」在两种环境里走两条路：能枚举 → 往 select 里加分组；被拒/不支持 → 弹提示。
+    # 无头 Chrome 是后者（有 window.queryLocalFonts，但调用被拒 → SecurityError → toast）。
+    # 断言只要求"点了必须有反馈"，静默才算坏；两条分支都算通过，但必须显式说出走了哪条。
+    check("读取系统字体：点了必有反馈（枚举出分组，或被拒时给失败提示），不许静默无反应",
+          d.get("fontsys_btn") and (d.get("fontsys_optgroups", 0) >= 1
+                                    or "失败" in (d.get("fontsys_toast") or "")
+                                    or "不支持" in (d.get("fontsys_toast") or "")),
+          {"api": d.get("has_local_fonts"), "groups": d.get("fontsys_optgroups"),
+           "toast": d.get("fontsys_toast")})
+
+    # 刷新后仍然生效：把偏好**预先写进 localStorage** 再加载页面，验 apply() 在启动时就应用
+    seeded = json.dumps({"scale": 1.45, "line": 2.1, "h1s": 2.2, "h2s": 1.3, "h3s": 1.12,
+                         "code": 16, "halign": "left", "font": "serif"})
+    init = ("try{localStorage.setItem('kb-readpref', %s);}catch(e){}" % json.dumps(seeded))
+    r = run_expr(base + "/doc/ui-r/notes/alpha.md", PREF_RELOAD_JS, init=init)
+    v = r.get("vars") or {}
+    check("排版偏好刷新后生效：正文字号/行高/一级标题/代码 都按 localStorage 应用",
+          v.get("scale") == "1.45" and v.get("line") == "2.1"
+          and v.get("h1") == "2.2rem" and v.get("code") == "16px", v)
+    check("排版偏好刷新后生效：标题对齐与字体也应用（halign=left / font=serif）",
+          v.get("halign") == "left" and v.get("font") == "var(--f-disp)", v)
+    check("排版偏好真的落到渲染结果上：一级标题 text-align 是 start/left",
+          (r.get("h1_align_applied") or "") in ("left", "start"), r.get("h1_align_applied"))
 
 
 # ---------------------------------------------------------------- 探针 1：问吧
@@ -769,6 +920,7 @@ def main() -> int:
         run_probe("tag", probe_tag_suggest, base)       # 只读（要右栏渲染出来 → 见 PROBE_WIDTH 注释）
         run_probe("mermaid", probe_mermaid, base, tmp)  # 只读 /raw
         run_probe("asset", probe_asset_rewrite, base)   # 只读 /raw（顺带把 §5 那格补上）
+        run_probe("pref", probe_prefs, base)            # 只写 localStorage（不动语料；每趟自带新 profile）
         run_probe("drawer", probe_drawer, base)         # 只读 /tags，但依赖上面的标签还在
         run_probe("newdoc", probe_newdoc, base, tmp)    # 写：在空子域里建一篇
         run_probe("inbox", probe_inbox, base, tmp)      # 写：_trash 软删 + 物理 purge（只动 _inbox 两个靶子）
