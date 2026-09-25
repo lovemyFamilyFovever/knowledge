@@ -89,6 +89,13 @@ EXTRA = {
     "content/_inbox/待彻底删除条目.md": "---\ntitle: 待彻底删除条目\n---\n\npurge 按钮的靶子。\n",
     "content/_inbox/待彻底删除条目.md.notes.md": "---\ntitle: 待彻底删除条目 的备注\n---\n\n旁挂备注。\n",
     "content/_inbox/待彻底删除条目.html": "<!DOCTYPE html><html><body><p>同名挂件美化版</p></body></html>\n",
+    # 收件箱"归档 / 忽略"两条动作的靶子（探针 8 的第三段用）：
+    # 两篇走批量归档、一篇走单篇 move、一个目录走忽略、一个根级文件走"没有目录可忽略"的护栏。
+    "content/_inbox/归档样本甲.md": "---\ntitle: 归档样本甲\n---\n\n批量归档靶子甲。\n",
+    "content/_inbox/归档样本乙.md": "---\ntitle: 归档样本乙\n---\n\n批量归档靶子乙。\n",
+    "content/_inbox/单篇归档.md": "---\ntitle: 单篇归档\n---\n\n单篇 move 靶子。\n",
+    "content/_inbox/开发产物/说明.md": "---\ntitle: 开发产物说明\n---\n\n整个目录要被忽略。\n",
+    "content/_inbox/根级忽略.md": "---\ntitle: 根级忽略\n---\n\n根级文件，没有目录可忽略。\n",
     # 美化版 HTML 里常见的公网 CDN 引用：`_rewrite_html_assets` 必须把它们换成仓库内的
     # vendored 副本（离线可用是这仓库的硬要求）。这一篇同时补上台账 §5 那一格
     # （`routes_pages._rewrite_html_assets` 此前"模块私有、无人测"）。
@@ -803,6 +810,75 @@ INBOX_PURGE_JS = PRELUDE + """
 })()"""
 
 
+INBOX_FLOW_JS = PRELUDE + """
+  const row = n => q(`.kan-item[data-rel$="${n}"]`);
+  const rowsNow = () => [...document.querySelectorAll('.kan-item')].map(x => x.dataset.rel);
+  out.rows_at_start = document.querySelectorAll('.kan-item').length;
+  out.go_disabled_at_start = q('#ib-go').disabled;
+  // 1) 勾两篇 → 选择态与计数
+  for (const n of ['归档样本甲.md', '归档样本乙.md']) {
+    const c = row(n) && row(n).querySelector('.ib-check');
+    if (c) { c.checked = true; c.dispatchEvent(new Event('change', { bubbles: true })); }
+  }
+  await sleep(400);
+  out.sel_count = document.querySelectorAll('.kan-item.sel').length;
+  out.count_text = txt('#ib-count');
+  out.go_enabled = q('#ib-go').disabled === false;
+  // 2) 批量归档 → 弹窗填目标目录
+  q('#ib-go').click();
+  await sleep(600);
+  const dirIn = q('.kbm-input[data-k="dir"]');
+  out.archive_modal = !!dirIn;
+  if (dirIn) { dirIn.value = 'ui-r/已归档'; q('.kbm-ok').click(); }
+  for (let i = 0; i < 40 && row('归档样本甲.md'); i++) await sleep(200);
+  out.batch_rows_gone = !row('归档样本甲.md') && !row('归档样本乙.md');
+  out.batch_toast = txt('#toast');
+  await sleep(600);
+  // 3) 单篇归档（move）
+  const mv = row('单篇归档.md');
+  out.move_btn_present = !!(mv && mv.querySelector('[data-act="move"]'));
+  if (mv) mv.querySelector('[data-act="move"]').click();
+  await sleep(600);
+  const dstIn = q('.kbm-input[data-k="dst"]');
+  out.move_modal = !!dstIn;
+  if (dstIn) { dstIn.value = 'ui-r/已归档/单篇归档.md'; q('.kbm-ok').click(); }
+  for (let i = 0; i < 40 && row('单篇归档.md'); i++) await sleep(200);
+  out.move_row_gone = !row('单篇归档.md');
+  await sleep(500);
+  // 4) 根级文件点「忽略」：弹窗文案必须说"忽略这一个文件"（后端确实是这么退化的），
+  //    然后**取消** —— 取消不该写任何东西
+  const ig0 = row('根级忽略.md');
+  out.root_ignore_present = !!(ig0 && ig0.querySelector('[data-act="ignore"]'));
+  if (ig0) ig0.querySelector('[data-act="ignore"]').click();
+  await sleep(700);
+  const m = q('.kbm');
+  out.root_modal_title = m ? txt('.kbm-title-t') : '';
+  out.root_modal_body = m ? txt('.kbm-body') : '';
+  out.root_modal_value = q('.kbm-input[data-k="d"]') ? q('.kbm-input[data-k="d"]').value : null;
+  const cancel = q('.kbm-cancel');
+  if (cancel) cancel.click();
+  await sleep(500);
+  out.root_row_still = !!row('根级忽略.md');
+  // 5) 目录级忽略：整目录从待归档消失，但**源文件不动**
+  const ig1 = row('说明.md');
+  if (ig1) ig1.querySelector('[data-act="ignore"]').click();
+  await sleep(700);
+  const dIn = q('.kbm-input[data-k="d"]');
+  out.ignore_modal = !!dIn;
+  out.ignore_prefill = dIn ? dIn.value : null;
+  out.dir_modal_title = q('.kbm') ? txt('.kbm-title-t') : '';
+  if (dIn) { q('.kbm-ok').click(); }
+  for (let i = 0; i < 40 && row('说明.md'); i++) await sleep(200);
+  out.ignored_row_gone = !row('说明.md');
+  await sleep(500);
+  // 6) 归档过的条目进「最近归档」列（localStorage 记账，不是数据库）
+  out.done_rows = document.querySelectorAll('.kan-col[data-col="done"] .kan-item').length;
+  out.recent_ls = (function () { try { return JSON.parse(localStorage.getItem('kb-inbox-recent') || '[]'); } catch (e) { return []; } })();
+  out.rows_left = rowsNow().length;
+  return JSON.stringify(out);
+})()"""
+
+
 def probe_inbox(base, tmp):
     print("== 8 收件箱 mini-act del / purge ==")
     ib = tmp / "content" / "_inbox"
@@ -832,6 +908,55 @@ def probe_inbox(base, tmp):
           [p.name for p in (purge, purge_side, purge_html) if p.exists()])
     check("收件箱：purge 不留 _trash 副本（它和软删是两条路，别混）",
           not list((tmp / "content" / "_trash").rglob("待彻底删除条目*")), "有残留")
+
+    # ---- 第三段：归档 / 忽略（#ib-go 与 mini-act move·ignore）----
+    d3 = run_expr(base + "/inbox", INBOX_FLOW_JS)
+    check("批量归档：动手前归档按钮是禁用的（没勾任何行）",
+          d3.get("go_disabled_at_start") is True, d3)
+    check("批量归档：勾两篇 → 两行进入 .sel、计数读数写「已选 2 篇」、按钮转可用",
+          d3.get("sel_count") == 2 and "已选 2" in (d3.get("count_text") or "")
+          and d3.get("go_enabled") is True,
+          {"sel": d3.get("sel_count"), "count": d3.get("count_text")})
+    check("批量归档：弹窗要求填目标目录（不是默认丢进某个域）", d3.get("archive_modal") is True, d3)
+    check("批量归档：确认后两行都离开看板", d3.get("batch_rows_gone") is True, d3)
+    moved = tmp / "content" / "ui-r" / "已归档"
+    check("批量归档：两篇真的落盘到目标目录（写文件系统，不是只改前端）",
+          (moved / "归档样本甲.md").is_file() and (moved / "归档样本乙.md").is_file(),
+          [p.name for p in moved.glob("*")] if moved.is_dir() else "目录不存在")
+    check("单篇归档：行内有 move 动作、弹窗要目标路径",
+          d3.get("move_btn_present") and d3.get("move_modal"), d3)
+    check("单篇归档：确认后行消失且文件落在指定路径",
+          d3.get("move_row_gone") is True and (moved / "单篇归档.md").is_file(),
+          [p.name for p in moved.glob("*")] if moved.is_dir() else "目录不存在")
+    check("忽略：根级文件的弹窗说实话（说「忽略这个文件」，不谎称目录、不加尾斜杠）",
+          d3.get("root_ignore_present") and "文件" in (d3.get("root_modal_title") or "")
+          and "目录" not in (d3.get("root_modal_title") or "")
+          and (d3.get("root_modal_value") or "") == "根级忽略.md"
+          and "_inbox/根级忽略.md/" not in (d3.get("root_modal_body") or ""),
+          {"title": d3.get("root_modal_title"), "value": d3.get("root_modal_value")})
+    check("忽略：点「取消」就真的什么都没发生（行还在、清单没写）",
+          d3.get("root_row_still") is True, d3)
+    check("忽略：目录级忽略的弹窗预填的就是那个目录、标题说的是目录",
+          d3.get("ignore_modal") and (d3.get("ignore_prefill") or "") == "开发产物"
+          and "目录" in (d3.get("dir_modal_title") or ""),
+          {"prefill": d3.get("ignore_prefill"), "title": d3.get("dir_modal_title")})
+    check("忽略：整目录从待归档列表消失", d3.get("ignored_row_gone") is True, d3)
+    check("忽略：源文件**没动**（忽略是清单，不是删除）",
+          (tmp / "content" / "_inbox" / "开发产物" / "说明.md").is_file()
+          and (tmp / "content" / "_inbox" / "根级忽略.md").is_file(), "文件不见了")
+    igf = tmp / "content" / "_meta" / "inbox-ignore.json"
+    igj = json.loads(igf.read_text(encoding="utf-8")) if igf.is_file() else {}
+    check("忽略：清单落盘 content/_meta/inbox-ignore.json 且只记了被确认的那个目录",
+          "开发产物" in (igj.get("dirs") or []) and "根级忽略.md" not in (igj.get("files") or []),
+          igj)
+    # 规则必须**对下一次扫描生效**（不只是当前 DOM 少了一行）：重新拉一次服务端渲染的列表
+    again = urllib_get(base + "/inbox")
+    check("忽略：重新拉取收件箱，被忽略目录里的那篇真的不再进待归档（规则对下次扫描生效）",
+          "说明.md" not in again and "根级忽略.md" in again,
+          [n for n in ("说明.md", "根级忽略.md") if (n in again) != (n == "根级忽略.md")])
+    check("归档记录：两篇归档过的进「最近归档」列，且是 localStorage 记的账",
+          d3.get("done_rows", 0) >= 3 and len(d3.get("recent_ls") or []) >= 3,
+          {"done_rows": d3.get("done_rows"), "ls": d3.get("recent_ls")})
 
 
 # ---------------------------------------------------------------- 探针 9：标签页看板抽屉

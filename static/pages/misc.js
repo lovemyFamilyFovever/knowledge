@@ -452,26 +452,37 @@ function initInbox() {
   async function inboxIgnoreDir(row) {
     const rel = row.dataset.rel;
     const inner = rel.replace(/^_inbox\//, "");
-    const dir = inner.includes("/") ? inner.slice(0, inner.lastIndexOf("/")) : inner;
-    if (!dir) { toast("根级文件没有目录可忽略，请直接丢弃"); return; }
+    const isDir = inner.includes("/");
+    const dir = isDir ? inner.slice(0, inner.lastIndexOf("/")) : inner;
+    // 根级文件没有父目录可忽略：后端会退化成"忽略这一个文件"（routes_files.py:186），
+    // 所以文案必须跟着变 —— 原来这里一律写"忽略整个目录 /_inbox/<文件>/ "，
+    // 既多了一个不存在的尾斜杠，又承诺了"以后扫进该目录的文件都不再出现"（并不成立）。
+    // 旧代码那句 `if (!dir)` 是死分支（行必有名字），一并删掉。
     const res = await kbModal({
-      title: "忽略整个目录？",
-      body: `把 <span class='mono'>_inbox/${esc(dir)}/</span> 加入忽略清单：本批与以后扫进该目录的文件都不再出现在待归档（清单可手工编辑回滚，源文件不动）。`,
-      inputs: [{ key: "d", label: "要忽略的目录（相对 _inbox）", value: dir }],
+      title: isDir ? "忽略整个目录？" : "忽略这个文件？",
+      body: isDir
+        ? `把 <span class='mono'>_inbox/${esc(dir)}/</span> 加入忽略清单：本批与以后扫进该目录的文件都不再出现在待归档（清单可手工编辑回滚，源文件不动）。`
+        : `<span class='mono'>_inbox/${esc(dir)}</span> 在收件箱根级，没有父目录可忽略 —— 这里忽略的是**这一个文件**：它不再出现在待归档，同目录其他文件不受影响（清单可手工编辑回滚，源文件不动）。`,
+      inputs: [{ key: "d", label: isDir ? "要忽略的目录（相对 _inbox）" : "要忽略的文件（相对 _inbox）", value: dir }],
       confirmText: "忽略",
     });
     if (!res || !res.d) return;
+    const edited = res.d.replace(/^\/+|\/+$/g, "");
     const r = await fetch("/api/inbox/ignore", { method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ path: "_inbox/" + res.d, scope: "dir" }) });
+      // scope 必须跟着"这是目录还是根级文件"走：以前一律发 dir，根级文件就被记成
+      // 一条永远匹配不到的规则（台账 §6 第 34 行）
+      body: JSON.stringify({ path: "_inbox/" + edited, scope: isDir ? "dir" : "file" }) });
     const d = await r.json().catch(() => ({}));
     if (!r.ok || !d.ok) { toast("忽略失败：" + (d.error || r.status)); return; }
-    const gone = rowsInDir(d.ignored);
+    // d.ignored 是**全路径**（"_inbox/开发产物"），旧写法又在前面拼了一次 "_inbox/"，
+    // 前缀成了 "_inbox/_inbox/…" → 永远匹配不到 → 点了忽略行还在原地。
+    const gone = isDir ? rowsInDir(d.ignored) : items().filter(x => x.dataset.rel === d.ignored);
     gone.forEach(x => x.remove());
     ibUpdate();
     toast(`已忽略 <span class='mono'>${esc(d.ignored)}</span> · ${gone.length} 篇从列表移除`);
   }
   function rowsInDir(dir) {
-    const pfx = "_inbox/" + dir.replace(/\/+$/, "") + "/";
+    const pfx = String(dir || "").replace(/\/+$/, "") + "/";
     return items().filter(x => (x.dataset.rel + "/").startsWith(pfx));
   }
 

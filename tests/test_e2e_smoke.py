@@ -572,6 +572,19 @@ def main() -> int:
         check("POST /api/inbox/ignore ok", r.status_code == 200 and d.get("ok") is True, str(d)[:160])
         check("POST /api/inbox/ignore 忽略清单落盘",
               ig.is_file() and "pending.md" in ig.read_text(encoding="utf-8"))
+        # scope=dir 的契约（轮次 27 修）：path **就是**要被忽略的目录本身，
+        # 后端不许再往上取一层父目录 —— 旧实现会把 "_inbox/开发产物" 记成
+        # 它的上一级（根级时甚至退化成一条匹配不到的 file 规则），于是"点了忽略、行还在、
+        # 清单里躺着假规则"（台账 §6 第 34 行）。
+        r = c.post("/api/inbox/ignore", json={"path": "_inbox/开发产物", "scope": "dir"})
+        d = jget(r)
+        rules = d.get("rules") or {}
+        check("POST /api/inbox/ignore scope=dir 记的是我给的那个目录（不再上溯一层）",
+              r.status_code == 200 and "开发产物" in (rules.get("dirs") or [])
+              and "开发产物" not in (rules.get("files") or []), str(d)[:200])
+        r = c.post("/api/inbox/ignore", json={"path": "_inbox", "scope": "dir"})
+        check("POST /api/inbox/ignore 拒绝忽略整个 _inbox（那等于让收件箱从此不进任何索引）",
+              r.status_code == 400 and jget(r).get("ok") is False, str(jget(r))[:160])
 
         # /api/inbox/purge（全仓唯一物理删除接口）
         r = c.post("/api/inbox/purge", json={"path": "_inbox/keep.md"})

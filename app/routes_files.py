@@ -167,9 +167,14 @@ def _resolve_dst(dst_rel: str):
 
 @files_bp.post("/api/inbox/ignore")
 def api_inbox_ignore():
-    """收件箱忽略（需求 #3）：把文件或其所在目录加入忽略清单，不再出现在待归档。
+    """收件箱忽略（需求 #3）：把文件或目录加入忽略清单，不再出现在待归档。
     body: {path: "_inbox/desktop/code/dev-output/x.md", scope: "file"|"dir"}
-    scope=dir 时忽略该文件所在目录。清单落 _meta/inbox-ignore.json（可手工编辑回滚）。"""
+    **契约（2026-09-25 修正）**：`path` 就是"要被忽略的那个东西"本身 ——
+    scope=file 时它是文件路径，scope=dir 时它是目录路径（`store.add_inbox_ignore` 一直是
+    这么要求的，前端也是这么发的；旧实现在这里又 `rsplit` 了一次父目录，于是
+    "忽略 _inbox/开发产物/" 实际记下的是**它的上一级**，根级目录名甚至退化成一条
+    永远匹配不到文件的 file 规则 → 行不消失、toast 报"0 篇从列表移除"、清单里躺着一条
+    假规则。台账 §6 第 34 行）。清单落 _meta/inbox-ignore.json（可手工编辑回滚）。"""
     from app.store import add_inbox_ignore
     data = request.get_json(force=True)
     rel = str(data.get("path") or "")
@@ -178,12 +183,9 @@ def api_inbox_ignore():
         return jsonify({"ok": False, "error": "scope must be file|dir"}), 400
     if not rel.startswith("_inbox/"):
         return jsonify({"ok": False, "error": "path must start with _inbox/"}), 400
-    if scope == "dir":
-        inner = rel[len("_inbox/"):]
-        if "/" in inner:
-            rel = "_inbox/" + inner.rsplit("/", 1)[0]
-        else:
-            scope = "file"  # 根级文件无父目录可忽略，退化为忽略文件本身
+    if scope == "dir" and rel.rstrip("/") == "_inbox":
+        # 忽略整个收件箱 = 让 _inbox 从此不进任何索引，这不是这个按钮该能做的事
+        return jsonify({"ok": False, "error": "cannot ignore _inbox itself"}), 400
     try:
         rules = add_inbox_ignore(_content(), rel, scope)
     except ValueError as e:
