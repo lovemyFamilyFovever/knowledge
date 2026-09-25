@@ -27,6 +27,7 @@
 """
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -1963,6 +1964,284 @@ def probe_toc_spark(base):
 # ================================================================ 探针 20：左树打开见 probe_tree_open
 
 
+# ================================================================ 探针 20：设置·小说 排版偏好七件套
+# 台账 §2 六行：排版五项 / 首行缩进 / 字体+系统字体 / 护眼主题+自定义底色 / 朗读速度 / 恢复默认。
+# 与轮次 26 的阅读排版偏好同源，但**多一层**：小说偏好除了 CSS 变量，还要落进一个字面量
+# `<style id="kb-nv-style">`（Chromium 对 :root 自定义属性变更不做已渲染节点的 font-size 失效重算，
+# 见 kb-novel.js:96 的注释）—— 所以每一格都断"变量 + 字面量样式 + 读数 + localStorage"四处一致，
+# 少写任何一处都会在这里露出来。
+NV_DEF = {"size": ("--nv-size", "17px"), "line": ("--nv-line", "1.9"),
+          "track": ("--nv-track", "0.5px"), "gap": ("--nv-gap", "10px"),
+          "widthRem": ("--nv-maxw", "44rem"), "indent": ("--nv-indent", "2em"),
+          "font": ("--nv-font", "var(--f-body)"), "theme": ("--nv-bg", "#ffffff")}
+
+NV_JS = PRELUDE + r"""
+  const T = e => ((e && e.textContent) || '').replace(/\s+/g, ' ').trim();
+  const S = document.documentElement.style;
+  const tag = () => ((q('#kb-nv-style') || {}).textContent) || '';
+  const ls = () => { try { return JSON.parse(localStorage.getItem('kb-novel-pref') || 'null'); } catch (e) { return null; } };
+  const V = {size:'--nv-size', line:'--nv-line', track:'--nv-track', gap:'--nv-gap',
+             widthRem:'--nv-maxw', indent:'--nv-indent', font:'--nv-font', theme:'--nv-bg'};
+  const drive = async (id, val) => {
+    const el = q('#kb-npref-' + id);
+    if (!el) return {missing: true};
+    const r = {kind: el.tagName + ':' + (el.type || '')};
+    if (el.type === 'checkbox') { el.checked = val; }
+    else { el.value = String(val); }
+    const ev = (el.tagName === 'SELECT' || el.type === 'checkbox') ? 'change' : 'input';
+    el.dispatchEvent(new Event(ev, {bubbles: true}));
+    await sleep(150);
+    const one = ls() || {};
+    r.var = S.getPropertyValue(V[id] || ('--nv-' + id)).trim();
+    r.out = T(q('#kb-npref-' + id + '-o'));
+    r.ls = one[id];
+    r.style = tag();
+    return r;
+  };
+  const btn = q('#kb-settings-btn');
+  out.btn_present = !!btn;
+  if (btn) btn.click();
+  await sleep(600);
+  const tab = document.querySelector('#kb-set-tabs [data-sec="novel"]');
+  out.tab_present = !!tab;
+  if (tab) tab.click();
+  await sleep(500);
+  out.panel = !!q('#nv-panel-host .nv-set');
+  out.section_shown = !!(document.querySelector('.kb-set-sec[data-sec="novel"]')
+                         && !document.querySelector('.kb-set-sec[data-sec="novel"]').hidden);
+  out.groups = [...document.querySelectorAll('#nv-panel-host .nv-grp-h')].map(T);
+  out.vars0 = {};
+  Object.keys(V).forEach(k => { out.vars0[k] = S.getPropertyValue(V[k]).trim(); });
+  out.tag0 = tag();
+  out.size = await drive('size', 22);
+  out.line = await drive('line', 2.35);
+  out.track = await drive('track', 1.5);
+  out.gap = await drive('gap', 18);
+  out.width = await drive('widthRem', 60);
+  out.full = await drive('widthRem', 100);      // 边界：100 = "撑满"，CSS 要写成 none
+  out.indent_off = await drive('indent', false);
+  out.indent_on = await drive('indent', true);
+  out.font = await drive('font', 'serif');
+  out.rate = await drive('rate', '1.5');
+  // 越界值必须被 norm() 钳回区间（size 上限 26）
+  out.clamp = await drive('size', 999);
+  // 护眼主题：底色 + 文字色成对翻，且自定义底色被清掉、.on 搬过去
+  const tb = document.querySelector('.nv-theme-btn[data-nvtheme="night"]');
+  out.theme_btn = tb ? T(tb) : '';
+  if (tb) tb.click();
+  await sleep(250);
+  out.theme = {bg: S.getPropertyValue('--nv-bg').trim(), ink: S.getPropertyValue('--nv-ink').trim(),
+               on: [...document.querySelectorAll('.nv-theme-btn.on')].map(T), ls: (ls() || {}).theme};
+  // 自定义底色：深色底必须自动配浅色字（N.inkFor 的亮度判据）
+  const cb = q('#kb-npref-bgcustom');
+  out.custom_present = !!cb;
+  if (cb) { cb.value = '#123456'; cb.dispatchEvent(new Event('input', {bubbles: true})); }
+  await sleep(250);
+  out.custom = {bg: S.getPropertyValue('--nv-bg').trim(), ink: S.getPropertyValue('--nv-ink').trim(),
+                ls: (ls() || {}).bgCustom};
+  // 系统字体：能枚举就加分组，被拒/不支持就给提示 —— 静默才算坏
+  const fs = q('#kb-npref-fontsys');
+  out.fontsys_present = !!fs;
+  if (fs) fs.click();
+  await sleep(1200);
+  out.fontsys = {groups: document.querySelectorAll('#kb-npref-font optgroup').length,
+                 toast: txt('#toast'), label: fs ? T(fs) : '', api: !!window.queryLocalFonts};
+  // 恢复默认：四处一起回位 + 面板重画
+  const rst = q('#kb-npref-reset');
+  out.reset_present = !!rst;
+  if (rst) rst.click();
+  await sleep(600);
+  out.after_reset = {vars: {}, ls: ls(), toast: txt('#toast')};
+  Object.keys(V).forEach(k => { out.after_reset.vars[k] = S.getPropertyValue(V[k]).trim(); });
+  out.after_reset.slider_value = (q('#kb-npref-size') || {}).value;
+  out.after_reset.panel_back = !!q('#nv-panel-host .nv-set');
+  out.after_reset.theme_on = [...document.querySelectorAll('.nv-theme-btn.on')].map(T);
+  return JSON.stringify(out);
+})()"""
+
+NV_SEED_JS = PRELUDE + r"""
+  const T = e => ((e && e.textContent) || '').replace(/\s+/g, ' ').trim();
+  const S = document.documentElement.style;
+  out.vars = {size: S.getPropertyValue('--nv-size').trim(), line: S.getPropertyValue('--nv-line').trim(),
+              bg: S.getPropertyValue('--nv-bg').trim(), maxw: S.getPropertyValue('--nv-maxw').trim(),
+              indent: S.getPropertyValue('--nv-indent').trim()};
+  out.tag = ((q('#kb-nv-style') || {}).textContent || '').replace(/\s+/g, ' ');
+  const btn = q('#kb-settings-btn'); if (btn) btn.click();
+  await sleep(500);
+  const tab = document.querySelector('#kb-set-tabs [data-sec="novel"]'); if (tab) tab.click();
+  await sleep(500);
+  out.controls = {size: (q('#kb-npref-size') || {}).value, line: (q('#kb-npref-line') || {}).value,
+                  theme_on: [...document.querySelectorAll('.nv-theme-btn.on')].map(b => T(b)),
+                  theme_key: [...document.querySelectorAll('.nv-theme-btn.on')].map(b => b.dataset.nvtheme),
+                  indent: !!(q('#kb-npref-indent') || {}).checked};
+  return JSON.stringify(out);
+})()"""
+
+
+def probe_novel_prefs(base):
+    print("== 20 设置·小说：排版五项 / 缩进 / 字体 / 护眼主题 / 速度 / 恢复默认 ==")
+    d = run_expr(base + "/doc/nv-r/books/" + quote("长夜.txt"), NV_JS)
+    check("小说偏好：设置抽屉能打开、四个分区页签里确实有「小说」",
+          d.get("btn_present") and d.get("tab_present") and d.get("panel")
+          and d.get("section_shown") is True, d)
+    check("小说偏好：面板分三组（排版 / 外观 / 阅读），不是一堆裸滑杆",
+          len(d.get("groups") or []) == 3
+          and [g for g in (d.get("groups") or [])] == ["排版", "外观", "阅读"], d.get("groups"))
+    for key, (var, want) in NV_DEF.items():
+        got = (d.get("vars0") or {}).get(key)
+        check(f"小说偏好：没动过之前 {key} 的 CSS 变量等于默认值 {want}", got == want,
+              {"got": got, "want": want})
+    for key, want_var, want_out, want_style in [
+        ("size", "22px", "22px", "font-size:22px"),
+        ("line", "2.35", "2.35", "line-height:2.35"),
+        ("track", "1.5px", "1.5px", "letter-spacing:1.5px"),
+        ("gap", "18px", "18px", "margin:18px 0"),
+        ("width", "60rem", "60rem", "max-width:60rem"),   # JS 侧存成 out.width
+    ]:
+        r = d.get(key) or {}
+        check(f"小说偏好 {key}：滑杆 → CSS 变量 → 字面量样式 → 读数 → localStorage 四处一致",
+              r.get("var") == want_var and want_style in (r.get("style") or "")
+              and r.get("out") == want_out
+              # localStorage 存的是数字，CSS 存的是带单位的串：剥掉单位再比
+              and str(r.get("ls")) in (want_var, want_var.rstrip("pxrem%")),
+              r)
+    full = d.get("full") or {}
+    check("小说偏好 宽度：拉到 100 是「撑满」语义（读数写撑满、CSS 写 none，不是 100rem）",
+          full.get("var") == "none" and full.get("out") == "撑满"
+          and "max-width:none" in (full.get("style") or ""), full)
+    off, on = (d.get("indent_off") or {}), (d.get("indent_on") or {})
+    check("小说偏好 首行缩进：开关两态真的换 CSS（2em ↔ 0），不是只有滑块动了",
+          off.get("var") == "0" and on.get("var") == "2em"
+          and "text-indent:0" in (off.get("style") or "")
+          and "text-indent:2em" in (on.get("style") or "")
+          and off.get("ls") == 0 and on.get("ls") == 1, {"off": off, "on": on})
+    fnt = d.get("font") or {}
+    check("小说偏好 字体：选「衬线（宋体）」后 --nv-font 与字面量样式都换成那串字体栈",
+          "Source Han Serif SC" in (fnt.get("var") or "")
+          and "Source Han Serif SC" in (fnt.get("style") or "") and fnt.get("ls") == "serif", fnt)
+    rate = d.get("rate") or {}
+    check("小说偏好 速度：朗读/滚动速率落进 localStorage（1.5× 不是 15 也不是字符串）",
+          rate.get("ls") == 1.5, rate)
+    clamp = d.get("clamp") or {}
+    # 这一条只证明"滑杆本身到不了越界值"（input 的 max=26 先把 999 夹回 26）；
+    # **它锁不住 norm() 的区间钳制** —— 定点变异把 norm 的钳制短路掉，这条照样绿（实测）。
+    # 真正走 norm() 的是下面那条"越界 localStorage 种子"。
+    check("小说偏好 滑杆：越界的输入被 range 控件自己的 max 挡在 26（滑杆到不了 999px）",
+          clamp.get("var") == "26px" and clamp.get("ls") == 26
+          and "font-size:999px" not in (clamp.get("style") or ""), clamp)
+    th = d.get("theme") or {}
+    check("小说偏好 护眼主题：点「夜读」底色与文字色成对翻、.on 搬过去、自定义底色被清空",
+          th.get("bg") == "#1a1d21" and th.get("ink") == "#c9cdd3"
+          and th.get("on") == ["夜读"] and th.get("ls") == "night", th)
+    cu = d.get("custom") or {}
+    check("小说偏好 自定义底色：深色底自动配浅色字（inkFor 的亮度判据），且优先于主题",
+          cu.get("bg") == "#123456" and cu.get("ink") == "#d6dae0" and cu.get("ls") == "#123456", cu)
+    fs = d.get("fontsys") or {}
+    check("小说偏好 系统字体：点了必有反馈（枚举出分组 或 给出失败/不支持提示），不许静默",
+          d.get("fontsys_present") is True
+          and (fs.get("groups", 0) >= 1 or "失败" in (fs.get("toast") or "")
+               or "不支持" in (fs.get("toast") or "")), fs)
+    ar = d.get("after_reset") or {}
+    back = ar.get("vars") or {}
+    check("小说偏好 恢复默认：八个变量全部退回默认值（不是只把滑杆拨回去）",
+          all(back.get(k) == v for k, (_, v) in NV_DEF.items()),
+          {"got": back, "want": {k: v for k, (_, v) in NV_DEF.items()}})
+    check("小说偏好 恢复默认：localStorage 也回默认、面板重画、主题选中态回到「纯白」",
+          (ar.get("ls") or {}).get("size") == 17 and (ar.get("ls") or {}).get("bgCustom") == ""
+          and ar.get("slider_value") == "17" and ar.get("panel_back") is True
+          and ar.get("theme_on") == ["纯白"] and "恢复默认" in (ar.get("toast") or ""),
+          {"ls": ar.get("ls"), "v": ar.get("slider_value"), "on": ar.get("theme_on"),
+           "toast": ar.get("toast")})
+    # 刷新后仍然生效：把偏好预先写进 localStorage，验 kb-novel.js 加载时就 apply
+    seeded = json.dumps({"size": 24, "line": 2.2, "track": 1, "gap": 16, "indent": 0,
+                         "widthRem": 34, "font": "mono", "theme": "sage", "bgCustom": "",
+                         "flow": "scroll", "rate": 1.25})
+    init = "try{localStorage.setItem('kb-novel-pref', %s);}catch(e){}" % json.dumps(seeded)
+    r = run_expr(base + "/doc/nv-r/books/" + quote("长夜.txt"), NV_SEED_JS, init=init)
+    v = r.get("vars") or {}
+    check("小说偏好刷新后生效：CSS 变量与字面量样式按 localStorage 应用（不用先打开抽屉）",
+          v.get("size") == "24px" and v.get("line") == "2.2" and v.get("bg") == "#e9f0e6"
+          and v.get("maxw") == "34rem" and v.get("indent") == "0"
+          and "font-size:24px" in (r.get("tag") or ""), {"vars": v, "tag": (r.get("tag") or "")[:160]})
+    c = r.get("controls") or {}
+    check("小说偏好刷新后生效：抽屉里每个控件的初值也读的是偏好（不是滑回默认）",
+          c.get("size") == "24" and c.get("line") == "2.2"
+          and c.get("theme_key") == ["sage"] and c.get("indent") is False, c)
+
+    # 越界 / 脏值 / 已废弃字段：`norm()` 是这套偏好的唯一入口守门人（区间钳制、主题回退、
+    # 字体名消毒、bgCustom 必须是 #rrggbb）。**只能从 localStorage 这一侧喂进去测** ——
+    # 滑杆那侧 input 的 min/max 先把值挡掉了，走不到 norm（定点变异实测：短路掉钳制，
+    # 上面那条"滑杆"断言照样绿）。
+    hostile = json.dumps({"size": 999, "line": 0.2, "track": -5, "gap": 99, "indent": 7,
+                          "widthRem": 999, "font": 'a"b;c<div>', "theme": "nonsense",
+                          "bgCustom": "red", "flow": "sideways", "rate": 99, "width": "full"})
+    h = run_expr(base + "/doc/nv-r/books/" + quote("长夜.txt"), NV_SEED_JS,
+                 init="try{localStorage.setItem('kb-novel-pref', %s);}catch(e){}" % json.dumps(hostile))
+    hv = h.get("vars") or {}
+    hc = h.get("controls") or {}
+    check("小说偏好守门：越界数字全部被 norm() 夹回区间（999→26 / 0.2→1.5 / -5→0 / 99→24 / 999rem→撑满）",
+          hv.get("size") == "26px" and hv.get("line") == "1.5" and hv.get("indent") == "2em"
+          and hv.get("maxw") == "none", {"vars": hv})
+    tag_h = h.get("tag") or ""
+    check("小说偏好守门：非法主题/底色回退到默认（theme=nonsense、bgCustom=red 都不认）",
+          hv.get("bg") == "#ffffff" and hc.get("theme_key") == ["white"], {"bg": hv.get("bg")})
+    # 只看 font-family 那一段（整段里合法的 var(--f-body) 也带括号，不能整段禁括号）
+    fam = re.search(r"font-family:([^;]+);", tag_h)
+    fam = fam.group(1) if fam else ""
+    check("小说偏好守门：脏字体名里的注入字符被 safeFamily 剥光（font-family 段不许出现 < > ; \ 与裸引号）",
+          "abcdiv" in fam and not any(ch in fam for ch in ("<", ">", ";", "\\"))
+          and "expression" not in fam.lower() and "url(" not in fam.lower(),
+          {"font-family": fam})
+    check("小说偏好守门：抽屉里的控件初值也是钳制后的值（不是把 999 塞进滑杆）",
+          hc.get("size") == "26" and hc.get("line") == "1.5" and hc.get("theme_key") == ["white"], hc)
+
+
+# ================================================================ 探针 21：快捷键清单（唯一数据源）
+KEYS_JS = PRELUDE + r"""
+  const T = e => ((e && e.textContent) || '').replace(/\s+/g, ' ').trim();
+  const rows = host => [...(host || document).querySelectorAll('.kb-help-row')]
+    .map(r => [T(r.querySelector('kbd')), T(r.querySelector('span'))]);
+  const btn = q('#kb-settings-btn'); if (btn) btn.click();
+  await sleep(600);
+  const tab = document.querySelector('#kb-set-tabs [data-sec="keys"]');
+  out.tab_present = !!tab;
+  if (tab) tab.click();
+  await sleep(400);
+  out.tab_shown = !!(document.querySelector('.kb-set-sec[data-sec="keys"]')
+                     && !document.querySelector('.kb-set-sec[data-sec="keys"]').hidden);
+  out.set_rows = rows(document.querySelector('.kb-set-sec[data-sec="keys"]'));
+  out.registry = (window.KB && KB.keys && KB.keys.registry || []).map(k => [k.combo, k.desc]);
+  out.scopes = [...new Set((window.KB && KB.keys && KB.keys.registry || []).map(k => k.scope))];
+  // 关掉抽屉，按 `?` 唤出完整帮助 —— 两处必须是同一份数据源渲染的
+  const close = q('#kb-settings-close') || q('.kb-set-x');
+  if (close) close.click();
+  await sleep(400);
+  document.dispatchEvent(new KeyboardEvent('keydown', {key: '?', bubbles: true, cancelable: true}));
+  await sleep(600);
+  out.help_open = !!(q('#kb-help') && q('#kb-help').classList.contains('show'));
+  out.help_rows = rows(q('#kb-help'));
+  return JSON.stringify(out);
+})()"""
+
+
+def probe_keys(base):
+    print("== 21 快捷键清单：设置抽屉与 `?` 帮助必须同源于 KEY_REGISTRY ==")
+    d = run_expr(base + "/doc/ui-r/notes/alpha.md", KEYS_JS)
+    reg = d.get("registry") or []
+    check("快捷键：KEY_REGISTRY 在页面上可读，且四类作用域都在（global/browse/editor/review）",
+          len(reg) == 14 and set(d.get("scopes") or []) == {"global", "browse", "editor", "review"},
+          {"n": len(reg), "scopes": d.get("scopes")})
+    check("快捷键：设置抽屉的「快捷键」分区能切出来（section 不再 hidden）",
+          d.get("tab_present") is True and d.get("tab_shown") is True, d)
+    check("快捷键：抽屉里列出的每一条 kbd + 说明与 registry 逐项一致（没有第二份手抄清单）",
+          d.get("set_rows") == reg, {"rows": d.get("set_rows"), "reg": reg})
+    check("快捷键：按 `?` 真的能唤出完整帮助浮层", d.get("help_open") is True, d)
+    check("快捷键：`?` 帮助与设置抽屉是同一份数据源（两处条目逐字相同）",
+          d.get("help_rows") == reg and len(d.get("help_rows") or []) == 14,
+          {"help": (d.get("help_rows") or [])[:3], "n": len(d.get("help_rows") or [])})
+
+
+
 def only(name) -> bool:
     """开发期单跑某一探针：`python tests/test_ui_behavior.py nav`。
     不带参数 = 全跑（pre-commit / CI 走的就是全跑）。"""
@@ -2021,6 +2300,8 @@ def main() -> int:
         run_probe("pretty", probe_pretty, base)           # 只读：美化版出口与只读态
         run_probe("finish", probe_finish_bar, base, tmp)  # 写 reading.db 的 doc_marks（不动语料）
         run_probe("spark", probe_toc_spark, base)         # 写 reading.db 的事件（派生库，不动语料）
+        run_probe("novelpref", probe_novel_prefs, base)  # 只写 localStorage（小说偏好）
+        run_probe("keys", probe_keys, base)             # 只读：快捷键两处同源
         run_probe("newdoc", probe_newdoc, base, tmp)    # 写：在空子域里建一篇
         run_probe("inbox", probe_inbox, base, tmp)      # 写：_trash 软删 + 物理 purge（只动 _inbox 两个靶子）
         run_probe("crumb", probe_crumb_delete, base, tmp)    # 写：删 gamma
