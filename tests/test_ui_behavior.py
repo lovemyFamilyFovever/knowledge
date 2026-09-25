@@ -82,6 +82,16 @@ def check(name, cond, extra=""):
 #     用来打 /raw 的放大浮层；
 #   · 两个收件箱条目，其中一个带 sidecar `.notes.md` 与同名 `.html` 挂件，
 #     用来验 purge 是否把三件一起物理删掉。
+def _long_book_text():
+    """3 章 × 40 段的合成书（只为把阅读区撑出可滚动余量，内容无意义）。"""
+    out = []
+    for c, cn in ((1, "一"), (2, "二"), (3, "三")):
+        out.append(f"第{cn}章 样本")
+        for q in range(1, 41):
+            out.append(f"这是第{cn}章第{q}段，用来把阅读区撑出可滚动的余量。")
+    return "\n".join(out) + "\n"
+
+
 EXTRA = {
     "content/ui-r/notes/mermaid样本.html": """<!DOCTYPE html>
 <html lang="zh-CN"><head><meta charset="utf-8"><title>Mermaid 样本</title></head><body>
@@ -105,6 +115,11 @@ EXTRA = {
     # 美化版 HTML 里常见的公网 CDN 引用：`_rewrite_html_assets` 必须把它们换成仓库内的
     # vendored 副本（离线可用是这仓库的硬要求）。这一篇同时补上台账 §5 那一格
     # （`routes_pages._rewrite_html_assets` 此前"模块私有、无人测"）。
+    # 一本**够长**的合成书：自动滚动那颗钮的停止判据是「滚到底了就停」（`kb-novel.js` 的 autoTick：
+    # `scrollTop + clientHeight >= scrollHeight - 2`），而 P5 那本三章假小说在滚动模式下
+    # 只渲染第一章、`.nv-stage` 根本不溢出 —— 于是第一帧 rAF 就 autoStop，
+    # 看起来像「点了没反应」。这一本 3 章 × 40 段才测得到「真的在动」。
+    "content/nv-r/books/长篇样本.txt": _long_book_text(),
     "content/ui-r/notes/cdn样本.html": """<!DOCTYPE html>
 <html lang="zh-CN"><head><meta charset="utf-8"><title>CDN 样本</title>
 <script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
@@ -2188,7 +2203,7 @@ def probe_novel_prefs(base):
     # 只看 font-family 那一段（整段里合法的 var(--f-body) 也带括号，不能整段禁括号）
     fam = re.search(r"font-family:([^;]+);", tag_h)
     fam = fam.group(1) if fam else ""
-    check("小说偏好守门：脏字体名里的注入字符被 safeFamily 剥光（font-family 段不许出现 < > ; \ 与裸引号）",
+    check("小说偏好守门：脏字体名里的注入字符被 safeFamily 剥光（font-family 段不许出现尖括号、分号、反斜杠）",
           "abcdiv" in fam and not any(ch in fam for ch in ("<", ">", ";", "\\"))
           and "expression" not in fam.lower() and "url(" not in fam.lower(),
           {"font-family": fam})
@@ -2239,6 +2254,153 @@ def probe_keys(base):
     check("快捷键：`?` 帮助与设置抽屉是同一份数据源（两处条目逐字相同）",
           d.get("help_rows") == reg and len(d.get("help_rows") or []) == 14,
           {"help": (d.get("help_rows") or [])[:3], "n": len(d.get("help_rows") or [])})
+
+
+
+# ================================================================ 探针 22：小说工具栏四个按钮
+# 台账 §2 行 305~308。这四个钮长期挂 `部分` 的原因很实在：**它们只在书库阅读态存在**，
+# 而"点了有没有反应"各不一样 —— 章评要落盘、朗读依赖浏览器 TTS（无头里可能根本没有声音）、
+# 自动滚动是 rAF 驱动的位移、下载是造一个 <a download>。所以每个都按它自己的可观测面断。
+NOVEL_BAR_JS = PRELUDE + r"""
+  const T = e => ((e && e.textContent) || '').replace(/\\s+/g, ' ').trim();
+  // 下载钮的实现是 `document.createElement('a'); a.click()` —— 无头里真点会去触发下载，
+  // 所以先把 anchor 的 click 换成"记一笔"，既不动网络也不动磁盘，又能看到 href/download 两个属性。
+  const clicks = [];
+  const origClick = HTMLAnchorElement.prototype.click;
+  HTMLAnchorElement.prototype.click = function () {
+    clicks.push({href: this.getAttribute('href'), download: this.getAttribute('download')});
+  };
+  for (let i = 0; i < 90 && !q('.nv-toolbar'); i++) await sleep(150);
+  out.toolbar = !!q('.nv-toolbar');
+  out.segs = [...document.querySelectorAll('.nv-toolbar button')].map(b => ({
+    cls: (b.className || '').replace(/iconbtn\s*/, ''), t: T(b), title: b.getAttribute('title') || ''}));
+  out.chap_now = T('.nv-chap-h');
+
+  // ---- 1 章评：弹窗 → 填内容 → 保存 → 后端写旁挂 .notes.md
+  const nb = q('.nv-note-btn');
+  out.note_present = !!nb;
+  if (nb) nb.click();
+  for (let i = 0; i < 40 && !q('.kbm-input[data-k="tx"]'); i++) await sleep(150);
+  out.note_modal = !!q('.kbm-input[data-k="tx"]');
+  out.note_title = txt('.kbm-title');
+  out.note_body = txt('.kbm-body');
+  const tx = q('.kbm-input[data-k="tx"]');
+  if (tx) { tx.value = '这一章的雾写得像一句铺垫。'; tx.dispatchEvent(new Event('input', {bubbles: true})); }
+  const ok = q('.kbm-ok');
+  if (ok) ok.click();
+  for (let i = 0; i < 50 && txt('#toast').indexOf('章评') < 0; i++) await sleep(150);
+  out.note_toast = txt('#toast');
+
+  // ---- 2 朗读：有 TTS 就应当"当前段高亮 + 钮带 .on"，没有就必须给一句人话
+  const tb = q('.nv-tts');
+  out.tts_present = !!tb;
+  out.has_speech = !!window.speechSynthesis;
+  if (tb) { q('#toast').textContent = ''; q('#toast').classList.remove('show'); tb.click(); }
+  // 立刻（同步）读：进朗读态 = 钮带 .on + 当前段被高亮
+  out.tts_on_sync = !!(tb && tb.classList.contains('on'));
+  out.tts_speaking_sync = document.querySelectorAll('.nv-p.nv-speaking').length;
+  out.tts_busy_sync = !!(tb && tb.classList.contains('busy'));
+  out.tts_toast_sync = txt('#toast');
+  // 等引擎闲下来（无头里 speak() 必然立刻 onerror；真机可能一直在念）
+  let idle = false;
+  for (let i = 0; i < 30; i++) {
+    await sleep(100);
+    if (window.speechSynthesis && !speechSynthesis.speaking && !speechSynthesis.pending) { idle = true; break; }
+  }
+  out.tts_idle = idle;
+  out.tts_on_when_idle = !!(tb && tb.classList.contains('on'));
+  if (tb) tb.click();                       // 再点一次：要么停，要么重新开始后再自己收口
+  let idle2 = false;
+  for (let i = 0; i < 30; i++) {
+    await sleep(100);
+    if (window.speechSynthesis && !speechSynthesis.speaking && !speechSynthesis.pending) { idle2 = true; break; }
+  }
+  out.tts_idle2 = idle2;
+  out.tts_on_when_idle2 = !!(tb && tb.classList.contains('on'));
+  out.tts_off_after_second = !!(tb && !tb.classList.contains('on'));
+
+  // ---- 3 自动滚动：仅滚动模式出现；开了要真的在动，关了要真的停住
+  const ab = q('.nv-auto');
+  out.auto_present = !!ab;
+  const stage = q('.nv-stage');
+  if (ab && stage) {
+    const y0 = stage.scrollTop;
+    ab.click();
+    await sleep(1400);
+    const y1 = stage.scrollTop;
+    out.auto_on_class = !!ab.classList.contains('on');
+    out.auto_moved = y1 - y0;
+    ab.click();                              // 再点 = 停
+    await sleep(300);
+    const y2 = stage.scrollTop;
+    await sleep(900);
+    out.auto_stopped = stage.scrollTop - y2;
+    out.auto_off_class = !ab.classList.contains('on');
+  }
+
+  // ---- 4 下载：造出来的 <a> 必须指向 /raw/<原文件> 且带 download 文件名
+  const db = q('.nv-dl');
+  out.dl_present = !!db;
+  if (db) db.click();
+  await sleep(300);
+  out.dl_clicks = clicks;
+  HTMLAnchorElement.prototype.click = origClick;
+  return JSON.stringify(out);
+})()"""
+
+
+def probe_novel_bar(base, tmp):
+    print("== 22 小说工具栏：章评 / 朗读 / 自动滚动 / 下载 ==")
+    # 全部四个钮都在**同一本长书**上测（理由见 EXTRA 里那本"长篇样本"的注释）
+    BOOK = "长篇样本.txt"
+    sidecar = tmp / "content" / "nv-r" / "books" / (BOOK + ".notes.md")
+    d = run_expr(base + "/doc/nv-r/books/" + quote(BOOK), NOVEL_BAR_JS)
+    check("工具栏：txt 阅读态真的长出四个钮（章评/朗读/滚动/下载）",
+          d.get("toolbar") is True and {"nv-note-btn", "nv-tts", "nv-auto", "nv-dl"}
+          <= {s.get("cls") for s in (d.get("segs") or [])}, d.get("segs"))
+    check("章评：点钮弹出「写章评 · 第一章」的多行输入弹窗",
+          d.get("note_present") is True and d.get("note_modal") is True
+          and "写章评" in (d.get("note_title") or "")
+          and "第一章" in (d.get("note_title") or ""), {"title": d.get("note_title")})
+    check("章评：弹窗正文说清落到哪个旁挂文件（不写进书本身）",
+          "长篇样本.txt.notes.md" in (d.get("note_body") or ""), d.get("note_body"))
+    check("章评：保存后有回执 toast", "章评已记录" in (d.get("note_toast") or ""), d.get("note_toast"))
+    ok_disk = sidecar.is_file()
+    body = sidecar.read_text(encoding="utf-8") if ok_disk else ""
+    check("章评：磁盘上真的出现旁挂 .notes.md，且带着章节标记（〔章评·第一章 …〕）",
+          ok_disk and "章评·第一章" in body and "雾写得像一句铺垫" in body,
+          {"path": str(sidecar.name), "body": body[:200]})
+    check("章评：正文那本 txt 一个字节都没被改（章评只进旁挂）",
+          "雾写得像一句铺垫" not in (tmp / "content" / "nv-r" / "books" / BOOK)
+          .read_text(encoding="utf-8"), "正文被写脏")
+    check("朗读：点一下真的有反应 —— 段落队列被点亮（当前段 .nv-speaking）；没有 TTS 时必须给一句人话",
+          d.get("tts_present") is True and (
+              (d.get("has_speech") and d.get("tts_speaking_sync", 0) >= 1)
+              or (not d.get("has_speech") and "不支持" in (d.get("tts_toast_sync") or ""))),
+          {"api": d.get("has_speech"), "speaking": d.get("tts_speaking_sync"),
+           "on_sync": d.get("tts_on_sync"), "toast": d.get("tts_toast_sync")})
+    # 本轮修的就是这条：引擎报错/停下以后 `.on` 只有正常念完那条路会撤，
+    # 于是按钮永远亮着、再点一次变成"重新开始"。无头 Chrome 里 speak() 必然 onerror，
+    # 所以这里必然走到 idle 分支。
+    check("朗读：引擎一闲下来（报错或念完），按钮就不许还亮着（视觉态与 tts.on 同生同灭）",
+          (d.get("tts_idle") is not True) or (d.get("tts_on_when_idle") is False),
+          {"idle": d.get("tts_idle"), "on_when_idle": d.get("tts_on_when_idle")})
+    check("朗读：再点一次之后仍然自洽（引擎闲下来时按钮不亮，不许卡在亮态）",
+          (d.get("tts_idle2") is not True) or (d.get("tts_on_when_idle2") is False),
+          {"idle2": d.get("tts_idle2"), "on2": d.get("tts_on_when_idle2")})
+    check("自动滚动：默认滚动模式下这个钮才存在（分页模式不给）",
+          d.get("auto_present") is True, d)
+    check("自动滚动：开起来 1.4 秒内真的在往下走（rAF 在跑，不是只加了个类名）",
+          (d.get("auto_on_class") is True) and (d.get("auto_moved") or 0) > 20,
+          {"moved": d.get("auto_moved"), "cls": d.get("auto_on_class")})
+    check("自动滚动：再点一次真的停住（后续 0.9 秒位移 ≈ 0，且类名撤掉）",
+          d.get("auto_off_class") is True and abs(d.get("auto_stopped") or 0) <= 3,
+          {"stopped": d.get("auto_stopped"), "cls": d.get("auto_off_class")})
+    dl = (d.get("dl_clicks") or [{}])[0]
+    check("下载：点钮造出的 <a> 指向 /raw/ 原文件并带 download 文件名（不是站内阅读页）",
+          d.get("dl_present") is True and len(d.get("dl_clicks") or []) == 1
+          and dl.get("href") == "/raw/nv-r/books/" + quote(BOOK)
+          and dl.get("download") == BOOK, {"clicks": d.get("dl_clicks")})
 
 
 
@@ -2302,6 +2464,7 @@ def main() -> int:
         run_probe("spark", probe_toc_spark, base)         # 写 reading.db 的事件（派生库，不动语料）
         run_probe("novelpref", probe_novel_prefs, base)  # 只写 localStorage（小说偏好）
         run_probe("keys", probe_keys, base)             # 只读：快捷键两处同源
+        run_probe("novelbar", probe_novel_bar, base, tmp)  # 写：章评落旁挂 + 朗读/滚动/下载
         run_probe("newdoc", probe_newdoc, base, tmp)    # 写：在空子域里建一篇
         run_probe("inbox", probe_inbox, base, tmp)      # 写：_trash 软删 + 物理 purge（只动 _inbox 两个靶子）
         run_probe("crumb", probe_crumb_delete, base, tmp)    # 写：删 gamma

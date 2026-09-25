@@ -5,12 +5,15 @@
 //   一个 Chrome、多个标签页依次截，省掉"每张重启浏览器"的 5 秒；
 //   init = 在页面任何脚本之前注入的 JS（`Page.addScriptToEvaluateOnNewDocument`），
 //   用来把 localStorage 偏好钉成确定态（主题、动效、阅读宽度），否则截出来的图每次不一样。
-import { spawn } from 'child_process';
+import { spawn, spawnSync } from 'child_process';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
+import net from 'net';
 
-const PORT = +(process.env.KB_SHOT_PORT || 9333);
+const PORT_PREF = +(process.env.KB_SHOT_PORT || 9333);
+const PORT = await pickPort(PORT_PREF);
+if (PORT !== PORT_PREF) console.error(`[shot] 首选调试端口 ${PORT_PREF} 被别的进程占着（多半是上一轮没退干净的 Chrome），已改用 ${PORT} —— 绝不连陌生浏览器`);
 const CDP = `http://127.0.0.1:${PORT}`;
 const [, , arg1, arg2] = process.argv;
 const BATCH = arg1 === '--batch';
@@ -36,6 +39,43 @@ const FLAGS = ['--headless=new', `--remote-debugging-port=${PORT}`,
 const profile = fs.mkdtempSync(path.join(os.tmpdir(), 'kbshot-'));
 const proc = spawn(chrome, [`--user-data-dir=${profile}`, ...FLAGS], { stdio: 'ignore' });
 const sleep = ms => new Promise(r => setTimeout(r, ms));
+// —— 探针专用：端口与进程收尾（轮次 31 之后加的，别删）——————————————————————————
+// ① 固定调试端口意味着：上一轮没退干净的 Chrome 还在听这个端口时，本轮的 /json/new
+//    会**连到那个陌生浏览器**里 —— 里面是别的页面，而且是后台标签页
+//    （rAF / IntersectionObserver 被节流），于是探针拿到 `{}` 或读到陈旧状态。
+//    2026-09-25 pre-commit 的假红就是这个（本机实测泄漏 2 个 kbshot-* 无头实例）。
+//    所以先探端口空不空，被占就改要一个临时端口：spawn 之前端口是空的，
+//    回答我们的浏览器就一定是我们自己起的那个。
+// ② Windows 下 `proc.kill()` 只杀父进程，Chrome 主进程活着继续占端口与 profile
+//    → 用 taskkill /T /F 杀整棵进程树；profile 目录随之要多试几次才删得掉。
+async function pickPort(pref) {
+  const free = p => new Promise(res => {
+    const s = net.createServer();
+    s.once('error', () => res(false));
+    s.once('listening', () => s.close(() => res(true)));
+    s.listen(p, '127.0.0.1');
+  });
+  if (await free(pref)) return pref;
+  return new Promise((res, rej) => {
+    const s = net.createServer();
+    s.once('error', rej);
+    s.once('listening', () => { const p = s.address().port; s.close(() => res(p)); });
+    s.listen(0, '127.0.0.1');
+  });
+}
+function killChrome(p) {
+  if (!p || p.pid == null) return;
+  if (process.platform === 'win32') {
+    try { spawnSync('taskkill', ['/pid', String(p.pid), '/T', '/F'], { stdio: 'ignore' }); } catch {}
+    return;
+  }
+  try { p.kill(); } catch {}
+}
+async function rmProfile(dir) {
+  for (let i = 0; i < 6; i++) {
+    try { fs.rmSync(dir, { recursive: true, force: true }); return; } catch { await sleep(120); }
+  }
+}
 
 const waitPort = async () => {
   for (let i = 0; i < 40; i++) {
@@ -137,6 +177,6 @@ try {
   console.error('FAIL', e.message);
   process.exitCode = 1;
 } finally {
-  proc.kill();
-  try { fs.rmSync(profile, { recursive: true, force: true }); } catch {}
+  killChrome(proc);
+  await rmProfile(profile);
 }

@@ -2,12 +2,15 @@
 // 每档宽度输出一行 JSON（表达式的返回值），供测试侧断言"两块矩形不许相交"这类
 // 只有几何才能锁的回归（例：顶栏绝对居中的搜索框在 1281~1796 压住导航，台账 §14.3 第 1 条）。
 // 与 shot.mjs 的区别：shot 出像素，本脚本出矩形；两者共用同一套 CDP 骨架与稳定性 flag。
-import { spawn } from 'child_process';
+import { spawn, spawnSync } from 'child_process';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
+import net from 'net';
 
-const PORT = +(process.env.KB_GEOM_PORT || 9338);
+const PORT_PREF = +(process.env.KB_GEOM_PORT || 9338);
+const PORT = await pickPort(PORT_PREF);
+if (PORT !== PORT_PREF) console.error(`[geom] 首选调试端口 ${PORT_PREF} 被别的进程占着（多半是上一轮没退干净的 Chrome），已改用 ${PORT} —— 绝不连陌生浏览器`);
 const CDP = `http://127.0.0.1:${PORT}`;
 const [, , url, argW, argExpr] = process.argv;
 if (!url || !argExpr) {
@@ -31,6 +34,43 @@ const proc = spawn(chrome, [`--user-data-dir=${profile}`, '--headless=new',
   '--force-color-profile=srgb', '--font-render-hinting=none', '--disable-lcd-text',
   'about:blank'], { stdio: 'ignore' });
 const sleep = ms => new Promise(r => setTimeout(r, ms));
+// —— 探针专用：端口与进程收尾（轮次 31 之后加的，别删）——————————————————————————
+// ① 固定调试端口意味着：上一轮没退干净的 Chrome 还在听这个端口时，本轮的 /json/new
+//    会**连到那个陌生浏览器**里 —— 里面是别的页面，而且是后台标签页
+//    （rAF / IntersectionObserver 被节流），于是探针拿到 `{}` 或读到陈旧状态。
+//    2026-09-25 pre-commit 的假红就是这个（本机实测泄漏 2 个 kbshot-* 无头实例）。
+//    所以先探端口空不空，被占就改要一个临时端口：spawn 之前端口是空的，
+//    回答我们的浏览器就一定是我们自己起的那个。
+// ② Windows 下 `proc.kill()` 只杀父进程，Chrome 主进程活着继续占端口与 profile
+//    → 用 taskkill /T /F 杀整棵进程树；profile 目录随之要多试几次才删得掉。
+async function pickPort(pref) {
+  const free = p => new Promise(res => {
+    const s = net.createServer();
+    s.once('error', () => res(false));
+    s.once('listening', () => s.close(() => res(true)));
+    s.listen(p, '127.0.0.1');
+  });
+  if (await free(pref)) return pref;
+  return new Promise((res, rej) => {
+    const s = net.createServer();
+    s.once('error', rej);
+    s.once('listening', () => { const p = s.address().port; s.close(() => res(p)); });
+    s.listen(0, '127.0.0.1');
+  });
+}
+function killChrome(p) {
+  if (!p || p.pid == null) return;
+  if (process.platform === 'win32') {
+    try { spawnSync('taskkill', ['/pid', String(p.pid), '/T', '/F'], { stdio: 'ignore' }); } catch {}
+    return;
+  }
+  try { p.kill(); } catch {}
+}
+async function rmProfile(dir) {
+  for (let i = 0; i < 6; i++) {
+    try { fs.rmSync(dir, { recursive: true, force: true }); return; } catch { await sleep(120); }
+  }
+}
 
 async function openTab(u) {
   const tab = await (await fetch(`${CDP}/json/new?${encodeURIComponent(u)}`, { method: 'PUT' })).json();
@@ -119,6 +159,6 @@ try {
   console.error('FAIL', e.message);
   process.exitCode = 1;
 } finally {
-  proc.kill();
-  try { fs.rmSync(profile, { recursive: true, force: true }); } catch {}
+  killChrome(proc);
+  await rmProfile(profile);
 }

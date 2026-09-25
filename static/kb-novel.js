@@ -260,8 +260,11 @@
       tts.stop();
       tts.on = true; tts.paras = paras; tts.para = 0; tts.chapter = chapterIdx;
       tts.onPara = onPara; tts.onDone = onDone;
-      var btn = document.querySelector(".nv-tts.on");
-      if (btn) btn.classList.add("busy");
+      /* 视觉态由 start/stop 两个出口各自负责（stop 会把 on/busy 一起撤，见下面 stop 的注释），
+         所以这里必须在 stop() **之后**重新加上 —— 旧代码找的是 `.nv-tts.on`（靠调用方
+         先加好类），一旦 stop 也负责撤 `.on`，那个选择器就会落空。 */
+      var btn = document.querySelector(".nv-tts");
+      if (btn) btn.classList.add("on", "busy");
       tts.speakOne();
     },
     speakOne: function () {
@@ -274,6 +277,11 @@
       if (!tts.voice) tts.voice = tts.pickVoice();
       if (tts.voice) u.voice = tts.voice;
       u.onend = function () { if (!tts.on) return; tts.para++; tts.speakOne(); };
+      /* onerror 以前只 tts.stop()，而 stop() 只清 busy —— `.on` 是**正常念完**那条路
+         （onDone 回调）才撤的。于是引擎一报错（无声音设备 / 语音包缺失 / 被打断），
+         按钮就永远停在"正在朗读"的亮态，再点一次走的是 `if (tts.stop())` 的 false 分支
+         → 不是停止，而是**重新开始**（2026-09-25 轮次 31 在无头 Chrome 上实测必现，
+         因为那里 speak() 必然 onerror）。修法：把按钮态收口到 stop() 一处。 */
       u.onerror = function () { tts.stop(); };
       speechSynthesis.speak(u);
     },
@@ -282,7 +290,9 @@
       tts.on = false;
       if (window.speechSynthesis) speechSynthesis.cancel();
       var btn = document.querySelector(".nv-tts");
-      if (btn) btn.classList.remove("busy");
+      // busy 与 on 一起清：按钮的"在朗读"态必须与 tts.on 同生同灭，
+      // 不能只由 onDone 一条路负责（报错/取消那条路也要收口）。
+      if (btn) btn.classList.remove("busy", "on");
       return was;
     }
   };
