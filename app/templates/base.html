@@ -235,7 +235,8 @@
   <span>content/ = 唯一事实源 · 索引只是派生缓存</span>
   {# 问题12：原顶栏「全文检索已就绪」pill 降级为状态栏文字；B22：计数以索引内篇数 fts_n 为准 #}
   <span>{{ fts_n|default(n_md)|default(0) }} 篇已入全文索引</span>
-  <span class="right"><span>localhost:5001</span></span>
+  {# 状态栏右端的地址跟着实例走：写死 localhost:5001 时，换端口/直启/临时实例里这句话就是假的 #}
+  <span class="right"><span>{{ request.host }}</span></span>
 </div>
 <div id="toast"></div>
 {# 命令面板 / 阅读偏好面板容器（kb-core.js 在首次打开时注入内部结构） #}
@@ -261,13 +262,12 @@
         <div class="so-rail-h">SCOPE</div>
         <div class="kb-search-scopes" aria-label="范围筛选">
           <button type="button" class="kb-scope-chip on" data-scope="">全部域</button>
-          <button type="button" class="kb-scope-chip" data-scope="baike"><span class="dh" style="--dh:var(--dh-baike)"></span>百科</button>
-          <button type="button" class="kb-scope-chip" data-scope="articles"><span class="dh" style="--dh:var(--dh-articles)"></span>文章</button>
-          <button type="button" class="kb-scope-chip" data-scope="interview"><span class="dh" style="--dh:var(--dh-interview)"></span>面试</button>
-          <button type="button" class="kb-scope-chip" data-scope="projects"><span class="dh" style="--dh:var(--dh-projects)"></span>项目</button>
-          <button type="button" class="kb-scope-chip" data-scope="handbook"><span class="dh" style="--dh:var(--dh-handbook)"></span>手册</button>
-          <button type="button" class="kb-scope-chip" data-scope="career"><span class="dh" style="--dh:var(--dh-career)"></span>职场</button>
-          <button type="button" class="kb-scope-chip" data-scope="ai-assets"><span class="dh" style="--dh:var(--dh-ai)"></span>AI 资产</button>
+          {# 域钮从 taxonomy 派生（不变量 5）：新增域只改 JSON，这里不再抄第三份名单。
+             键名一旦与 JSON 漂移，点它就是 0 结果 —— 2026-09-24 实测「AI 资产」发 domain=ai（台账 §6 第 27 行）。
+             search_hidden（JSON 里 "search": false）滤掉语料全是书库格式（.txt/.epub 不进 FTS，fts.py:110）
+             的域，免得给出一个永远零结果的钮。色点用全库通行的 "--dh=色相数字"，暗色在 searchoverlay.css 翻。 #}
+          {% for k, lab in LABELS.items() if k not in SEARCH_HIDDEN %}<button type="button" class="kb-scope-chip" data-scope="{{ k }}"><span class="dh" style="--dh:{{ HUES.get(k, 158) }}"></span>{{ lab }}</button>
+          {% endfor %}
           <button type="button" class="kb-scope-chip" data-scope="fav">仅收藏</button>
           <button type="button" class="kb-scope-chip" data-scope="unmastered">仅未掌握</button>
         </div>

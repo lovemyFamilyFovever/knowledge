@@ -12,7 +12,7 @@
 2. 新知识只从 `content/_inbox/` 进；`_` 前缀目录（`_inbox/_assets/_trash/_meta/_unfiled`）不进分类树、不进任何索引。
 3. `indexes/`（index.db / rag.db）是纯派生缓存：可随时删除重建；禁止手改、禁止 git 跟踪。
 4. 删除必须走软删除（→ `content/_trash/`，`/api/delete`），git 历史是第二重保险。
-5. 分类学（域 / 子域 / 来源 / 状态 / 色相）的权威是 `content/_meta/taxonomy.json`；代码里的字典只是缺省回退。改分类先改 JSON，不改代码。
+5. 分类学（域 / 子域 / 来源 / 状态 / 色相）的权威是 `content/_meta/taxonomy.json`；代码里的字典只是缺省回退。改分类先改 JSON，不改代码。域条目可选 `"search": false` = 该域不进搜索浮层的筛选钮（小说域全是 `.txt/.epub`、FTS 只收 `.md/.html`，给了钮就是恒 0 结果）；模板与 CSS 一律**不许再抄一份域名单**（浮层钮由 `LABELS` 派生，色点用 `--dh=色相数字`）。
 6. frontmatter 只存身世与元数据（title/source/collected/tags/favorite/status），不存阅读统计等高频运行时数据——阅读统计走 app/reading.py（indexes/reading.db 事件制：open/read_minute/finish 只追加，语料零污染），标签治理/重命名一律先 dry-run（scripts/govern_tags.py）。
 7. 嵌入 / 分词 / 切块逻辑变更必须递增 `app/rag.py::RAG_CODE_VERSION`（触发向量索引自动全量重建），并用 `tokenizers` 库做逐 token 交叉验证后再提交。
 8. 阅读器同时支持 `start.bat`（任意 Python）与便携运行时（`.python\`）；`python app\app.py` 直启时项目根会自动补进 sys.path，不要依赖 cwd。
@@ -26,9 +26,11 @@ python tests\test_reader.py                    # 阅读器 smoke（82 断言）
 python tests\test_new_project.py               # 脚手架 smoke（9 断言）
 python tests\test_learn.py                     # 学习系统 smoke（255 断言）
 python tests\test_predicates.py                # 判定谓词层 smoke（89 断言 · P6 存活清单回填）
-python tests\test_properties.py                # 性质测试（13 条 · 每条 240 个随机样本，固定种子）
-python tests\test_js_props.py                  # 浏览器侧书库解析性质测试（缺 node/Chrome 自动 SKIP）
-python tests\test_ui_regress.py                # 视觉回归批处理（P5：截图矩阵 vs tests/ui-baselines/ 基线）
+python tests\test_properties.py                # 性质测试（15 条 · 每条 240 个随机样本，固定种子）
+python tests\test_invariants.py                # 不变量门禁 I1~I8（61 断言）
+python tests\test_e2e_smoke.py                 # 端到端 smoke（196 断言 · 打满 58 条路由）
+python tests\test_js_props.py                  # 浏览器侧书库解析性质测试（47 断言；缺 node/Chrome 自动 SKIP）
+python tests\test_ui_regress.py                # 视觉回归批处理（P5：22 张截图 vs tests/ui-baselines/ 基线 + 10 条顶栏几何断言）
 python tests\test_ui_regress.py --stability    #   只验"两次截图逐像素相同"（改矩阵/环境后先跑这个）
 python tests\test_ui_regress.py --update       #   确认改动无误后，用本次截图刷新基线
 python tests\test_rag.py                       # RAG smoke（缺依赖自动 SKIP）
@@ -61,6 +63,7 @@ Agent 的**常驻工具脚本**统一收在 `scripts/agent/`（2026-09-18 从旧
 | `scripts/agent/shot.mjs` | 零依赖 CDP 截图：`node scripts/agent/shot.mjs <url> <out.png> [w] [h] [clickSel]`，`clickSel` 传 CSS 选择器可先点击再截图（验证按钮交互态）；`node scripts/agent/shot.mjs --batch manifest.json` 批量截（一个 Chrome、多标签页，清单里可带 `init`=页面脚本前注入的 JS，用来钉死主题等确定态；`clickWait`=每次点击后等待的毫秒数，点了会发请求再重绘的按钮要给到 2500~8000，否则截到的是重绘前后的随机一侧） |
 | `scripts/agent/imgdiff.mjs` | 截图像素对比：`node scripts/agent/imgdiff.mjs <a.png> <b.png> [ignoreRegions]`，产出差异热图并输出差异占比；UI 改动后**必须**跑（见下方 UI 回归纪律） |
 | `scripts/agent/evalcdp.mjs` | CDP 执行任意 JS 并回显返回值 + console 报错：`node scripts/agent/evalcdp.mjs <url> "<js表达式>"`，查"改了没生效"类问题利器 |
+| `scripts/agent/geom.mjs` | **多视口几何探针**：`node scripts/agent/geom.mjs <url> <w1,w2,...> <expr@文件>`，一个 Chrome 逐档 `setDeviceMetricsOverride` 求值、每档回一行 JSON。专治"像素基线永远绿、其实两个矩形重叠"这类盲区（顶栏搜索框压导航，台账 §6 第 28/29 行）。**表达式必须一次求值取全部矩形**——每个字段各自 `getBoundingClientRect()` 会在过渡中读出三套数 |
 | `scripts/agent/verifyall.mjs` | 双阶段全状态断言模板（同页两阶段 evaluate，如 pretty/md 视图切换），按需改表达式复用 |
 | `scripts/agent/scan_fm.py` | frontmatter 污染扫描：`python scripts/agent/scan_fm.py [扫描根]`，正文前 400 字符内又出现完整 fm 块 = 污染（baike 提质时沉淀） |
 | `scripts/agent/scan_dup.py` | 抓取残留副本扫描：`python scripts/agent/scan_dup.py [扫描根]`，`xxx-<数字>.md` 与 `xxx.md` 同名共存即残留 |
@@ -68,7 +71,8 @@ Agent 的**常驻工具脚本**统一收在 `scripts/agent/`（2026-09-18 从旧
 两个 scan 脚本的扫描根默认按脚本位置推导到仓库根下的 `content/`（不再写死盘符），传 argv[1] 可覆盖。
 
 **UI 回归纪律（2026-09-18 起，ImageMagick 已装；2026-09-24 起有截图矩阵基线）**：改动 UI（css/js 模板/渲染逻辑）后，除 smoke 截图外，对受影响页面执行
-0. **首选一条命令**：`python tests\test_ui_regress.py` —— 合成语料的临时实例 + 22 张「页面 × 主题 × 点击态」截图，与 `tests/ui-baselines/` **逐像素**比对（阈值 AE ≤ 2 像素；实测两次截图的噪声地板 0~1 像素）。pre-commit 在本次提交含 css/js/模板文件时**自动跑它**。刷新基线用 `--update`（改完确认无误后），动矩阵/换环境先跑 `--stability` 证明截图本身是确定的。
+0. **首选一条命令**：`python tests\test_ui_regress.py` —— 合成语料的临时实例 + 22 张「页面 × 主题 × 点击态」截图，与 `tests/ui-baselines/` **逐像素**比对（阈值 AE ≤ 2 像素；实测两次截图的噪声地板 0~1 像素），外加 **10 条顶栏几何断言**（7 档宽度量矩形）。pre-commit 在本次提交含 css/js/模板文件时**自动跑它**。刷新基线用 `--update`（改完确认无误后），动矩阵/换环境先跑 `--stability` 证明截图本身是确定的。
+   **几何断言不是多余的**：像素基线的口径是"和上次一样吗"，重叠/贴脸/溢出这类布局缺陷是**稳定地错**，比对永远绿（台账 §6 第 29 行：顶栏压字在 22 张基线里安稳躺了很久）。要判"两块矩形相不相交"就用 `scripts/agent/geom.mjs`，判据表达式由测试侧传。
 1. 改前基线已留在 `.qa/qa-shots/` 时：`node scripts/agent/imgdiff.mjs 基线.png 新.png`（**默认 2% 容差只适合肉眼复核**；作判定用请传 `0%` 并按差异像素数看，实测 2% 会把真回归读成绿，见第 3 条）；
 2. 无基线则先 `shot.mjs` 补拍明暗两态入档；
 3. 差异热图里出现**不该变的区域变红** = 改 A 崩 B，修完再交。**不要用"调大 fuzz"去压噪点**（旧版本这条写的是 `imgdiff a b 5%`，2026-09-24 撤销）：实测 2% 容差 + "差异占比"会把一次真实的模板改字读成绿（AE 只有 75 像素），噪点该靠"钉死动态内容"消除（见 `test_ui_regress.py` 的 FREEZE 与 `clickWait`），而不是靠放大容差。

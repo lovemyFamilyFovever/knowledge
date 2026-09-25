@@ -101,7 +101,10 @@ TAXONOMY = {
         "interview": {"label": "面试", "hue": 340},
         "career": {"label": "职业", "hue": 30},
         "projects": {"label": "项目", "hue": 260},
-        "小说": {"label": "小说", "hue": 0},
+        # 小说域全是 .txt/.epub/.pdf（FTS 只收 .md/.html，fts.py:110），
+        # "search": false → 不进浮层筛选钮。真实 taxonomy.json 里也是这么标的，
+        # 所以这条夹具既验"派生"，也验"过滤"。
+        "小说": {"label": "小说", "hue": 0, "search": False},
     },
     "subs": {
         "llm-and-agents": "大模型与智能体",
@@ -268,6 +271,35 @@ def main() -> int:
         check("GET /doc/... 200 且含标题", r.status_code == 200 and "测试文档A" in r.get_data(as_text=True))
         r = c.get("/doc/ai/llm-and-agents/Only.html")
         check("GET /doc/... 纯 HTML 独立篇可打开", r.status_code == 200)
+
+        # ---- 浮层筛选钮 = taxonomy 的派生物（P8 清单第 3 条，2026-09-25）----
+        # 以前 base.html 里手抄了一份域名单，是 taxonomy.json / store.DOMAIN_LABELS
+        # 之外的第三份，键名一漂移就复现 §6 第 27 行（点了恒 0 结果）。
+        # 现在名单从 JSON 派生，断言口径也跟着变成"派生结果 == 权威"：
+        #   ① 钮的键必须是 JSON 里 search≠false 的那些域（小说域全是书库格式、FTS 不收，
+        #      给钮就是骗人，所以过滤掉）；② 夹具里新增的域不用改模板就会自己出现（③）。
+        shell = c.get("/").get_data(as_text=True)
+        chip_keys = set(re.findall(r'kb-scope-chip" data-scope="([^"]*)"', shell))
+        # 允许出现的键：JSON 里 search≠false 的域 ∪ 代码缺省回退（不变量 5："代码里的字典
+        # 只是缺省回退"，临时实例的 JSON 不含 baike 之外的键，回退项仍会并入 LABELS）
+        # ∪ 三个非域钮（全部/收藏/未掌握）。
+        from app.store import DOMAIN_LABELS  # noqa: PLC0415
+        allowed = ({k for k, v in TAXONOMY["domains"].items() if v.get("search") is not False}
+                   | set(DOMAIN_LABELS) | {"", "fav", "unmastered"})
+        check("浮层域钮由 taxonomy 派生（search:false 的域不给钮）",
+              chip_keys <= allowed and "小说" not in chip_keys
+              and {k for k, v in TAXONOMY["domains"].items()
+                   if v.get("search") is not False} <= chip_keys,
+              f"chip={sorted(chip_keys)} allowed={sorted(allowed)}")
+        check("夹具里那个域键 ai 没在模板出现过，照样渲染出了钮（证明是派生不是抄写）",
+              'data-scope="ai"' in shell and "人工智能" in shell)
+        # 状态栏右端从写死 localhost:5001 改成 request.host：测试客户端的 Host 头是
+        # localhost（无端口），所以正确渲染就是 "localhost"；写死时这里是 "localhost:5001"，
+        # 摘掉动态化改动 → 本断言立刻红（变异验证过）。
+        m_host = re.search(r'<span class="right"><span>([^<]+)</span></span>', shell)
+        check("状态栏右端渲染的是当前请求的 host（不再写死 5001）",
+              m_host is not None and m_host.group(1) == "localhost",
+              f"got={m_host.group(1) if m_host else None}")
         r = c.get("/doc/ai/llm-and-agents/NOPE")
         check("GET /doc 不存在 → 404", r.status_code == 404, f"status={r.status_code}")
 
@@ -318,6 +350,16 @@ def main() -> int:
         r = c.get("/api/search?q=量子")
         d = jget(r)
         check("GET /api/search 200 有命中", r.status_code == 200 and int(d.get("total", 0)) >= 1, str(d)[:120])
+
+        # §6 第 27 行的口径锁：domain 分面是**精确集合过滤**（routes_search.py:291），
+        # 筛选钮发出的键一旦和 taxonomy 漂移，点它就是恒 0。这里必须"对的键有命中"，
+        # 再补一条"别的键没命中"当对照——只断前者会因"过滤器根本没生效"而假绿。
+        r = c.get("/api/search?q=量子&domain=ai")
+        check("GET /api/search 带正确 domain 仍有命中（分面不是空过滤器）",
+              r.status_code == 200 and int(jget(r).get("total", 0)) >= 1, str(jget(r))[:120])
+        r = c.get("/api/search?q=量子&domain=baike")
+        check("GET /api/search 换 domain 后过滤真的生效（0 命中，作上一条的对照组）",
+              r.status_code == 200 and int(jget(r).get("total", 0)) == 0, str(jget(r))[:120])
 
         r = c.get("/api/search?q=量子&engine=fts")
         check("GET /api/search engine=fts 200", r.status_code == 200)

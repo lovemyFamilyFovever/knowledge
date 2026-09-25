@@ -110,11 +110,17 @@ def load_taxonomy(content: Path) -> dict:
         except (OSError, ValueError):
             data = {}
     doms = data.get("domains") or {}
+    # "search": false 的域不进搜索浮层的筛选钮（不变量 5：分类学的开关写在 JSON 里，
+    # 不写在模板里）。之所以需要它：浮层的钮必须点了有结果，而 FTS 只收 .md/.html
+    # （fts.py:110），小说域全是 .txt/.epub（LIBRARY_EXTS），派生出来就是个恒 0 的钮
+    # ——和 §6 第 27 行"domain=ai 恒 0"同一类缺陷，只是这次错在数据而不是键名。
     tax = {
         "domains": {**DOMAIN_LABELS, **{k: (str(v.get("label", k)) if isinstance(v, dict) else str(v))
                                         for k, v in doms.items()}},
         "hues": {**GRAPH_HUES, **{k: (int(v.get("hue", 158)) if isinstance(v, dict) else 158)
                                   for k, v in doms.items()}},
+        "search_hidden": {k for k, v in doms.items()
+                          if isinstance(v, dict) and v.get("search") is False},
         "subs": {**SUB_LABELS, **{k: str(v) for k, v in (data.get("subs") or {}).items()}},
         "sources": {**SOURCE_LABELS, **{k: str(v) for k, v in (data.get("sources") or {}).items()}},
         "status": {**STATUS_LABELS, **{k: str(v) for k, v in (data.get("status") or {}).items()}},

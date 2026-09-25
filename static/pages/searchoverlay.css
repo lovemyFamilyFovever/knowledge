@@ -39,7 +39,11 @@
 .kb-scope-chip{display:flex;align-items:center;gap:8px;width:100%;text-align:left;
   font:500 12.5px/1 var(--f-mono);letter-spacing:.02em;padding:8px 11px;border-radius:8px;
   border:1px solid transparent;background:transparent;color:var(--muted);cursor:pointer;transition:background var(--dur-1),color var(--dur-1)}
-.kb-scope-chip .dh{width:6px;height:6px;border-radius:1px;background:var(--dh,var(--c-acc));flex:none}
+/* 色点：--dh 现在由模板注入"色相数字"（taxonomy.json 的 hue，全库通行口径，
+   见 style.css:282 / home.css 的 hsl(var(--dh) ...)），不再是 style.css 里手写的
+   --dh-<域名> oklch 令牌 —— 那样每加一个域就得再抄一份颜色表。 */
+.kb-scope-chip .dh{width:6px;height:6px;border-radius:1px;background:hsl(var(--dh,158) 58% 46%);flex:none}
+html[data-theme="dark"] .kb-scope-chip .dh{background:hsl(var(--dh,158) 62% 66%)}
 .kb-scope-chip:hover{color:var(--c-ink);border-color:var(--c-line2)}
 .kb-scope-chip.on{color:var(--c-acc);border-color:var(--acc-line);font-weight:600}
 /* ---- 右栏 ---- */

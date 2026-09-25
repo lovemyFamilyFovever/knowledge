@@ -357,17 +357,25 @@ def test_i5() -> None:
                 if re.search(r"^DOMAIN_LABELS\s*=", f.read_text(encoding="utf-8"), re.M)]
         check("I5 域字典全仓只有 store.py 一处定义（无第二份权威）", defs == ["store.py"], defs)
 
-        # 搜索浮层的域筛选钮是**模板里硬编码的一份域清单**（base.html 的 data-scope），
-        # 它是 taxonomy.json 之外的第三份名单，一旦键名对不上，用户点它就是 0 结果 ——
-        # 2026-09-24 实测「AI 资产」发的是 domain=ai，而 taxonomy 里的键是 ai-assets（已修 + 上锁）。
+        # 搜索浮层的域筛选钮以前是**模板里手抄的第三份域清单**（taxonomy.json 与
+        # store.DOMAIN_LABELS 之外），键名一漂移点了就是 0 结果 —— 2026-09-24 实测
+        # 「AI 资产」发 domain=ai 而 JSON 里的键是 ai-assets（台账 §6 第 27 行）。
+        # 2026-09-25 起 base.html 改成 {% for k, lab in LABELS.items() %} 派生，门禁口径跟着换：
+        #   ① 模板里不许再出现"域字面量 data-scope"（只准 {{ k }} 与 fav/unmastered 两个特殊值）；
+        #   ② JSON 的 "search": false 必须真被 load_taxonomy 读成 search_hidden ——
+        #      否则恒 0 的钮会随派生一起复活（小说域全是 .txt/.epub，FTS 不收）。
         # 只读模板与 taxonomy 元数据，不读任何语料正文。
-        chips = re.findall(r'data-scope="([^"]*)"',
-                           (ROOT / "app" / "templates" / "base.html").read_text(encoding="utf-8"))
-        tax_real = set(json.loads((ROOT / "content" / "_meta" / "taxonomy.json")
-                                  .read_text(encoding="utf-8"))["domains"])
-        bogus = [c for c in chips if c and c not in {"fav", "unmastered"} and c not in tax_real]
-        check("I5 浮层 data-scope 全部命中 taxonomy 的域键（或两个特殊值）", not bogus,
-              f"chip={bogus} taxonomy={sorted(tax_real)}")
+        tpl = (ROOT / "app" / "templates" / "base.html").read_text(encoding="utf-8")
+        literal = [m for m in re.findall(r'data-scope="([^"{}]*)"', tpl)
+                   if m and m not in {"fav", "unmastered"}]
+        check("I5 浮层域钮无第二份硬编码清单（模板里只准派生 + fav/unmastered）",
+              not literal, f"literal={literal}")
+        tax_json = json.loads((ROOT / "content" / "_meta" / "taxonomy.json")
+                              .read_text(encoding="utf-8"))
+        want_hidden = {k for k, v in tax_json["domains"].items() if v.get("search") is False}
+        got_hidden = store.load_taxonomy(ROOT / "content")["search_hidden"]
+        check("I5 JSON 的 search:false 被 load_taxonomy 读成 search_hidden",
+              got_hidden == want_hidden, f"got={sorted(got_hidden)} want={sorted(want_hidden)}")
 
 
 def time_now() -> float:

@@ -978,15 +978,32 @@ html.motion-ok .ss-bar i{transform-origin:left center;animation:ss-grow .9s var(
 .stat-note{font-family:var(--f-mono);font-size:10.5px;color:var(--faint);margin-top:8px}
 
 /* [15a] 响应式（旧断点，T6 收口重整为 <1280 / <780 两档） ===== */
+/* 顶栏搜索框"绝对居中"在窄窗会盖住导航。实测（scripts/agent/geom.mjs · 单快照矩形探针，
+   临时实例 1366/1440/1520/1600/1680/1796/1800/1920/2000 各连读三次，读数逐次一致）：
+   · .topnav 右边缘恒为 618px（导航项 white-space:nowrap，压不窄）；
+   · 框宽 = min(560px, 38vw)，绝对居中的左边缘 = (vw − 框宽)/2；
+   · 旧口径只写了"≤1280 回流行内"，于是 **1281~1796 整整一档搜索框直接盖在导航上**：
+     1440 压到「收藏」，1680 压到「治理」（旧台账 §14.3 第 1 条按目测 crop 报成
+     "1400~1600 压收藏 / 1680 不碰"，范围与对象都不准 —— 按矩形实测更正）。
+   三档收口，边界处留足 20px 呼吸（临界 vw = 2×(618+20)+560 = 1836，不是 1796；
+   用 1796 会在 1797~1840 留下只有 2~22px 的贴脸缝）：
+   · ≥1837 原样：整行居中，最宽 560；
+   · 1600~1836 仍居中，但按可用中隙收宽 = calc(100vw − 1276px)（缝恒定 20px，
+     上限 560 与上一档无缝衔接）；
+   · ≤1599 退出绝对居中、回流行内 —— 这一档再要居中，框宽得压到 <324px，输入框不可用。 */
+@media (max-width:1836px) and (min-width:1600px){
+  .searchbox{width:calc(100vw - 1276px)}
+}
+@media (max-width:1599px){
+  .searchbox{position:static;transform:none;order:2;margin:0 10px;width:auto;max-width:560px;min-width:0;flex:1}
+  .top-right{margin-left:auto}
+}
 @media (max-width:1280px){
   main{grid-template-columns:220px 264px minmax(0,1fr) 240px}
   main.left-off{grid-template-columns:46px 264px minmax(0,1fr) 240px}
   main.list-off{grid-template-columns:220px 46px minmax(0,1fr) 240px}
   main.left-off.list-off{grid-template-columns:46px 46px minmax(0,1fr) 240px}
   .article{padding:24px 26px 50px}
-  /* 窄屏：搜索框退出绝对居中，回流行内（绝对定位会压到导航） */
-  .searchbox{position:static;transform:none;order:2;margin:0 10px;width:auto;min-width:0;flex:1}
-  .top-right{margin-left:auto}
 }
 @media (max-width:820px){
   header{flex-wrap:wrap;height:auto;min-height:56px;padding:8px 12px;gap:8px}

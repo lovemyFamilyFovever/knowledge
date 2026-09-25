@@ -30,7 +30,8 @@
       "hue": 262
     },
     "小说": {
-      "label": "网文"
+      "label": "网文",
+      "search": false
     }
   },
   "subs": {

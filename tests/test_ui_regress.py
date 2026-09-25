@@ -249,7 +249,11 @@ CORPUS = {
 }
 
 TAXONOMY = {
-    "domains": {"ui-r": {"label": "视觉基线", "hue": 158}, "nv-r": {"label": "基线书库", "hue": 200},
+    "domains": {"ui-r": {"label": "视觉基线", "hue": 158},
+                # 书库域全是 .txt（不进 FTS），"search": false → 浮层不给它筛选钮。
+                # 顺带让"派生 + 过滤"这条链路在基线里是**真的被走过**的：
+                # 如果哪天过滤失效，多出来的那颗钮会直接改变 search_overlay 那张截图的像素。
+                "nv-r": {"label": "基线书库", "hue": 200, "search": False},
                 "baike": {"label": "术语", "hue": 30}, "interview": {"label": "面试", "hue": 340}},
     "subs": {"ui-r/notes": "排版样本", "ui-r/empty-sub": "空子域", "nv-r/books": "长篇",
              "baike/term": "词条", "interview/fe": "前端"},
@@ -274,6 +278,10 @@ TAXONOMY = {
 FREEZE_CSS = ("#kb-toc-spark{display:none!important}"
               ".srch-meta{display:none!important}"
               ".rc-head .n{display:none!important}"
+              # 状态栏右端现在是 request.host（2026-09-25 去写死），而临时实例端口每次现挑，
+              # 逐像素比对里那个数字必然漂 —— 冻结它，正确性由 test_e2e_smoke 的
+              # "状态栏右端渲染的是当前请求的 host" 断言兜。
+              ".statusbar .right{display:none!important}"
               "#toast{display:none!important}")
 INIT_TMPL = ("try{localStorage.setItem('kb-theme','%s');"
              "localStorage.setItem('kb-force-motion','0');}catch(e){}"
@@ -415,6 +423,7 @@ def capture(tag, shots):
         thin = {p.name: p.stat().st_size for p in out_dir.glob("*.png") if p.stat().st_size < 20000}
         check(f"[{tag}] 无空白截图（每张 >20KB；纯白页实测 1KB，最小合法页 37KB）", not thin, f"{thin}")
         print(f"  [{tag}] 截图耗时 {round(time.time() - t0)}s")
+        geometry(tag, base)      # 非像素判据：顶栏矩形相交只能靠几何抓（见 GEOM_EXPR 上方注释）
         return out_dir
     finally:
         kill_instance(proc)
@@ -425,6 +434,84 @@ def capture(tag, shots):
 
 
 AE_RE = re.compile(r"AE=(-?\d+)")
+
+# ---------------------------------------------------------------- 顶栏几何（非像素）
+# 为什么单独测：搜索框"绝对居中"在窄窗会盖住导航（台账 §14.3 第 1 条，2026-09-25 修），
+# 而这类"两个矩形相交"在像素基线里是**稳定地错** —— 每次截图都一样，比对永远绿。
+# 判据必须是几何：逐宽度量矩形，断"不相交 + 不溢出视口"，并断三档确实都在（否则
+# "整个顶栏永远流行内"同样全绿）。
+GEOM_WIDTHS = [1280, 1440, 1600, 1680, 1836, 1840, 2000]
+GEOM_EXPR = r"""(() => {
+  var rect = function (el) {
+    if (!el) return null;
+    var b = el.getBoundingClientRect();
+    return {x: Math.round(b.x), right: Math.round(b.right), w: Math.round(b.width)};
+  };
+  var hit = function (a, b) { return !!a && !!b && a.x < b.right && b.x < a.right; };
+  var box = rect(document.querySelector('.searchbox'));
+  var nav = rect(document.querySelector('.topnav'));
+  var parts = {nav: nav,
+               right: rect(document.querySelector('.top-right')),
+               brand: rect(document.querySelector('.brand')),
+               fav: rect(document.querySelector('a.tn[href="/favorites"]'))};
+  var bad = [];
+  for (var k in parts) if (hit(box, parts[k])) bad.push(k);
+  return JSON.stringify({
+    vw: window.innerWidth,
+    pos: getComputedStyle(document.querySelector('.searchbox')).position,
+    w: box ? box.w : 0,
+    bad: bad,
+    // 绝对居中那两档：与导航右边缘（实测恒 618）的缝。缝只有 2px 也算"没相交"，
+    // 但视觉上就是贴脸 —— 所以断"缝 ≥ 18"，而不只断"不相交"。
+    gap_nav: (box && nav) ? box.x - nav.right : null,
+    spill: box ? Math.max(0, box.right - (window.innerWidth - 14), 14 - box.x) : 0
+  });
+})()"""
+
+
+def geometry(tag, base):
+    """临时实例还活着时跑：顶栏在 7 档宽度下不许和任何东西相交。"""
+    expr_file = QA / f"geom-{tag}.js"
+    expr_file.write_text(GEOM_EXPR, encoding="utf-8")
+    r = subprocess.run(
+        ["node", str(ROOT / "scripts" / "agent" / "geom.mjs"),
+         base + "/doc/ui-r/notes/alpha.md",
+         ",".join(str(w) for w in GEOM_WIDTHS), "@" + str(expr_file)],
+        cwd=str(ROOT), capture_output=True, text=True,
+        encoding="utf-8", errors="replace", timeout=240)
+    rows = []
+    for line in (r.stdout or "").splitlines():
+        line = line.strip()
+        if line.startswith("{"):
+            try:
+                rows.append(json.loads(line))
+            except ValueError:
+                pass
+    check(f"[{tag}] 顶栏几何探针 {len(GEOM_WIDTHS)} 档全部回值",
+          len(rows) == len(GEOM_WIDTHS),
+          f"got={len(rows)} rc={r.returncode} {_safe((r.stderr or '')[-160:])}")
+    by_w = {row.get("vw"): row for row in rows}
+    for w in GEOM_WIDTHS:
+        row = by_w.get(w) or {}
+        check(f"[{tag}] 顶栏 {w}px：搜索框不与导航/图标组相交且不溢出视口",
+              row.get("bad") == [] and row.get("spill") == 0, _safe(str(row)))
+    # 三档各自的"身份"（缺了这三条，"顶栏永远流行内"也能全绿 —— 那是假绿）：
+    #   ≥1837 绝对居中 560；1600~1836 绝对居中但按中隙收宽；≤1599 回流行内。
+    # 边界实测（.qa/topbar_probe.mjs 单快照 · 每档连读 3 次一致）：
+    #   1836 → w=560 缝=20，1840 → w=560 缝=22；临界若取 1796，1797~1840 会出现只有
+    #   2~22px 的贴脸缝，所以这里同时断"缝 ≥ 18"。
+    wide = [by_w.get(w) or {} for w in (1840, 2000)]
+    mid = [by_w.get(w) or {} for w in (1600, 1680, 1836)]
+    flow = [by_w.get(w) or {} for w in (1280, 1440)]
+    check(f"[{tag}] ≥1837 绝对居中、框宽 560、与导航缝 ≥18",
+          all(row.get("pos") == "absolute" and row.get("w") == 560
+              and (row.get("gap_nav") or 0) >= 18 for row in wide), _safe(str(wide)))
+    check(f"[{tag}] 1600~1836 绝对居中、按中隙收宽（324~560）、与导航缝 ≥18",
+          all(row.get("pos") == "absolute" and 324 <= row.get("w", 0) <= 560
+              and (row.get("gap_nav") or 0) >= 18 for row in mid), _safe(str(mid)))
+    check(f"[{tag}] ≤1599 退出绝对居中（position=static）",
+          all(row.get("pos") == "static" for row in flow), _safe(str(flow)))
+
 
 
 def compare(a: Path, b: Path):

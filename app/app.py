@@ -238,7 +238,7 @@ def create_app(root: Path | None = None) -> Flask:
 
         return {"LABELS": tax["domains"], "SUB_LABELS": tax["subs"],
                 "SOURCE_LABELS": tax["sources"], "STATUS_LABELS": tax["status"],
-                "HUES": tax["hues"],
+                "HUES": tax["hues"], "SEARCH_HIDDEN": tax.get("search_hidden", set()),
                 "av": av,
                 "obsidian_connected": obsidian_vault_connected(content)}
 
