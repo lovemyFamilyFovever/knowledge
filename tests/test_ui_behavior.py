@@ -156,6 +156,46 @@ status: stable
 - [[向量数据库]]
 - [[尚不存在的术语]]
 """,
+    # 标签合并流程的靶子（轮次 32）：`suggestMerges` 的"包含关系"分支要求两边 normTag 后
+    # 长度都 >= 3、短的一侧并入长的一侧，且长度比 >= 0.45 —— 现成语料里的标签
+    # （渲染 / 基线 / 中文标签 / 双链 / 收藏 / 面试 / 前端 / 检索）凑不出这一对，
+    # 所以专门造 vue × 2 与 vue3 × 1：vue 是短的（并入方，n=2），vue3 是长的（目标）。
+    "content/articles/vue2笔记.md": """---
+title: Vue2 笔记
+source: knowledge
+collected: 2026-02-02
+tags: [vue]
+status: stable
+---
+
+# Vue2 笔记
+
+选项式 API 的那一套，等着被并进 vue3。
+""",
+    "content/articles/vue2组件.md": """---
+title: Vue2 组件通信
+source: knowledge
+collected: 2026-02-03
+tags: [vue, 前端]
+status: stable
+---
+
+# Vue2 组件通信
+
+props / $emit / 事件总线，同样等着被并入 vue3。
+""",
+    "content/articles/vue3迁移.md": """---
+title: Vue3 迁移
+source: knowledge
+collected: 2026-02-04
+tags: [vue3]
+status: stable
+---
+
+# Vue3 迁移
+
+组合式 API 是这次合并的目标标签。
+""",
     # 第三个词条**故意放进另一个子域**（baike/db）：术语页的「子域切换」只有一个子域时
     # 点了等于没点，断不出"只剩该子域"这件事。
     "content/baike/db/布隆过滤器.md": """---
@@ -223,6 +263,17 @@ def run_expr(url, js, width=PROBE_WIDTH, click="", click_wait=1800, init=""):
         env["KB_GEOM_CLICK"] = click
         env["KB_GEOM_CLICK_WAIT"] = str(click_wait)
     if init:
+        # 注入桩必须先过语法自检：CDP 的 addScriptToEvaluateOnNewDocument 碰到 SyntaxError
+        # 是**静默不执行**的（Chrome 不报错、页面照常跑），于是"打了桩之后仍然绿"的断言
+        # 全是假的。2026-09-25 轮次 32 就栽在这上面 —— 多出来的一个右括号让掌握度空态桩
+        # 整段没执行，页面读的是真接口，那条"空列表→一句人话"永远不可能成立，却差点蒙过去。
+        f2 = QA / "behavior-init.js"
+        f2.write_text(init, encoding="utf-8")
+        chk = subprocess.run(["node", "--check", str(f2)], cwd=str(ROOT),
+                             capture_output=True, text=True,
+                             encoding="utf-8", errors="replace", timeout=60)
+        check("探针注入桩（init）语法正确", chk.returncode == 0,
+              _safe((chk.stderr or "")[-240:]))
         env["KB_GEOM_INIT"] = init
     r = subprocess.run(
         ["node", str(ROOT / "scripts" / "agent" / "geom.mjs"), url, str(width), "@" + str(f)],
@@ -2404,6 +2455,527 @@ def probe_novel_bar(base, tmp):
 
 
 
+# ================================================================ 探针 23：统计页（月份翻页 / 每日图 / 掌握度）
+# 台账 §2 三行：统计 · 月份 prev/next｜统计 · #stDailyChart / #stChartNote / #st-daily-data｜
+# 统计 · #stMasteryBody / #stMasterySum。
+# 口径：事件**只经 /api/track**（应用自己的写路径）造，绝不手改 indexes/reading.db（不变量 3）；
+# 判据两头咬住 —— 页面渲染出的数 vs 同一份库用生产谓词重算的数，逐根柱子 vs 模板内嵌的 JSON 载荷。
+STATS_DRIVER_JS = PRELUDE + r"""
+  const post = (path, event, sec) => fetch('/api/track', {method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({path, event, seconds: sec})}).then(r => r.json());
+  out.seeded = [];
+  out.seeded.push(await post('ui-r/notes/beta.md', 'read_minute', 60));
+  out.seeded.push(await post('ui-r/notes/beta.md', 'read_minute', 60));
+  out.seeded.push(await post('ui-r/notes/beta.md', 'read_minute', 60));
+  out.seeded.push(await post('baike/term/倒排索引.md', 'read_minute', 60));
+  out.seeded.push(await post('baike/term/倒排索引.md', 'open', 0));
+  out.seeded.push(await post('ui-r/notes/beta.md', 'finish', 0));
+  return JSON.stringify(out);
+})()"""
+
+STATS_JS = PRELUDE + r"""
+  const T = e => ((e && e.textContent) || '').replace(/\s+/g, ' ').trim();
+  // 月份一律从 <title> 读：空态那一档模板不渲染 .stats-body，data-ym 跟着没了（轮次 32 实测）
+  const ymOf = () => (document.title.match(/·\s*(\d{4}-\d{2})\s*·/) || [])[1] || null;
+  for (let i = 0; i < 60 && !(window.Chart && q('#stDailyChart')); i++) await sleep(150);
+  await sleep(1500);
+  out.ym = ymOf();
+  out.ym_attr = q('.stats-body') ? q('.stats-body').getAttribute('data-ym') : null;
+  out.payload = T(q('#st-daily-data'));
+  out.ym_title = ymOf();
+  out.crumb = [...document.querySelectorAll('.crumb .iconbtn')]
+    .map(a => ({href: a.getAttribute('href'), txt: T(a)}));
+  out.kpis = [...document.querySelectorAll('.kpi-card')].map(c => ({
+    id: c.getAttribute('data-st-card'), num: T(c.querySelector('.num')),
+    delta: T(c.querySelector('.delta')), canvas: !!c.querySelector('canvas')}));
+  const cv = q('#stDailyChart');
+  out.canvas = !!cv;
+  out.aria = cv ? (cv.getAttribute('aria-label') || '') : '';
+  out.note = txt('#stChartNote');
+  out.nochart = txt('.st-nochart');
+  out.empty_title = txt('.empty .e-title');
+  out.lb = [...document.querySelectorAll('.lb-row')].map(a => ({
+    href: a.getAttribute('href'), rank: T(a.querySelector('.lb-rank')),
+    t: T(a.querySelector('.lb-t')), min: T(a.querySelector('.lb-min')),
+    w: ((a.querySelector('.lb-bar > i') || {}).style || {}).width}));
+  const ch = window.Chart && cv ? window.Chart.getChart(cv) : null;
+  out.labels = ch ? ch.data.labels : null;
+  out.minutes = ch ? ch.data.datasets[0].data : null;
+  out.docs = ch ? ch.data.datasets[1].data : null;
+  // 四张 KPI 卡各自的小柱子（c1 活跃 / c2 分钟 / c3 打开 / c4 读完）也是同一套序列喂的
+  out.sparks = [...document.querySelectorAll('[data-spark]')].map(c => {
+    const k = c.querySelector('canvas');
+    const g = window.Chart && k ? window.Chart.getChart(k) : null;
+    return {kind: c.getAttribute('data-spark'),
+            canvas: !!k,
+            data: g ? g.data.datasets[0].data : null};
+  });
+  out.mastery_sum = txt('#stMasterySum');
+  out.mastery_rows = [...document.querySelectorAll('.st-mastery-row')].map(r => ({
+    lab: T(r.querySelector('.lab')), counts: T(r.querySelector('.st-mastery-n')),
+    none: T(r.querySelector('.st-mastery-none')), empty: !!r.classList.contains('is-empty'),
+    segs: [...r.querySelectorAll('.bar > i')].map(i => i.getAttribute('style'))}));
+  out.mastery_body = T(q('#stMasteryBody'));
+  out.stub_hits = (window.__kbMasteryStub === undefined) ? null : window.__kbMasteryStub;
+  return JSON.stringify(out);
+})()"""
+
+STATS_NAV_JS = PRELUDE + r"""
+  const T = e => ((e && e.textContent) || '').replace(/\s+/g, ' ').trim();
+  await sleep(900);
+  const ymOf = () => (document.title.match(/·\s*(\d{4}-\d{2})\s*·/) || [])[1] || null;
+  out.path = location.pathname + location.search;
+  out.ym = ymOf();
+  out.ym_attr = q('.stats-body') ? q('.stats-body').getAttribute('data-ym') : null;
+  out.crumb = [...document.querySelectorAll('.crumb .iconbtn')]
+    .map(a => ({href: a.getAttribute('href'), txt: T(a)}));
+  out.canvas = !!q('#stDailyChart');
+  out.nochart = T(q('.st-nochart'));
+  out.empty_title = T(q('.empty .e-title'));
+  out.payload = T(q('#st-daily-data'));
+  out.kpi_cards = document.querySelectorAll('.kpi-card').length;
+  return JSON.stringify(out);
+})()"""
+
+# 只动 /api/learn/mastery 这一条 URL：让它回"库里一张卡都没有"，看那一区落到哪句话
+MASTERY_EMPTY_STUB = ("(function(){const f=window.fetch;window.__kbMasteryStub=0;"
+                      "window.fetch=function(u,o){"
+                      "if(String(u).indexOf('/api/learn/mastery')>=0){"
+                      "window.__kbMasteryStub++;"
+                      "return Promise.resolve(new Response("
+                      "JSON.stringify({ok:true,scope:'domain',items:[],totals:{total:0}}),"
+                      "{status:200,headers:{'Content-Type':'application/json'}}));}"
+                      "return f.apply(window,arguments);};})()")
+
+
+def probe_stats(base, tmp):
+    print("== 23 统计页：月份 prev/next · 每日图 · 复习卡覆盖 ==")
+    import calendar
+    from app.reading import ReadingStore
+    now_ym = time.strftime("%Y-%m")
+    prev_ym = (f"{int(now_ym[:4]) - 1}-12" if now_ym[5:7] == "01"
+               else f"{now_ym[:4]}-{int(now_ym[5:7]) - 1:02d}")
+    # 造事件走首页上的一次 fetch（首页不发 /api/track，不会污染当月计数）
+    seed = run_expr(base + "/", STATS_DRIVER_JS)
+    check("统计页：事件经 /api/track 全部收下（tracked 逐条为真）",
+          len(seed.get("seeded") or []) == 6
+          and all(x.get("tracked") is True for x in (seed.get("seeded") or [])),
+          seed.get("seeded"))
+    # 生产谓词重算一遍（读的是同一个临时实例的派生库，只读）
+    rs = ReadingStore(tmp / "indexes")
+    try:
+        kpi = rs.monthly(now_ym)
+    finally:
+        rs.close()
+    dim = calendar.monthrange(int(now_ym[:4]), int(now_ym[5:7]))[1]
+    # **独立预言**：绕开 monthly()，直接对 reading.db 的原始事件表手写一条聚合。
+    # 为什么非要另起一个口径：上一版这里拿 monthly() 的结果去对页面，而页面读的也是
+    # monthly() —— 于是把 `"finished": int(d[3])` 改成 0 时两边一起变 0，断言照样绿
+    # （定点变异 F 实测存活）。判据必须站在被测函数之外才叫锁。
+    import sqlite3
+    con = sqlite3.connect(tmp / "indexes" / "reading.db")
+    try:
+        rows = con.execute(
+            """SELECT day, SUM(seconds)/60.0, COUNT(DISTINCT path),
+                      COUNT(DISTINCT CASE WHEN event='finish' THEN path END)
+               FROM reading_events WHERE ym=? GROUP BY day""", (now_ym,)).fetchall()
+        raw_month = con.execute(
+            """SELECT COUNT(DISTINCT day), COALESCE(SUM(seconds),0)/60.0,
+                      COUNT(DISTINCT CASE WHEN event='open' THEN path END),
+                      COUNT(DISTINCT CASE WHEN event='finish' THEN path END)
+               FROM reading_events WHERE ym=?""", (now_ym,)).fetchone()
+    finally:
+        con.close()
+    by_day = {r[0]: r for r in rows}
+    oracle_min = [round(float(by_day[f"{now_ym}-{i + 1:02d}"][1]), 1)
+                  if f"{now_ym}-{i + 1:02d}" in by_day else 0.0 for i in range(dim)]
+    oracle_doc = [int(by_day[f"{now_ym}-{i + 1:02d}"][2])
+                  if f"{now_ym}-{i + 1:02d}" in by_day else 0 for i in range(dim)]
+    oracle_fin = [int(by_day[f"{now_ym}-{i + 1:02d}"][3])
+                  if f"{now_ym}-{i + 1:02d}" in by_day else 0 for i in range(dim)]
+    d = run_expr(base + "/stats", STATS_JS)
+
+    # ---- 行 1：#stDailyChart / #stChartNote / #st-daily-data
+    check("统计页：默认落在当月，KPI 四卡 + 图表都在（不是空态占位）",
+          d.get("ym") == now_ym and d.get("ym_attr") == now_ym
+          and (d.get("payload") or "[]") != "[]" and len(d.get("kpis") or []) == 4
+          and d.get("canvas") is True and not d.get("nochart"),
+          {"ym": d.get("ym"), "kpis": len(d.get("kpis") or []),
+           "canvas": d.get("canvas"), "nochart": d.get("nochart")})
+    check("每日图：横轴按**日历 1..当月天数**铺刻度（缺日也占位，不压缩成有数的几根）",
+          d.get("labels") == list(range(1, dim + 1)),
+          {"head": (d.get("labels") or [])[:3], "tail": (d.get("labels") or [])[-2:],
+           "want": dim})
+    payload = json.loads(d.get("payload") or "[]")
+    want_min = [0.0] * dim
+    want_doc = [0] * dim
+    for x in payload:
+        day = int(str(x.get("day"))[8:10])
+        want_min[day - 1] += float(x.get("minutes") or 0)
+        want_doc[day - 1] += int(x.get("docs") or 0)
+    check("每日图：两根序列（分钟柱 / 打开篇数线）逐日 == 模板内嵌的 #st-daily-data",
+          len(payload) > 0
+          and [round(float(v), 1) for v in (d.get("minutes") or [])]
+          == [round(v, 1) for v in want_min]
+          and d.get("docs") == want_doc,
+          {"chart": d.get("minutes"), "payload": want_min,
+           "docs": d.get("docs"), "want_doc": want_doc})
+    nz = [i for i, v in enumerate(want_min) if v > 0]
+    peak_i = max(nz, key=lambda i: want_min[i]) if nz else 0
+    sum_min = round(sum(want_min), 1)
+    note = d.get("note") or ""
+    check("每日图：#stChartNote 的峰值/有记录天数/日均全从同一份序列算（不另编一套数）",
+          f"第 {peak_i + 1} 天" in note and f"{want_min[peak_i]:g} 分钟" in note
+          and f"有记录 {len(nz)} 天" in note
+          and f"日均 {sum_min / dim:.1f} 分钟" in note,
+          {"note": note, "peak_day": peak_i + 1, "active": len(nz),
+           "avg": round(sum_min / dim, 1)})
+    check("每日图：canvas 带无障碍标签且写明当月（读不了图的人还有一句话）",
+          now_ym in (d.get("aria") or "") and "每日阅读时长" in (d.get("aria") or ""),
+          d.get("aria"))
+    mins = [float(x.get("minutes") or 0) for x in kpi["docs"]]
+    rows = d.get("lb") or []
+    check("文档榜：按当月累计时长降序，第一名正是我灌得最多的那篇，行数与后端一致",
+          len(mins) > 0 and mins == sorted(mins, reverse=True)
+          and "beta" in (kpi["docs"][0]["path"] or "") and len(rows) == len(kpi["docs"]),
+          {"lb": len(rows), "docs": len(kpi["docs"]), "mins": mins})
+    check("文档榜：每行分钟数 == 生产谓词算出的分钟数，条形按最高值归一（第一名 100%）",
+          bool(rows) and all(r.get("min", "").startswith(f"{k:g} min")
+                             for r, k in zip(rows, mins))
+          and rows[0].get("w") == "100%",
+          {"shown": [r.get("min") for r in rows][:3], "want": mins[:3],
+           "w0": rows[0].get("w") if rows else None})
+
+    sparks = {x.get("kind"): x for x in (d.get("sparks") or [])}
+    # 读完那条序列用**独立预言**（原始事件表），不用载荷 —— 载荷与图表同源于 monthly()，
+    # 两边一起被改坏时"逐日 == 载荷"这种判据会自证通过（变异 F 就是这么活下来的）
+    want_fin = oracle_fin
+    check("KPI 迷你柱：四张卡的逐日序列 == 分钟/打开按载荷铺、读完按**原始事件表**铺（c4 不许被抹平）",
+          {"presence", "minutes", "docs", "finished"} == set(sparks.keys())
+          and sparks.get("minutes", {}).get("canvas") is True
+          and len(sparks.get("minutes", {}).get("data") or []) == len(want_min)
+          and all(abs(a - b) < 1e-9 for a, b in zip(sparks.get("minutes", {}).get("data") or [],
+                                                    want_min))
+          and sparks.get("docs", {}).get("data") == want_doc
+          and sparks.get("finished", {}).get("data") == want_fin
+          and sparks.get("presence", {}).get("data") == [1 if v > 0 else 0 for v in want_min]
+          and all(sparks[k].get("canvas") is True for k in sparks),
+          {"kinds": sorted(sparks.keys()),
+           "fin": sparks.get("finished", {}).get("data"), "want_fin": want_fin,
+           "min": sparks.get("minutes", {}).get("data"), "want_min": want_min,
+           "pres": sparks.get("presence", {}).get("data")})
+
+    # ---- 行 2：KPI 四个数与后端逐项一致（读的是同一份派生库）
+    knum = {c.get("id"): c.get("num") for c in (d.get("kpis") or [])}
+    check("KPI：活跃天数 / 月度时长 / 访问篇数 / 读完篇数 == ReadingStore.monthly 重算",
+          knum.get("c1") == f"{kpi['active_days']}/ {dim} 天"
+          and knum.get("c2") == f"{kpi['total_minutes']:g}分钟"
+          and knum.get("c3") == f"{kpi['opened_docs']}篇"
+          and knum.get("c4") == f"{kpi['finished_docs']}篇",
+          {"shown": knum, "want": kpi})
+    # 上面那条比的是"页面 vs monthly()"，两者同源 —— 一旦 monthly() 本身被改坏，它会跟着一起绿。
+    # 所以再加一条**绕开被测函数**的：直接拿原始事件表的手写聚合对画面。
+    check("独立预言：KPI 四个数 == reading_events 手写聚合（monthly() 自己算错也要红）",
+          knum.get("c1") == f"{raw_month[0]}/ {dim} 天"
+          and knum.get("c2") == f"{round(float(raw_month[1]), 1):g}分钟"
+          and knum.get("c3") == f"{raw_month[2]}篇"
+          and knum.get("c4") == f"{raw_month[3]}篇",
+          {"shown": knum, "raw": raw_month, "dim": dim})
+    check("独立预言：每日图的分钟/打开 + c4 的读完序列 == 原始事件表逐日聚合（不是只跟载荷对账）",
+          len(d.get("minutes") or []) == dim
+          and all(abs(a - b) < 1e-9 for a, b in zip(d.get("minutes") or [], oracle_min))
+          and d.get("docs") == oracle_doc
+          and sparks.get("finished", {}).get("data") == oracle_fin
+          and sum(oracle_fin) >= 1,
+          {"chart_fin": sparks.get("finished", {}).get("data"), "oracle_fin": oracle_fin,
+           "chart_min": d.get("minutes"), "oracle_min": oracle_min,
+           "chart_doc": d.get("docs"), "oracle_doc": oracle_doc})
+
+    # ---- 行 3：月份 prev/next 是真钮、点了真的换月
+    crumb = d.get("crumb") or []
+    check("月份导航：当月页给 prev 钮、不给 next 钮（未来月份点不出东西）",
+          any(c.get("href") == "/stats?ym=" + prev_ym for c in crumb)
+          and not any(c.get("href") == "/stats?ym=" + now_ym for c in crumb)
+          and any(c.get("href") == "/" for c in crumb), crumb)
+    back = run_expr(base + "/stats", STATS_NAV_JS, click=".crumb a:first-of-type")
+    check("月份导航：点 prev 钮真的换到上个月（URL 与 data-ym 一起变）",
+          back.get("path") == "/stats?ym=" + prev_ym and back.get("ym") == prev_ym,
+          {"path": back.get("path"), "ym": back.get("ym")})
+    check("月份导航：没有记录的那个月落到空态那句话，KPI 与图表一个都不渲染（不画空图、不编数）",
+          prev_ym in (back.get("empty_title") or "") and back.get("ym") == prev_ym
+          and back.get("ym_attr") is None and back.get("canvas") is False
+          and back.get("kpi_cards") == 0 and back.get("payload") == "[]",
+          {"empty": back.get("empty_title"), "canvas": back.get("canvas"),
+           "kpi_cards": back.get("kpi_cards"), "payload": back.get("payload")})
+    fwd = run_expr(base + "/stats?ym=" + prev_ym, STATS_NAV_JS,
+                   click='.crumb a[href="/stats?ym=' + now_ym + '"]')
+    check("月份导航：过去那个月给 next 钮，点了回得到当月（来回都得通）",
+          fwd.get("ym") == now_ym and fwd.get("path") == "/stats?ym=" + now_ym
+          and fwd.get("canvas") is True,
+          {"path": fwd.get("path"), "ym": fwd.get("ym"), "canvas": fwd.get("canvas")})
+    fut = run_expr(base + "/stats?ym=2030-01", STATS_NAV_JS)
+    check("月份导航：翻到未来月份也不给 next 钮（不给点出空洞的机会）",
+          fut.get("ym") == "2030-01" and fut.get("ym_attr") is None
+          and fut.get("kpi_cards") == 0 and not any(
+              (c.get("href") or "").startswith("/stats?ym=2030-02")
+              for c in (fut.get("crumb") or [])), fut.get("crumb"))
+    bad = run_expr(base + "/stats?ym=2026-9", STATS_NAV_JS)
+    check("月份导航：非法 ym（2026-9 少个 0）被路由挡回当月，不带病渲染",
+          bad.get("ym") == now_ym and bad.get("path") == "/stats?ym=2026-9", {"ym": bad.get("ym"), "path": bad.get("path")})
+
+    # ---- 行 4：复习卡覆盖 c7（#stMasteryBody / #stMasterySum）
+    mj = json.loads(urllib_get(base + "/api/learn/mastery?scope=domain&all=1") or "{}")
+    items = mj.get("items") or []
+    tot = mj.get("totals") or {}
+    mrows = d.get("mastery_rows") or []
+    check("掌握度：域行数与域名 == /api/learn/mastery 的 items（没建卡的域也得上墙）",
+          len(mrows) == len(items) and [r.get("lab") for r in mrows]
+          == [x.get("label") for x in items],
+          {"rows": [r.get("lab") for r in mrows], "api": [x.get("label") for x in items]})
+    covered = sum(1 for x in items if (x.get("total") or 0) > 0)
+    check("掌握度：汇总行的总卡数 / 覆盖域数 / 三段计数 == 接口 totals（覆盖数按 total>0 现算）",
+          (d.get("mastery_sum") or "").startswith(f"{tot.get('total')} 卡 · 覆盖 {covered}/{len(items)} 域")
+          and f"new {tot.get('new')} / learning {tot.get('learning')} / mastered {tot.get('mastered')}"
+          in (d.get("mastery_sum") or ""),
+          {"sum": d.get("mastery_sum"), "totals": tot, "covered": covered})
+    bad_rows = []
+    for r, it in zip(mrows, items):
+        t = it.get("total") or 0
+        if t:
+            seg = "width:{:.2f}%".format(it.get("new", 0) / t * 100)
+            if r.get("counts") != "{} / {} / {}".format(
+                    it.get("new"), it.get("learning"), it.get("mastered")) \
+                    or seg not in (r.get("segs") or [""])[0]:
+                bad_rows.append((r.get("lab"), r.get("counts"), r.get("segs"), it))
+        elif r.get("none") != "未建卡" or r.get("empty") is not True or r.get("segs"):
+            bad_rows.append((r.get("lab"), r.get("none"), r.get("empty"), r.get("segs")))
+    check("掌握度：有卡的域三段宽度与计数逐域对得上；没建卡的写「未建卡」且不留空段",
+          not bad_rows, bad_rows[:3])
+    e = run_expr(base + "/stats", STATS_JS, init=MASTERY_EMPTY_STUB)
+    # 先自证桩真的拦到了这一条 URL —— 否则下面这条绿是假的（轮次 30 那条空断言的教训）
+    check("掌握度：空态打桩确实拦到了 /api/learn/mastery（桩没打中就不许判这条）",
+          (e.get("stub_hits") or 0) >= 1,
+          {"hits": e.get("stub_hits"), "ym": e.get("ym_title"),
+           "body": (e.get("mastery_body") or "")[:120]})
+    check("掌握度：接口回空列表时必须换成一句人话（不许留着「复习库加载中…」转圈）",
+          "复习库暂无数据" in (e.get("mastery_body") or "")
+          and not (e.get("mastery_rows") or [])
+          and "加载中" not in (e.get("mastery_body") or ""),
+          {"hits": e.get("stub_hits"), "body": (e.get("mastery_body") or "")[:120]})
+
+
+
+# ================================================================ 探针 24：标签合并流程 + 顶栏 #toast
+# 台账 §2 最后一行「标签页 · .t-merge / #merge-suggest / #sugg-sec / #tag-drawer」+
+# 顶栏「#toast 全局提示」。这一行的重点不是"按钮在不在"，而是**两段确认到底有没有两段**：
+# 预览（apply:false）阶段必须一个字都不写盘，只有第二次确认（apply:true）才落盘。
+# 所以四趟分开跑：结构 / 取消 / 预览后取消（查磁盘）/ 真合并（查磁盘 + 查刷新后的界面 + 查 toast）。
+TAGS_STRUCT_JS = PRELUDE + r"""
+  const T = e => ((e && e.textContent) || '').replace(/\s+/g, ' ').trim();
+  await sleep(700);
+  const sec = q('#sugg-sec');
+  out.sugg_visible = !!sec && sec.hidden === false;
+  out.cards = [...document.querySelectorAll('#merge-suggest .merge-card')]
+    .map(b => ({src: b.dataset.src, dst: b.dataset.dst, n: b.dataset.n, meta: T(b)}));
+  out.vue_pill = !!q('#tag-cloud .t[data-tag="vue"]');
+  out.vue3_pill = !!q('#tag-cloud .t[data-tag="vue3"]');
+  out.vue_count = txt('#tag-cloud .t[data-tag="vue"]');
+  out.merge_btn = !!q('#tag-cloud .t-merge[data-merge="vue"]');
+  out.selbar_hidden = (q('#tag-selbar') || {}).hidden;
+  out.merge_sel_disabled = (q('#tag-merge-sel') || {}).disabled;
+  // 勾两个标签 → 选择条该活过来（这一段只读，不落盘）
+  const cks = [...document.querySelectorAll('#tag-cloud .t[data-tag="vue"] .t-check, #tag-cloud .t[data-tag="vue3"] .t-check')];
+  cks.forEach(c => { c.checked = true; c.dispatchEvent(new Event('change', {bubbles: true})); });
+  await sleep(300);
+  out.selbar_after = (q('#tag-selbar') || {}).hidden;
+  out.sel_count = txt('#tag-sel-count');
+  out.merge_sel_disabled_after = (q('#tag-merge-sel') || {}).disabled;
+  const clr = q('#tag-clear');
+  if (clr) clr.click();
+  await sleep(300);
+  out.selbar_cleared = (q('#tag-selbar') || {}).hidden;
+  out.sel_count_cleared = txt('#tag-sel-count');
+  // .t-merge 走的是"单标签合并"入口：预填的是**源标签自己**
+  const mb = q('#tag-cloud .t-merge[data-merge="vue"]');
+  if (mb) mb.click();
+  await sleep(500);
+  const m = [...document.querySelectorAll('.kbm')].pop();
+  out.modal_title = m ? T(m.querySelector('.kbm-title-t')) : '';
+  out.modal_input = m ? ((m.querySelector('.kbm-input[data-k="dst"]') || {}).value) : null;
+  out.modal_hint = m ? T(m.querySelector('.kbm-body')) : '';
+  out.modal_confirm = m ? T(m.querySelector('.kbm-ok')) : '';
+  return JSON.stringify(out);
+})()"""
+
+TAGS_CANCEL_JS = PRELUDE + r"""
+  const T = e => ((e && e.textContent) || '').replace(/\s+/g, ' ').trim();
+  await sleep(700);
+  const card = [...document.querySelectorAll('#merge-suggest .merge-card')]
+    .find(b => b.dataset.src === 'vue' && b.dataset.dst === 'vue3');
+  out.card = card ? {src: card.dataset.src, dst: card.dataset.dst, n: card.dataset.n} : null;
+  if (card) card.click();
+  await sleep(500);
+  const m1 = [...document.querySelectorAll('.kbm')].pop();
+  out.m1_title = m1 ? T(m1.querySelector('.kbm-title-t')) : '';
+  out.m1_preset = m1 ? ((m1.querySelector('.kbm-input[data-k="dst"]') || {}).value) : null;
+  if (m1) m1.querySelector('.kbm-cancel').click();
+  await sleep(500);
+  out.modals_after_cancel = document.querySelectorAll('.kbm').length;
+  out.toast_after_cancel = txt('#toast');
+  out.vue_pill_still = !!q('#tag-cloud .t[data-tag="vue"]');
+  return JSON.stringify(out);
+})()"""
+
+# 预览到第二步、然后**取消** —— 这一趟用来证明"预览真的只是预览"
+TAGS_PREVIEW_JS = PRELUDE + r"""
+  const T = e => ((e && e.textContent) || '').replace(/\s+/g, ' ').trim();
+  await sleep(700);
+  const card = [...document.querySelectorAll('#merge-suggest .merge-card')]
+    .find(b => b.dataset.src === 'vue' && b.dataset.dst === 'vue3');
+  if (card) card.click();
+  await sleep(500);
+  const m1 = [...document.querySelectorAll('.kbm')].pop();
+  if (m1) m1.querySelector('.kbm-ok').click();     // 预览影响（dry-run）
+  for (let i = 0; i < 40 && document.querySelectorAll('.kbm').length < 1; i++) await sleep(150);
+  await sleep(500);
+  const m2 = [...document.querySelectorAll('.kbm')].pop();
+  out.m2_title = m2 ? T(m2.querySelector('.kbm-title-t')) : '';
+  out.m2_body = m2 ? T(m2.querySelector('.kbm-body')) : '';
+  out.m2_confirm = m2 ? T(m2.querySelector('.kbm-ok')) : '';
+  out.m2_danger = m2 ? !!m2.querySelector('.kbm-ok.danger') : null;
+  if (m2) m2.querySelector('.kbm-cancel').click(); // 在最后一刻取消
+  await sleep(600);
+  out.modals_left = document.querySelectorAll('.kbm').length;
+  out.vue_pill_left = !!q('#tag-cloud .t[data-tag="vue"]');
+  return JSON.stringify(out);
+})()"""
+
+TAGS_MERGE_JS = PRELUDE + r"""
+  const T = e => ((e && e.textContent) || '').replace(/\s+/g, ' ').trim();
+  await sleep(700);
+  const card = [...document.querySelectorAll('#merge-suggest .merge-card')]
+    .find(b => b.dataset.src === 'vue' && b.dataset.dst === 'vue3');
+  if (card) card.click();
+  await sleep(500);
+  const m1 = [...document.querySelectorAll('.kbm')].pop();
+  if (m1) m1.querySelector('.kbm-ok').click();
+  for (let i = 0; i < 40 && !/[0-9]+ 篇文档/.test((document.querySelectorAll('.kbm')[0] || {}).textContent || ''); i++) await sleep(150);
+  await sleep(500);
+  const m2 = [...document.querySelectorAll('.kbm')].pop();
+  if (m2) m2.querySelector('.kbm-ok').click();     // 执行合并（apply:true）
+  for (let i = 0; i < 60 && !(q('#toast') && q('#toast').classList.contains('show')); i++) await sleep(150);
+  out.toast_text = txt('#toast');
+  out.toast_shown = cls('#toast', 'show');
+  await sleep(1500);                              // refreshTagsPage() 拿 /tags 片段换掉标签云
+  out.vue_pill_after = !!q('#tag-cloud .t[data-tag="vue"]');
+  out.vue3_count_after = txt('#tag-cloud .t[data-tag="vue3"]');
+  let tdata = null; try { tdata = JSON.parse(q('#tags-data').textContent); } catch (e) {}
+  out.vue3_n_after = (tdata || []).filter(x => x.t === 'vue3').map(x => x.n)[0];
+  out.vue_n_after = (tdata || []).filter(x => x.t === 'vue').map(x => x.n)[0];
+  out.sugg_hidden_after = (q('#sugg-sec') || {}).hidden;
+  // 整块换掉的节点上事件委托还在不在：点 vue3 胶囊应该仍然能开抽屉
+  const p3 = q('#tag-cloud .t[data-tag="vue3"]');
+  if (p3) p3.click();
+  await sleep(500);
+  out.drawer_open_after_refresh = !!(q('#tag-drawer') && q('#tag-drawer').hidden === false);
+  out.drawer_head = txt('#drawer-h');
+  out.drawer_docs = document.querySelectorAll('#drawer-docs .result').length;
+  for (let i = 0; i < 30 && cls('#toast', 'show'); i++) await sleep(150);
+  out.toast_shown_later = cls('#toast', 'show');
+  return JSON.stringify(out);
+})()"""
+
+
+def probe_tag_merge(base, tmp):
+    print("== 24 标签合并流程（两段确认 + 片段刷新）与顶栏 #toast ==")
+    arts = tmp / "content" / "articles"
+    f_vue = arts / "vue2笔记.md"
+    f_vue2 = arts / "vue2组件.md"
+    f_vue3 = arts / "vue3迁移.md"
+    before = (f_vue.read_bytes(), f_vue2.read_bytes(), f_vue3.read_bytes())
+
+    d = run_expr(base + "/tags", TAGS_STRUCT_JS)
+    check("合并建议：#sugg-sec 亮着，且建议卡认得 vue → vue3（短的并入长的，n=2）",
+          d.get("sugg_visible") is True
+          and any(c.get("src") == "vue" and c.get("dst") == "vue3" and c.get("n") == "2"
+                  for c in (d.get("cards") or [])),
+          {"cards": d.get("cards"), "vis": d.get("sugg_visible")})
+    check("标签云：vue / vue3 两个胶囊都在，vue 那颗带着 .t-merge 并入钮",
+          d.get("vue_pill") is True and d.get("vue3_pill") is True
+          and d.get("merge_btn") is True, d)
+    check("批量选择：勾两个胶囊 → 选择条现身、计数写「已选 2 个标签」、合并钮解禁",
+          d.get("selbar_hidden") is True and d.get("selbar_after") is False
+          and "已选 2 个标签" in (d.get("sel_count") or "")
+          and d.get("merge_sel_disabled") is True
+          and d.get("merge_sel_disabled_after") is False,
+          {"h0": d.get("selbar_hidden"), "h1": d.get("selbar_after"),
+           "cnt": d.get("sel_count"), "d0": d.get("merge_sel_disabled"),
+           "d1": d.get("merge_sel_disabled_after")})
+    check("批量选择：点「清除」→ 选择条收回、计数回到「未选择标签」（状态可逆）",
+          d.get("selbar_cleared") is True and "未选择" in (d.get("sel_count_cleared") or ""),
+          {"h": d.get("selbar_cleared"), "cnt": d.get("sel_count_cleared")})
+    check("并入钮入口：弹的是「标签合并」框，目标标签预填**源标签自己**，按钮写着「预览影响」",
+          "标签合并" in (d.get("modal_title") or "") and d.get("modal_input") == "vue"
+          and "预览影响" in (d.get("modal_confirm") or "")
+          and "frontmatter" in (d.get("modal_hint") or ""),
+          {"t": d.get("modal_title"), "i": d.get("modal_input"),
+           "c": d.get("modal_confirm"), "hint": (d.get("modal_hint") or "")[:90]})
+
+    c = run_expr(base + "/tags", TAGS_CANCEL_JS)
+    check("建议卡入口：预填的是**目标标签**（vue3），跟并入钮那条区分得开",
+          (c.get("card") or {}).get("src") == "vue" and c.get("m1_preset") == "vue3"
+          and "标签合并" in (c.get("m1_title") or ""),
+          {"card": c.get("card"), "preset": c.get("m1_preset"), "t": c.get("m1_title")})
+    check("第一步点「取消」：弹窗关闭、没有半路落盘（vue 胶囊还在，磁盘零变化）",
+          c.get("modals_after_cancel") == 0 and c.get("vue_pill_still") is True
+          and (f_vue.read_bytes(), f_vue2.read_bytes(), f_vue3.read_bytes()) == before,
+          {"modals": c.get("modals_after_cancel"), "pill": c.get("vue_pill_still")})
+
+    p = run_expr(base + "/tags", TAGS_PREVIEW_JS)
+    check("两段确认：预览（apply:false）真的回第二步 —— 报篇数、列受影响路径、按钮是红的「执行合并」",
+          "确认合并" in (p.get("m2_title") or "") and "2 篇文档" in (p.get("m2_body") or "")
+          and "vue2笔记.md" in (p.get("m2_body") or "")
+          and "执行合并" in (p.get("m2_confirm") or "") and p.get("m2_danger") is True,
+          {"t": p.get("m2_title"), "b": (p.get("m2_body") or "")[:160],
+           "c": p.get("m2_confirm"), "d": p.get("m2_danger")})
+    check("预览阶段一个字都不写盘：在最后一刻取消后，三篇靶子的字节与 vue 胶囊都原样还在",
+          p.get("modals_left") == 0 and p.get("vue_pill_left") is True
+          and (f_vue.read_bytes(), f_vue2.read_bytes(), f_vue3.read_bytes()) == before,
+          {"modals": p.get("modals_left"), "pill": p.get("vue_pill_left")})
+
+    m = run_expr(base + "/tags", TAGS_MERGE_JS)
+    body_vue = f_vue.read_text(encoding="utf-8")
+    body_vue2 = f_vue2.read_text(encoding="utf-8")
+    check("执行合并后：toast 报出合并篇数（顶栏全局提示这条消费者走通）",
+          m.get("toast_shown") is True and "已合并" in (m.get("toast_text") or "")
+          and "FTS 已重建" in (m.get("toast_text") or ""),
+          {"shown": m.get("toast_shown"), "text": m.get("toast_text")})
+    check("执行合并真的改写 frontmatter：两篇的 tags 里 vue → vue3，第三篇一个字节没动",
+          "vue3" in body_vue and "[vue]" not in body_vue.replace(" ", "")
+          and "vue3" in body_vue2 and "选项式 API 的那一套" in body_vue
+          and f_vue3.read_bytes() == before[2],
+          {"a": body_vue[:120], "b": body_vue2[:120]})
+    check("合并后界面靠片段刷新：vue 胶囊消失、#tags-data 里 vue3 变成 3 篇且 vue 归零、建议区自己收起",
+          m.get("vue_pill_after") is False and m.get("vue_n_after") is None
+          and m.get("vue3_n_after") == 3 and m.get("sugg_hidden_after") is True,
+          {"vue": m.get("vue_pill_after"), "vue_n": m.get("vue_n_after"),
+           "vue3_n": m.get("vue3_n_after"), "sugg": m.get("sugg_hidden_after")})
+    check("整块换掉的标签云上事件委托仍然有效：点 vue3 胶囊能开出抽屉并列出 3 篇",
+          m.get("drawer_open_after_refresh") is True and "vue3" in (m.get("drawer_head") or "")
+          and m.get("drawer_docs") == 3,
+          {"open": m.get("drawer_open_after_refresh"), "h": m.get("drawer_head"),
+           "n": m.get("drawer_docs")})
+    check("顶栏 #toast：说完话自己收声（约 2.6 秒后 .show 撤掉，不赖在屏幕上）",
+          m.get("toast_shown_later") is False, {"later": m.get("toast_shown_later")})
+    # 服务端是唯一渲染源：新标签云的篇数与标签集合必须来自同一次扫描（不是 JS 自己拼的）
+    html = urllib_get(base + "/tags")
+    check("服务端仍是唯一真相：重新拉 /tags，页面里已经没有 vue 这个标签胶囊",
+          'data-tag="vue"' not in html and 'data-tag="vue3"' in html,
+          html[:120])
+
+
+
 def only(name) -> bool:
     """开发期单跑某一探针：`python tests/test_ui_behavior.py nav`。
     不带参数 = 全跑（pre-commit / CI 走的就是全跑）。"""
@@ -2465,6 +3037,8 @@ def main() -> int:
         run_probe("novelpref", probe_novel_prefs, base)  # 只写 localStorage（小说偏好）
         run_probe("keys", probe_keys, base)             # 只读：快捷键两处同源
         run_probe("novelbar", probe_novel_bar, base, tmp)  # 写：章评落旁挂 + 朗读/滚动/下载
+        run_probe("stats", probe_stats, base, tmp)  # 写：/api/track 造当月事件后看统计页
+        run_probe("tagmerge", probe_tag_merge, base, tmp)  # 写：标签合并两段确认（真改 frontmatter）
         run_probe("newdoc", probe_newdoc, base, tmp)    # 写：在空子域里建一篇
         run_probe("inbox", probe_inbox, base, tmp)      # 写：_trash 软删 + 物理 purge（只动 _inbox 两个靶子）
         run_probe("crumb", probe_crumb_delete, base, tmp)    # 写：删 gamma
