@@ -51,6 +51,10 @@ jobs:
       # 缺任一个就打 SKIP 返回 0 —— 挂进来只为满足"CI 覆盖面不得小于本地钩子"。
       - name: JS property tests in real browser (SKIP without node/Chrome)
         run: python tests/test_js_props.py
+      # 彻查轮次 24：UI 行为回归（台账 §2 那 9 行"点了有没有反应"）。同样自探测，
+      # 缺 node/Chrome 就 SKIP —— 挂着是为了"CI 覆盖面不得小于本地钩子"这条口径。
+      - name: UI behavior regression (9 controls; SKIP without node/Chrome)
+        run: python tests/test_ui_behavior.py
       - name: RAG smoke (model not preloaded; download via mirror)
         env:
           HF_ENDPOINT: https://hf-mirror.com

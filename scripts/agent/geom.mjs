@@ -67,7 +67,8 @@ try {
       await send('Emulation.setDeviceMetricsOverride',
         { width: w, height: 900, deviceScaleFactor: 1, mobile: false });
       await sleep(600);  // 断点切换后重排
-      const out = await send('Runtime.evaluate', { expression: expr, returnByValue: true });
+      const out = await send('Runtime.evaluate',
+        { expression: expr, returnByValue: true, awaitPromise: true });
       if (out.result?.result?.value === undefined) {
         console.log(JSON.stringify({ vw: w, error: (out.exceptionDetails?.exception?.description || 'undefined').slice(0, 200) }));
       } else {

@@ -209,7 +209,11 @@ def raw(rel):
 
 
 # mermaid 图点击放大查看器：仅当页面含 mermaid 容器时注入；不写进语料文件
-_ZOOM_SNIPPET = """<script>(function(){
+# **必须用 raw 字符串**：这段是 JS，里面的 "\n" 是给 JS 的转义；写成普通 Python 字符串
+# 会被 Python 先解析成真换行，落到页面里就是 `css.textContent="<未闭合字符串` ——
+# 整段 script 语法错、放大查看器**从来没生效过**（2026-09-25 补 #kb-zoom-ov 行为测试时抓到，
+# 台账 §6 第 32 行；回归锁：test_ui_behavior 用 node 对注入片段做语法检查）。
+_ZOOM_SNIPPET = r"""<script>(function(){
  function ready(fn){if(document.readyState!=='loading')fn();else document.addEventListener('DOMContentLoaded',fn)}
  ready(function(){
   var css=document.createElement('style');css.textContent="\n#kb-zoom-ov{position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.82);display:none;align-items:center;justify-content:center;cursor:zoom-out}\n#kb-zoom-ov.show{display:flex}\n#kb-zoom-ov .kbz-inner{background:#fff;border-radius:10px;padding:10px;max-width:96vw;max-height:94vh;overflow:auto;cursor:grab}\n#kb-zoom-ov svg{transform-origin:top left;transition:transform .15s}\n#kb-zoom-hint{position:fixed;left:12px;bottom:10px;color:#8b949e;font:12px/1.6 sans-serif;z-index:100000}\n";document.head.appendChild(css);

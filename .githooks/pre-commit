@@ -77,6 +77,18 @@ else
   echo "[pre-commit] SKIP visual regression: no css/js/template file staged."
 fi
 
+# UI 行为回归（彻查轮次 24）：台账 §2 那 9 行"控件存在但点了没断言"的格子，现在有了
+# 交互后状态断言（问吧 / 两个补全浮层 / mermaid 放大 / 空态新建 / crumb 与编辑器删除 /
+# 收件箱 del+purge / 看板抽屉）。它要起浏览器（约 90s），所以和 P5 一样按条件触发：
+# 只有本次提交真的碰了前端或那两条写删除的路由时才跑。
+BEHAVIOR_STAGED=$(git diff --cached --name-only --diff-filter=ACMR -- 'static/*.js' 'static/*.css' 'app/templates/*.html' 'app/routes_files.py' 'app/routes_pages.py' 'tests/test_ui_behavior.py' | head -1)
+if [ -n "$BEHAVIOR_STAGED" ]; then
+  echo "[pre-commit] UI/删除路由 staged -> running UI behavior regression..."
+  $PY tests/test_ui_behavior.py || exit 1
+else
+  echo "[pre-commit] SKIP UI behavior regression: no frontend / delete-route file staged."
+fi
+
 if [ -f "tests/test_new_project.py" ]; then
   echo "[pre-commit] running scaffolder smoke..."
   $PY tests/test_new_project.py || exit 1
