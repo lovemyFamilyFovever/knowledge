@@ -63,6 +63,26 @@ try {
       await sleep(200);
     }
     await sleep(2500);   // 字体/动效落定，和 shot.mjs 的 settle 同源经验值
+    // 可选的"先点一下再量"：env KB_GEOM_CLICK=CSS 选择器（逗号分隔可多点），
+    // KB_GEOM_CLICK_WAIT=每次点击后的毫秒数（默认 1500）。
+    // 点击引发整页导航时也没问题：这里等的是 readyState 而不是 Promise 结果，
+    // 求值发生在**导航之后**的新文档里 —— 所以"点了到底换没换页"能直接断出来。
+    const clickSel = process.env.KB_GEOM_CLICK || '';
+    if (clickSel) {
+      for (const sel of clickSel.split(',')) {
+        if (!sel.trim()) continue;
+        await send('Runtime.evaluate', {
+          expression: `document.querySelector(${JSON.stringify(sel.trim())})?.click()` });
+        await sleep(+(process.env.KB_GEOM_CLICK_WAIT || 1500));
+        for (let i = 0; i < 60; i++) {
+          const r = await send('Runtime.evaluate',
+            { expression: 'document.readyState', returnByValue: true });
+          if (r.result?.result?.value === 'complete') break;
+          await sleep(200);
+        }
+      }
+      await sleep(1200);
+    }
     for (const w of WIDTHS) {
       await send('Emulation.setDeviceMetricsOverride',
         { width: w, height: 900, deviceScaleFactor: 1, mobile: false });

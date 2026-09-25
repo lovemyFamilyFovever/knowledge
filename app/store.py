@@ -448,6 +448,12 @@ def inbox_iter(content: Path):
             continue
         if p.suffix.lower() in INBOX_SKIP_SUFFIXES:
             continue
+        if p.name.endswith(".notes.md"):
+            # 备注旁挂不是待归档条目：正文进 _inbox 时它的 sidecar 会跟着一起进来，
+            # 但全仓对 `.notes.md` 的口径是"不可见"（scan_corpus B2 把它排除在分类树与
+            # 索引之外）。让它出现在收件箱里，用户就会看到一条"某某 的备注"的幽灵条目，
+            # 而"归档"它等于把一条无处渲染的备注塞进正式域目录（台账 §6 第 33 行）。
+            continue
         if p.name == "INVENTORY.md":
             continue
         yield p, rel

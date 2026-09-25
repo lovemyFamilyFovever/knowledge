@@ -40,6 +40,8 @@ from _tmpapp import (chrome_path, free_port, kill_instance, node_available,  # n
 import test_ui_regress as p5  # noqa: E402  复用它的合成语料与 taxonomy，不造第二份
 
 QA = ROOT / ".qa"
+# 开发期单跑某一探针用（`python tests/test_ui_behavior.py nav`）；门禁不带参数 = 全跑
+ONLY = (sys.argv[1] if len(sys.argv) > 1 else "").lower()
 PORT = None
 passed = 0
 failed = 0
@@ -117,15 +119,24 @@ def build_root(tmp: Path):
 PROBE_WIDTH = 1600
 
 
-def run_expr(url, js, width=PROBE_WIDTH):
-    """在指定视口宽度下求值一个 async 表达式（表达式须 return 一个 JSON 字符串）。"""
+def run_expr(url, js, width=PROBE_WIDTH, click="", click_wait=1800):
+    """在指定视口宽度下求值一个 async 表达式（表达式须 return 一个 JSON 字符串）。
+
+    `click` 非空时先点这些选择器（逗号分隔）再求值 —— 点击引发整页导航也没关系，
+    geom.mjs 等的是 readyState，求值发生在导航之后的新文档里，所以"点了到底换没换页"
+    能直接断出来（这是本套能覆盖"一级导航"那 8 行的关键）。
+    """
     QA.mkdir(parents=True, exist_ok=True)
     f = QA / "behavior-expr.js"
     f.write_text(js, encoding="utf-8")
+    env = dict(os.environ)
+    if click:
+        env["KB_GEOM_CLICK"] = click
+        env["KB_GEOM_CLICK_WAIT"] = str(click_wait)
     r = subprocess.run(
         ["node", str(ROOT / "scripts" / "agent" / "geom.mjs"), url, str(width), "@" + str(f)],
         cwd=str(ROOT), capture_output=True, text=True,
-        encoding="utf-8", errors="replace", timeout=300)
+        encoding="utf-8", errors="replace", timeout=300, env=env)
     lines = [l for l in (r.stdout or "").splitlines() if l.strip().startswith("{")]
     if not lines:
         check("CDP 探针有回值", False, f"rc={r.returncode} {(r.stdout or '')[:160]} {(r.stderr or '')[-200:]}")
@@ -147,6 +158,100 @@ PRELUDE = """(async () => {
   const sleep = ms => new Promise(r => setTimeout(r, ms));
   const cls = (s, c) => !!(q(s) && q(s).classList.contains(c));
 """
+
+# ---------------------------------------------------------------- 探针 0：一级导航与收件箱徽标
+# 口径写清楚（免得后来人以为每行都做了点击）：9 个导航项是**同一个机制**（服务端渲染的
+# `<a href>`），所以"点了真的换页 + 换页后高亮态跟着变"用一次真点击代表（复习），
+# 而每一行各自的**目的地正确性**（页面渲染出该页特征元素、且只有它自己带 .on）
+# 逐行用 HTTP 面断言 —— 那才是每行真正不同的部分。
+NAV_TARGETS = [
+    # (href, 标题前缀, 行名, 该页特征元素, 该页上应当带 .on 的导航项)
+    ("/", "知库", "阅读", 'id="tree"', ["/"]),
+    ("/review", "今日复习", "复习", 'id="kb-learn"', ["/review"]),
+    ("/glossary", "术语百科", "术语", 'id="kb-glossary"', ["/glossary"]),
+    # 统计页在**没有阅读数据的实例里**只渲染骨架：KPI 卡、图表、复习卡覆盖区全部有条件
+    # （has_chart 为假时连 canvas 都不存在）。所以特征元素取那张永远在的数据载荷
+    # `#st-daily-data` —— 它证明"这页真的按 stats.html 渲染了"，而不是被别的模板顶替。
+    # 图表本体的覆盖缺口另记在台账 §14.3 第 7 条。
+    ("/stats", "阅读统计", "统计", 'id="st-daily-data"', ["/stats"]),
+    ("/favorites", "收藏", "收藏", 'class="result fav-card"', ["/favorites"]),
+    ("/tags", "标签", "标签", 'id="tag-cloud"', ["/tags"]),
+    ("/governance", "治理驾驶舱", "治理", 'id="gov-scan-btn"', ["/governance"]),
+    # 收件箱与总览是**图标入口**（顶栏没有对应的文字导航项），所以 .on 恒空。
+    # 这不是断言写松了 —— 现状就是"从图标进这两页时，一级导航没有任何一项高亮"，
+    # 要不要给它算归属属产品决定，本条只把事实钉住（改了这个行为，这条会红）。
+    ("/inbox", "收件箱", "收件箱", 'id="inbox-kanban"', []),
+    ("/home", "总览", "brand→总览", 'id="view-home"', []),
+]
+
+NAV_BEFORE_JS = PRELUDE + """
+  out.path = location.pathname;
+  out.title = document.title;
+  const a = q('.topnav a[href="/review"]');
+  out.link_present = !!a;
+  out.on_now = [...document.querySelectorAll('.topnav .tn.on')].map(x => x.getAttribute('href'));
+  out.learn = !!q('#kb-learn');
+  return JSON.stringify(out);
+})()"""
+
+NAV_AFTER_JS = PRELUDE + """
+  out.path = location.pathname;
+  out.title = document.title;
+  out.on_now = [...document.querySelectorAll('.topnav .tn.on')].map(x => x.getAttribute('href'));
+  out.learn = !!q('#kb-learn');
+  return JSON.stringify(out);
+})()"""
+
+
+def probe_nav(base, tmp):
+    print("== 0 一级导航（点了换页 + 高亮跟着变）与收件箱徽标 ==")
+    before = run_expr(base + "/", NAV_BEFORE_JS)
+    # 第二趟：同一个 URL 起步，由 geom.mjs 先点「复习」再求值 —— 求值发生在导航之后的新文档里
+    after = run_expr(base + "/", NAV_AFTER_JS, click=".topnav a[href='/review']")
+    check("导航：出发页是阅读页、高亮在「阅读」、没有复习主体",
+          before.get("path") == "/" and before.get("on_now") == ["/"]
+          and before.get("learn") is False, before)
+    check("导航：阅读页上「复习」这个链接在位", before.get("link_present") is True, before)
+    check("导航：点「复习」之后浏览器真的换了页（pathname=/review）",
+          after.get("path") == "/review", after)
+    check("导航：换页后标题跟着变（今日复习 · 知库）",
+          str(after.get("title") or "").startswith("今日复习"), after.get("title"))
+    check("导航：换页后高亮态从「阅读」搬到「复习」", after.get("on_now") == ["/review"], after)
+    check("导航：目标页真的渲染出自己的主体（#kb-learn）", after.get("learn") is True, after)
+
+    import re as _re
+    for href, title, name, marker, want_on in NAV_TARGETS:
+        body = urllib_get(base + href)
+        # 高亮项的 class 有两种写法：文字导航是 `class="tn on"`，动作项是 `class="tn tn-act on"`
+        # —— 所以匹配的是"类列表里有 on"，不是某个固定串（固定串会把后一种全判成没高亮）。
+        on = [h for cls, h in _re.findall(r'<a class="([^"]*)"[^>]*href="([^"]+)"', body)
+              if "on" in cls.split() and "tn" in cls.split()]
+        check(f"导航 {name}：{href} 渲染出该页特征元素", marker in body, body[:120])
+        check(f"导航 {name}：{href} 的高亮归属是 {want_on}（现状：图标入口两页无高亮）",
+              on == want_on, f"on={on} want={want_on}")
+        check(f"导航 {name}：{href} 的标题前缀是「{title}」",
+              f"<title>{title}" in body or f"{title} · 知库" in body, body[:160])
+
+    # 收件箱徽标：顶栏那个数字必须是**真在 _inbox 里的篇数**。三处口径一起断，
+    # 因为"徽标 vs 列表 vs 磁盘"两两不同都算界面对自己撒谎（本轮就是这么抓到旁挂混进来的，
+    # 见 §6 第 33 行）。
+    shell = urllib_get(base + "/")
+    inbox_html = urllib_get(base + "/inbox")
+    badge = _re.search(r'href="/inbox"[^>]*>.*?<span class="n">(\d+)</span>', shell, _re.S)
+    rows = _re.findall(r'<div class="kan-item"[^>]*data-rel="([^"]+)"', inbox_html)
+    real = sorted(p.relative_to(tmp / "content" / "_inbox").as_posix()
+                  for p in (tmp / "content" / "_inbox").rglob("*")
+                  if p.is_file() and not p.name.endswith(".notes.md")
+                  and not p.name.startswith(".") and p.suffix.lower() not in (".txt",))
+    check("收件箱徽标：顶栏 badge == 收件箱列表行数",
+          badge is not None and int(badge.group(1)) == len(rows),
+          f"badge={badge.group(1) if badge else None} rows={len(rows)}")
+    check("收件箱徽标：列表行数 == 磁盘上 _inbox 的真篇数",
+          sorted(r.replace("_inbox/", "") for r in rows) == real,
+          f"rows={sorted(r.replace('_inbox/', '') for r in rows)} disk={real}")
+    check("收件箱列表：备注旁挂 .notes.md 不算待归档条目（与分类树 B2 同一口径）",
+          not any(r.endswith(".notes.md") for r in rows), rows)
+
 
 # ---------------------------------------------------------------- 探针 1：问吧
 ASK_JS = PRELUDE + """
@@ -617,6 +722,19 @@ def probe_drawer(base):
     check("看板抽屉：第三次点击能重新展开（状态可逆，不是一次性）", d.get("reopened") is True, d)
 
 
+def only(name) -> bool:
+    """开发期单跑某一探针：`python tests/test_ui_behavior.py nav`。
+    不带参数 = 全跑（pre-commit / CI 走的就是全跑）。"""
+    return not ONLY or ONLY in name
+
+
+def run_probe(name, fn, *args):
+    if only(name):
+        fn(*args)
+    else:
+        print(f"-- 跳过探针 {name}（KB_BEHAVIOR_ONLY={ONLY or '未设'}）")
+
+
 def main() -> int:
     global PORT
     if not node_available() or not shutil.which("node"):
@@ -645,16 +763,17 @@ def main() -> int:
         # 顺序有讲究：**破坏性探针一律排最后**，且排在"要用到那些文档"的探针之后。
         # 第一版把删除放在看板抽屉之前，结果 /tags 的标签云里已经没有「渲染」这个标签
         # （承载它的 alpha/gamma 都被删了），6 条断言集体假红（轮次 24 实测）。
-        probe_ask(base)             # 只读（503 降级分支）
-        probe_wikilink(base)        # 只改编辑器缓冲，不落盘
-        probe_tag_suggest(base)     # 只读（要右栏渲染出来 → 见 PROBE_WIDTH 注释）
-        probe_mermaid(base, tmp)    # 只读 /raw
-        probe_asset_rewrite(base)   # 只读 /raw（顺带把台账 §5 的 _rewrite_html_assets 那格补上）
-        probe_drawer(base)          # 只读 /tags，但依赖上面的标签还在
-        probe_newdoc(base, tmp)     # 写：在空子域里建一篇
-        probe_inbox(base, tmp)      # 写：_trash 软删 + 物理 purge（只动 _inbox 的两个靶子）
-        probe_crumb_delete(base, tmp)   # 写：删 gamma
-        probe_editor_delete(base, tmp)  # 写：删 alpha + 它的备注旁挂 —— 必须最后
+        run_probe("nav", probe_nav, base, tmp)          # 一级导航 + 徽标（只读，且要在删除类探针之前拿基线数）
+        run_probe("ask", probe_ask, base)               # 只读（503 降级分支）
+        run_probe("wikilink", probe_wikilink, base)     # 只改编辑器缓冲，不落盘
+        run_probe("tag", probe_tag_suggest, base)       # 只读（要右栏渲染出来 → 见 PROBE_WIDTH 注释）
+        run_probe("mermaid", probe_mermaid, base, tmp)  # 只读 /raw
+        run_probe("asset", probe_asset_rewrite, base)   # 只读 /raw（顺带把 §5 那格补上）
+        run_probe("drawer", probe_drawer, base)         # 只读 /tags，但依赖上面的标签还在
+        run_probe("newdoc", probe_newdoc, base, tmp)    # 写：在空子域里建一篇
+        run_probe("inbox", probe_inbox, base, tmp)      # 写：_trash 软删 + 物理 purge（只动 _inbox 两个靶子）
+        run_probe("crumb", probe_crumb_delete, base, tmp)    # 写：删 gamma
+        run_probe("eddel", probe_editor_delete, base, tmp)   # 写：删 alpha + 它的备注旁挂 —— 必须最后
     finally:
         kill_instance(proc)
         shutil.rmtree(tmp, ignore_errors=True)
