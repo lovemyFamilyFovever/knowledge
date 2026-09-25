@@ -13,6 +13,7 @@ I5 分类学权威 = content/_meta/taxonomy.json，代码内字典仅缺省兜�
 I6 frontmatter 只存身世元数据（title/source/collected/tags/favorite/status）
 I7 切块/分词逻辑变更必须递增 RAG_CODE_VERSION（静态检查脚本的自测）
 I8 不依赖 cwd：从任意工作目录用绝对路径直启 app/app.py --import-check 必过
+I9 待发布语料的 frontmatter 必须过严格 YAML 门禁（发布侧与 pre-commit 共用同一道闸）
 """
 import importlib.util
 import json
@@ -499,8 +500,56 @@ def test_i8() -> None:
               list(foreign.iterdir()) == [], [p.name for p in foreign.iterdir()])
 
 
+# ---------------------------------------------------------------- I9
+# 只测"闸本身灵不灵"，不在这里扫真实 content/：语料扫描归 scripts/check_frontmatter.py
+# 与 publish_site.py，测试若绑语料，并发分片会把它顶红（learn smoke 的前车之鉴）。
+def test_i9() -> None:
+    group("I9 frontmatter 严格 YAML 门禁（scripts/check_frontmatter.py）")
+    spec = importlib.util.spec_from_file_location(
+        "cfm", str(ROOT / "scripts" / "check_frontmatter.py"))
+    cfm = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(cfm)
+    scan = cfm.scan_frontmatter
+
+    # 每条都是能让 js-yaml 直接抛错的形态；第一条是 2026-09-25 的真实事故
+    bad = {
+        "冒号后缺空格": 'tags: [a]\ntitle:"写作"\nsource_path: "x"\n',
+        "引号未闭合": 'title: "写作\n',
+        "值里裸冒号": "title: 时间: 10点\n",
+        "键重复": "title: a\ntitle: b\n",
+        "顶层行无冒号": "title: a\n随便一行\n",
+        "缩进用Tab": "head:\n\t- meta\n",
+    }
+    for name, fm in bad.items():
+        check(f"I9 {name} 被拦下", bool(scan(fm)), fm)
+
+    # 语料里真实存在的合法形态：注释 / 带冒号的引号值 / flow 序列 / 块标量 / 嵌套列表
+    ok = ('# outline: [1,3]\n'
+          'title: "带: 冒号的标题"\n'
+          'tags: [前端, vue]\n'
+          'description: >-\n'
+          '  这段里有 冒号: 也不算\n'
+          'head:\n'
+          '  - - meta\n'
+          '    - name: description\n'
+          '      content: 任意文本\n')
+    check("I9 合法复杂头不误杀", scan(ok) == [], scan(ok))
+
+    with tempfile.TemporaryDirectory() as td:
+        plain = Path(td) / "plain.md"
+        plain.write_text("正文里没有 fm\n", encoding="utf-8")
+        check("I9 无 frontmatter 的文件不报错", cfm.lint_file(plain) == [])
+        broken = Path(td) / "broken.md"
+        broken.write_text("---\ntitle: a\n正文\n", encoding="utf-8")
+        check("I9 缺闭合 --- 被拦下", bool(cfm.lint_file(broken)),
+              cfm.lint_file(broken))
+        good = Path(td) / "good.md"
+        good.write_text('---\ntitle: "好"\ntags: [a]\n---\n\n正文\n', encoding="utf-8")
+        check("I9 正常文件整链放行", cfm.lint_file(good) == [], cfm.lint_file(good))
+
+
 def main() -> int:
-    for fn in (test_i1, test_i2, test_i3, test_i4, test_i5, test_i6, test_i7, test_i8):
+    for fn in (test_i1, test_i2, test_i3, test_i4, test_i5, test_i6, test_i7, test_i8, test_i9):
         fn()
     print(f"\n{passed} passed, {failed} failed, {skipped} skipped")
     return 1 if failed else 0

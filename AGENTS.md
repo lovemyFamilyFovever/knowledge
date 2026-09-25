@@ -27,7 +27,7 @@ python tests\test_new_project.py               # 脚手架 smoke（9 断言）
 python tests\test_learn.py                     # 学习系统 smoke（255 断言）
 python tests\test_predicates.py                # 判定谓词层 smoke（89 断言 · P6 存活清单回填）
 python tests\test_properties.py                # 性质测试（15 条 · 每条 240 个随机样本，固定种子）
-python tests\test_invariants.py                # 不变量门禁 I1~I8（61 断言）
+python tests\test_invariants.py                # 不变量门禁 I1~I9（71 断言）
 python tests\test_e2e_smoke.py                 # 端到端 smoke（196 断言 · 打满 58 条路由）
 python tests\test_js_props.py                  # 浏览器侧书库解析性质测试（47 断言；缺 node/Chrome 自动 SKIP）
 python tests\test_ui_regress.py                # 视觉回归批处理（P5：22 张截图 vs tests/ui-baselines/ 基线 + 10 条顶栏几何断言）
@@ -39,6 +39,7 @@ python scripts\rag_search.py "查询" --json     # 语义检索 CLI / Agent 入�
 python scripts\govern_tags.py census|similar|merge|rename-sub   # 标签治理（merge/rename-sub 先预览后 --apply；详见 --help）
 python scripts\check_ledger_counts.py             # 台账对账：§0 数字必须等于按 §1~§5 状态列重算的数（已入 pre-commit + CI）
 python scripts\publish_site.py [--dry-run]   # 发布管线：白名单同步 content/ → 本地 Quartz 站仓（E:\GitHub\knowledge-site），排除 漫画/projects/小说
+python scripts\check_frontmatter.py [--all]  # frontmatter 严格 YAML 门禁（公开站 Quartz 不容错、本地阅读器容错；已入 pre-commit 与 publish_site.py 前置）
 ```
 
 > 站仓本地预览：`cd E:\GitHub\knowledge-site && npx quartz build --serve`；站仓是公开面，动它之前先读 `scripts/publish_site.py` 的排除契约（小说/=盗版书库，永不发布）。

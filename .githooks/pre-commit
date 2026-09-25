@@ -142,6 +142,18 @@ if [ -f "tests/test_known_defects.py" ]; then
   $PY tests/test_known_defects.py || exit 1
 fi
 
+# frontmatter 结构门禁（2026-09-25 发布事故）：公开站 Quartz 用 js-yaml 严格解析，
+# 本地阅读器的手写解析器却容错 —— `title:"x"`（冒号后缺空格）能正常显示、能过所有
+# 测试，只在 npx quartz build 时把整站构建打挂。这里提前拦：只在本次提交动了语料时跑
+# （全量 865 篇约 0.5s，没动语料就不必）。发布侧 scripts/publish_site.py 另有同一道闸。
+FM_STAGED=$(git diff --cached --name-only --diff-filter=ACMR -- 'content/*.md' | head -1)
+if [ -n "$FM_STAGED" ]; then
+  echo "[pre-commit] content md staged -> running frontmatter gate..."
+  $PY scripts/check_frontmatter.py || exit 1
+else
+  echo "[pre-commit] SKIP frontmatter gate: no content/*.md staged."
+fi
+
 # 悬空令牌检查（批6 整行删除回归教训）：var() 使用必须有定义/fallback/运行时注入兜底，
 # 差集非空即拒绝提交。纯标准库，不依赖 flask，与上方解释器探测解耦。
 # 台账对账（轮次 17 补）：§0 的最新数字必须等于按 §1~§5「状态」列重算的数。

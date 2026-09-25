@@ -81,6 +81,26 @@ def main() -> int:
         assert_gate(rel)
         rels.add(rel)
 
+    # 发布前置门禁：待发布 md 的 frontmatter 必须过严格 YAML 检查。
+    # 本地阅读器容错，站侧 Quartz 不容错——缺这一步时，一次 `title:"x"` 就能让
+    # 整站构建红在 GitHub Actions 上（2026-09-25 实测踩过）。
+    from check_frontmatter import lint_file  # 同目录；延迟导入避开 E402
+
+    bad = []
+    for src, rel in files.items():
+        if src.suffix.lower() != ".md":
+            continue
+        probs = lint_file(src)
+        if probs:
+            bad.append((rel, probs))
+    if bad:
+        print(f"frontmatter 门禁未过，拒绝同步（{len(bad)} 篇）：", file=sys.stderr)
+        for rel, probs in bad[:40]:
+            for ln, msg in probs:
+                print(f"  {rel}:{ln}  {msg}", file=sys.stderr)
+        print("先修语料头，或跑 python scripts/check_frontmatter.py 看全量清单。", file=sys.stderr)
+        return 1
+
     existing = (
         {p.relative_to(dest) for p in dest.rglob("*") if p.is_file()} if dest.exists() else set()
     )

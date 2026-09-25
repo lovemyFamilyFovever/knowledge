@@ -29,6 +29,10 @@ jobs:
         run: python scripts/check_ledger_counts.py
       - name: Dangling CSS tokens check
         run: python scripts/check_dangling_tokens.py
+      # 公开站 Quartz 用严格 YAML 解析语料头；这道闸保证坏 frontmatter 不会先把
+      # garden 的构建打挂（2026-09-25 实测：一个 title:"x" 让 Actions 整站 failure）。
+      - name: Frontmatter strict-YAML gate
+        run: python scripts/check_frontmatter.py
       - name: Reader smoke
         run: python tests/test_reader.py
       - name: Predicate smoke (store/fts 判定谓词 · P6 存活清单回填)
