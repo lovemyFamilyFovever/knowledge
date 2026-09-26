@@ -12,6 +12,9 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
+sys.path.insert(0, str(ROOT / "tests"))
+
+import _ci  # noqa: E402  纯标准库；缺依赖 = CI 绿但一条断言没跑，要靠 annotation 说话
 
 try:
     # rag.py 把 onnxruntime 藏在 OnnxEmbedder.__init__ 里懒加载，模块级 import 探测不到；
@@ -21,7 +24,7 @@ try:
     from app.rag import (OnnxEmbedder, RagStore, markdown_split, model_files_ready,
                          sync_rag, query_rag, HFTokenizer)
 except Exception as e:  # 依赖缺失：跳过（基础阅读器不依赖 RAG）
-    print(f"SKIP: RAG 依赖不可用（{e}）")
+    _ci.skip("rag", "rag-deps-missing", f"SKIP: RAG 依赖不可用（{e}）")
     sys.exit(0)
 
 
@@ -64,6 +67,7 @@ def test_tokenizer_matches_wordpiece_reference():
     model_dir = ROOT / "app" / "rag_models"
     if not (model_dir / "tokenizer.json").is_file():
         print("SKIP: 模型未下载（首次跑通语义检索后自动下载，或 pip install -r requirements-rag.txt）")
+        _ci.skipped("rag", "tokenizer-not-downloaded")
         return
     tok = HFTokenizer(model_dir / "tokenizer.json")
     # 已知对齐样本（与 tokenizers 库逐 token 比对过）：
@@ -79,6 +83,7 @@ def test_end_to_end_semantic_search():
     model_dir = ROOT / "app" / "rag_models"
     if not (model_dir / "model.onnx").is_file():
         print("SKIP: 模型未下载")
+        _ci.skipped("rag", "model-not-downloaded")
         return
     emb = OnnxEmbedder(model_dir)
     with tempfile.TemporaryDirectory() as td:
@@ -106,6 +111,7 @@ def test_end_to_end_semantic_search():
 
 
 if __name__ == "__main__":
+    _ci.started("rag")
     test_model_files_ready()
     test_markdown_split()
     test_tokenizer_matches_wordpiece_reference()

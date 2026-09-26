@@ -42,6 +42,7 @@ import io
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+import _ci  # noqa: E402  缺依赖 SKIP 时给 CI 留 annotation（见 tests/_ci.py）
 from _tmpapp import chrome_path, free_port, kill_instance, port_open, start_instance  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -674,11 +675,10 @@ def split_console_errs(errs):
 def main():
     global PORT
     if not shutil.which("node"):
-        print("SKIP: 找不到 node")
-        return 0
+        return _ci.skip("js_props", "no-node", "SKIP: 找不到 node")
     if not chrome_path():
-        print("SKIP: 找不到 Chrome")
-        return 0
+        return _ci.skip("js_props", "no-chrome", "SKIP: 找不到 Chrome")
+    _ci.started("js_props")
 
     tmp = Path(tempfile.mkdtemp(prefix="p3b-root-"))
     proc = None

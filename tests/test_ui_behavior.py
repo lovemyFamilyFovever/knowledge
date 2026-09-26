@@ -44,6 +44,7 @@ sys.path.insert(0, str(ROOT / "tests"))
 
 from urllib.parse import quote  # noqa: E402
 
+import _ci  # noqa: E402  缺依赖 SKIP 时给 CI 留 annotation（见 tests/_ci.py）
 from _tmpapp import (chrome_path, free_port, kill_instance, node_available,  # noqa: E402
                      port_open, start_instance)
 import test_ui_regress as p5  # noqa: E402  复用它的合成语料与 taxonomy，不造第二份
@@ -3173,11 +3174,10 @@ def run_probe(name, fn, *args):
 def main() -> int:
     global PORT
     if not node_available() or not shutil.which("node"):
-        print("SKIP: 找不到 node")
-        return 0
+        return _ci.skip("ui_behavior", "no-node", "SKIP: 找不到 node")
     if not chrome_path():
-        print("SKIP: 找不到 Chrome")
-        return 0
+        return _ci.skip("ui_behavior", "no-chrome", "SKIP: 找不到 Chrome")
+    _ci.started("ui_behavior")
     # 探针 1 断的是"无 key 的 503 降级分支"。这台机器哪天配了 KB_AI_API_KEY，
     # 那条断言就会变成"真去请求外部 LLM" —— 既红得没道理，也违反"不联网"。
     os.environ.pop("KB_AI_API_KEY", None)

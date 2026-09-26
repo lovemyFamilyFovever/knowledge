@@ -29,6 +29,7 @@ import time
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+import _ci  # noqa: E402  缺依赖 SKIP 时给 CI 留 annotation（见 tests/_ci.py）
 from _tmpapp import (chrome_path, free_port, kill_instance, magick_available,  # noqa: E402
                      node_available, port_open, start_instance)
 
@@ -531,11 +532,12 @@ def compare(a: Path, b: Path):
 
 def main():
     if not node_available():
-        print("SKIP: 找不到 node"); return 0
+        return _ci.skip("ui_regress", "no-node", "SKIP: 找不到 node")
     if not chrome_path():
-        print("SKIP: 找不到 Chrome"); return 0
+        return _ci.skip("ui_regress", "no-chrome", "SKIP: 找不到 Chrome")
     if not magick_available():
-        print("SKIP: 找不到 ImageMagick（imgdiff.mjs 依赖它）"); return 0
+        return _ci.skip("ui_regress", "no-imagemagick", "SKIP: 找不到 ImageMagick（imgdiff.mjs 依赖它）")
+    _ci.started("ui_regress")
 
     update = "--update" in sys.argv
     stability = "--stability" in sys.argv
