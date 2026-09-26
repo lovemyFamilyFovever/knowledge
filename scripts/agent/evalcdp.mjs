@@ -7,6 +7,7 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 import net from 'net';
+import { waitQuiet } from './quiesce.mjs';   // 稳定态判定：与 shot.mjs / geom.mjs 共用一份
 
 const [, , url, argExpr] = process.argv;
 // 载荷太长塞不进 Windows 的 argv（性质测试要把畸形样本带进页面）：
@@ -66,13 +67,20 @@ async function rmProfile(dir) {
 const errors = [];
 try {
   for (let i = 0; i < 30; i++) { try { const r = await fetch(`${CDP}/json/version`); if (r.ok) break; } catch {} await sleep(300); }
-  const tab = await (await fetch(`${CDP}/json/new?` + encodeURIComponent(url), { method: 'PUT' })).json();
+  // 先开 about:blank、挂好监听、再 navigate —— 原来直接 /json/new?<url>，
+  // 于是"页面加载完了没有"根本没有信号，只能靠 `sleep(WAIT)` 硬等（js_props 传 6000ms × 4 次）。
+  // 改成等 **Page.loadEventFired**（主信号）+ DOM 静默（收尾），WAIT 降级成上限。
+  // 顺序错了就会拿到**导航之前**的那个空文档：readyState 一上来就是 complete，
+  // 于是求值跑在 app.js 之前、每个样本都返回 {} —— 轮次 35 实测就是这样红了 22 条。
+  const tab = await (await fetch(`${CDP}/json/new?about:blank`, { method: 'PUT' })).json();
   const ws = new WebSocket(tab.webSocketDebuggerUrl);
   await new Promise((ok, err) => { ws.onopen = ok; ws.onerror = err; });
   let id = 0; const pend = new Map();
+  let onLoaded = null;
   ws.onmessage = ev => {
     const m = JSON.parse(ev.data);
     if (m.id && pend.has(m.id)) { pend.get(m.id)(m); pend.delete(m.id); return; }
+    if (m.method === 'Page.loadEventFired' && onLoaded) { const f = onLoaded; onLoaded = null; f(); }
     if (m.method === 'Runtime.consoleAPICalled' && (m.params.type === 'error' || m.params.type === 'warning')) {
       errors.push(m.params.args.map(a => a.value ?? a.description ?? '').join(' ').slice(0, 300));
     }
@@ -82,7 +90,18 @@ try {
   };
   const send = (method, params = {}) => new Promise(ok => { const i = ++id; pend.set(i, ok); ws.send(JSON.stringify({ id: i, method, params })); });
   await send('Page.enable'); await send('Runtime.enable');
-  await sleep(WAIT);
+  const loadP = new Promise(ok => { onLoaded = ok; });
+  await send('Page.navigate', { url });
+  await Promise.race([loadP, sleep(WAIT)]);      // load 事件为准，WAIT 只是上限
+  // 再等页面静默（字体就绪 + DOM 连续 320ms 无变化）。
+  // 在途 fetch 计数器要注册在 document-start 才准，这里没地方挂 ——
+  // 计数器缺席时 quiesceJs 按 0 处理，判定只剩"字体 + DOM"，对静态阅读器页面够用。
+  for (let i = 0; i < 60; i++) {
+    const rs = await send('Runtime.evaluate', { expression: 'document.readyState', returnByValue: true });
+    if (rs.result?.result?.value === 'complete') break;
+    await sleep(200);
+  }
+  await waitQuiet(send, WAIT, { tail: 250 });
   const r = await send('Runtime.evaluate', { expression: expr, returnByValue: true, awaitPromise: true });
   console.log('EVAL:', JSON.stringify(r.result?.result?.value ?? r.result, null, 1).slice(0, OUT));
   console.log('CONSOLE_ERRORS:', errors.length ? '\n  ' + errors.slice(0, 5).join('\n  ') : 'none');
