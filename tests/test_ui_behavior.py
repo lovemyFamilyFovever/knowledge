@@ -77,6 +77,7 @@ def check(name, cond, extra=""):
     else:
         failed += 1
         FAILURES.append(name)
+        _ci.failed(name)
         print(f"  FAIL {_safe(name)} {_safe(extra)}")
 
 
@@ -3243,4 +3244,4 @@ def main() -> int:
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    sys.exit(_ci.guarded(main, "ui_behavior"))

@@ -4,7 +4,7 @@
 
 ## 待办
 
-（空）
+- [ ] **stylelint 要不要变严**（轮次 39 量完，等用户拍板）：仓库历史上有一份从未生效的 `stylelint.config.mjs`（`.stylelintrc.json` 在配置发现顺序里优先），已随轮次 38 删除。它当年把 `no-duplicate-selectors` / `block-no-empty` 设成 true，而生效配置把这两条显式关掉。**实测代价 = 17 项报错**：16 条重复选择器（`static/pages/skins.css` 五种皮肤各两处、`static/style.css` 2、`kb-core.css` / `reader.css` / `workbench.css` 各一处）+ 1 个空规则块（`static/pages/home.css:36`，这个看着像真缺陷）。若要打开：建议先修空块，再逐条判断重复选择器哪些是刻意的（skins 那种大概率是设计），加 disable 注释或合并声明，而不是一把梭启用。
 
 ## 已延后（按用户决定排序）
 

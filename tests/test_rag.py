@@ -109,11 +109,17 @@ def test_end_to_end_semantic_search():
         store.close()
     print("ok  end-to-end: 语义检索命中正确文档，score 极性正确")
 
-
-if __name__ == "__main__":
+def _main():
     _ci.started("rag")
     test_model_files_ready()
     test_markdown_split()
     test_tokenizer_matches_wordpiece_reference()
     test_end_to_end_semantic_search()
     print("\nRAG TESTS OK")
+    return 0
+
+
+if __name__ == "__main__":
+    # test_rag 是裸 assert（没有 check() 汇总），一条断言崩掉就是「未捕获异常」那条形状 ——
+    # 交给 guarded() 报名（异常类型 + 抛出点），退出码仍然非零。
+    sys.exit(_ci.guarded(_main, "rag"))

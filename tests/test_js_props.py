@@ -82,6 +82,7 @@ def check(name, cond, extra=""):
         print(f"  PASS {_safe(name)}")
     else:
         failed += 1
+        _ci.failed(name)
         print(f"  FAIL {_safe(name)} {_safe(extra)}")
 
 
@@ -851,4 +852,4 @@ def main():
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    sys.exit(_ci.guarded(main, "js_props"))
