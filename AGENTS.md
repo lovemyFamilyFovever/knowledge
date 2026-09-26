@@ -98,7 +98,7 @@ app/reading.py      月度阅读统计（reading.db 派生，事件制：open/re
 app/rag.py          语义检索：切块/嵌入/sqlite-vec（派生，RAG_CODE_VERSION 管版本）
 scripts/            迁移与维护脚本（rag_search.py 是 Agent 检索入口；agent/ 存跨会话常驻工具）
 requirements/       依赖清单（requirements.txt 核心 / -rag.txt 语义检索 / -lock.txt 便携环境重建锁）
-.githooks/          pre-commit：ruff 回归网 + 四套 smoke + 悬空令牌 + RAG（缺依赖自动 SKIP）
+.githooks/          pre-commit：静态层（ruff/台账对账/悬空令牌/RAG 版本）串行 → 9 条纯 Python 套件**并行**（KB_GATE_PARALLEL 默认 4，=1 串行）→ 浏览器三套与 RAG 串行（缺依赖自动 SKIP）
 .github/workflows/  CI（GitHub Actions）
 ```
 

@@ -1,6 +1,14 @@
 #!/bin/sh
-# 知库 pre-commit：提交前自动跑四套测试（存在对应运行时才跑对应套件）
+# 知库 pre-commit：提交前自动跑测试（存在对应运行时才跑对应套件）
 # 启用：git config core.hooksPath .githooks
+#
+# 【执行拓扑（轮次 36）】分两段，不是"全都并行"：
+#   1) 并行组 —— 纯 Python、语料一律 tempfile 现造、互不写同一份文件的套件；
+#   2) 串行组 —— 三个吃浏览器的套件（js_props / P5 / 第 13 套）与 RAG smoke。
+# 为什么浏览器那几套不进来：它们判的是**像素与 rAF/IntersectionObserver 时序**，
+# CPU 被抢就会读到"还没更新的状态"（轮次 29 就为此把固定 sleep 改成轮询到收敛），
+# RAG 那条还额外碰 OpenBLAS 内存分配（历史上有过并发 OOM）。
+# 需要老行为（全串行、日志逐行直出）时：`KB_GATE_PARALLEL=1 git commit ...`。
 
 # 逐个候选尝试，取第一个能 `import flask` 的解释器。
 # 候选顺序：项目自带 .python 便携运行时**优先**——它装齐了含 RAG 在内的全部依赖，
@@ -31,78 +39,110 @@ if [ -z "$PY" ]; then
 fi
 echo "[pre-commit] using interpreter: $PY"
 
+# 并行度。1 = 老行为（逐条串行、输出直出）。4 是实测取的经验值：
+# 并行组里最慢的是 properties（约 39s，全是临时目录删除与真算力），
+# 其余都在 11s 以内，4 个一批刚好把整组压到"最慢那条 + 一点尾巴"。
+PAR="${KB_GATE_PARALLEL:-4}"
+case "$PAR" in ''|*[!0-9]*) PAR=4 ;; esac
+[ "$PAR" -lt 1 ] && PAR=1
+
+GATE=".qa/gate"
+RUNNING=""          # 已起未收的任务，形如 "name:pid"
+FAILED=""           # 非零退出的任务名
+TALLY=""            # 结算时打印的「名字 rc 真实用时」
+
+# 每个任务把自己的起止时间与退出码各自落一个文件：
+# 并行时输出交织没法读，只能落盘后按条回放；而**真实用时**必须记任务自己的结束时刻
+# —— 若在收尾批次统一算，量到的是"这一批最慢那条"的时间（第一版就这么错过过：
+# reader 明明 10.7s，报表里写着 41s，因为它和 39s 的 properties 同批被等）。
+launch() {
+  name="$1"; shift
+  rm -f "$GATE/$name.rc" "$GATE/$name.t0" "$GATE/$name.t1" "$GATE/$name.log"
+  {
+    printf '%s' "$(date +%s)" > "$GATE/$name.t0"
+    "$@" > "$GATE/$name.log" 2>&1
+    rc=$?
+    printf '%s' "$(date +%s)" > "$GATE/$name.t1"
+    printf '%s' "$rc" > "$GATE/$name.rc"
+  } &
+  RUNNING="$RUNNING $name:$!"
+}
+
+# 收一个已结束的任务：wait 立刻返回（进程已写完 rc），把真实耗时记进报表
+record() {
+  wait "$2" 2>/dev/null
+  rc=$(cat "$GATE/$1.rc" 2>/dev/null || echo X)
+  t0=$(cat "$GATE/$1.t0" 2>/dev/null || echo 0)
+  t1=$(cat "$GATE/$1.t1" 2>/dev/null || echo 0)
+  TALLY="$TALLY
+  $(printf '%-15s rc=%-2s %3ss' "$1" "$rc" "$((t1 - t0))")"
+  [ "$rc" = "0" ] || FAILED="$FAILED $1"
+}
+
+# 收掉已经写出 rc 的任务，其余留在 RUNNING 里
+reap() {
+  keep=""
+  for ent in $RUNNING; do
+    n=${ent%%:*}; p=${ent##*:}
+    if [ -f "$GATE/$n.rc" ]; then record "$n" "$p"; else keep="$keep $ent"; fi
+  done
+  RUNNING="$keep"
+}
+
+count_running() {
+  c=0
+  for ent in $RUNNING; do c=$((c + 1)); done
+  printf '%s' "$c"
+}
+
+nap() { sleep 0.2 2>/dev/null || sleep 1; }   # 没有小数秒 sleep 的 sh 就退回 1s
+
+# 统一的"跑一步"入口：并行档下按**空位**放行（不是攒批等最慢的），串行档下直跑直出
+step() {
+  name="$1"; shift
+  if [ "$PAR" -gt 1 ]; then
+    mkdir -p "$GATE"
+    while [ "$(count_running)" -ge "$PAR" ]; do
+      reap
+      [ "$(count_running)" -ge "$PAR" ] && nap
+    done
+    launch "$name" "$@"
+  else
+    echo "[pre-commit] running $name..."
+    if ! "$@"; then FAILED="$FAILED $name"; fi
+  fi
+}
+
+finish_group() {
+  [ "$PAR" -gt 1 ] || return 0
+  while [ -n "$RUNNING" ]; do
+    reap
+    [ -n "$RUNNING" ] && nap
+  done
+}
+
+# ---------------------------------------------------------------- 先做静态的（秒级、失败最快）
 # 回归安全网（bug-assessment 2026-09-17 教训）：F821 未定义名这类笔误会被
 # except Exception 吞成静默错数，smoke 测试拦不住，必须静态拦。ruff.toml
 # 自述定位就是“回归安全网”，不跑等于没有。
 echo "[pre-commit] running ruff (regression net)..."
 $PY -m ruff check . || exit 1
 
-# 调用处一律用**不加引号**的 $PY：候选里 `py -3` 带参数，需要分词才能展开成
-# `py` + `-3`；加了引号会被当成一整个可执行文件名而找不到。
-# （候选清单里的路径都不含空格，分词是安全的。）
+# 台账对账（轮次 17 补）：§0 的最新数字必须等于按 §1~§5「状态」列重算的数。
+# 起因是 §6 第 21 行那次事故——回填时改错了列，§0 写着 76、表格算出来是 81，
+# 手写数没有任何一格在表格里背书。纯文本解析、零依赖、毫秒级，所以无条件跑。
+echo "[pre-commit] running ledger reconciliation..."
+$PY scripts/check_ledger_counts.py || exit 1
 
-echo "[pre-commit] running reader smoke..."
-$PY tests/test_reader.py || exit 1
+# 悬空令牌检查（批6 整行删除回归教训）：var() 使用必须有定义/fallback/运行时注入兜底，
+# 差集非空即拒绝提交。纯标准库，不依赖 flask，与上方解释器探测解耦。
+echo "[pre-commit] running dangling-token check..."
+$PY scripts/check_dangling_tokens.py || exit 1
 
-# 判定谓词层（P6 变异测试按存活清单回填的断言：store/fts 的布尔与边界判据）
-if [ -f "tests/test_predicates.py" ]; then
-  echo "[pre-commit] running predicate smoke..."
-  $PY tests/test_predicates.py || exit 1
-fi
-
-# 性质测试（彻查 P3）：路径校验 / frontmatter 往返 / 改名守恒 / 双链 / 切块 / 排程 的任意输入不变量
-if [ -f "tests/test_properties.py" ]; then
-  echo "[pre-commit] running property tests..."
-  $PY tests/test_properties.py || exit 1
-fi
-
-# JS 侧性质测试（彻查 P3-B）：畸形 epub / 任意字节 txt / 任意章节文本喂进**真浏览器**
-# （临时 KB_ROOT + 临时实例 + CDP）。书库解析线（decodeTxt / normalizeEpubBytes /
-# buildChapters）的三个历史线上 bug 全在这里，Python 侧够不着。
-# 探测留给脚本自己做（缺 node 或 Chrome 就打 SKIP 并返回 0）——钩子挂 = 没有钩子。
-if [ -f "tests/test_js_props.py" ]; then
-  echo "[pre-commit] running JS property tests (browser, SKIP if no node/Chrome)..."
-  $PY tests/test_js_props.py || exit 1
-fi
-
-# 视觉回归批处理（彻查 P5）：只在本次提交真的碰了 CSS/JS/模板时才跑——
-# 它要起浏览器（约 40s），每次提交都跑会让人开始 --no-verify。
-# 基线在 tests/ui-baselines/（合成语料截图，不含任何真实内容）；矩阵或样式变了用
-# `python tests/test_ui_regress.py --update` 重新落基线，改前先用 --stability 证明截图是确定的。
-UI_STAGED=$(git diff --cached --name-only --diff-filter=ACMR -- 'static/*.css' 'static/*.js' 'app/templates/*.html' | head -1)
-if [ -n "$UI_STAGED" ]; then
-  echo "[pre-commit] UI files staged -> running visual regression (P5)..."
-  $PY tests/test_ui_regress.py || exit 1
-else
-  echo "[pre-commit] SKIP visual regression: no css/js/template file staged."
-fi
-
-# UI 行为回归（彻查轮次 24）：台账 §2 那 9 行"控件存在但点了没断言"的格子，现在有了
-# 交互后状态断言（问吧 / 两个补全浮层 / mermaid 放大 / 空态新建 / crumb 与编辑器删除 /
-# 收件箱 del+purge / 看板抽屉）。它要起浏览器（约 90s），所以和 P5 一样按条件触发：
-# 只有本次提交真的碰了前端或那两条写删除的路由时才跑。
-BEHAVIOR_STAGED=$(git diff --cached --name-only --diff-filter=ACMR -- 'static/*.js' 'static/*.css' 'app/templates/*.html' 'app/routes_files.py' 'app/routes_pages.py' 'tests/test_ui_behavior.py' | head -1)
-if [ -n "$BEHAVIOR_STAGED" ]; then
-  echo "[pre-commit] UI/删除路由 staged -> running UI behavior regression..."
-  $PY tests/test_ui_behavior.py || exit 1
-else
-  echo "[pre-commit] SKIP UI behavior regression: no frontend / delete-route file staged."
-fi
-
-if [ -f "tests/test_new_project.py" ]; then
-  echo "[pre-commit] running scaffolder smoke..."
-  $PY tests/test_new_project.py || exit 1
-fi
-
-if [ -f "tests/test_learn.py" ]; then
-  echo "[pre-commit] running learn/review smoke..."
-  $PY tests/test_learn.py || exit 1
-fi
-
-if [ -f "tests/test_govern.py" ]; then
-  echo "[pre-commit] running govern/stats smoke..."
-  $PY tests/test_govern.py || exit 1
-fi
+# RAG_CODE_VERSION 静态检查（不变量 7）：切块/分词函数体有改动而版本号未递增 → 拒绝。
+# 自己判 SKIP：非 git 仓库/读不到 HEAD 时放行，不因环境问题挂钩子。
+echo "[pre-commit] running RAG_CODE_VERSION check..."
+$PY scripts/check_rag_version.py || exit 1
 
 # JS/CSS 静态检查（P1 补漏 2026-09-23）：此前 static/kb-novel.js 整份漏出 eslint 覆盖面，
 # 且钩子完全不跑 eslint/stylelint。依赖是 devDependencies(node_modules) 而非 pip，
@@ -118,57 +158,101 @@ else
   echo "[pre-commit] SKIP eslint/stylelint: node/npm or node_modules not available."
 fi
 
+# ---------------------------------------------------------------- 并行组（纯 Python、临时目录隔离）
+# 入选条件：语料一律在 tempfile 现造、端口现挑、不写仓库里的 indexes/，且不需要浏览器。
+# test_learn 会**扫真实 content/**（不是合成 fixture），它只读不写，与同组其它套件不抢
+# 同一份文件；但**别把它和别的会话的语料分片写盘同时跑** —— 那种顶红与本次提交无关
+# （见跨会话记忆 precommit-learn-smoke-corpus-coupling）。
+if [ -f "tests/test_reader.py" ]; then step reader $PY tests/test_reader.py; fi
+
+# 判定谓词层（P6 变异测试按存活清单回填的断言：store/fts 的布尔与边界判据）
+if [ -f "tests/test_predicates.py" ]; then step predicates $PY tests/test_predicates.py; fi
+
+# 性质测试（彻查 P3）：路径校验 / frontmatter 往返 / 改名守恒 / 双链 / 切块 / 排程 的任意输入不变量
+# 本组里最慢的一条（约 39s）：722 个临时目录的删除 + 15 条性质 × 240 个随机样本的真算力。
+# **不要靠减样本换时间** —— 减样本就是减覆盖。
+if [ -f "tests/test_properties.py" ]; then step properties $PY tests/test_properties.py; fi
+
+if [ -f "tests/test_new_project.py" ]; then step new_project $PY tests/test_new_project.py; fi
+
+if [ -f "tests/test_learn.py" ]; then step learn $PY tests/test_learn.py; fi
+
+if [ -f "tests/test_govern.py" ]; then step govern $PY tests/test_govern.py; fi
+
 # 不变量门禁（P2）：AGENTS.md 的 8 条不变量落成可执行断言（tests/test_invariants.py），
-# 与下方 rag-version 静态检查配套 —— 前者管行为（软删/唯一真相/`_` 目录不进索引…），
+# 与上方 rag-version 静态检查配套 —— 前者管行为（软删/唯一真相/`_` 目录不进索引…），
 # 后者管"改了切块分词却忘递增 RAG_CODE_VERSION"这种只有静态能拦的形态。
-if [ -f "tests/test_invariants.py" ]; then
-  echo "[pre-commit] running invariants gate..."
-  $PY tests/test_invariants.py || exit 1
-fi
+if [ -f "tests/test_invariants.py" ]; then step invariants $PY tests/test_invariants.py; fi
 
 # 端到端端点冒烟（P4）：把覆盖台账 §1 的 58 个路由全打一遍（含 25 个此前零覆盖的
 # 写类接口），断 2xx / ok:true / 磁盘状态真变 / 非法入参 4xx 且不泄露绝对路径。
-# tempfile 迷你语料，零网络、零端口、约 3s，可直接进钩子。
-if [ -f "tests/test_e2e_smoke.py" ]; then
-  echo "[pre-commit] running e2e endpoint smoke..."
-  $PY tests/test_e2e_smoke.py || exit 1
-fi
+# tempfile 迷你语料，零网络、零端口。
+if [ -f "tests/test_e2e_smoke.py" ]; then step e2e_smoke $PY tests/test_e2e_smoke.py; fi
 
 # 已知缺陷回归锚（P4 发现 → 修复轮转绿后接入）：空子域 /browse 500、
-# resolve 前缀分歧致 /api/rmdir · /api/import 500。P4 轮曾故意不挂（红断言会卡死
-# 每次提交），两条改绿后接入 —— 若被重新引入，提交即被拦下。
-if [ -f "tests/test_known_defects.py" ]; then
-  echo "[pre-commit] running known-defects regression..."
-  $PY tests/test_known_defects.py || exit 1
-fi
+# resolve 前缀分歧致 /api/rmdir · /api/import 500。若被重新引入，提交即被拦下。
+if [ -f "tests/test_known_defects.py" ]; then step known_defects $PY tests/test_known_defects.py; fi
 
 # frontmatter 结构门禁（2026-09-25 发布事故）：公开站 Quartz 用 js-yaml 严格解析，
 # 本地阅读器的手写解析器却容错 —— `title:"x"`（冒号后缺空格）能正常显示、能过所有
-# 测试，只在 npx quartz build 时把整站构建打挂。这里提前拦：只在本次提交动了语料时跑
-# （全量 865 篇约 0.5s，没动语料就不必）。发布侧 scripts/publish_site.py 另有同一道闸。
+# 测试，只在 npx quartz build 时把整站构建打挂。这里提前拦：只在本次提交动了语料时跑。
+# 发布侧 scripts/publish_site.py 另有同一道闸。
 FM_STAGED=$(git diff --cached --name-only --diff-filter=ACMR -- 'content/*.md' | head -1)
 if [ -n "$FM_STAGED" ]; then
-  echo "[pre-commit] content md staged -> running frontmatter gate..."
-  $PY scripts/check_frontmatter.py || exit 1
+  step frontmatter $PY scripts/check_frontmatter.py
 else
   echo "[pre-commit] SKIP frontmatter gate: no content/*.md staged."
 fi
 
-# 悬空令牌检查（批6 整行删除回归教训）：var() 使用必须有定义/fallback/运行时注入兜底，
-# 差集非空即拒绝提交。纯标准库，不依赖 flask，与上方解释器探测解耦。
-# 台账对账（轮次 17 补）：§0 的最新数字必须等于按 §1~§5「状态」列重算的数。
-# 起因是 §6 第 21 行那次事故——回填时改错了列，§0 写着 76、表格算出来是 81，
-# 手写数没有任何一格在表格里背书。纯文本解析、零依赖、毫秒级，所以无条件跑。
-echo "[pre-commit] running ledger reconciliation..."
-$PY scripts/check_ledger_counts.py || exit 1
+if [ "$PAR" -gt 1 ]; then
+  finish_group
+  echo "[pre-commit] 并行组结算（rc=0 为通过，用时是任务自己的真实耗时）：$TALLY"
+fi
+if [ -n "$FAILED" ]; then
+  for name in $FAILED; do
+    echo ""
+    echo "[pre-commit] ===== 失败：$name ====="
+    tail -40 "$GATE/$name.log" 2>/dev/null || echo "（没有日志文件，任务可能没起来）"
+  done
+  echo ""
+  echo "[pre-commit] FAILED:$FAILED"
+  echo "[pre-commit] 上面每个失败任务的完整日志在 $GATE/<名字>.log"
+  echo "[pre-commit] 想看是不是并发引起的，可用串行档重跑：KB_GATE_PARALLEL=1 git commit ..."
+  exit 1
+fi
 
-echo "[pre-commit] running dangling-token check..."
-$PY scripts/check_dangling_tokens.py || exit 1
+# ---------------------------------------------------------------- 串行组（浏览器 / BLAS，独占 CPU 才可信）
+# JS 侧性质测试（彻查 P3-B）：畸形 epub / 任意字节 txt / 任意章节文本喂进**真浏览器**
+# （临时 KB_ROOT + 临时实例 + CDP）。书库解析线（decodeTxt / normalizeEpubBytes /
+# buildChapters）的三个历史线上 bug 全在这里，Python 侧够不着。
+# 探测留给脚本自己做（缺 node 或 Chrome 就打 SKIP 并返回 0）——钩子挂 = 没有钩子。
+if [ -f "tests/test_js_props.py" ]; then
+  echo "[pre-commit] running JS property tests (browser, SKIP if no node/Chrome)..."
+  $PY tests/test_js_props.py || exit 1
+fi
 
-# RAG_CODE_VERSION 静态检查（不变量 7）：切块/分词函数体有改动而版本号未递增 → 拒绝。
-# 自己判 SKIP：非 git 仓库/读不到 HEAD 时放行，不因环境问题挂钩子。
-echo "[pre-commit] running RAG_CODE_VERSION check..."
-$PY scripts/check_rag_version.py || exit 1
+# 视觉回归批处理（彻查 P5）：只在本次提交真的碰了 CSS/JS/模板时才跑（约 70s，
+# 轮次 34 前是 197s）。每次提交都跑会让人开始 --no-verify。
+# 基线在 tests/ui-baselines/（合成语料截图，不含任何真实内容）；矩阵或样式变了用
+# `python tests/test_ui_regress.py --update` 重新落基线，改前先用 --stability 证明截图是确定的。
+UI_STAGED=$(git diff --cached --name-only --diff-filter=ACMR -- 'static/*.css' 'static/*.js' 'app/templates/*.html' | head -1)
+if [ -n "$UI_STAGED" ]; then
+  echo "[pre-commit] UI files staged -> running visual regression (P5)..."
+  $PY tests/test_ui_regress.py || exit 1
+else
+  echo "[pre-commit] SKIP visual regression: no css/js/template file staged."
+fi
+
+# UI 行为回归（彻查轮次 24，台账 §2 已升 E2E 的 58 行）：起浏览器与会话档 Chrome
+# （轮次 33 前 484s → 现在约 156s），所以和 P5 一样按条件触发：
+# 只有本次提交真的碰了前端或那两条写删除的路由时才跑。
+BEHAVIOR_STAGED=$(git diff --cached --name-only --diff-filter=ACMR -- 'static/*.js' 'static/*.css' 'app/templates/*.html' 'app/routes_files.py' 'app/routes_pages.py' 'tests/test_ui_behavior.py' | head -1)
+if [ -n "$BEHAVIOR_STAGED" ]; then
+  echo "[pre-commit] UI/删除路由 staged -> running UI behavior regression..."
+  $PY tests/test_ui_behavior.py || exit 1
+else
+  echo "[pre-commit] SKIP UI behavior regression: no frontend / delete-route file staged."
+fi
 
 echo "[pre-commit] running RAG smoke (SKIP if deps missing)..."
 $PY tests/test_rag.py || exit 1
