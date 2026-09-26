@@ -62,7 +62,7 @@ Agent 的**常驻工具脚本**统一收在 `scripts/agent/`（2026-09-18 从旧
 
 | 常驻工具 | 用途 |
 |------|------|
-| `scripts/agent/shot.mjs` | 零依赖 CDP 截图：`node scripts/agent/shot.mjs <url> <out.png> [w] [h] [clickSel]`，`clickSel` 传 CSS 选择器可先点击再截图（验证按钮交互态）；`node scripts/agent/shot.mjs --batch manifest.json` 批量截（一个 Chrome、多标签页，清单里可带 `init`=页面脚本前注入的 JS，用来钉死主题等确定态；`clickWait`=每次点击后等待的毫秒数，点了会发请求再重绘的按钮要给到 2500~8000，否则截到的是重绘前后的随机一侧） |
+| `scripts/agent/shot.mjs` | 零依赖 CDP 截图：`node scripts/agent/shot.mjs <url> <out.png> [w] [h] [clickSel]`，`clickSel` 传 CSS 选择器可先点击再截图（验证按钮交互态）；`node scripts/agent/shot.mjs --batch manifest.json` 批量截（一个 Chrome、多标签页，清单里可带 `init`=页面脚本前注入的 JS，用来钉死主题等确定态；`clickWait`=每次点击后**最多**等待的毫秒数（轮次 34 起 `shot.mjs`/`geom.mjs` 共用 `scripts/agent/quiesce.mjs`：字体就绪 + 在途 fetch 归零 + DOM 连续 320ms 无变化就提前走，声明值只是上限）—— 别靠加大睡眠来“保险”，实测去掉等待红回来的正是点击重绘那几张） |
 | `scripts/agent/imgdiff.mjs` | 截图像素对比：`node scripts/agent/imgdiff.mjs <a.png> <b.png> [ignoreRegions]`，产出差异热图并输出差异占比；UI 改动后**必须**跑（见下方 UI 回归纪律） |
 | `scripts/agent/evalcdp.mjs` | CDP 执行任意 JS 并回显返回值 + console 报错：`node scripts/agent/evalcdp.mjs <url> "<js表达式>"`，查"改了没生效"类问题利器 |
 | `scripts/agent/geom.mjs` | **多视口几何探针**：`node scripts/agent/geom.mjs <url> <w1,w2,...> <expr@文件>`，一个 Chrome 逐档 `setDeviceMetricsOverride` 求值（支持 async 表达式，`awaitPromise`）、每档回一行 JSON。两个用途：① 顶栏压字这类"像素基线永远绿"的重叠问题（台账 §6 第 28/29 行）；② 当行为测试的驱动器 —— **evalcdp 的视口只有 ~764px 宽**，右栏在那一档没布局、`focus()` 也无效，凡是依赖侧栏/浮层定位的前端行为断言都用本脚本钉一个桌面宽度。**表达式必须一次求值取全部矩形**——每个字段各自 `getBoundingClientRect()` 会在过渡中读出三套数 |

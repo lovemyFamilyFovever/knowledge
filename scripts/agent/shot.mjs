@@ -10,6 +10,7 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 import net from 'net';
+import { PENDING_HOOK, waitQuiet } from './quiesce.mjs';   // 稳定态判定与 geom.mjs 共用一份
 
 const PORT_PREF = +(process.env.KB_SHOT_PORT || 9333);
 const PORT = await pickPort(PORT_PREF);
@@ -104,19 +105,25 @@ async function openTab(url) {
   return { ws, send, targetId: tab.id };
 }
 
+/* 稳定态判定与在途请求计数都在 quiesce.mjs（与 geom.mjs 共用一份，别抄第二份）。
+   这里只保留"上限"策略：清单里声明的 settle / clickWait 变成**最多等这么久**，
+   页面先静默就提前走 —— P5 的 init 钉住 `kb-force-motion=0`（rAF 动画整体不跑），
+   所以"DOM 静默 + 无在途请求"是可测的强信号，不必再靠固定睡眠。
+   证据：`--stability` 两次截图逐像素相同 + 22 张对**既有基线** AE ≤ 2。 */
 async function clickAll(send, clickSel, clickWait) {
-  const wait = clickWait == null ? 700 : clickWait;
+  const cap = clickWait == null ? 700 : clickWait;
   for (const sel of String(clickSel || '').split(',')) {
     if (!sel.trim()) continue;
     await send('Runtime.evaluate', {
       expression: `document.querySelector(${JSON.stringify(sel.trim())})?.click()` });
-    // 700ms 是"过渡动画跑完"的经验值；点了会发请求再重绘的按钮（记分、扫描）要另给余量，
+    // 点了会发请求再重绘的按钮（记分、扫描）以前要固定给 2.5~8s 余量，
     // 否则截到的是"重绘前/后"的随机一侧 —— P5 实测 review_graded 因此两次差 637 像素。
-    await sleep(wait);
+    // 现在改成"等它真的重绘完"（在途 fetch 归零 + DOM 静默），上限就是原来那个数。
+    await waitQuiet(send, cap, { tail: 120 });
   }
 }
 
-/** 等页面进入稳定态：readyState complete + 再等 settle 毫秒（默认 3500，与旧单张模式一致）。 */
+/** 等页面进入稳定态：readyState complete + 静默判定（上限 = 清单声明的 settle）。 */
 async function settle(send, ms) {
   for (let i = 0; i < 40; i++) {
     const r = await send('Runtime.evaluate',
@@ -124,7 +131,7 @@ async function settle(send, ms) {
     if (r.result?.result?.value === 'complete') break;
     await sleep(250);
   }
-  await sleep(ms);
+  await waitQuiet(send, ms == null ? 3500 : ms, { tail: 200 });
 }
 
 /**
@@ -133,13 +140,16 @@ async function settle(send, ms) {
  */
 async function shoot(job) {
   const w = job.w || 1440, h = job.h || 900;
-  const { ws, send, targetId } = await openTab(job.init ? 'about:blank' : job.url);
+  /* 一律先开 about:blank、注册注入、再 navigate —— 因为"在途请求计数器"必须在页面任何脚本
+     之前挂上（先开页再注入已经晚了），而 P5 每张都带 init，两条路径正好统一成一条。 */
+  const { ws, send, targetId } = await openTab('about:blank');
   try {
     await send('Page.enable');
-    if (job.init) {
-      await send('Page.addScriptToEvaluateOnNewDocument', { source: job.init });
-      await send('Page.navigate', { url: job.url });
-    }
+    /* 钩子拼在调用方 init **之后**：document-start 脚本按注册顺序执行，
+       桩先替换 fetch、计数器再包一层，这样连"被桩短路掉的请求"也会被正确计数。 */
+    await send('Page.addScriptToEvaluateOnNewDocument',
+      { source: (job.init || '') + '\n' + PENDING_HOOK });
+    await send('Page.navigate', { url: job.url });
     await send('Emulation.setDeviceMetricsOverride',
       { width: +w, height: +h, deviceScaleFactor: 1, mobile: false });
     await settle(send, job.settle == null ? 3500 : job.settle);

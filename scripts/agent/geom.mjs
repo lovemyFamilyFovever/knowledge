@@ -7,6 +7,7 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 import net from 'net';
+import { PENDING_HOOK, waitQuiet } from './quiesce.mjs';   // 稳定态判定与 shot.mjs 共用一份
 
 const PORT_PREF = +(process.env.KB_GEOM_PORT || 9338);
 const PORT = await pickPort(PORT_PREF);
@@ -122,10 +123,12 @@ async function runJob(send, job) {
   };
   let initIdentifier = null;
   try {
-    if (job.init) {
-      const r = await call('Page.addScriptToEvaluateOnNewDocument', { source: job.init });
-      initIdentifier = r?.result?.identifier || null;
-    }
+    /* 钩子一律注册（静默判定要靠它数在途请求）；拼在调用方 init **之后**：
+       document-start 脚本按注册顺序执行，先让探针的桩替换 fetch，计数器再包一层 ——
+       反过来的话被桩短路掉的请求永远不会归还计数，每次都打满上限（等于没提速）。 */
+    const src = (job.init || '') + '\n' + PENDING_HOOK;
+    const r = await call('Page.addScriptToEvaluateOnNewDocument', { source: src });
+    initIdentifier = r?.result?.identifier || null;
     /* 清存储 = 补上"每趟新 profile"的隔离语义。漏这一步，上一趟写进 localStorage 的偏好
        会串到这一趟，测出来的"默认态"其实是脏的 —— 那是假绿，不是提速。 */
     if (job.fresh !== false) {
@@ -143,21 +146,24 @@ async function runJob(send, job) {
     }
     /* settle 比一次一档的 2500ms 小：字体/CSS/JS 在这台浏览器里已经热过一轮。
        探针该等的东西由探针自己轮询（本套判据是"等到为止"，不是"等够为止"）。 */
-    await sleep(job.settle == null ? 900 : job.settle);
+    /* settle 是**上限**而不是固定睡眠：页面先静默（字体就绪 + 无在途 fetch + DOM 连续 320ms 无变化）
+       就提前走。探针该等的东西本来就由探针自己轮询，判据是"等到为止"不是"等够为止"。 */
+    await waitQuiet(send, job.settle == null ? 900 : job.settle, { tail: 120 });
     if (job.click) {
       for (const sel of String(job.click).split(',')) {
         if (!sel.trim()) continue;
         await call('Runtime.evaluate', {
           expression: `document.querySelector(${JSON.stringify(sel.trim())})?.click()` });
-        await sleep(+(job.click_wait || 1500));
+        const cap = +(job.click_wait || 1500);
         for (let i = 0; i < 60; i++) {
           const r = await call('Runtime.evaluate',
             { expression: 'document.readyState', returnByValue: true }, 8000);
           if (r.result?.result?.value === 'complete') break;
           await sleep(150);
         }
+        await waitQuiet(send, cap, { tail: 120 });      // 点击引发的重绘：等到静默，上限就是原来那个数
       }
-      await sleep(job.click_settle == null ? 600 : job.click_settle);
+      await sleep(job.click_settle == null ? 300 : job.click_settle);
     }
     await call('Emulation.setDeviceMetricsOverride', {
       width: job.width || 1440, height: job.height || 900,
@@ -241,35 +247,37 @@ try {
     // 与 shot.mjs 的 init 同源（Page.addScriptToEvaluateOnNewDocument），
     // 用来把 localStorage 偏好钉成确定态 —— 例如验"刷新后偏好仍然生效"。
     const initSrc = process.env.KB_GEOM_INIT || '';
-    if (initSrc) {
-      await send('Page.addScriptToEvaluateOnNewDocument', { source: initSrc });
-    }
+    // 一律注册（计数器 + 调用方的桩）；桩在前、计数在后，理由同 runJob 里那段注释
+    await send('Page.addScriptToEvaluateOnNewDocument', { source: initSrc + '\n' + PENDING_HOOK });
     await send('Page.navigate', { url });
     for (let i = 0; i < 40; i++) {
       const r = await send('Runtime.evaluate', { expression: 'document.readyState', returnByValue: true });
       if (r.result?.result?.value === 'complete') break;
       await sleep(200);
     }
-    await sleep(2500);   // 字体/动效落定，和 shot.mjs 的 settle 同源经验值
+    // 原来是 `await sleep(2500)`（字体/动效落定的经验值）；轮次 34 改成"等到静默，上限 2500"
+    await waitQuiet(send, 2500, { tail: 200 });
     // 可选的"先点一下再量"：env KB_GEOM_CLICK=CSS 选择器（逗号分隔可多点），
     // KB_GEOM_CLICK_WAIT=每次点击后的毫秒数（默认 1500）。
     // 点击引发整页导航时也没问题：这里等的是 readyState 而不是 Promise 结果，
     // 求值发生在**导航之后**的新文档里 —— 所以"点了到底换没换页"能直接断出来。
     const clickSel = process.env.KB_GEOM_CLICK || '';
     if (clickSel) {
+      const cap = +(process.env.KB_GEOM_CLICK_WAIT || 1500);
       for (const sel of clickSel.split(',')) {
         if (!sel.trim()) continue;
         await send('Runtime.evaluate', {
           expression: `document.querySelector(${JSON.stringify(sel.trim())})?.click()` });
-        await sleep(+(process.env.KB_GEOM_CLICK_WAIT || 1500));
+        await sleep(120);
         for (let i = 0; i < 60; i++) {
           const r = await send('Runtime.evaluate',
             { expression: 'document.readyState', returnByValue: true });
           if (r.result?.result?.value === 'complete') break;
           await sleep(200);
         }
+        await waitQuiet(send, cap, { tail: 120 });   // 等它真的重绘完，上限就是原来那个数
       }
-      await sleep(1200);
+      await sleep(300);
     }
     for (const w of WIDTHS) {
       await send('Emulation.setDeviceMetricsOverride',
