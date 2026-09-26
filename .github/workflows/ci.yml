@@ -64,9 +64,16 @@ jobs:
         run: python tests/test_js_props.py
       # 彻查轮次 24：UI 行为回归（台账 §2 那 9 行"点了有没有反应"）。同样自探测，
       # 缺 node/Chrome 就 SKIP —— 挂着是为了"CI 覆盖面不得小于本地钩子"这条口径。
+      # 轮次 37 实测：runner 带 node 与 Chrome，annotations 里是 `js_props STARTED` /
+      # `ui_behavior STARTED`（不是 SKIP），所以这两套在 CI 上真跑。
       - name: UI behavior regression (9 controls; SKIP without node/Chrome)
         run: python tests/test_ui_behavior.py
-      - name: RAG smoke (model not preloaded; download via mirror)
+      # 覆盖面如实登记（轮次 37 §6 第 50 行）：CI 没有 94MB 权重，`test_rag` 里
+      # 「tokenizer 逐 token 对齐」与「端到端语义检索」两条以权重存在为前提，在 CI 上恒 SKIP
+      # （annotations 会打出两条 SKIPPED）。以前这步叫 "RAG smoke (model not preloaded;
+      # download via mirror)"，读起来像"缺了会自动下载再测"—— 其实不会：那两条是 `is_file()`
+      # 判空就 return，不触发下载。改名让承诺与实际覆盖面一致；模型侧四条以本地钩子为权威。
+      - name: RAG smoke (model-dependent cases SKIP when weights absent)
         env:
           HF_ENDPOINT: https://hf-mirror.com
         run: python tests/test_rag.py
