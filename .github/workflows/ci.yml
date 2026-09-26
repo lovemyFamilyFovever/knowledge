@@ -8,6 +8,13 @@ on:
 jobs:
   test:
     runs-on: windows-latest
+    # Windows runner 的默认控制台编码是 cp1252：任何一步 print 中文都会
+    # UnicodeEncodeError 把步骤顶红（CI 从 #36 起一路红在
+    # "Ledger reconciliation"就是这条 —— 本地钩子是 GBK 控制台，能编码中文，所以从没暴露）。
+    # 与 tests/_tmpapp.py 给临时实例传 PYTHONIOENCODING=utf-8 同源，这里一次性给整个作业设上；
+    # 各脚本自己也照样不许因控制台编码崩（见 scripts/check_ledger_counts.py 的 reconfigure）。
+    env:
+      PYTHONIOENCODING: utf-8
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5

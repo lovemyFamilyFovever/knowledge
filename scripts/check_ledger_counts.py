@@ -20,6 +20,15 @@ import sys
 from collections import Counter
 from pathlib import Path
 
+# 控制台编码不许把脚本崩掉：Windows runner 默认 cp1252、本机钩子是 GBK，而报表里全是中文与 §。
+# **编不出来的字符替换掉，绝不抛异常**（与 tests 里那套 _safe 同一口径；
+# CI 侧另有 job 级 PYTHONIOENCODING=utf-8 兜底 —— 两边都要，别只靠环境）。
+try:
+    sys.stdout.reconfigure(errors="replace")
+    sys.stderr.reconfigure(errors="replace")
+except (AttributeError, ValueError):
+    pass
+
 ROOT = Path(__file__).resolve().parents[1]
 LEDGER = ROOT / "测试文件" / "覆盖台账.md"
 
