@@ -33,7 +33,8 @@
 .iconbtn.primary{background:linear-gradient(165deg,var(--c-acc),var(--c-info));border-color:transparent;
   color:color-mix(in oklab,var(--c-bg),white 6%);font-weight:600}
 [data-magnetic]{transition:box-shadow .3s var(--ease-out),transform .35s var(--ease-back)}
-[data-magnetic]:hover{}
+/* 原先这里有一条空的 [data-magnetic]:hover{}（轮次 40 删）：磁吸效果的实现已收在
+   motion.js 里用 transform 写内联样式，空规则只是早期改版的残留。 */
 .home-hero-visual{position:relative;display:flex;justify-content:center;align-items:center;min-height:320px}
 .home-hero-visual .hero-constellation{width:min(100%,380px);height:auto}
 .parallax-layer{will-change:transform;transform:translate(var(--px,0),var(--py,0))}

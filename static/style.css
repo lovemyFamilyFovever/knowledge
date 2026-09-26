@@ -29,6 +29,8 @@
   --f-serif:"Songti SC","STZhongsong","Noto Serif SC","Source Han Serif SC","SimSun",serif;
 }
 /* [2] token 定义区 ===== 原始层（raw hex 只在此区）===== */
+/* 与 [1] 同为 :root：本文件按段分区，token 一律就地声明在同名 :root 里（有意分层，不是重复定义） */
+/* stylelint-disable-next-line no-duplicate-selectors */
 :root{
   /* -- 基准皮肤「玄青」Light（2026-09-20 视觉 overhaul：弃青瓷绿，普鲁士蓝主色 × 朱砂次色；
        纸感暖底 + 黑系文字，muted/faint 派生比例同步收紧） -- */
@@ -132,6 +134,8 @@ html[data-theme="dark"]{
   --grain:.028;
 }
 /* hero 星座图 --ill-*（Light） */
+/* 同上：这一段的主题相关 token 就近写在 :root 里 */
+/* stylelint-disable-next-line no-duplicate-selectors */
 :root{
   --ill-line:color-mix(in oklab,var(--c-ink),transparent 55%);
   --ill-halo:color-mix(in oklab,var(--c-acc),transparent 82%);
@@ -200,8 +204,7 @@ header{position:relative;z-index:7;height:56px;flex:none;display:flex;align-item
 .top-right{display:flex;align-items:center;gap:8px;margin-left:auto}
 /* 一级导航：active = 2px 下边条（仪表 tab 语言）；搜索框绝对居中，两侧不参与挤压 */
 .topnav{display:flex;gap:2px;margin-left:4px;align-items:center}
-.topnav .tn{white-space:nowrap}
-.topnav .tn{display:inline-flex;align-items:center;gap:5px;font:600 12.5px/1 var(--f-body);letter-spacing:.06em;color:var(--muted);padding:8px 12px;border-radius:var(--rd-ctl);cursor:pointer;text-decoration:none;background:transparent;border:none}
+.topnav .tn{white-space:nowrap;display:inline-flex;align-items:center;gap:5px;font:600 12.5px/1 var(--f-body);letter-spacing:.06em;color:var(--muted);padding:8px 12px;border-radius:var(--rd-ctl);cursor:pointer;text-decoration:none;background:transparent;border:none}
 .topnav .tn svg{color:currentColor;flex:none}
 .topnav .tn-act{color:var(--muted)}
 .topnav .tn-act:hover{color:var(--c-acc);background:var(--acc-soft)}
@@ -244,9 +247,8 @@ main{position:relative;z-index:4;flex:1;display:grid;grid-template-columns:280px
   gap:8px;padding:8px;min-height:0;
   transition:grid-template-columns var(--dur-3) var(--ease-inout)}
 main.left-off{grid-template-columns:46px minmax(0,1fr) 264px}
-main.immersive{grid-template-columns:0 minmax(0,1fr) 0}
+main.immersive{grid-template-columns:0 minmax(0,1fr) 0;gap:0}
 main.immersive #p-left,main.immersive #p-rail{opacity:0;pointer-events:none}
-main.immersive{gap:0}
 main.single{display:flex;flex-direction:column}
 .page-panel{flex:1;min-height:0}
 #graph{flex:1;min-height:0}
@@ -316,6 +318,8 @@ main.single{display:flex;flex-direction:column}
 /* 目录名同样是 flex 里的匿名文本，需包 span 才能出省略号 */
 .tree-subdir-h .tsd-t{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 /* 三级目录可点击收起（用户要求）：头部手型 + 收起态隐藏文档体 */
+/* 交互态与上面的基础样式分两段写，选择器同名是有意的 */
+/* stylelint-disable-next-line no-duplicate-selectors */
 .tree-subdir-h{cursor:pointer}
 .tree-subdir-h:hover{color:var(--c-ink)}
 .tree-subdir.collapsed > .tree-subdir-body{display:none}
@@ -350,6 +354,8 @@ main.single{display:flex;flex-direction:column}
 /* 展开态：域头底色加深一档，收起态无底色，二者肉眼可辨 */
 .dom.open .dom-head{background:color-mix(in oklab,var(--c-sunk),var(--c-acc) 6%)}
 .dom.open .dom-head .dom-glyph{transform:scale(1.04)}
+/* 展开态才需要的过渡，跟着上面那组 .dom.open 规则走 */
+/* stylelint-disable-next-line no-duplicate-selectors */
 .dom-glyph{transition:transform var(--dur-1) var(--ease-out)}
 /* 子域链接：去掉 └ 前缀（层级已由缩进+引导线表达），文字超长省略号 */
 .sub{display:flex;align-items:center;gap:6px;padding:5px 9px;border-radius:var(--rd-ctl);cursor:pointer;color:var(--c-ink);font-size:12.5px;font-weight:500;transition:color var(--dur-1),background var(--dur-1);user-select:none}
@@ -1416,6 +1422,8 @@ textarea.kb-input,textarea.inp{height:auto;min-height:88px;padding:10px 12px;fon
    Firefox 走 scrollbar-width:none；WebKit 走 ::-webkit-scrollbar。
    滚动位置指示由各面板内的视觉分层承担（hairline 边框已有）。
    ============================================================ */
+/* 本段整体只管「隐藏滚动条」，选择器 * 与文件头 reset 段同名但不冲突 */
+/* stylelint-disable-next-line no-duplicate-selectors */
 *{scrollbar-width:none}
 *::-webkit-scrollbar{width:0;height:0;display:none}
 *::-webkit-scrollbar-thumb{display:none}

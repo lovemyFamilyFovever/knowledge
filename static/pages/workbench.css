@@ -67,6 +67,8 @@
    JetBrainsMono NF）优先，再列 Fira Code / Sarasa 兜底；遵守项目「本机字族、不新增
    @font-face 网络字体」原则（style.css [1] 段）。中文回落雅黑/苹方保证中英混排协调。
    字号对齐原 textarea 13px 基准。 */
+/* 本段只定义 --ed-* 令牌，与上面那条 .editor 布局规则同名不同职责，有意分层 */
+/* stylelint-disable-next-line no-duplicate-selectors */
 .editor{
   --ed-mono:"Cascadia Code","JetBrainsMono NF","JetBrains Mono","Fira Code","Sarasa Mono SC","Microsoft YaHei UI","PingFang SC",var(--f-mono);
   --ed-fs:13px;

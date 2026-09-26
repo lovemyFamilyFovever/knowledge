@@ -104,6 +104,10 @@ html[data-skin="graphite"][data-theme="dark"]{
 /* ============================================================
    [S] 风格层 —— 每套皮肤自己的排印与装饰语言
    ============================================================ */
+/* 本段的选择器与上面 token 层同名（html[data-skin=...]）：皮肤 = token 层 + 风格层两套语言
+   分块维护，是刻意的分层而非重复定义，所以整段关掉该规则、段尾再开回来，
+   本文件其余部分照常受管。 */
+/* stylelint-disable no-duplicate-selectors */
 
 /* ---- 纸墨 zhimo：编辑部衬线 · 大序号 · 规线 ---- */
 html[data-skin="zhimo"]{
@@ -235,3 +239,5 @@ button[data-prev=dieyin] .kb-skin-prev::before{border-radius:99px;transform:rota
 button[data-prev=graphite] .kb-skin-prev{border-radius:0}
 button[data-prev=graphite] .kb-skin-prev::before{width:3px;height:8px;background:var(--sd-b)}
 button[data-prev=graphite] .kb-skin-prev::after{background:color-mix(in oklab,var(--sd-ink,#999),transparent 40%)}
+
+/* stylelint-enable no-duplicate-selectors */

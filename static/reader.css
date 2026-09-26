@@ -39,11 +39,10 @@
 /* [R2] 小节码（INSTRUMENT）：h2 计数编码 + 2px 下边线。
    计数由 CSS counter 生成（SEC 01 起），不依赖 JS；标题文字保持干净。 */
 .a-body{counter-reset:kbsec}
-.a-body h2{counter-increment:kbsec;position:relative}
+.a-body h2{counter-increment:kbsec;position:relative;border-bottom:2px solid var(--c-line2)}
 .a-body h2::before{content:"SEC " counter(kbsec,decimal-leading-zero);
   display:block;font:600 10px/1 var(--f-mono);letter-spacing:.22em;color:var(--c-acc);
   margin-bottom:6px;text-transform:uppercase}
-.a-body h2{border-bottom:2px solid var(--c-line2)}
 /* h3 收紧：§ 前缀已有（style.css v2），这里收字距与边距 */
 .a-body.rd-measure h3{letter-spacing:.01em;margin:20px 0 8px}
 

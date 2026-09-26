@@ -4,24 +4,7 @@
 
 ## 待办
 
-- [ ] **stylelint 要不要变严**（轮次 39 量完，等用户拍板）：仓库历史上有一份从未生效的 `stylelint.config.mjs`（`.stylelintrc.json` 在配置发现顺序里优先），已随轮次 38 删除。它当年把 `no-duplicate-selectors` / `block-no-empty` 设成 true，而生效配置把这两条显式关掉。**实测代价 = 17 项报错**：16 条重复选择器（`static/pages/skins.css` 五种皮肤各两处、`static/style.css` 2、`kb-core.css` / `reader.css` / `workbench.css` 各一处）+ 1 个空规则块（`static/pages/home.css:36`，这个看着像真缺陷）。若要打开：建议先修空块，再逐条判断重复选择器哪些是刻意的（skins 那种大概率是设计），加 disable 注释或合并声明，而不是一把梭启用。
-
-## 已延后（按用户决定排序）
-
-- [ ] **AI金（ai-jin）repos 侧 108 份文档导数据**——用户正在自行重新整理（重复、过时内容多），放最后。
-  （2026-09-20 进展：desktop/code 侧 193 份已经 /api/move/batch 归入 `content/projects/AI金/`
-  并保留子目录结构，剩余 12 份 .txt 非语料格式未动；目录显示别名"项目复盘"已清除）
-- [ ] **_inbox 抓取对超长文的硬截断**（2026-09-19 由规范 v1.2 §5 登记；2026-09-26 从 `docs/BACKLOG.md`
-  搬来 —— 那份文件本轮删掉了，而这条是它里面唯一没做完的事）。
-  现象：`content/baike/programming-languages/软件测试完全指南.md` 原稿 1111 行、20441 字，
-  末尾在 k6 代码块中途断掉（末行 `'errors': ['rate<0`，围栏未闭合），第 6 节"性能测试"不完整。
-  影响面：同源导入稿 400+ 篇，疑似同一抓取批次有长度上限；目前只确认 1 例，未普查。
-  排查动作：定位 `_inbox` 抓取脚本里的截断逻辑（上限 / 分页未合并 / 响应体截断），
-  确认是硬截断还是源站本身不完整。
-  处置：① 硬截断 → 评估全量重抓；重抓属语料变更，须递增 `app/rag.py::RAG_CODE_VERSION` 并重建索引
-  （AGENTS 不变量 7），且**禁止**直接在 `content/` 覆盖，须走 `_inbox`。
-  ② 源站即不完整 → 逐篇标注 `fact-uncertain`（v1.1 §4），残缺章节按 v1.2 §5 用双链指向已有专条，不据推测补写。
-  当前决定：**不处理**，拆分只基于现有文本。
+- [x] ~~**stylelint 要不要变严**~~（**2026-09-26 轮次 40 用户拍板并已启用**）：唯一生效的 `.stylelintrc.json` 里 `no-duplicate-selectors` / `block-no-empty` 已设 true，当年量出的 17 项全部处理完（合并 3 项 / 9 个放行点带理由放行 13 项 / 删空规则块 1 项），`npm run lint:css` 0 告警，P5 逐像素 22 张全 0 差异证明渲染中性。顺手清掉一条死代码：`home.css` 的 `[data-magnetic]:hover{}` 空块（磁吸其实由 motion.js 实现）。**新纪律：放行必须带理由注释，无理由放行视为回退**（台账 §6 第 55 行、§7）。另注意本仓库历史上有一份从未生效的 `stylelint.config.mjs`（配置发现顺序靠后），已随轮次 38 删除。
 - [ ] **`content/_inbox/repos/work/AIjin/` 里 58 份只此一家的文档**（2026-09-26 全项目排查发现）：
   该目录 108 份 md 里，50 份与已归档正本 `content/projects/AI金/**` 逐字节相同（本轮已删），
   另外 **58 份全库仅此一份**，且 `_inbox` 被 .gitignore 排除 —— 删了连 git 历史里都找不到。

@@ -79,6 +79,7 @@ Agent 的**常驻工具脚本**统一收在 `scripts/agent/`（2026-09-18 从旧
 1. 改前基线已留在 `.qa/qa-shots/` 时：`node scripts/agent/imgdiff.mjs 基线.png 新.png`（**默认 2% 容差只适合肉眼复核**；作判定用请传 `0%` 并按差异像素数看，实测 2% 会把真回归读成绿，见第 3 条）；
 2. 无基线则先 `shot.mjs` 补拍明暗两态入档；
 3. 差异热图里出现**不该变的区域变红** = 改 A 崩 B，修完再交。**不要用"调大 fuzz"去压噪点**（旧版本这条写的是 `imgdiff a b 5%`，2026-09-24 撤销）：实测 2% 容差 + "差异占比"会把一次真实的模板改字读成绿（AE 只有 75 像素），噪点该靠"钉死动态内容"消除（见 `test_ui_regress.py` 的 FREEZE 与 `clickWait`），而不是靠放大容差。
+4. **CSS 受严格 lint 管**（轮次 40 起）：`npm run lint:css` 打开着 `no-duplicate-selectors` 与 `block-no-empty`。同选择器分块写（皮肤 token 层 vs 风格层、`--ed-*` 令牌段、截图微调组）是刻意的，可以放行，但**必须就地写一条带理由的 `stylelint-disable` 注释**；无理由放行视为回退。空规则块按缺陷删掉（历史上 `[data-magnetic]:hover{}` 那类壳会误导接手的人）。唯一生效的配置是 `.stylelintrc.json`（`stylelint.config.mjs` 从未生效、已删）。
 
 | 临时产物（`.qa/`） | 用途 |
 |------|------|

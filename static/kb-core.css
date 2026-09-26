@@ -238,8 +238,11 @@ html [hidden]{display:none}
 /* 设置面板对齐微调（截图问题③④）：脚注行基线、快捷键标题行居中、
    键帽行 hover 可感知性 */
 .kb-pref-foot .mbtn{flex:none}
+/* 以下三条是 2026-09 的截图微调组，与各自的基础样式分块维护：选择器同名是有意的，不是重复定义 */
+/* stylelint-disable-next-line no-duplicate-selectors */
 .kb-pref-note{flex:1;min-width:0}
 .kb-pref-head .kb-pref-kbd-hint{align-self:center}
+/* stylelint-disable-next-line no-duplicate-selectors -- 微调组，理由同上 */
 .kb-keys-list .kb-help-row{border-radius:6px;padding-left:6px;padding-right:6px}
 .kb-keys-list .kb-help-row:hover{background:var(--c-panel)}
 
