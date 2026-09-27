@@ -84,3 +84,26 @@
   .kb-ai-card{left:12px!important;right:12px;width:auto}
   .kb-ai-rail{display:none}
 }
+
+/* ---- 查漏补缺面板（切片 3）：复用 .kb-ai-card 的壳，只加列表本身的排版 ---- */
+.kb-audit{width:520px;max-height:calc(100vh - 110px)}
+.kb-au-sum{font:500 11.5px/1.6 var(--f-mono);color:var(--c-ink);opacity:.82}
+.kb-au-item{border:1px solid var(--c-line);border-radius:10px;padding:9px 11px;margin-top:8px;
+  background:var(--c-bg)}
+.kb-au-item[data-status=dismissed],.kb-au-item[data-status=adopted]{opacity:.6}
+.kb-au-h{display:flex;align-items:center;gap:7px}
+.kb-au-h b{font:600 13px/1.4 var(--f-body)}
+.kb-au-sev{flex:none;border-radius:999px;padding:2px 8px;font:600 10.5px/1.4 var(--f-mono);
+  border:1px solid var(--c-line);color:var(--c-ink);background:var(--c-panel)}
+.kb-au-sev.high{border-color:var(--c-danger);color:var(--c-danger)}
+.kb-au-sev.medium{border-color:var(--c-warn);color:var(--c-warn)}
+.kb-au-state{margin-left:auto;font:600 10.5px/1 var(--f-mono);color:var(--c-acc);font-style:normal}
+.kb-au-ev{margin-top:5px;font:500 12px/1.6 var(--f-mono);color:var(--c-ink);word-break:break-word}
+.kb-au-sg{margin-top:3px;font-size:12.5px;line-height:1.65;color:var(--c-ink)}
+.kb-au-ai{margin-top:5px;padding:6px 8px;border-left:2px solid var(--c-acc);
+  background:var(--acc-soft);font-size:12px;line-height:1.6}
+.kb-au-ai.muted{border-left-color:var(--c-line);background:var(--c-sunk);opacity:.8}
+.kb-au-ai span{display:block;margin-top:2px;opacity:.82}
+.kb-au-acts{display:flex;gap:6px;margin-top:8px}
+.kb-au-empty{margin-top:10px;padding:12px;border:1px dashed var(--c-line);border-radius:10px;
+  font-size:12.5px;line-height:1.7;color:var(--c-ink)}

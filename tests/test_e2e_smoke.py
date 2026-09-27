@@ -446,6 +446,40 @@ def main() -> int:
         check("GET /api/ai/qa 200 且没问过就是空列表",
               r.status_code == 200 and jget(r).get("items") == [], str(jget(r))[:160])
         check("GET /api/ai/qa 缺 path → 400", c.get("/api/ai/qa").status_code == 400)
+        # 切片 3：单篇查漏补缺。没配 key 时也必须 200 —— 本地判据一个字节都不出站。
+        r = c.post("/api/ai/audit", json={"path": "ai/llm-and-agents/A.md"})
+        aj = jget(r)
+        check("POST /api/ai/audit 无 key 也出结果（本地判据 + 如实说明 AI 那半没跑）",
+              r.status_code == 200 and aj.get("ok") and aj.get("ai_enabled") is False
+              and "只跑了本地判据" in (aj.get("ai_reason") or ""), str(aj)[:200])
+        check("POST /api/ai/audit 每条建议都带证据（光有结论的一律不予展示）",
+              all(p.get("evidence") and p.get("suggestion")
+                  for p in aj.get("proposals") or []), str(aj)[:200])
+        pid = (aj.get("proposals") or [{}])[0].get("id") or ""
+        check("GET /api/ai/audit 读回同一批建议",
+              c.get("/api/ai/audit?path=ai/llm-and-agents/A.md").status_code == 200
+              and len(jget(c.get("/api/ai/audit?path=ai/llm-and-agents/A.md"))["proposals"])
+              == len(aj.get("proposals") or []))
+        check("POST /api/ai/audit/status 非法 status → 400 且回允许值",
+              c.post("/api/ai/audit/status", json={"path": "ai/llm-and-agents/A.md",
+                   "id": pid, "status": "wtf"}).status_code == 400)
+        check("POST /api/ai/audit/status 记一次忽略 → 200",
+              c.post("/api/ai/audit/status", json={"path": "ai/llm-and-agents/A.md",
+                   "id": pid, "status": "dismissed"}).status_code == 200)
+        check("POST /api/ai/audit/status 不存在的 id → 404（不静默成功）",
+              c.post("/api/ai/audit/status", json={"path": "ai/llm-and-agents/A.md",
+                   "id": "deadbeefdeadbe", "status": "adopted"}).status_code == 404)
+        for bad_payload, want, label in [({}, 400, "缺 path"),
+                                         ({"path": "ai/没有.md"}, 404, "文档不存在"),
+                                         ({"path": "../../app/app.py"}, 400, "路径穿越")]:
+            rr = c.post("/api/ai/audit", json=bad_payload)
+            check(f"POST /api/ai/audit {label} → {want} 且不泄露绝对路径",
+                  rr.status_code == want and not leaks(rr.get_data(as_text=True), root),
+                  f"status={rr.status_code}")
+        rc = c.post("/api/ai/audit", json={"path": "career/B.md"})
+        check("POST /api/ai/audit 求职域照样能查本地（不是 403：本地判据不出网）",
+              rc.status_code == 200 and jget(rc).get("ai_enabled") is False
+              and "不出站" in (jget(rc).get("ai_reason") or ""), str(jget(rc))[:200])
         check("配置类端点全程没往临时根写过 key",
               not (root / ".ai-config.json").exists()
               and jget(c.get("/api/ai/config")).get("key_present") is False)

@@ -628,6 +628,13 @@ def test_i10() -> None:
             cl.post("/api/ai/explain", json={"path": "ai/topic/A.md", "selection": "可见正文"})
             cl.post("/api/ai/explain", json={"path": "career/B.md", "selection": "职业"})
             cl.get("/api/ai/qa?path=ai/topic/A.md")
+            # 查漏三个端点（切片 3）：面板入口再多一条，也不许碰正文。
+            # 「采纳」动作写的是 sidecar，走 /api/note —— 那条路径由 I2 管，不在这里。
+            cl.post("/api/ai/audit", json={"path": "ai/topic/A.md"})
+            cl.post("/api/ai/audit", json={"path": "career/B.md"})
+            cl.get("/api/ai/audit?path=ai/topic/A.md")
+            cl.post("/api/ai/audit/status", json={"path": "ai/topic/A.md",
+                                                  "id": "ffffffffffff", "status": "dismissed"})
             cl.get("/api/ai/usage")
             cl.delete("/api/ai/config")
             after = tree_state()

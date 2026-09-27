@@ -199,6 +199,10 @@ if [ -f "tests/test_ai_config.py" ]; then step ai_config $PY tests/test_ai_confi
 # 只有对着可计数的桩才证得出来。
 if [ -f "tests/test_ai_qa.py" ]; then step ai_qa $PY tests/test_ai_qa.py; fi
 
+# 切片 3（单篇查漏补缺）：本地判据 + AI 判断的分工。关键是那条**控制组**：
+# 结构完整的样本必须一条建议都不出，否则"判据永远亮红"的废实现也能全绿。
+if [ -f "tests/test_ai_audit.py" ]; then step ai_audit $PY tests/test_ai_audit.py; fi
+
 # 已知缺陷回归锚（P4 发现 → 修复轮转绿后接入）：空子域 /browse 500、
 # resolve 前缀分歧致 /api/rmdir · /api/import 500。若被重新引入，提交即被拦下。
 if [ -f "tests/test_known_defects.py" ]; then step known_defects $PY tests/test_known_defects.py; fi

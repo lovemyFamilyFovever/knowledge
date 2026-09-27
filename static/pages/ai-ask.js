@@ -466,6 +466,125 @@
     }
   }, true);
 
+  /* ---------------------------------------------------------------- 查漏补缺（切片 3） */
+  function ensureAudit() {
+    var el = $("kb-audit-panel");
+    if (el) return el;
+    el = document.createElement("div");
+    el.id = "kb-audit-panel";
+    el.className = "kb-ai-card kb-audit";
+    el.setAttribute("role", "dialog");
+    el.setAttribute("aria-label", "本篇查漏补缺");
+    el.hidden = true;
+    el.innerHTML =
+      '<div class="kb-ai-ch"><b>本篇查漏补缺</b>' +
+      '<button type="button" class="kb-ai-mini ghost" id="kb-au-rescan">重新扫描</button>' +
+      '<button type="button" class="kb-ai-x" id="kb-au-x" aria-label="关闭">✕</button></div>' +
+      '<div class="kb-au-sum" id="kb-au-sum">扫描中…</div>' +
+      '<div id="kb-au-list"></div>' +
+      '<p class="kb-ai-note">采纳只写 sidecar 批注（.notes.md），正文一个字节都不改；' +
+      "改正文由你自己动手。忽略会被记住，重扫不会再来烦你。</p>";
+    document.body.appendChild(el);
+    $("kb-au-x").addEventListener("click", function () { el.hidden = true; });
+    $("kb-au-rescan").addEventListener("click", function () { audit(true); });
+    $("kb-au-list").addEventListener("click", function (e) {
+      var b = e.target.closest("[data-act]");
+      if (!b) return;
+      var item = b.closest("[data-id]");
+      if (!item) return;
+      auditAction(item.getAttribute("data-id"), item.getAttribute("data-title"),
+                  item.getAttribute("data-sug"), b.getAttribute("data-act"), b);
+    });
+    return el;
+  }
+
+  function audit(force) {
+    var d = doc();
+    if (!d || !d.rel) { toast("这一页没有可扫描的文档"); return; }
+    var panel = ensureAudit();
+    panel.hidden = false;
+    panel.style.left = "auto";
+    panel.style.right = "16px";
+    panel.style.top = "86px";
+    var sum = $("kb-au-sum");
+    if (sum) sum.textContent = (force ? "重新扫描中…" : "扫描中…");
+    post("/api/ai/audit", { path: d.rel }).then(function (j) {
+      if (!j || j.ok !== true) {
+        if (sum) sum.textContent = "扫描失败：" + ((j && j.error) || "未知错误");
+        $("kb-au-list").innerHTML = "";
+        return;
+      }
+      renderAudit(j);
+    }).catch(function (e) {
+      if (sum) sum.textContent = "扫描失败：" + ((e && e.message) || e);
+    });
+  }
+
+  var SEV_TEXT = { high: "要紧", medium: "结构", low: "可选" };
+
+  function renderAudit(j) {
+    var sum = $("kb-au-sum"), list = $("kb-au-list");
+    var ps = j.proposals || [];
+    var pend = ps.filter(function (p) { return p.status !== "pending"; }).length;
+    sum.textContent = "本地判据 " + j.local_count + " 条" +
+      (j.ai_enabled ? " · AI 判断已并入" : " · " + (j.ai_reason || "AI 未启用")) +
+      (pend ? " · 已处置 " + pend + " 条" : "");
+    if (!ps.length) {
+      list.innerHTML = '<div class="kb-au-empty">没查出问题。这一篇的元数据、标题层级、' +
+        "围栏、双链与附件都过得了本地判据。</div>";
+      return;
+    }
+    list.innerHTML = ps.map(function (p) {
+      var ai = (p.ai_terms && p.ai_terms.length)
+        ? '<div class="kb-au-ai">AI 认为值得做：<b>' + esc(p.ai_terms.join("、")) + "</b>" +
+          (p.ai_note ? "<span>" + esc(p.ai_note) + "</span>" : "") + "</div>"
+        : (p.needs_ai ? '<div class="kb-au-ai muted">这条要 AI 判断，本次没跑（见上方原因）</div>' : "");
+      return '<div class="kb-au-item" data-id="' + esc(p.id) + '" data-title="' + esc(p.title) +
+        '" data-sug="' + esc(p.suggestion) + '" data-status="' + esc(p.status || "pending") + '">' +
+        '<div class="kb-au-h"><span class="kb-au-sev ' + esc(p.severity) + '">' +
+        (SEV_TEXT[p.severity] || esc(p.severity)) + "</span><b>" + esc(p.title) + "</b>" +
+        (p.status && p.status !== "pending" ? '<i class="kb-au-state">' +
+          (p.status === "adopted" ? "已采纳" : "已忽略") + "</i>" : "") + "</div>" +
+        '<div class="kb-au-ev">' + esc(p.evidence) + "</div>" +
+        '<div class="kb-au-sg">' + esc(p.suggestion) + "</div>" + ai +
+        '<div class="kb-au-acts">' +
+        '<button type="button" class="kb-ai-mini" data-act="adopt">记进批注</button>' +
+        '<button type="button" class="kb-ai-mini ghost" data-act="dismiss">' +
+        (p.status === "dismissed" ? "已忽略" : "忽略") + "</button>" +
+        (p.status && p.status !== "pending"
+          ? '<button type="button" class="kb-ai-mini ghost" data-act="pending">恢复待处理</button>'
+          : "") + "</div></div>";
+    }).join("");
+  }
+
+  var AUDIT_STATUS = { adopt: "adopted", dismiss: "dismissed", pending: "pending" };
+
+  function auditAction(id, title, sug, act, btn) {
+    var d = doc();
+    var status = AUDIT_STATUS[act];
+    if (!status) return;
+    var send = function () {
+      return post("/api/ai/audit/status", { path: d.rel, id: id, status: status })
+        .then(function (j) {
+          if (!j || j.ok !== true) {
+            toast("状态没记住：" + ((j && j.error) || "未知错误"));
+            return;
+          }
+          var item = btn.closest(".kb-au-item");
+          if (item) item.setAttribute("data-status", status);
+          // 三种处置都要重扫一次：汇总条上的"已处置 N 条"与「恢复待处理」按钮的显隐
+          // 全靠服务端回的状态，客户端自己拼容易和派生库走岔。
+          audit();
+        });
+    };
+    if (act !== "adopt") { send(); return; }
+    var text = "查漏｜" + title + "：" + sug;
+    post("/api/note", { path: d.rel, text: text }).then(function (r) {
+      if (!r || !r.ok) { toast("写批注失败：" + ((r && r.error) || "未知错误")); return; }
+      send();
+    }).catch(function (e) { toast("写批注失败：" + e.message); });
+  }
+
   window.KBAI = {
     state: state,
     /** app.js 在渲染完正文后调用（SPA 式换文档时重置一次） */
@@ -477,7 +596,9 @@
     },
     ask: ask,
     preview: preview,
-    rail: loadRail
+    rail: loadRail,
+    /** crumb 上的「查漏」按钮（workbench.html 直接 onclick 调它） */
+    audit: audit
   };
 
   // 首屏：app.js 渲染正文是异步的，这里等一次 DOC 出现再挂 rail

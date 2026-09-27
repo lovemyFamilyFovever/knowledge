@@ -130,6 +130,17 @@ def build_provider():
                       "usage": {"prompt_tokens": 120, "completion_tokens": 40,
                                 "total_tokens": 160}})
 
+    @app.route("/audit/chat/completions", methods=["POST"])
+    def audit():
+        """切片 3 用：把候选词原样判成 terms（便于断言"AI 的结论并回了哪条建议"）。"""
+        counted("audit")
+        ans = {"answer": "两个候选里只有一个是真引用。", "confidence": "medium",
+               "terms": [{"term": "向量数据库", "brief": "正文里它在讲存储选型"}],
+               "sources": []}
+        return reply({"choices": [{"message": {"content": json.dumps(ans, ensure_ascii=False)}}],
+                      "usage": {"prompt_tokens": 300, "completion_tokens": 30,
+                                "total_tokens": 330}})
+
     @app.route("/badjson/chat/completions", methods=["POST"])
     def badjson():
         counted("badjson")

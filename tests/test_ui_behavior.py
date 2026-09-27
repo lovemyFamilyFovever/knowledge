@@ -2801,6 +2801,101 @@ def probe_ai_ask(base, tmp):
         cfg.unlink(missing_ok=True)
 
 
+# ================================================================ 探针 23：单篇查漏补缺（切片 3）
+AI_AUDIT_JS = PRELUDE + r"""
+  const T = e => ((e && e.textContent) || '').replace(/\s+/g, ' ').trim();
+  const btn = q('#kb-audit-btn');
+  out.btn_present = !!btn;
+  if (btn) btn.click();
+  await sleep(1800);
+  const panel = q('#kb-audit-panel');
+  out.panel_open = !!(panel && panel.hidden === false);
+  out.sum0 = T(q('#kb-au-sum'));
+  const items = [...document.querySelectorAll('.kb-au-item')];
+  out.n_items = items.length;
+  out.first_has_evidence = !!(items[0] && T(items[0].querySelector('.kb-au-ev'))
+                              && T(items[0].querySelector('.kb-au-sg')));
+  out.kinds = items.map(i => i.getAttribute('data-id')).slice(0, 3);
+  out.dead_link_shown = items.some(i => (T(i).indexOf('不存在') >= 0));
+  // 忽略一条 → 状态落到 DOM，汇总条上的"已处置"跟着涨
+  if (items[0]) {
+    const d = items[0].querySelector('[data-act="dismiss"]');
+    if (d) d.click();
+  }
+  await sleep(1800);
+  out.after_dismiss = {status: (q('.kb-au-item') || {}).dataset?.status,
+                       sum: T(q('#kb-au-sum')), toast: T(q('#toast'))};
+  // 采纳一条 → 先写 sidecar 批注，再记状态
+  const it2 = [...document.querySelectorAll('.kb-au-item')][1] || q('.kb-au-item');
+  if (it2) {
+    const a = it2.querySelector('[data-act="adopt"]');
+    if (a) a.click();
+  }
+  await sleep(2000);
+  out.after_adopt_sum = T(q('#kb-au-sum'));
+  // 恢复待处理（采纳/忽略之后这个按钮才会出现）
+  const back = document.querySelector('[data-act="pending"]');
+  out.has_pending_btn = !!back;
+  if (back) back.click();
+  await sleep(1600);
+  out.after_pending_sum = T(q('#kb-au-sum'));
+  const x = q('#kb-au-x'); if (x) x.click();
+  await sleep(300);
+  out.closed = !!(q('#kb-audit-panel') && q('#kb-audit-panel').hidden === true);
+  return JSON.stringify(out);
+})()"""
+
+AI_AUDIT_BLOCKED_JS = PRELUDE + r"""
+  const T = e => ((e && e.textContent) || '').replace(/\s+/g, ' ').trim();
+  const btn = q('#kb-audit-btn'); if (btn) btn.click();
+  await sleep(1600);
+  out.panel_open = !!(q('#kb-audit-panel') && q('#kb-audit-panel').hidden === false);
+  out.sum = T(q('#kb-au-sum'));
+  out.items = document.querySelectorAll('.kb-au-item').length;
+  out.ai_muted = [...document.querySelectorAll('.kb-au-ai.muted')].length;
+  out.ai_real = [...document.querySelectorAll('.kb-au-ai:not(.muted)')].length;
+  return JSON.stringify(out);
+})()"""
+
+
+def probe_ai_audit(base, tmp):
+    print("== 23 单篇查漏补缺：本地判据面板 / 忽略 / 采纳写批注 / 恢复 ==")
+    side = tmp / "content" / "ui-r" / "notes" / "alpha.md.notes.md"
+    alpha = tmp / "content" / "ui-r" / "notes" / "alpha.md"
+    before = side.read_text(encoding="utf-8") if side.is_file() else ""
+    body_before = alpha.read_text(encoding="utf-8")
+    d = run_expr(base + "/doc/ui-r/notes/alpha.md", AI_AUDIT_JS)
+    check("查漏：crumb 上有「查漏」按钮，点了真的开面板",
+          d.get("btn_present") and d.get("panel_open") is True, d)
+    check("查漏：汇总条如实写明只跑了本地判据（没配 key 时不假装查全）",
+          "本地判据" in (d.get("sum0") or "") and "只跑了本地判据" in (d.get("sum0") or ""),
+          d.get("sum0"))
+    check("查漏：样本里那条不存在的目标被列出来了", d.get("dead_link_shown") is True, d)
+    check("查漏：每条建议都有证据 + 建议动作两行（不是光一个标题）",
+          d.get("n_items", 0) >= 1 and d.get("first_has_evidence") is True, d)
+    check("查漏：忽略后汇总条出现「已处置」",
+          "已处置" in ((d.get("after_dismiss") or {}).get("sum") or ""), d.get("after_dismiss"))
+    check("查漏：采纳之后已处置数继续累加",
+          "已处置 2" in (d.get("after_adopt_sum") or "")
+          or "已处置" in (d.get("after_adopt_sum") or ""), d.get("after_adopt_sum"))
+    after = side.read_text(encoding="utf-8") if side.is_file() else ""
+    check("查漏：采纳真的写进 sidecar 批注（正文不参与）",
+          after.startswith(before) and "查漏｜" in after, _safe(after[-200:]))
+    check("查漏：跑完一整轮，正文一个字节都没变（不变量 9 ②）",
+          alpha.read_text(encoding="utf-8") == body_before, len(body_before))
+    check("查漏：处置过的条目会浮出「恢复待处理」按钮", d.get("has_pending_btn") is True, d)
+    check("查漏：恢复之后已处置数回落",
+          "已处置 1" in (d.get("after_pending_sum") or "")
+          or "已处置" not in (d.get("after_pending_sum") or ""), d.get("after_pending_sum"))
+    check("查漏：× 能关掉面板", d.get("closed") is True, d.get("closed"))
+
+    d2 = run_expr(base + "/doc/interview/fe/" + quote("事件循环.md"), AI_AUDIT_BLOCKED_JS)
+    check("查漏：不出站的域照样能查本地（面板打开、有本地条目）",
+          d2.get("panel_open") is True and "不出站" in (d2.get("sum") or ""), d2)
+    check("查漏：不出站域的面板里一条 AI 结论都没有（needs_ai 条目只会被标成没跑，"
+          "不会带着假结论出现）", d2.get("ai_real") == 0, d2)
+
+
 # ================================================================ 探针 21：快捷键清单（唯一数据源）
 KEYS_JS = PRELUDE + r"""
   const T = e => ((e && e.textContent) || '').replace(/\s+/g, ' ').trim();
@@ -3610,6 +3705,7 @@ def main() -> int:
         run_probe("novelpref", probe_novel_prefs, base)  # 只写 localStorage（小说偏好）
         run_probe("aicfg", probe_ai_settings, base, tmp)  # 写临时根的 .ai-config.json（探针收尾自己清掉）
         run_probe("aiask", probe_ai_ask, base, tmp)   # 选词问 AI：写 sidecar 批注 + 新建术语词条
+        run_probe("aiaudit", probe_ai_audit, base, tmp)  # 查漏面板：忽略 / 采纳写 sidecar / 恢复
         run_probe("keys", probe_keys, base)             # 只读：快捷键两处同源
         run_probe("novelbar", probe_novel_bar, base, tmp)  # 写：章评落旁挂 + 朗读/滚动/下载
         run_probe("stats", probe_stats, base, tmp)  # 写：/api/track 造当月事件后看统计页

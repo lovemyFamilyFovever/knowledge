@@ -32,15 +32,15 @@ python tests\test_learn.py                     # 学习系统 smoke（255 断言
 python tests\test_predicates.py                # 判定谓词层 smoke（89 断言 · P6 存活清单回填）
 python tests\test_properties.py                # 性质测试（15 条 · 每条 240 个随机样本，固定种子）
 python tests\test_invariants.py                # 不变量门禁 I1~I10（87 断言 · 对 AGENTS 1-9）
-python tests\test_e2e_smoke.py                 # 端到端 smoke（213 断言 · 打满 65 条路由）
+python tests\test_e2e_smoke.py                 # 端到端 smoke（223 断言 · 打满 68 条路由）
 python tests\test_ai_config.py                 # AI 出站配置层（79 断言 · 假 provider 起在本进程，零外网）
 python tests\test_ai_qa.py                     # 选词问 AI（78 断言 · 上下文最小化 / 域级 403 / 缓存不计费 / 注入加固）
-python tests\test_ai_qa.py                     # 选词问 AI（74 断言 · 上下文最小化 / 域级 403 / 缓存不计费 / 注入加固）
+python tests\test_ai_audit.py                  # 单篇查漏补缺（48 断言 · 本地判据 10 类 + 干净文档控制组 + AI 只收窄不造条目）
 python tests\test_js_props.py                  # 浏览器侧书库解析性质测试（47 断言；缺 node/Chrome 自动 SKIP）
 python tests\test_ui_regress.py                # 视觉回归批处理（P5：22 张截图 vs tests/ui-baselines/ 基线 + 10 条顶栏几何断言）
 python tests\test_ui_regress.py --stability    #   只验"两次截图逐像素相同"（改矩阵/环境后先跑这个）
 python tests\test_ui_regress.py --update       #   确认改动无误后，用本次截图刷新基线
-python tests\test_ui_behavior.py               # UI 行为回归（406 断言 · 台账 §2 已升 E2E 的控件"点了到底有没有反应"；轮次 33 提速：一台 Chrome 跑完整套（会话档），~200s/趟，作业间自动清存储保隔离；回退一次一档 `set KB_BEHAVIOR_SESSION=0`；缺 node/Chrome 自动 SKIP）
+python tests\test_ui_behavior.py               # UI 行为回归（419 断言 · 台账 §2 已升 E2E 的控件"点了到底有没有反应"；轮次 33 提速：一台 Chrome 跑完整套（会话档），~200s/趟，作业间自动清存储保隔离；回退一次一档 `set KB_BEHAVIOR_SESSION=0`；缺 node/Chrome 自动 SKIP）
 python tests\test_rag.py                       # RAG smoke（缺依赖自动 SKIP）
 python scripts\rag_search.py "查询" --json     # 语义检索 CLI / Agent 入口
 python scripts\govern_tags.py census|similar|merge|rename-sub   # 标签治理（merge/rename-sub 先预览后 --apply；详见 --help）
@@ -108,9 +108,10 @@ app/rag.py          语义检索：切块/嵌入/sqlite-vec（派生，RAG_CODE_
 app/ai_config.py    AI 出站配置：env > .ai-config.json > 缺省、key 脱敏、URL 校验、域级黑名单
 app/ai_usage.py     AI 调用账本（indexes/ai.db 派生；每次操作现开连接，不留锁）
 app/ai_qa.py        选词问 AI：上下文装配（选区 ±1 段 + 大纲 + RAG Top-3）、注入加固、严格 JSON 解析、缓存键
+app/ai_audit.py     单篇查漏补缺：本地判据（元数据/层级/围栏/空节/截断/失效链接/附件）+ AI 只判「应引未引 / 可能过时」
 scripts/            迁移与维护脚本（rag_search.py 是 Agent 检索入口；agent/ 存跨会话常驻工具）
 requirements/       依赖清单（requirements.txt 核心 / -rag.txt 语义检索 / -lock.txt 便携环境重建锁）
-.githooks/          pre-commit：静态层（ruff/台账对账/悬空令牌/RAG 版本）串行 → 9 条纯 Python 套件**并行**（KB_GATE_PARALLEL 默认 4，=1 串行）→ 浏览器三套与 RAG 串行（缺依赖自动 SKIP）
+.githooks/          pre-commit：静态层（ruff/台账对账/悬空令牌/RAG 版本）串行 → 12 条纯 Python 套件**并行**（KB_GATE_PARALLEL 默认 4，=1 串行）→ 浏览器三套与 RAG 串行（缺依赖自动 SKIP）
 .github/workflows/  CI（GitHub Actions；windows runner 作业级 PYTHONIOENCODING=utf-8）
                       跑/SKIP/失败/崩溃四类状态都会打成 annotation（tests/_ci.py），
                       用 `python scripts/agent/watch_ci.py <sha>` 读回，无需登录就能判断"这一步真跑了没"

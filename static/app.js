@@ -1165,7 +1165,13 @@ function renderCrumb() {
   if (!DOC.is_html && !isLib) segs.push(
     `<button class="seg-btn" onclick="openEditor()">${icon("edit",13)} 编辑</button>`,
     `<button class="seg-btn danger" onclick="deleteDoc()" title="移入 content/_trash/">${icon("trash",13)} 删除</button>`,
-    `<button class="seg-btn" onclick="jumpToTagEdit()" title="编辑本篇标签（右栏信息·标签页）">${icon("tag-outline",13)} 标签</button>`);
+    `<button class="seg-btn" onclick="jumpToTagEdit()" title="编辑本篇标签（右栏信息·标签页）">${icon("tag-outline",13)} 标签</button>`,
+    /* 查漏（切片 3）。crumb 的按钮全部由这里现拼，模板里那份静态 markup 会被 innerHTML
+       整体换掉 —— 所以新按钮只能加在这儿，加在 workbench.html 里是点了没反应的死钮。
+       另外 app.js 比 pages/ai-ask.js 先执行（defer 按文档顺序），这里**不能**用
+       `window.KBAI ? ...` 决定画不画：那时它还不存在，按钮会永远消失。改成永远画、
+       点的时候再判，缺模块就给人话提示。 */
+    `<button class="seg-btn" id="kb-audit-btn" onclick="window.KBAI?KBAI.audit():toast('查漏组件没加载出来（pages/ai-ask.js）')" title="本地判据先查（元数据 / 结构 / 失效链接），AI 只补该不该引、可不可过时">${icon("scan",13)} 查漏</button>`);
   if (/\.md$/i.test(DOC.name || "")) segs.push(
     `<button class="seg-btn" onclick="copyDocSource()" title="复制本篇 Markdown 原文到剪贴板">${icon("copy",13)} 复制原文</button>`);
   crumb.innerHTML = `<span class="crumb-tags" id="crumb-tags"></span><span class="spacer"></span>

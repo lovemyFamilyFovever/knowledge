@@ -58,9 +58,30 @@ CREATE TABLE IF NOT EXISTS ai_qa (
     error TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_ai_qa_path ON ai_qa(path);
+-- 切片 3：单篇查漏补缺的建议与处置状态。主键是 (path, id)，id 由"判据种类 + 证据"哈希而来，
+-- 所以同一篇文档重跑不会堆重复条目，而用户点过的「采纳 / 忽略」能跨次运行对上号。
+CREATE TABLE IF NOT EXISTS ai_audit (
+    path TEXT NOT NULL,
+    id TEXT NOT NULL,
+    kind TEXT NOT NULL,
+    title TEXT,
+    evidence TEXT,
+    suggestion TEXT,
+    severity TEXT,
+    needs_ai INTEGER NOT NULL DEFAULT 0,
+    ai_terms TEXT,
+    ai_note TEXT,
+    status TEXT NOT NULL DEFAULT 'pending',
+    ts REAL NOT NULL,
+    PRIMARY KEY(path, id)
+);
+CREATE INDEX IF NOT EXISTS idx_ai_audit_path ON ai_audit(path);
 """
 
 KINDS = {"test", "ask", "select", "audit"}
+# 切片 3：一条建议的处置状态。pending = 还没看；adopted = 用户点了「记进批注」；
+# dismissed = 用户判它不成立（重跑不会被冲掉，见 audit_upsert 的 ON CONFLICT）。
+AUDIT_STATUSES = {"pending", "adopted", "dismissed"}
 
 
 class AiUsageStore:
@@ -129,6 +150,65 @@ class AiUsageStore:
                 "ORDER BY id DESC LIMIT ?", (max(1, min(int(n), 200)),)).fetchall()
         return [{"ts": r[0], "kind": r[1], "model": r[2], "ok": bool(r[3]),
                  "error": r[4], "total_tokens": r[5], "latency_ms": r[6]} for r in rows]
+
+    # ---- 切片 3：单篇查漏补缺的建议与处置状态 ------------------------------------
+    def audit_upsert(self, path: str, proposals: list) -> None:
+        """写入/刷新建议，**保留用户已给的处置状态**（adopted/dismissed 不被重跑冲掉）。"""
+        now = time.time()
+        with closing(self._con()) as con, con:
+            for p in proposals:
+                con.execute(
+                    "INSERT INTO ai_audit(path,id,kind,title,evidence,suggestion,severity,"
+                    "needs_ai,ai_terms,ai_note,status,ts) VALUES(?,?,?,?,?,?,?,?,?,?,?,?) "
+                    "ON CONFLICT(path,id) DO UPDATE SET title=excluded.title,"
+                    "evidence=excluded.evidence, suggestion=excluded.suggestion,"
+                    "severity=excluded.severity, needs_ai=excluded.needs_ai,"
+                    "ai_terms=excluded.ai_terms, ai_note=excluded.ai_note, ts=excluded.ts",
+                    (path, p["id"], p["kind"], p["title"], p["evidence"], p["suggestion"],
+                     p["severity"], 1 if p.get("needs_ai") else 0,
+                     json.dumps(p.get("ai_terms") or [], ensure_ascii=False),
+                     p.get("ai_note", "")[:600], "pending", now))
+
+    def audit_prune(self, path: str, keep_ids: list) -> int:
+        """删掉本篇已经不成立的建议（改了正文重扫，旧条目不该继续挂在面板上）。"""
+        with closing(self._con()) as con, con:
+            cur = con.execute(
+                "DELETE FROM ai_audit WHERE path=? AND id NOT IN (%s)"
+                % ",".join("?" * max(1, len(keep_ids))),
+                (path, *keep_ids)) if keep_ids else con.execute(
+                "DELETE FROM ai_audit WHERE path=?", (path,))
+            return cur.rowcount
+
+    def audit_list(self, path: str) -> list:
+        with closing(self._con()) as con:
+            rows = con.execute(
+                "SELECT id,kind,title,evidence,suggestion,severity,needs_ai,ai_terms,ai_note,"
+                "status,ts FROM ai_audit WHERE path=? ORDER BY "
+                "CASE status WHEN 'pending' THEN 0 ELSE 1 END, "
+                "CASE severity WHEN 'high' THEN 0 WHEN 'medium' THEN 1 ELSE 2 END, ts DESC",
+                (path,)).fetchall()
+        return [{"id": r[0], "kind": r[1], "title": r[2], "evidence": r[3],
+                 "suggestion": r[4], "severity": r[5], "needs_ai": bool(r[6]),
+                 "ai_terms": json.loads(r[7] or "[]"), "ai_note": r[8],
+                 "status": r[9], "ts": r[10]} for r in rows]
+
+    def audit_set_status(self, path: str, pid: str, status: str) -> bool:
+        if status not in AUDIT_STATUSES:
+            raise ValueError(f"invalid status: {status}")
+        with closing(self._con()) as con, con:
+            cur = con.execute("UPDATE ai_audit SET status=? WHERE path=? AND id=?",
+                              (status, path, pid))
+            return cur.rowcount > 0
+
+    def audit_counts(self) -> dict:
+        with closing(self._con()) as con:
+            rows = con.execute(
+                "SELECT path, status, COUNT(*) FROM ai_audit GROUP BY path, status").fetchall()
+        out = {}
+        for path, status, n in rows:
+            d = out.setdefault(path, {"pending": 0, "adopted": 0, "dismissed": 0})
+            d[status] = d.get(status, 0) + n
+        return out
 
     @staticmethod
     def estimate_cost(tokens_in: int, tokens_out: int,

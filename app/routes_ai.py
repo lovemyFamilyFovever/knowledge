@@ -21,14 +21,16 @@ import threading
 import time
 import urllib.error
 import urllib.request
+from contextlib import closing
 from pathlib import Path
 
 from flask import Blueprint, current_app, jsonify, request
 from werkzeug.exceptions import HTTPException
 
-from app import ai_config, ai_qa
+from app import ai_audit, ai_config, ai_qa
 from app.ai_config import ConfigError
-from app.ai_usage import AiUsageStore
+from app.ai_usage import AUDIT_STATUSES, AiUsageStore
+from app.fts import cjk_clean, open_db
 from app.store import parse_frontmatter
 
 ai_bp = Blueprint("ai", __name__)
@@ -267,60 +269,253 @@ def api_ai_usage():
                     "model": c["model"], "key_present": bool(c["api_key"])})
 
 
+def _resolve_doc(rel: str) -> dict:
+    """归一 + safe_rel + 域判定，**不读文件**。
+
+    分成"判路径/判域"和"读盘"两步是为了让调用方能自己排拒绝顺序：
+    explain 必须让域闸门排在存在性检查之前（否则 404/403 两种状态码就成了
+    对不出站目录的探测器 —— tests/test_ai_qa.py E5 锁着这条）。
+    """
+    rel = (rel or "").strip().replace("\\", "/")
+    while rel.startswith("./"):
+        rel = rel[2:]
+    if not rel:
+        raise ValueError("path 不能为空")
+    if not rel.lower().endswith(".md"):
+        # 上下文装配与查漏判据读的都是 Markdown（#、```、[[双链]]）。
+        # 挡在后端，而不是只靠前端「非 .md 不画按钮」—— 绕开界面直接打接口也一样进不来。
+        raise ValueError("AI 只读 Markdown（.md）文档")
+    try:
+        p = current_app.config["KB_HOOKS"]["safe_rel"](rel, {".md"})
+    except HTTPException as e:      # safe_rel 用 abort 拒绝：转成人话，别降级成 500
+        raise ValueError(e.description) from None
+    domain = rel.split("/", 1)[0]   # 取客户端相对路径首段：p 是 resolve() 过的，
+    # 而 Windows 临时目录常以 8.3 短名传入，拿 p 去 relative_to(CONTENT) 会直接抛
+    # ValueError → 500（切片 2 实测踩过）。
+    return {"rel": rel, "path": p, "domain": domain,
+            "blocked": not ai_config.domain_allows_egress(
+                current_app.config["CONTENT"], domain),
+            "exists": p.is_file()}
+
+
+def _read_doc(res: dict) -> dict:
+    """真正读盘（调用方已确认允许读）。"""
+    if not res["exists"]:
+        raise FileNotFoundError(res["rel"])
+    md = res["path"].read_text(encoding="utf-8", errors="replace")
+    if len(md) > 400000:
+        raise ValueError("文档过大（超过 400KB），请先拆分再问")
+    fm, _body = parse_frontmatter(md)
+    return dict(res, md=md, fm=fm or {},
+                title=str((fm or {}).get("title") or res["path"].stem),
+                digest=ai_qa.doc_hash(md))
+
+
+def _known_titles() -> list:
+    """全库标题集合（派生缓存里读，不重扫语料）。
+
+    必须过 `cjk_clean`：索引为了 FTS 分词把标题写成了"向 量 数 据 库"这种带空格的形态
+    （fts.py:54），直接拿来和正文比对会一个都匹配不上 —— 这条是切片 3 实测踩出来的。
+    """
+    try:
+        with closing(open_db(Path(current_app.config["INDEXES"]))) as con:
+            return [cjk_clean(r[0]) for r in con.execute("SELECT DISTINCT title FROM docs")
+                    if r[0]]
+    except Exception:
+        return []
+
+
+def _dead_links(rel: str) -> list:
+    """本篇未解析的双链原文 —— 用索引算好的结果，不自己再解析一遍正则。
+    索引里没有这一行（新文档还没进索引）时返回空，交给本地判据自己按标题集合判。"""
+    try:
+        with closing(open_db(Path(current_app.config["INDEXES"]))) as con:
+            return [r[0] for r in con.execute(
+                "SELECT raw FROM links WHERE src=? AND resolved=0", (rel,))]
+    except Exception:
+        return []
+
+
+def _asset_resolver(doc_path: Path):
+    content = Path(current_app.config["CONTENT"])
+
+    def exists(url: str) -> bool:
+        u = url.strip().split("?")[0].split("#")[0]
+        if not u:
+            return False
+        cands = [(doc_path.parent / u).resolve(), (content / u).resolve(),
+                 (content / "_assets" / Path(u).name).resolve()]
+        return any(c.is_file() for c in cands)
+
+    return exists
+
+
+@ai_bp.post("/api/ai/audit")
+def api_ai_audit():
+    """单篇查漏补缺：本地判据必跑，AI 判断按闸门与 key 情况追加。"""
+    data = request.get_json(force=True, silent=True) or {}
+    want_ai = bool(data.get("ai", True))
+    try:
+        res = _resolve_doc(str(data.get("path") or ""))
+        if not res["exists"]:
+            return jsonify({"ok": False, "error": "文档不存在"}), 404
+        doc = _read_doc(res)
+    except ValueError as e:
+        return jsonify({"ok": False, "error": str(e)[:200]}), 400
+    except OSError:
+        return jsonify({"ok": False, "error": "文档读取失败"}), 500
+
+    proposals = ai_audit.local_checks(
+        doc["md"], path=doc["rel"], fm=doc["fm"], known_titles=_known_titles(),
+        dead_links=_dead_links(doc["rel"]), asset_exists=_asset_resolver(doc["path"]))
+    # local_count 必须在 AI 之前取：它的口径是"本地判据查出几条"。
+    # 放在后面量就等于把 AI 的行数也算进本地，C3 那条"AI 不许造条目"就永远判不出来了。
+    local_count = len(proposals)
+    ai_enabled, ai_reason, sent = False, "", 0
+
+    if doc["blocked"]:
+        ai_reason = f"域「{doc['domain']}」被分类学标为不出站，只跑了本地判据"
+    elif not ai_available():
+        ai_reason = "未配置 API key（设置 → AI 页签），只跑了本地判据"
+    elif not want_ai:
+        ai_reason = "本次只要求本地判据"
+    else:
+        b = _budget_state()
+        if b["exceeded"]:
+            ai_reason = f"本月已用 {b['used_month']} 次，达到预算帽 {b['budget']}，只跑了本地判据"
+        else:
+            ai_enabled, ai_reason, sent = _audit_with_ai(doc, proposals)
+
+    st = _qa_store()
+    if st is not None:
+        st.audit_upsert(doc["rel"], proposals)
+        # 改了正文重扫：已经不成立的旧条目要清掉，否则面板会一直挂着"上次的问题"
+        st.audit_prune(doc["rel"], [p["id"] for p in proposals])
+        # 回给前端的是**账本里的那一份**（带处置状态）。直接回本地算出来的裸列表会让
+        # 面板自相矛盾：汇总条说"已处置 1 条"，条目本身却被打回未处置的样子。
+        proposals = st.audit_list(doc["rel"])
+    return jsonify({"ok": True, "path": doc["rel"], "title": doc["title"],
+                    "proposals": proposals, "ai_enabled": ai_enabled,
+                    "ai_reason": ai_reason, "sent_chars": sent,
+                    "local_count": local_count})
+
+
+def _audit_with_ai(doc: dict, proposals: list):
+    """把该问的问一遍（最多两条），失败就如实记在 ai_reason 里，不假装查全。"""
+    c = _cfg()
+    asked = 0
+    sent = 0        # 真的发出去多少字 —— 报 0 就是撒谎，哪怕前端这一版不显示它
+    reasons = []
+    cand = next((p for p in proposals if p["kind"] == "should_link"), None)
+    if cand:
+        ctx = ai_qa.build_context(doc["md"], cand["evidence"][:80], "term", [],
+                                  doc["title"], doc["rel"])
+        asked += 1
+        sent += int(ctx["chars"])
+        got = _audit_ask(ctx, ai_audit.ai_prompt("should_link", ctx["text"],
+                                                 cand["evidence"]), c)
+        if got is None:
+            reasons.append("应引未引的 AI 判断没跑成")
+        else:
+            ai_audit.merge_ai(proposals, got, "should_link", doc["rel"])
+    if str(doc["fm"].get("collected") or ""):
+        ctx = ("文档：" + doc["title"] + "（采集于 " + str(doc["fm"]["collected"]) + "）\n\n"
+               "大纲：" + " / ".join(h["title"] for h in ai_audit.outline(doc["md"])))
+        asked += 1
+        ctx = {"text": ctx, "chars": len(ctx.encode("utf-8"))}
+        sent += ctx["chars"]
+        got = _audit_ask(ctx, ai_audit.ai_prompt("possibly_outdated", ctx["text"], ""), c)
+        if got is None:
+            reasons.append("过时风险判断没跑成")
+        else:
+            ai_audit.merge_ai(proposals, got, "possibly_outdated", doc["rel"])
+    return (True if asked else False), ("；".join(reasons) or "AI 判断已并入"), sent
+
+
+def _audit_ask(ctx: dict, prompt: str, c: dict):
+    msgs = [{"role": "system", "content": ai_qa.SYSTEM_PROMPT},
+            {"role": "user", "content": prompt}]
+    try:
+        raw, _usage = _chat(msgs, timeout=int(c["timeout_s"]), kind="audit")
+    except RuntimeError:
+        return None
+    return ai_qa.parse_answer(raw)
+
+
+@ai_bp.get("/api/ai/audit")
+def api_ai_audit_get():
+    rel = request.args.get("path", "").strip()
+    if not rel:
+        return jsonify({"ok": False, "error": "缺少 path"}), 400
+    st = _qa_store()
+    if st is None:
+        return jsonify({"ok": True, "available": False, "proposals": []})
+    return jsonify({"ok": True, "available": True, "path": rel,
+                    "proposals": st.audit_list(rel)})
+
+
+@ai_bp.post("/api/ai/audit/status")
+def api_ai_audit_status():
+    """记处置：pending / adopted / dismissed。只改派生库，一个字都不碰语料。"""
+    data = request.get_json(force=True, silent=True) or {}
+    rel = str(data.get("path") or "").strip()
+    pid = str(data.get("id") or "").strip()
+    status = str(data.get("status") or "").strip()
+    if not rel or not pid:
+        return jsonify({"ok": False, "error": "path 与 id 都不能为空"}), 400
+    if status not in AUDIT_STATUSES:
+        return jsonify({"ok": False, "error": "status 只能是 pending / adopted / dismissed",
+                        "allowed": sorted(AUDIT_STATUSES)}), 400
+    st = _qa_store()
+    if st is None:
+        return jsonify({"ok": False, "error": "账本不可用"}), 503
+    if not st.audit_set_status(rel, pid, status):
+        return jsonify({"ok": False, "error": "没找到这条建议（可能文档刚被重扫过）"}), 404
+    return jsonify({"ok": True, "path": rel, "id": pid, "status": status})
+
+
 def _qa_store():
     return _store()
 
 
 def _doc_for_explain(data: dict):
-    """校验 + 读盘 + 域级闸门。返回 (payload, None) 或 (None, (json, status))。
+    """explain 的入参校验：读盘交给 _read_doc，这里只管选区与档位。
 
     正文一律服务端现读：前端只交 path + selection，否则"发什么出去"由浏览器说了算，
     域级闸门（不变量 9 ①）就拦不住了。
     """
-    rel = str(data.get("path") or "").strip().replace("\\", "/")
-    while rel.startswith("./"):
-        rel = rel[2:]
     selection = " ".join(str(data.get("selection") or "").split())
     mode = str(data.get("mode") or "term").strip()
     if mode not in ai_qa.MODES:
         mode = "term"
-    if not rel or not selection:
+    if not str(data.get("path") or "").strip() or not selection:
         return None, (jsonify({"ok": False, "error": "path 与 selection 都不能为空"}), 400)
     if len(selection) < 2:
         return None, (jsonify({"ok": False, "error": "选中的内容太短（至少 2 个字符）"}), 400)
     if len(selection) > 4000:
         return None, (jsonify({"ok": False, "error": "选中的内容太长（上限 4000 字）"}), 400)
     try:
-        p = current_app.config["KB_HOOKS"]["safe_rel"](rel, {".md"})
-    except HTTPException as e:      # safe_rel 用 abort 拒绝：原样抛，别降级成 500
-        return None, (jsonify({"ok": False, "error": e.description}), e.code)
-    # 域名取**客户端传来的相对路径**的第一段，不要拿 p 去 relative_to(CONTENT)：
-    # safe_rel 里 p 是 resolve() 过的，而 Windows 临时目录常以 8.3 短名传入，
-    # 两者一个短一个长 → relative_to 直接 ValueError → 500（切片 2 实测踩过）。
-    domain = rel.split("/", 1)[0]
-    if not ai_config.domain_allows_egress(current_app.config["CONTENT"], domain):
-        # 硬门在后端：绕过前端直接打接口也一样 403（不变量 9 ①）。
-        # 闸门**排在存在性检查之前**：否则"这个路径存不存在"本身就成了对不出站
-        # 目录的一次探测，而且 404/403 两种答案会让前端有理由去猜内容。
+        res = _resolve_doc(str(data.get("path") or ""))
+    except ValueError as e:
+        return None, (jsonify({"ok": False, "error": str(e)[:200]}), 400)
+    if res["blocked"]:
+        # 硬门在后端：绕过前端直接打接口也一样 403（不变量 9 ①），
+        # 且**排在存在性检查之前** —— 状态码不能替不出站目录回答"这个路径在不在"。
         return None, (jsonify({"ok": False, "code": "domain_blocked",
-                               "error": f"域「{domain}」被分类学标为不出站，AI 无法读取该文档"}),
-                      403)
-    if not p.is_file():
-        return None, (jsonify({"ok": False, "error": "文档不存在"}), 404)
+                               "error": f"域「{res['domain']}」被分类学标为不出站，"
+                                        "AI 无法读取该文档"}), 403)
     try:
-        md = p.read_text(encoding="utf-8", errors="replace")
-    except OSError:
-        return None, (jsonify({"ok": False, "error": "文档读取失败"}), 500)
-    if len(md) > 400000:
-        return None, (jsonify({"ok": False, "error": "文档过大（超过 400KB），请改用整篇档以外的问题粒度"}),
-                      413)
+        doc = _read_doc(res)
+    except FileNotFoundError:
+        return None, (jsonify({"ok": False, "error": "文档不存在"}), 404)
+    except (ValueError, OSError) as e:
+        return None, (jsonify({"ok": False, "error": str(e)[:200]}), 400)
     # 选中超过 80 字 → 语义上就是"问这段"，不是"问这个词"
     if mode == "term" and len(selection) > 80:
         mode = "passage"
-    fm, _body = parse_frontmatter(md)
-    title = str(fm.get("title") or p.stem)
-    return {"path": rel, "domain": domain, "selection": selection, "mode": mode,
-            "md": md, "title": title, "digest": ai_qa.doc_hash(md)}, None
+    return {"path": doc["rel"], "domain": doc["domain"], "selection": selection,
+            "mode": mode, "md": doc["md"], "title": doc["title"],
+            "digest": doc["digest"]}, None
 
 
 @ai_bp.post("/api/ai/explain")
