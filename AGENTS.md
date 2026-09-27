@@ -40,7 +40,7 @@ python tests\test_ai_audit.py                  # 单篇查漏补缺（71 断言 
 python tests\test_ai_batch.py                  # 批量查漏补缺（117 断言 · 估算零出站 / 长任务不挂在 fetch 上 / 预算帽看上界 / 域级覆盖空白 + 覆盖空白的 AI 复核只收窄不造条目 + 矛盾核对按每篇两次计）
 python tests\test_js_props.py                  # 浏览器侧书库解析性质测试（47 断言；缺 node/Chrome 自动 SKIP）
 python tests\test_ui_regress.py                # 视觉回归批处理（P5：22 张截图 vs tests/ui-baselines/ 基线 + 10 条顶栏几何断言）
-python tests\test_ui_regress.py --stability    #   只验"两次截图逐像素相同"（改矩阵/环境后先跑这个）
+python tests\test_ui_regress.py --stability    #   只验"两次截图逐像素相同"（改矩阵/环境后先跑这个）；并把历轮每镜头最大 AE 累计进 tests/ui-baselines/floor.json（跟踪文件，阈值 AE≤2 的实测出处）
 python tests\test_ui_regress.py --update       #   确认改动无误后，用本次截图刷新基线
 python tests\test_ui_behavior.py               # UI 行为回归（447 断言 · 台账 §2 已升 E2E 的控件"点了到底有没有反应"；轮次 33 提速：一台 Chrome 跑完整套（会话档），~200s/趟，作业间自动清存储保隔离；回退一次一档 `set KB_BEHAVIOR_SESSION=0`；缺 node/Chrome 自动 SKIP）
 python tests\test_rag.py                       # RAG smoke（缺依赖自动 SKIP）

@@ -573,8 +573,11 @@ def main():
                   ae is not None and 0 <= ae <= MAX_DIFF_AE, info)
 
     if stability and floor:
-        QA.mkdir(parents=True, exist_ok=True)
-        f = QA / "floor.json"
+        # 噪声地板的累计是"阈值 AE<=2"这条判据的实测出处，只有跑很多轮 --stability 才攒得回来，
+        # 所以落在**跟踪目录** `tests/ui-baselines/`（原先在 .qa/p5/ —— 那是 gitignore 的
+        # 一次产物区，轮次 46 清目录时被连根删过一次，见台账 §6 第 82 行）。
+        BASELINES.mkdir(parents=True, exist_ok=True)
+        f = BASELINES / "floor.json"
         prev = {}
         if f.exists():
             try:
@@ -589,6 +592,8 @@ def main():
 
     print(f"\n{passed} passed, {failed} failed")
     print(f"实际截图与差异热图：{QA}")
+    print("噪声地板累计（历轮最大 AE，阈值 AE<=2 的实测出处）：" +
+          str(BASELINES / "floor.json"))
     return 1 if failed else 0
 
 
