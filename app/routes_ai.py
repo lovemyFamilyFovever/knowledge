@@ -655,10 +655,12 @@ def api_ai_batch_start():
     app_obj = current_app._get_current_object()   # 线程里没有 request context：先抓 app 对象
     # 引用集合边扫边攒，跑完就地算"覆盖空白"（读一篇顺手记一行，不第二遍读盘）。
     refs = {}
+    titles = []                       # 域全景（复核覆盖空白时用），per_doc 顺手攒
     dom = str(scope.get("domain") or "").strip().strip("/")
     if not dom:
         only = {e["rel"].split("/", 1)[0] for e in entries}
         dom = only.pop() if len(only) == 1 else ""
+    blocked = bool(dom) and _scope_blocked(dom)
 
     def per_doc(job, it):
         # 每一篇都在 worker 线程里跑，所以整段都要自己把 app context 推进去；
@@ -674,6 +676,7 @@ def api_ai_batch_start():
             for t in ai_audit.wikilinks(md):
                 refs.setdefault(t, []).append(it["rel"])
             fm, _ = parse_frontmatter(md)
+            titles.append(str((fm or {}).get("title") or it["p"].stem))
             props = ai_audit.local_checks(md, path=it["rel"], fm=fm or {},
                                           known_titles=known,
                                           dead_links=dead_map.get(it["rel"], []),
@@ -704,14 +707,34 @@ def api_ai_batch_start():
     def finalize(job):
         """整批跑完后的一次收尾：把攒下的引用集合换算成域级待办。
 
-        全本地（引用集合 − 标题集合），零调用；空白挂在 `@domain:<域>` 这个作用域键下，
-        与按篇的条目同住一张派生表但不串台（真实相对路径不会以 @ 开头）。
+        清单本身全本地（引用集合 − 标题集合），零调用；空白挂在 `@domain:<域>` 这个
+        作用域键下，与按篇的条目同住一张派生表但不串台（真实相对路径不会以 @ 开头）。
+        只在此之上多做**一次**域全景复核：AI 从这批候选里挑出值得补的，
+        挑不动就地写原因 —— 它不许新增候选，也不因为"跑了 AI"就改判据口径。
         """
         if not dom:
             return
         with app_obj.app_context():
             scope_key = ai_audit.domain_scope(dom)
             gaps = ai_audit.coverage_gaps(refs, known, scope_key)
+            if not gaps:
+                job.note_gap_review(0, 0)
+            elif not (want_ai and ai_available()):
+                job.note_gap_review(0, len(gaps), "本次没让 AI 复核，清单是纯本地算的")
+            elif blocked:
+                job.note_gap_review(0, len(gaps),
+                                    f"域「{dom}」不出站，只出本地清单，没做全景复核")
+            elif _budget_state()["exceeded"]:
+                job.note_gap_review(0, len(gaps), "本月调用数已达预算帽，没做全景复核")
+            else:
+                ctx = ai_audit.gap_context(dom, titles, gaps)
+                got = _audit_ask(ctx, ai_audit.ai_prompt("coverage_gap", ctx["text"],
+                                                         "、".join(ctx["targets"])), c)
+                if got is None:
+                    job.note_gap_review(0, len(gaps), "全景复核没跑成，清单照常入库")
+                else:
+                    ai_audit.narrow_gaps(gaps, got)
+                    job.note_gap_review(sum(1 for g in gaps if g.get("ai_terms")), len(gaps))
             st = _qa_store()
             if st is not None:
                 st.audit_upsert(scope_key, gaps)

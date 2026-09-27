@@ -106,6 +106,8 @@ class BatchJob:
         self.findings = 0
         self.ai_calls = 0
         self.ai_stopped_reason = ""
+        # 收尾的域全景复核：跑没跑、挑中几个、没跑的原因
+        self.gap_review = {"ran": False, "picked": 0, "total": 0, "reason": ""}
         self.errors = []
         self.per_doc = []
         self.started_at = time.time()
@@ -121,6 +123,12 @@ class BatchJob:
         with self._lock:
             if not self.ai_stopped_reason:
                 self.ai_stopped_reason = reason
+
+    def note_gap_review(self, picked: int, total: int, reason: str = ""):
+        """收尾的"域全景复核"记账：AI 从本地候选里挑中了几个（没跑就写原因）。"""
+        with self._lock:
+            self.gap_review = {"ran": not reason, "picked": int(picked),
+                               "total": int(total), "reason": reason}
 
     def tick(self, path: str, count: int, asked_ai: bool, error: str = ""):
         with self._lock:
@@ -168,6 +176,7 @@ class BatchJob:
                 "findings": self.findings,
                 "ai_calls": self.ai_calls,
                 "ai_stopped_reason": self.ai_stopped_reason,
+                "gap_review": dict(self.gap_review),
                 "errors": list(self.errors),
                 "error_count": len(self.errors),
                 "per_doc": [dict(d) for d in self.per_doc],

@@ -27,7 +27,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import _ci  # noqa: E402
 from test_ai_config import CALLS, start_provider  # noqa: E402
 
-from app import ai_audit, ai_batch  # noqa: E402
+from app import ai_audit, ai_batch, ai_qa  # noqa: E402
 from app.app import create_app  # noqa: E402
 
 KEY = "sk-BATCHCANARY-Q9ZL"
@@ -237,6 +237,37 @@ def main() -> int:
               ai_audit.domain_scope("gap/").lower() == "@domain:gap"
               and not ai_audit.is_domain_scope("gap/sub/g0.md")
               and ai_audit.is_domain_scope("@domain:gap"), ai_audit.domain_scope("gap/"))
+
+        # ---- 域全景复核的三件纯函数：上下文装配、提示词口径、只收窄不造行
+        gc = ai_audit.gap_context("gap", ["复核样本0", "向量数据库"], gaps)
+        check("GA8 复核上下文把本域标题清单包进语料数据块（它和正文一样是不可信内容）",
+              ai_qa.BLOCK_BEGIN in gc["text"] and ai_qa.BLOCK_END in gc["text"]
+              and "复核样本0" in gc["text"] and gc["chars"] > 0
+              and "缺失术语" in gc["text"], gc["chars"])
+        check("GA9 targets 只取本地候选名、最多 20 条（发出去的就是这一份，不给 AI 留发挥空间）",
+              gc["targets"] == ["缺失术语", "另一个缺口"]
+              and len(ai_audit.gap_context("gap", [], [
+                  dict(gaps[0], target="术语%d" % i, title="t%d" % i) for i in range(30)
+              ])["targets"]) == 20, gc["targets"])
+        pr = ai_audit.ai_prompt("coverage_gap", "CTX", "缺失术语、另一个缺口")
+        check("GA10 提示词就地把口径写死：原样照抄候选名、不许发明新主题",
+              "原样照抄" in pr and "不要发明新主题" in pr
+              and "缺失术语、另一个缺口" in pr and "CTX" in pr, pr[:120])
+        wide = ai_audit.coverage_gaps(refs, known, "@domain:gap")
+        ai_audit.narrow_gaps(wide, {"confidence": "high", "terms": [
+            {"term": "缺失术语", "brief": "多篇都在讲它"}, {"term": "AI 发明的主题", "brief": "不存在"}]})
+        check("GA11 narrow_gaps 只收窄不造行：答复里发明新主题时行数一条不多",
+              len(wide) == 2 and not any("发明" in g["title"] for g in wide),
+              [g["title"] for g in wide])
+        check("GA12 挑中的行带原文理由，没挑中的行标的是"
+              "「没把它列进」（缺席是从答复推的，不是 AI 明说）",
+              wide[0]["ai_terms"] == ["缺失术语"] and wide[0]["ai_note"] == "多篇都在讲它"
+              and wide[1]["ai_terms"] == [] and "没把它列进" in wide[1]["ai_note"]
+              and {g["ai_confidence"] for g in wide} == {"high"},
+              [(g["title"], g["ai_terms"], g["ai_note"]) for g in wide])
+        check("GA13 答复为空（AI 没跑成）时 narrow_gaps 一个字都不改，本地清单原样留着",
+              ai_audit.narrow_gaps(ai_audit.coverage_gaps(refs, known, "@domain:gap"), None)
+              == gaps, None)
 
         # ============================================== B. 估算端点：一次网都不出
         print("\n[B] 估算端点")
@@ -576,6 +607,124 @@ def main() -> int:
             left = sorted(p.relative_to(croot).as_posix() for p in croot.rglob("*.md"))
             check("G9 整趟只往派生库里写：语料仍是那两篇（删掉的 4 篇是本测试自己删的）",
                   left == ["gap/sub/h0.md", "gap/term/向量数据库.md"], left)
+
+
+        # ============================================== H. 覆盖空白的 AI 复核（切片 5）
+        print("\n[H] 覆盖空白的 AI 复核")
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            croot = root / "content"
+            (croot / "gap" / "sub").mkdir(parents=True)
+            (croot / "gap" / "term").mkdir(parents=True)
+            (croot / "_meta").mkdir(parents=True)
+            (croot / "gap" / "term" / "向量数据库.md").write_text(
+                '---\ntitle: "向量数据库"\n---\n\n# 向量数据库\n\n## 定义\n\n按向量检索。\n',
+                encoding="utf-8")
+            # 两个空白：缺失术语（3 篇提到，假 provider 认为值得补）、另一个缺口（1 篇，不补）
+            for i in range(3):
+                (croot / "gap" / "sub" / ("h%d.md" % i)).write_text(
+                    '---\ntitle: "复核样本%d"\ncollected: 2024-01-05\n---\n\n'
+                    "# 复核样本%d\n\n## 定义\n\n这里写了 [[缺失术语]]。\n" % (i, i),
+                    encoding="utf-8")
+            (croot / "gap" / "sub" / "solo.md").write_text(
+                '---\ntitle: "单独一提"\ncollected: 2024-01-05\n---\n\n# 单独一提\n\n'
+                "## 定义\n\n顺带写了 [[另一个缺口]]。\n", encoding="utf-8")
+            # 这一篇链接的是**已有词条**：它必须被 `known` 挡在空白清单外。
+            # 没有这一篇，"复核时到底有没有把全库标题集合传进来"在端点层是判不出来的
+            # （其余引用目标本来就没有词条，known 传不传都一样 —— 第一轮变异就这么活了下来）。
+            (croot / "gap" / "sub" / "linked.md").write_text(
+                '---\ntitle: "链到已有词条"\ncollected: 2024-01-05\n---\n\n'
+                "# 链到已有词条\n\n## 定义\n\n这里写了 [[向量数据库]]，"
+                "而它全库已经有那一篇了。\n", encoding="utf-8")
+            (croot / "_meta" / "taxonomy.json").write_text(
+                json.dumps({"domains": {"gap": {"label": "复核域", "hue": 158},
+                                        "career": {"label": "职业", "hue": 42, "ai": False}}},
+                           ensure_ascii=False), encoding="utf-8")
+
+            def key_at(c, seg):
+                c.put("/api/ai/config", json={"api_key": KEY, "base_url": base + "/" + seg,
+                                              "allow_local": True, "timeout_s": 10,
+                                              "monthly_budget_calls": 300})
+
+            app, c = client_for(root)
+            key_at(c, "auditgap")
+            CALLS.clear()
+            r = c.post("/api/ai/batch/start", json={"scope": {"domain": "gap"}, "ai": False})
+            ended, _ = wait_job(c)
+            gr = ended.get("gap_review") or {}
+            rows = c.get("/api/ai/audit?path=@domain:gap").get_json()["proposals"]
+            check("H1 ai=false 时复核不跑，但原因写在快照里（不是静默少跑一步）",
+                  r.status_code == 200 and gr.get("ran") is False
+                  and "没让 AI 复核" in (gr.get("reason") or ""), gr)
+            check("H2 本地清单照旧两条都在，且都没带 AI 结论",
+                  len(rows) == 2 and all(not p.get("ai_terms") for p in rows),
+                  [(p["title"], p.get("ai_terms")) for p in rows])
+            check("H3 复核这一路真的零出站", CALLS == {}, CALLS)
+
+            CALLS.clear()
+            r = c.post("/api/ai/batch/start", json={"scope": {"domain": "gap"}, "ai": True})
+            ended, _ = wait_job(c)
+            gr = ended.get("gap_review") or {}
+            rows = c.get("/api/ai/audit?path=@domain:gap").get_json()["proposals"]
+            by = {p["title"]: p for p in rows}
+            picked = [p for p in rows if p.get("ai_terms")]
+            check("H4 复核跑过一次（域全景一次调用，不逐条各问）",
+                  r.status_code == 200 and gr.get("ran") is True
+                  and gr.get("picked") == 1 and CALLS.get("audit") == 1,
+                  {"gr": gr, "CALLS": CALLS})
+            check("H5 复核只在本地候选里挑：挑中的那条带上理由",
+                  len(picked) == 1 and "缺失术语" in picked[0]["title"]
+                  and picked[0].get("ai_note"), [(p["title"], p.get("ai_terms")) for p in rows])
+            check("H6 没被挑中的那条如实标成缺席判断（措辞点明是从答复里推的，不是 AI 明说）",
+                  len(by) == 2 and not by["有引用没词条：另一个缺口"]["ai_terms"]
+                  and "没把它列进" in (by["有引用没词条：另一个缺口"].get("ai_note") or ""),
+                  by.get("有引用没词条：另一个缺口"))
+            check("H7 复核不造条目：跑完还是那两条，条数一条没多",
+                  len(rows) == 2, [p["title"] for p in rows])
+            check("H8 复核过一遍之后正文仍然一字节未变",
+                  sorted(p.relative_to(croot).as_posix() for p in croot.rglob("*.md"))
+                  == ["gap/sub/h0.md", "gap/sub/h1.md", "gap/sub/h2.md", "gap/sub/linked.md",
+                      "gap/sub/solo.md", "gap/term/向量数据库.md"],
+                  sorted(p.relative_to(croot).as_posix() for p in croot.rglob("*.md")))
+            # 帽满：复核那一步也要让位给帽，而且要说清为什么少跑
+            c.put("/api/ai/config", json={"monthly_budget_calls":
+                                          c.get("/api/ai/usage").get_json()["month"]["calls"]})
+            r = c.post("/api/ai/batch/start", json={"scope": {"domain": "gap"}, "ai": True})
+            ended, _ = wait_job(c)
+            gr = ended.get("gap_review") or {}
+            check("H9 帽满时复核不跑并写明原因（清单仍在，只是没标哪些值得补）",
+                  r.status_code == 200 and gr.get("ran") is False
+                  and "预算帽" in (gr.get("reason") or "")
+                  and len(c.get("/api/ai/audit?path=@domain:gap").get_json()["proposals"]) == 2,
+                  gr)
+
+        with tempfile.TemporaryDirectory() as td:
+            # 不出站域：清单照出，复核不跑
+            root = Path(td)
+            croot = root / "content"
+            (croot / "career").mkdir(parents=True)
+            (croot / "_meta").mkdir(parents=True)
+            (croot / "career" / "c0.md").write_text(
+                '---\ntitle: "简历丙"\ncollected: 2024-01-05\n---\n\n# 简历丙\n\n'
+                "## 定义\n\n写了 [[职业空白项]]。\n", encoding="utf-8")
+            (croot / "_meta" / "taxonomy.json").write_text(
+                json.dumps({"domains": {"career": {"label": "职业", "hue": 42}}},
+                           ensure_ascii=False), encoding="utf-8")
+            app, c = client_for(root)
+            c.put("/api/ai/config", json={"api_key": KEY, "base_url": base + "/auditgap",
+                                          "allow_local": True, "timeout_s": 10,
+                                          "monthly_budget_calls": 300})
+            CALLS.clear()
+            r = c.post("/api/ai/batch/start", json={"scope": {"domain": "career"}, "ai": True})
+            ended, _ = wait_job(c)
+            gr = ended.get("gap_review") or {}
+            rows = c.get("/api/ai/audit?path=@domain:career").get_json()["proposals"]
+            check("H10 不出站域的空白清单照出（本地算得出来，不该因为不能问 AI 就没结果）",
+                  r.status_code == 200 and len(rows) == 1 and "职业空白项" in rows[0]["title"],
+                  rows)
+            check("H11 但全景复核不跑，原因点名是闸门不是故障",
+                  gr.get("ran") is False and "不出站" in (gr.get("reason") or ""), gr)
+            check("H12 整趟零出站：不出站域连候选名都没发出去", CALLS == {}, CALLS)
 
         print(f"\n{passed} passed, {failed} failed")
         if FAILS:

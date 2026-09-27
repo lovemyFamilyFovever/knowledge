@@ -141,6 +141,17 @@ def build_provider():
                       "usage": {"prompt_tokens": 300, "completion_tokens": 30,
                                 "total_tokens": 330}})
 
+    @app.route("/auditgap/chat/completions", methods=["POST"])
+    def audit_gap():
+        """切片 5 用：复核覆盖空白的答复 —— 只认列出的候选名，绝不发明新主题。"""
+        counted("audit")
+        ans = {"answer": "三个候选里只有一个值得单独立篇。", "confidence": "medium",
+               "terms": [{"term": "缺失术语", "brief": "多篇都在讲它，值得一篇独立词条"}],
+               "sources": []}
+        return reply({"choices": [{"message": {"content": json.dumps(ans, ensure_ascii=False)}}],
+                      "usage": {"prompt_tokens": 200, "completion_tokens": 25,
+                                "total_tokens": 225}})
+
     @app.route("/auditslow/chat/completions", methods=["POST"])
     def audit_slow():
         """切片 4 用：慢一点的 audit 答复，给"作业跑中途改配置"留出确定性窗口。

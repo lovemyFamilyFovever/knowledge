@@ -236,7 +236,7 @@ AUDIT_ALLOWED = {
     ("tests/test_ai_config.py", "unlink"): 1,
     # 切片 2（选词问 AI）：两处 unlink 删的都是临时实例根下的 .ai-config.json
     # （探针自己写进去的假配置，跑完必须收掉，否则会污染同根后续探针）。
-    ("tests/test_ui_behavior.py", "unlink"): 3,   # 切片 4 的批量探针也要收走临时 .ai-config.json
+    ("tests/test_ui_behavior.py", "unlink"): 4,   # 批量探针收临时 .ai-config.json + 临时靶子（切片 5）
     ("tests/test_ai_batch.py", "unlink"): 1,      # 批量测试自己造的靶子与临时配置，用完就删
     ("tests/test_known_defects.py", "os_rmdir"): 1,    # 摘 junction 链（不穿透删目标，是 rmtree 前的安全前置）
     ("tests/test_known_defects.py", "rmtree"): 1,      # 临时目录（tempfile.mkdtemp）自清理
@@ -247,11 +247,12 @@ AUDIT_ALLOWED = {
     # P5 视觉回归：两处 —— ① .qa/p5/actual* 截图目录重截前清空（.qa 不进 git、非语料）；
     # ② tempfile.mkdtemp 的临时 KB_ROOT 自清理（同 test_js_props 的判定，尾部同样有断言）。
     ("tests/test_ui_regress.py", "rmtree"): 2,
-    # UI 行为回归（轮次 24）：一处 —— tempfile.mkdtemp 起的临时 KB_ROOT 自清理（内含自建的
-    # content/ 与从仓库复制的 static/ 副本）。本套会真的删语料（crumb 删除 / #ed-del /
-    # 收件箱 del+purge），但全部落在临时根上，尾部有一条断言亲自证明删除目标在系统临时
-    # 目录下、仓库 content/ 完好。
-    ("tests/test_ui_behavior.py", "rmtree"): 1,
+    # UI 行为回归（轮次 24）：两处 —— ① tempfile.mkdtemp 起的临时 KB_ROOT 自清理（内含自建的
+    # content/ 与从仓库复制的 static/ 副本）；② 轮次 45 的批量探针第三条腿临时新建一个"无空白"
+    # 的域（zz-clean），跑完整域搬走，免得留一份只属于这一趟的语料。本套会真的删语料
+    # （crumb 删除 / #ed-del / 收件箱 del+purge），但全部落在临时根上，尾部有一条断言亲自
+    # 证明删除目标在系统临时目录下、仓库 content/ 完好。
+    ("tests/test_ui_behavior.py", "rmtree"): 2,
 }
 AUDIT_SELF = "tests/test_invariants.py"   # 本文件自身含这些字面量，排除以免自指
 

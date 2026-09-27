@@ -17,6 +17,8 @@ import hashlib
 import re
 from pathlib import Path
 
+from app import ai_qa
+
 AI_CHECK_KINDS = {"should_link", "possibly_outdated"}
 
 # 句末标点：中日英混排都算，避免把正常的英文句号判成"截断"
@@ -242,6 +244,13 @@ def local_checks(md: str, *, path: str, fm: dict, known_titles=None,
 
 def ai_prompt(kind: str, ctx_text: str, selection: str) -> str:
     """AI 只回答"这些候选里哪些是真的"，输出仍是固定 JSON schema。"""
+    if kind == "coverage_gap":
+        return ("下面给出一个域的标题全景（数据块内）与一批「有引用没词条」的候选空白。"
+                "请逐个判断：这个概念是否**值得单独立一篇**（而不是某篇里顺带一句、"
+                "或已经由现有某篇覆盖）。只把值得补的写进 terms，"
+                "term 必须原样照抄候选名（不要发明新主题），brief=为什么值得补或建议并入哪一篇"
+                "（不超过 60 字）；answer 用一句话说整体结论。\n\n"
+                f"候选空白：{selection}\n\n{ctx_text}")
     if kind == "should_link":
         return ("下面给出本篇正文（数据块内）与一批候选词（这些词在知识库里已有同名词条）。"
                 "请逐个判断：本篇里出现该词的地方，是否**确实是在指那个词条**"
@@ -279,12 +288,55 @@ def coverage_gaps(refs: dict, known_titles, scope: str) -> list:
             continue
         srcs = sorted(set(refs[target]))
         n = len(srcs)
-        out.append(_proposal(
+        row = _proposal(
             "coverage_gap", scope, f"有引用没词条：{target}",
             f"{n} 篇里写了 [[{target}]]：" + "、".join(srcs[:5]) + ("…" if n > 5 else ""),
             f"补一篇「{target}」，或者把那几处的 [[{target}]] 改回普通文字",
-            "medium" if n >= 3 else "low", key=target))
+            "medium" if n >= 3 else "low", key=target)
+        # target 只在本次请求内用于 AI 复核对号，不进派生库（库里没这一列）
+        row["target"] = target
+        out.append(row)
     return out
+
+
+def gap_context(domain: str, titles, gaps, max_titles: int = 60) -> dict:
+    """域全景复核的上下文：本域标题清单 + 候选空白名（全本地拼，不再读第二份数据）。
+
+    标题清单包在语料数据块里 —— 它和正文一样是不可信内容，AI 侧的注入加固同一口径。
+    """
+    names = [str(g.get("target") or "").strip() for g in (gaps or [])]
+    names = [n for n in names if n]
+    tl = [str(t).strip() for t in (titles or []) if str(t).strip()]
+    body = (f"域：{domain}\n本域现有篇章标题（共 {len(tl)} 篇，最多列 {max_titles} 个）：\n"
+            + ai_qa.BLOCK_BEGIN + "\n" + "、".join(tl[:max_titles]) + "\n" + ai_qa.BLOCK_END
+            + "\n\n候选空白：" + "、".join(names[:20]))
+    return {"text": body, "chars": len(body.encode("utf-8")), "targets": names[:20]}
+
+
+def narrow_gaps(gaps: list, parsed) -> list:
+    """AI 复核覆盖空白：**只能在本地候选里挑**，把结论标到行上，绝不新增行。
+
+    挑中的行带 ai_terms/ai_note；没被挑中的行如实写"AI 复核没把它列进值得补的清单"——
+    这是从答复里推出来的缺席判断，不是 AI 明说的，所以措辞里点明来源。
+    """
+    if not parsed:
+        return gaps
+    picked = {}
+    for it in (parsed.get("terms") or []):
+        term = str(it.get("term", "")).strip()
+        if term:
+            picked[term.lower()] = str(it.get("brief", ""))[:120]
+    conf = parsed.get("confidence", "low")
+    for g in gaps:
+        tgt = str(g.get("target") or "").strip().lower()
+        if tgt and tgt in picked:
+            g["ai_terms"] = [g.get("target")]
+            g["ai_note"] = picked[tgt] or "AI 认为值得单独立一篇"
+        else:
+            g["ai_terms"] = []
+            g["ai_note"] = "AI 复核没把它列进值得补的清单（可能是并入现有篇章，也可能只是顺带一提）"
+        g["ai_confidence"] = conf
+    return gaps
 
 
 def merge_ai(local: list, parsed, kind: str, path: str) -> list:

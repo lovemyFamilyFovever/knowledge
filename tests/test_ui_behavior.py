@@ -2930,6 +2930,9 @@ AI_BATCH_JS = PRELUDE + r"""
   }
   out.prog_text = prog.slice(0, 200);
   out.done = done;
+  // 这一趟本域有候选空白（语料里那条 [[不存在的目标]]），只跑本地时复核没做 ——
+  // 进度条必须说清"没做、为什么没做"，不能让用户把本地清单当成 AI 认过的。
+  out.gap_line_local = prog.indexOf('覆盖空白 AI 复核没跑') >= 0;
   // 回扫的证据不能只看汇总条上有没有"本地判据"四个字 —— 那句在不回扫时也一直挂着，
   // 是条自证判据。真正要判的是"进度轮询停下之后，又发过一次 POST /api/ai/audit"。
   let lastStatus = -1;
@@ -2977,6 +2980,13 @@ AI_BATCH_AI_JS = PRELUDE + r"""
   }
   out.prog_text = prog.slice(0, 200);
   out.done = done;
+  // 收尾那一次「域全景复核」的结论要落到用户看得见的两个地方：
+  // 进度条里那一行（跑没跑都报），和域待办条目上的 AI 判定。
+  await sleep(2000);
+  out.gap_line = T(q('#kb-au-batch')).indexOf('覆盖空白 AI 复核') >= 0;
+  out.gap_head = T(q('#kb-au-gaps')).slice(0, 120);
+  out.gap_items = document.querySelectorAll('#kb-au-gaps .kb-au-item').length;
+  out.gap_ai = [...document.querySelectorAll('#kb-au-gaps .kb-au-ai')].map(e => T(e));
   return JSON.stringify(out);
 })()"""
 
@@ -3002,6 +3012,9 @@ def probe_ai_batch(base, tmp):
           _safe(d.get("prog_text")))
     check("批量：纯本地那一趟的 AI 调用数是 0",
           "问 AI 0 次" in (d.get("prog_text") or ""), _safe(d.get("prog_text")))
+    check("批量：本域有空白候选却没让 AI 复核时，进度条就地报名字（不静默少跑一步）",
+          d.get("gap_line_local") is True and "没让 AI 复核" in (d.get("prog_text") or ""),
+          _safe(d.get("prog_text")))
     urls = d.get("urls") or []
     check("批量：整趟只打了 batch 三件套 + 本篇查漏 + 域待办读接口，一次 explain 都没有",
           any("/api/ai/batch/estimate" in u for u in urls)
@@ -3017,12 +3030,31 @@ def probe_ai_batch(base, tmp):
 
     # 带 AI 的那一趟：配一个指向本进程假 provider 的临时配置（只动 .ai-config.json，
     # 不动语料 —— 语料一多起来别的探针的计数就变了），看按钮出来、跑得完。
+    #
+    # 覆盖空白的复核要有候选才有得看：ui-r 域里的固定语料互不引用，
+    # 所以这里**临时**塞一篇只被它自己用到的靶子（引用「缺失术语」这个不存在的词条），
+    # 用完即删 —— 别的探针跑的时候它不存在，语料计数仍然对得上。
     from test_ai_config import start_provider
     srv, pbase = start_provider()
     cfg = tmp / ".ai-config.json"
     cfg.write_text(json.dumps({"api_key": "sk-ui-batch-K7QF",
-                               "base_url": pbase + "/audit", "allow_local": True,
+                               "base_url": pbase + "/auditgap", "allow_local": True,
                                "timeout_s": 10}), encoding="utf-8")
+    target = tmp / "content" / "ui-r" / "batchgap" / "空白靶子.md"
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text('---\ntitle: 空白靶子\ncollected: 2026-03-01\n---\n\n'
+                      '# 空白靶子\n\n## 定义\n\n这里写了 [[缺失术语]]，'
+                      '但知识库里没有给它建词条。\n', encoding="utf-8")
+    # 第三条腿要一个"确实一条空白都没有"的域：另起一个临时域，两篇互不引用。
+    # 路径必须三级（domain/sub/name）—— `/doc/<domain>/<sub>/<name>` 是本应用唯一的
+    # 文档路由，两段式 URL 直接 404，页面上连查漏按钮都没有（第一次就踩在这儿）。
+    clean = tmp / "content" / "zz-clean" / "sub"
+    clean.mkdir(parents=True, exist_ok=True)
+    for i in (1, 2):
+        (clean / ("clean%d.md" % i)).write_text(
+            '---\ntitle: 无链样本%d\ncollected: 2026-03-01\n---\n\n# 无链样本%d\n\n'
+            "## 定义\n\n这一篇不引用任何别的篇，本域也就没有覆盖空白。\n" % (i, i),
+            encoding="utf-8")
     try:
         d2 = run_expr(base + "/doc/ui-r/notes/alpha.md", AI_BATCH_AI_JS)
         check("批量：配了 key 之后「按估算开跑」才出现，且估算条改口说已配 key",
@@ -3031,11 +3063,31 @@ def probe_ai_batch(base, tmp):
         check("批量：带 AI 那一趟也能跑到终态（进度条报的是作业自己的 state，不是前端猜的）",
               d2.get("done") is True and "done" in (d2.get("prog_text") or ""),
               {"prog": _safe(d2.get("prog_text")), "toast": _safe(d2.get("toast"))})
+        check("批量：跑完的域全景复核在进度条上留了一行（跑了就报挑中几条，不静默）",
+              d2.get("gap_line") is True, d2.get("prog_text"))
+        check("批量：覆盖空白挂在本域待办里，条目上能看到 AI 的复核结论",
+              "本域覆盖空白" in (d2.get("gap_head") or "") and d2.get("gap_items", 0) >= 1
+              and any("AI 复核认为值得补" in x for x in (d2.get("gap_ai") or [])),
+              {"head": _safe(d2.get("gap_head")), "items": d2.get("gap_items"),
+               "ai": d2.get("gap_ai")})
+        # 第三条腿：一个确实没有空白的域（articles 那三篇互不引用）—— 复核跑过了、
+        # 候选是 0 条，这时候硬刷一句"0 条里挑中 0 条"是噪声，不该出现
+        # （与上面那条"有候选却没跑就必须报"成对）。
+        d3 = run_expr(base + "/doc/zz-clean/sub/clean1.md", AI_BATCH_AI_JS)
+        check("批量：本域一条空白都没有时不硬报「0 条候选里挑中 0 条」，待办区也是空的",
+              d3.get("done") is True and d3.get("gap_line") is False
+              and d3.get("gap_items") == 0 and not (d3.get("gap_head") or ""),
+              {"prog": _safe(d3.get("prog_text")), "line": d3.get("gap_line"),
+               "items": d3.get("gap_items"), "est": _safe(d3.get("est_text"))})
     finally:
         srv.shutdown()
         cfg.unlink(missing_ok=True)
-    check("批量：临时配置收走了，语料仍然一字节未变",
-          not cfg.exists() and alpha.read_text(encoding="utf-8") == body, None)
+        target.unlink(missing_ok=True)
+        shutil.rmtree(tmp / "content" / "zz-clean", ignore_errors=True)
+    check("批量：临时配置和临时靶子都收走了，语料仍然一字节未变",
+          not cfg.exists() and not target.exists()
+          and not (tmp / "content" / "zz-clean").exists()
+          and alpha.read_text(encoding="utf-8") == body, None)
 
 
 # ================================================================ 探针 21：快捷键清单（唯一数据源）

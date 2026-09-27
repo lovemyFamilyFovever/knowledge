@@ -553,6 +553,10 @@
                 ? '<i class="kb-au-state">' + (p.status === "dismissed" ? "已忽略" : "已处理") +
                   "</i>" : "") + '</div><div class="kb-au-ev">' + esc(p.evidence) +
               "</div><div class=\"kb-au-sg\">" + esc(p.suggestion) + "</div>" +
+              (p.ai_terms && p.ai_terms.length
+                ? '<div class="kb-au-ai">AI 复核认为值得补：<b>' + esc(p.ai_terms.join("、")) +
+                  "</b>" + (p.ai_note ? "<span>" + esc(p.ai_note) + "</span>" : "") + "</div>"
+                : (p.ai_note ? '<div class="kb-au-ai muted">' + esc(p.ai_note) + "</div>" : "")) +
               '<div class="kb-au-acts">' +
               '<button type="button" class="kb-ai-mini ghost" data-act="dismiss">' +
               (p.status === "dismissed" ? "已忽略" : "忽略") + "</button>" +
@@ -619,6 +623,20 @@
     });
   }
 
+  function gapLine(g) {
+    // 复核跑没跑都要报：清单少了什么、为什么少，用户得看得见（不静默降级）
+    if (!g) return "";
+    // 一批里一条空白都没有，就没必要再报一句"0 条里挑中 0 条" —— 那是噪声。
+    // 但"有候选却没复核"必须报，否则用户会把本地清单当成 AI 认过的。
+    if (g.ran) {
+      if (!g.total) return "";
+      return '<div class="kb-au-est">覆盖空白 AI 复核：' + g.total + " 条候选里挑中 " + g.picked +
+        " 条值得补（没挑中的仍留在清单上，只是标了原因）</div>";
+    }
+    return '<div class="kb-au-est warn">覆盖空白 AI 复核没跑：' +
+      esc(g.reason || "未启用") + "</div>";
+  }
+
   function batchStart(withAi, domain) {
     post("/api/ai/batch/start", { scope: { domain: domain }, ai: withAi }).then(function (j) {
       if (!j || j.ok !== true) {
@@ -644,6 +662,7 @@
             (s.error_count ? " · " + s.error_count + " 篇没读动" : "") + "</div>" +
             (s.ai_stopped_reason
               ? '<div class="kb-au-est warn">' + esc(s.ai_stopped_reason) + "</div>" : "") +
+            gapLine(s.gap_review) +
             (s.running
               ? '<div class="kb-au-acts"><button type="button" class="kb-ai-mini ghost" ' +
                 'id="kb-au-b-stop">停止</button></div>'
