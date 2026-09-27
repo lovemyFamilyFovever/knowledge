@@ -27,11 +27,11 @@ from pathlib import Path
 from flask import Blueprint, current_app, jsonify, request
 from werkzeug.exceptions import HTTPException
 
-from app import ai_audit, ai_config, ai_qa
+from app import ai_audit, ai_batch, ai_config, ai_qa
 from app.ai_config import ConfigError
 from app.ai_usage import AUDIT_STATUSES, AiUsageStore
 from app.fts import cjk_clean, open_db
-from app.store import parse_frontmatter
+from app.store import md_files, parse_frontmatter
 
 ai_bp = Blueprint("ai", __name__)
 
@@ -316,6 +316,8 @@ def _known_titles() -> list:
 
     必须过 `cjk_clean`：索引为了 FTS 分词把标题写成了"向 量 数 据 库"这种带空格的形态
     （fts.py:54），直接拿来和正文比对会一个都匹配不上 —— 这条是切片 3 实测踩出来的。
+    注意 cjk_clean 会在末尾留下一个空格 —— 归一化不在这里做，
+    统一由消费方 `ai_audit.local_checks` 在使用前 strip（一处加工，两处口径才不会分叉）。
     """
     try:
         with closing(open_db(Path(current_app.config["INDEXES"]))) as con:
@@ -334,6 +336,22 @@ def _dead_links(rel: str) -> list:
                 "SELECT raw FROM links WHERE src=? AND resolved=0", (rel,))]
     except Exception:
         return []
+
+
+def _dead_links_map() -> dict:
+    """一次查询拿全库的未解析双链：rel -> [原文目标]。
+
+    批量按篇调 `_dead_links` 会开几十次库、每次都撞 watcher 的写锁（实测一批 37 篇
+    能卡到 40s 不收尾），所以整批只查一次，篇内取表。口径与 `_dead_links` 完全一致。
+    """
+    try:
+        with closing(open_db(Path(current_app.config["INDEXES"]))) as con:
+            out = {}
+            for src, raw in con.execute("SELECT src, raw FROM links WHERE resolved=0"):
+                out.setdefault(src, []).append(raw)
+        return out
+    except Exception:
+        return {}
 
 
 def _asset_resolver(doc_path: Path):
@@ -447,6 +465,12 @@ def api_ai_audit_get():
     rel = request.args.get("path", "").strip()
     if not rel:
         return jsonify({"ok": False, "error": "缺少 path"}), 400
+    if ai_audit.is_domain_scope(rel):
+        # 作用域键也允许读，但域名必须是真实存在的一级目录：
+        # 不校验的话 `?path=@domain:<随便什么>` 就成了往派生库里探任意键的口子。
+        dom = rel[len(ai_audit.DOMAIN_PREFIX):].strip().strip("/")
+        if "/" in dom or not (current_app.config["CONTENT"] / dom).is_dir():
+            return jsonify({"ok": False, "error": "作用域键形如 @domain:<一级域名>"}), 400
     st = _qa_store()
     if st is None:
         return jsonify({"ok": True, "available": False, "proposals": []})
@@ -466,12 +490,258 @@ def api_ai_audit_status():
     if status not in AUDIT_STATUSES:
         return jsonify({"ok": False, "error": "status 只能是 pending / adopted / dismissed",
                         "allowed": sorted(AUDIT_STATUSES)}), 400
+    if ai_audit.is_domain_scope(rel):
+        dom = rel[len(ai_audit.DOMAIN_PREFIX):].strip().strip("/")
+        if "/" in dom or not (current_app.config["CONTENT"] / dom).is_dir():
+            return jsonify({"ok": False, "error": "作用域键形如 @domain:<一级域名>"}), 400
     st = _qa_store()
     if st is None:
         return jsonify({"ok": False, "error": "账本不可用"}), 503
     if not st.audit_set_status(rel, pid, status):
         return jsonify({"ok": False, "error": "没找到这条建议（可能文档刚被重扫过）"}), 404
     return jsonify({"ok": True, "path": rel, "id": pid, "status": status})
+
+
+# ------------------------------------------------------------ 切片 4：批量查漏补缺
+
+# 本地判据要读正文 + 逐行过正则：两百篇以内一次请求扫得完，再多就该抽样而不是把用户挂住。
+EXACT_SCAN_MAX = 200
+SAMPLE_DOCS = 40
+
+
+def _scope_blocked(domain: str) -> bool:
+    return not ai_config.domain_allows_egress(current_app.config["CONTENT"], domain)
+
+
+def _batch_entries(scope: dict) -> list:
+    """scope → [{"rel","p","size","blocked"}]，**只看目录项，一篇正文都不读**。
+
+    只吃 .md，且 `_` 前缀目录（_inbox/_assets/_trash/_meta）天然不在名单里 ——
+    这条由 `store.md_files` 保证，不在这里再抄一份规则（不变量 2/5）。
+    """
+    content = current_app.config["CONTENT"]
+    paths = scope.get("paths")
+    out = []
+    if isinstance(paths, list) and paths:
+        for rel in paths[:ai_batch.MAX_DOCS]:
+            try:
+                res = _resolve_doc(str(rel))
+            except ValueError:
+                continue                      # 非 .md / 越界 / 空：一条坏路径不拦整批
+            if res["exists"]:
+                out.append({"rel": res["rel"], "p": res["path"], "size": _size_of(res["path"]),
+                            "blocked": res["blocked"]})
+        return sorted(out, key=lambda e: e["rel"])
+    dom = str(scope.get("domain") or "").strip().strip("/")
+    if not dom:
+        raise ValueError("要么给 domain（可再带 sub），要么给 paths 列表")
+    sub = str(scope.get("sub") or "").strip().strip("/")
+    want = ((dom + "/" + sub) if sub else dom).lower()
+    blocked = _scope_blocked(dom)
+    for p, rel in md_files(content):
+        if rel.lower().startswith(want + "/"):
+            out.append({"rel": rel, "p": p, "size": _size_of(p), "blocked": blocked})
+    return sorted(out, key=lambda e: e["rel"])
+
+
+def _size_of(p) -> int:
+    try:
+        return int(p.stat().st_size)
+    except OSError:
+        return 0
+
+
+def _scan_one(entry: dict, known: list, dead_map: dict | None = None) -> dict | None:
+    """读一篇 + 跑本地判据。读不动 / 过大都回 None（不计入样本，而不是算 0 条）。"""
+    try:
+        md = entry["p"].read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return None
+    if len(md) > ai_batch.MAX_DOC_BYTES:
+        return None
+    fm, _ = parse_frontmatter(md)
+    props = ai_audit.local_checks(md, path=entry["rel"], fm=fm or {}, known_titles=known,
+                                  dead_links=(dead_map or {}).get(entry["rel"], []),
+                                  asset_exists=_asset_resolver(entry["p"]))
+    return {"path": entry["rel"], "bytes": len(md.encode("utf-8")), "count": len(props),
+            # 「要问 AI」= 本地判据里有 needs_ai **且**这一篇允许出站
+            "need_ai": ai_batch.needs_ai(props) and not entry["blocked"]}
+
+
+def _batch_rows(entries: list) -> tuple[list, dict | None]:
+    """小范围精扫；大范围**等距抽样**（读全盘 + 逐行正则可能几十秒，那又是一次挂在
+    fetch 上的长任务 —— 与扫描本身同理，估算也不能让用户白等）。
+
+    步长固定 ⇒ 同一个域连估两次得到的是同一份数，不是每刷新一次换个数。
+    """
+    known = _known_titles()
+    dead_map = _dead_links_map()
+    if len(entries) <= EXACT_SCAN_MAX:
+        rows = [r for r in (_scan_one(e, known, dead_map) for e in entries) if r]
+        return rows, None
+    step = -(-len(entries) // SAMPLE_DOCS)          # ceil
+    picked = entries[::step][:SAMPLE_DOCS]
+    rows = [r for r in (_scan_one(e, known, dead_map) for e in picked) if r]
+    return rows, {"from": len(entries), "measured": len(rows), "step": step,
+                  "method": "等距抽样"}
+
+
+def _batch_estimate_of(entries: list) -> tuple:
+    rows, sample = _batch_rows(entries)
+    c = _cfg()
+    b = _budget_state()
+    est = ai_batch.estimate(rows, budget_left=b["left"], sample=sample,
+                            price_in_per_1k=c["price_in_per_1k"],
+                            price_out_per_1k=c["price_out_per_1k"])
+    return est, rows, b
+
+
+@ai_bp.post("/api/ai/batch/estimate")
+def api_ai_batch_estimate():
+    """开跑前的账单预览：说清要问几次、大概多少 token / 多少钱。
+
+    这一趟**不出站、不计费**。范围超过 `EXACT_SCAN_MAX` 篇时按等距抽样放大 ——
+    本地判据本身可能就是几十秒的长任务，估算不该把用户挂在那儿等它。
+    """
+    data = request.get_json(force=True, silent=True) or {}
+    try:
+        entries = _batch_entries(data.get("scope") or {})
+    except ValueError as e:
+        return jsonify({"ok": False, "error": str(e)[:200]}), 400
+    if not entries:
+        return jsonify({"ok": False, "error": "这个范围里没有可扫的 Markdown"}), 400
+    est, rows, b = _batch_estimate_of(entries)
+    if not rows:
+        return jsonify({"ok": False, "error": "范围内没有可读的文档"}), 400
+    top = sorted(rows, key=lambda r: -r["count"])[:8]
+    return jsonify({"ok": True, "estimate": est, "top": top,
+                    "ai_available": ai_available(),
+                    "used_month": b["used_month"], "budget": b["budget"]})
+
+
+@ai_bp.post("/api/ai/batch/start")
+def api_ai_batch_start():
+    """启动批量作业：立刻回进度快照，扫描在 daemon 线程里跑。
+
+    预算帽是硬门 —— 抽样估算是"大概花多少"（给人看的），而**拦钱包看的是上限**：
+    每篇都可能问一次，所以范围篇数一超过剩余额度就不许带 AI 开跑。
+    ai=false 的纯本地批量零调用零出站，不受这条限制。
+    """
+    data = request.get_json(force=True, silent=True) or {}
+    want_ai = bool(data.get("ai", True))
+    scope = data.get("scope") or {}
+    try:
+        entries = _batch_entries(scope)
+    except ValueError as e:
+        return jsonify({"ok": False, "error": str(e)[:200]}), 400
+    if not entries:
+        return jsonify({"ok": False, "error": "这个范围里没有可扫的 Markdown"}), 400
+
+    est, _rows, b = _batch_estimate_of(entries)
+    if want_ai and est["over_budget"]:
+        return jsonify({"ok": False, "code": "over_budget",
+                        "error": f"这一批最坏要问 {est['calls_upper_bound']} 次，"
+                                 f"本月只剩 {b['left']} 次额度；"
+                                 f"缩小范围（按子域扫）、调高预算帽，或只跑本地判据（ai=false）",
+                        "estimate": est}), 429
+    if want_ai and not ai_available():
+        return jsonify({"ok": False, "code": "not_configured",
+                        "error": "未配置 API key，这一批只能跑本地判据（ai=false）",
+                        "estimate": est}), 400
+
+    known = _known_titles()
+    dead_map = _dead_links_map()   # 整批一次查完，别在线程里按篇开库
+    c = _cfg()
+    app_obj = current_app._get_current_object()   # 线程里没有 request context：先抓 app 对象
+    # 引用集合边扫边攒，跑完就地算"覆盖空白"（读一篇顺手记一行，不第二遍读盘）。
+    refs = {}
+    dom = str(scope.get("domain") or "").strip().strip("/")
+    if not dom:
+        only = {e["rel"].split("/", 1)[0] for e in entries}
+        dom = only.pop() if len(only) == 1 else ""
+
+    def per_doc(job, it):
+        # 每一篇都在 worker 线程里跑，所以整段都要自己把 app context 推进去；
+        # 少这一层，_cfg / _qa_store / _dead_links 会当场 RuntimeError，
+        # 而 BatchRunner 会把异常按篇记进 errors —— 症状是"整批全失败但 HTTP 200"。
+        with app_obj.app_context():
+            try:
+                md = it["p"].read_text(encoding="utf-8", errors="replace")
+            except OSError as e:
+                return 0, False, f"读取失败：{type(e).__name__}"
+            if len(md) > ai_batch.MAX_DOC_BYTES:
+                return 0, False, "文档过大（>400KB），这一篇跳过"
+            for t in ai_audit.wikilinks(md):
+                refs.setdefault(t, []).append(it["rel"])
+            fm, _ = parse_frontmatter(md)
+            props = ai_audit.local_checks(md, path=it["rel"], fm=fm or {},
+                                          known_titles=known,
+                                          dead_links=dead_map.get(it["rel"], []),
+                                          asset_exists=_asset_resolver(it["p"]))
+            asked = False
+            if want_ai and not it["blocked"] and ai_batch.needs_ai(props):
+                if _budget_state()["exceeded"]:
+                    job.note_ai_blocked("本月调用数已达预算帽，之后的篇只跑本地判据")
+                else:
+                    cand = next((p for p in props if p["kind"] == "should_link"), None)
+                    if cand:
+                        title = str((fm or {}).get("title") or it["p"].stem)
+                        ctx = ai_qa.build_context(md, cand["evidence"][:80], "term", [],
+                                                  title, it["rel"])
+                        got = _audit_ask(ctx, ai_audit.ai_prompt("should_link", ctx["text"],
+                                                                 cand["evidence"]), c)
+                        if got is None:
+                            return len(props), False, "AI 判断没跑成（本地结果照常入库）"
+                        ai_audit.merge_ai(props, got, "should_link", it["rel"])
+                        asked = True
+            st = _qa_store()
+            if st is not None:
+                st.audit_upsert(it["rel"], props)
+                # 与单篇同一套 upsert + prune：批量跑过的篇，处置状态与重扫都不打折
+                st.audit_prune(it["rel"], [p["id"] for p in props])
+            return len(props), asked, ""
+
+    def finalize(job):
+        """整批跑完后的一次收尾：把攒下的引用集合换算成域级待办。
+
+        全本地（引用集合 − 标题集合），零调用；空白挂在 `@domain:<域>` 这个作用域键下，
+        与按篇的条目同住一张派生表但不串台（真实相对路径不会以 @ 开头）。
+        """
+        if not dom:
+            return
+        with app_obj.app_context():
+            scope_key = ai_audit.domain_scope(dom)
+            gaps = ai_audit.coverage_gaps(refs, known, scope_key)
+            st = _qa_store()
+            if st is not None:
+                st.audit_upsert(scope_key, gaps)
+                st.audit_prune(scope_key, [g["id"] for g in gaps])
+
+    try:
+        job = ai_batch.RUNNER.start(entries, per_doc, scope, finalizer=finalize)
+    except ai_batch.BatchBusy as e:
+        return jsonify({"ok": False, "error": str(e), "estimate": est}), 409
+    return jsonify({"ok": True, "estimate": est, "gaps_scope": ai_audit.domain_scope(dom),
+                    "job": job.snapshot()})
+
+
+@ai_bp.get("/api/ai/batch/status")
+def api_ai_batch_status():
+    """进度轮询。没有作业也回 200（state=idle），前端不必先探一次"有没有在跑"。"""
+    job = ai_batch.RUNNER.current()
+    return jsonify({"ok": True, "job": job.snapshot() if job else {"state": "idle",
+                                                                   "running": False}})
+
+
+@ai_bp.post("/api/ai/batch/stop")
+def api_ai_batch_stop():
+    """请求停止：跑完当前这一篇就走，已入库的建议不回滚（那些结果本来就是有效的）。"""
+    job = ai_batch.RUNNER.current()
+    if job is None or not job.snapshot()["running"]:
+        return jsonify({"ok": True, "stopped": False,
+                        "error": "现在没有在跑的批量作业"})
+    job.request_stop()
+    return jsonify({"ok": True, "stopped": True, "job": job.snapshot()})
 
 
 def _qa_store():

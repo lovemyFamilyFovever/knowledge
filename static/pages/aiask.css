@@ -107,3 +107,15 @@
 .kb-au-acts{display:flex;gap:6px;margin-top:8px}
 .kb-au-empty{margin-top:10px;padding:12px;border:1px dashed var(--c-line);border-radius:10px;
   font-size:12.5px;line-height:1.7;color:var(--c-ink)}
+
+/* 批量（切片 4）：估算条与进度条。数字都要黑字可读，不许糊成灰 —— 这是"要花多少钱"的账。 */
+.kb-au-batch{margin-top:10px;padding-top:9px;border-top:1px solid var(--c-line)}
+.kb-au-est{font:500 12px/1.7 var(--f-mono);color:var(--c-ink);word-break:break-word}
+.kb-au-est.warn{margin-top:5px;border-left:2px solid var(--c-warn);padding-left:8px;
+  color:var(--c-ink)}
+.kb-au-est.bad{margin-top:5px;border-left:2px solid var(--c-danger);padding-left:8px;
+  color:var(--c-ink)}
+/* 本域覆盖空白（切片 4 收尾算出来的域待办）：与本篇条目同形制，只多一条小标题与一行说明 */
+.kb-au-gaps-h{margin-top:12px;padding-top:9px;border-top:1px solid var(--c-line);
+  font:600 12px/1.6 var(--f-body);color:var(--c-ink)}
+.kb-au-gap-note{margin:6px 0 0;font-size:11.5px;line-height:1.7;color:var(--c-ink);opacity:.85}

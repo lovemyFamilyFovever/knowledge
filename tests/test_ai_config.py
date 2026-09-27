@@ -141,6 +141,17 @@ def build_provider():
                       "usage": {"prompt_tokens": 300, "completion_tokens": 30,
                                 "total_tokens": 330}})
 
+    @app.route("/auditslow/chat/completions", methods=["POST"])
+    def audit_slow():
+        """切片 4 用：慢一点的 audit 答复，给"作业跑中途改配置"留出确定性窗口。
+
+        测试需要"作业还在跑、帽子已经被压低"这一格 —— 不靠 sleep 猜，
+        而是让每次调用本身就慢（0.35s × 篇数远大于断言侧的一次 PUT 往返）。
+        """
+        import time
+        time.sleep(0.35)
+        return audit()
+
     @app.route("/badjson/chat/completions", methods=["POST"])
     def badjson():
         counted("badjson")

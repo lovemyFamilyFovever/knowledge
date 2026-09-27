@@ -479,22 +479,31 @@
     el.innerHTML =
       '<div class="kb-ai-ch"><b>本篇查漏补缺</b>' +
       '<button type="button" class="kb-ai-mini ghost" id="kb-au-rescan">重新扫描</button>' +
+      '<button type="button" class="kb-ai-mini ghost" id="kb-au-domain">扫描整个域</button>' +
       '<button type="button" class="kb-ai-x" id="kb-au-x" aria-label="关闭">✕</button></div>' +
       '<div class="kb-au-sum" id="kb-au-sum">扫描中…</div>' +
       '<div id="kb-au-list"></div>' +
+      '<div id="kb-au-gaps"></div>' +
+      '<div class="kb-au-batch" id="kb-au-batch" hidden></div>' +
       '<p class="kb-ai-note">采纳只写 sidecar 批注（.notes.md），正文一个字节都不改；' +
       "改正文由你自己动手。忽略会被记住，重扫不会再来烦你。</p>";
     document.body.appendChild(el);
     $("kb-au-x").addEventListener("click", function () { el.hidden = true; });
     $("kb-au-rescan").addEventListener("click", function () { audit(true); });
-    $("kb-au-list").addEventListener("click", function (e) {
-      var b = e.target.closest("[data-act]");
-      if (!b) return;
-      var item = b.closest("[data-id]");
-      if (!item) return;
-      auditAction(item.getAttribute("data-id"), item.getAttribute("data-title"),
-                  item.getAttribute("data-sug"), b.getAttribute("data-act"), b);
-    });
+    $("kb-au-domain").addEventListener("click", batchEstimate);
+    function actHandler(scope) {
+      return function (e) {
+        var b = e.target.closest("[data-act]");
+        if (!b) return;
+        var item = b.closest("[data-id]");
+        if (!item) return;
+        auditAction(item.getAttribute("data-id"), item.getAttribute("data-title"),
+                    item.getAttribute("data-sug"), b.getAttribute("data-act"), b, scope);
+      };
+    }
+    $("kb-au-list").addEventListener("click", actHandler(null));
+    // 域级待办走同一套处置，只是 path 换成了作用域键 @domain:<域>
+    $("kb-au-gaps").addEventListener("click", actHandler("domain"));
     return el;
   }
 
@@ -502,6 +511,7 @@
     var d = doc();
     if (!d || !d.rel) { toast("这一页没有可扫描的文档"); return; }
     var panel = ensureAudit();
+    loadGaps(d.domain);
     panel.hidden = false;
     panel.style.left = "auto";
     panel.style.right = "16px";
@@ -520,7 +530,154 @@
     });
   }
 
+  /* -------------------------------------------------- 本域覆盖空白（切片 4 收尾算出来的） */
+  var GAP_SEV = { high: "要紧", medium: "结构", low: "可选" };
+
+  function loadGaps(domain) {
+    var box = $("kb-au-gaps");
+    if (!box || !domain) return;
+    get("/api/ai/audit?path=" + encodeURIComponent("@domain:" + domain))
+      .then(function (j) {
+        var ps = ((j && j.proposals) || []).filter(function (p) {
+          return p.kind === "coverage_gap";
+        });
+        if (!ps.length) { box.innerHTML = ""; return; }
+        box.innerHTML = '<div class="kb-au-gaps-h">本域覆盖空白 · ' + ps.length +
+          " 条（随「扫描整个域」算出来，不是这一篇的问题）</div>" +
+          ps.map(function (p) {
+            return '<div class="kb-au-item" data-id="' + esc(p.id) + '" data-title="' +
+              esc(p.title) + '" data-sug="' + esc(p.suggestion) + '" data-status="' +
+              esc(p.status || "pending") + '"><div class="kb-au-h"><span class="kb-au-sev ' +
+              esc(p.severity) + '">' + (GAP_SEV[p.severity] || esc(p.severity)) + "</span><b>" +
+              esc(p.title) + "</b>" + (p.status && p.status !== "pending"
+                ? '<i class="kb-au-state">' + (p.status === "dismissed" ? "已忽略" : "已处理") +
+                  "</i>" : "") + '</div><div class="kb-au-ev">' + esc(p.evidence) +
+              "</div><div class=\"kb-au-sg\">" + esc(p.suggestion) + "</div>" +
+              '<div class="kb-au-acts">' +
+              '<button type="button" class="kb-ai-mini ghost" data-act="dismiss">' +
+              (p.status === "dismissed" ? "已忽略" : "忽略") + "</button>" +
+              (p.status && p.status !== "pending"
+                ? '<button type="button" class="kb-ai-mini ghost" data-act="pending">恢复待处理</button>'
+                : "") + "</div></div>";
+          }).join("") +
+          '<p class="kb-au-gap-note">补哪一篇由你自己动手（新知识走 content/_inbox/）；' +
+          "这里只列清单，不会替你建文件。</p>";
+      }).catch(function () { /* 域待办读不到不影响本篇面板 */ });
+  }
+
   var SEV_TEXT = { high: "要紧", medium: "结构", low: "可选" };
+
+  /* ------------------------------------------------------------ 批量（切片 4） */
+  var BATCH_TIMER = null;
+
+  function batchBox() { return $("kb-au-batch"); }
+
+  function estLine(e, avail) {
+    var money = e.cost_est > 0 ? "≈ ¥" + e.cost_est.toFixed(4)
+                               : "单价没填，只能给 token 数";
+    var left = e.budget_left === null || e.budget_left === undefined
+      ? "本月没设预算帽" : ("本月还剩 " + e.budget_left + " 次");
+    // 抽样出来的都是估算值，一律冠"约"；精确扫的才准报整数。
+    var p = e.sampled ? "约 " : "";
+    return e.docs + " 篇 · 本地判据" + (e.sampled ? "抽样推出" : "查出") + " " +
+      p + e.findings + " 条 · 还要问 AI " + p + e.calls_expected + " 次" +
+      "（每篇都可能问一次，最多 " + e.calls_upper_bound + " 次）· " +
+      (avail ? "已配 key" : "没配 key，问了也不会跑") + " · " +
+      "预计 ≤ " + p + (e.tokens_in_est + e.tokens_out_est) + " tokens，" + money + " · " + left +
+      (e.truncated ? " · 注：范围超过 " + e.will_scan + " 篇，这一批只跑前 " + e.will_scan + " 篇" : "");
+  }
+
+  function batchEstimate() {
+    var d = doc();
+    var box = batchBox();
+    if (!d || !d.domain) { toast("这一页没有可扫描的域"); return; }
+    box.hidden = false;
+    box.innerHTML = '<div class="kb-au-est">正在估算…（本地扫一遍，不出网、不计费）</div>';
+    post("/api/ai/batch/estimate", { scope: { domain: d.domain } }).then(function (j) {
+      if (!j || j.ok !== true) {
+        box.innerHTML = '<div class="kb-au-est bad">估算失败：' +
+          esc((j && j.error) || "未知错误") + "</div>";
+        return;
+      }
+      var e = j.estimate;
+      // 能跑的那条路才画：没配 key / 超帽时画一颗灰钮只是让人多点一次失败，
+      // 上面那行已经写清"为什么现在不能开"。
+      var canAi = !e.over_budget && j.ai_available;
+      box.innerHTML = '<div class="kb-au-est">' + esc(estLine(e, j.ai_available)) + "</div>" +
+        (e.over_budget
+          ? '<div class="kb-au-est warn">超出预算帽：带 AI 的批量不会开跑。' +
+            "可以先调高设置 → AI 里的月度次数、把范围缩到子域，或者只跑本地判据。</div>"
+          : "") +
+        '<div class="kb-au-acts">' +
+        '<button type="button" class="kb-ai-mini" id="kb-au-b-local">只跑本地（0 次）</button>' +
+        (canAi ? '<button type="button" class="kb-ai-mini" id="kb-au-b-ai">按估算开跑</button>' : "") +
+        "</div>";
+      $("kb-au-b-local").onclick = function () { batchStart(false, d.domain); };
+      if (canAi) $("kb-au-b-ai").onclick = function () { batchStart(true, d.domain); };
+    }).catch(function (e2) {
+      box.innerHTML = '<div class="kb-au-est bad">估算请求没成：' + esc(e2.message) + "</div>";
+    });
+  }
+
+  function batchStart(withAi, domain) {
+    post("/api/ai/batch/start", { scope: { domain: domain }, ai: withAi }).then(function (j) {
+      if (!j || j.ok !== true) {
+        toast((j && j.error) || "批量没开起来");
+        if (j && j.code === "over_budget") batchEstimate();
+        return;
+      }
+      toast("批量扫描已开始，可以随时点「扫描整个域」看进度");
+      pollBatch();
+    });
+  }
+
+  function pollBatch() {
+    if (BATCH_TIMER) clearTimeout(BATCH_TIMER);
+    var box = batchBox();
+    var tick = function () {
+      get("/api/ai/batch/status").then(function (j) {
+        var s = (j && j.job) || {};
+        if (box) {
+          box.hidden = false;
+          box.innerHTML = '<div class="kb-au-est">' + esc(s.state || "?") + " · 已完成 " +
+            (s.done || 0) + " / " + (s.total || 0) + " 篇 · 问 AI " + (s.ai_calls || 0) + " 次" +
+            (s.error_count ? " · " + s.error_count + " 篇没读动" : "") + "</div>" +
+            (s.ai_stopped_reason
+              ? '<div class="kb-au-est warn">' + esc(s.ai_stopped_reason) + "</div>" : "") +
+            (s.running
+              ? '<div class="kb-au-acts"><button type="button" class="kb-ai-mini ghost" ' +
+                'id="kb-au-b-stop">停止</button></div>'
+              : "");
+          if (s.running) {
+            $("kb-au-b-stop").onclick = function () {
+              post("/api/ai/batch/stop", {}).then(pollBatchNow);
+            };
+          }
+        }
+        if (!s.running) {
+          BATCH_TIMER = null;
+          if (s.state === "done" || s.state === "stopped") {
+            toast("批量扫完了，打开任意一篇就能看到它的建议");
+            audit(true);
+          }
+          return;
+        }
+        BATCH_TIMER = setTimeout(tick, 500);
+      }).catch(function () { BATCH_TIMER = null; });
+    };
+    tick();
+  }
+
+  function pollBatchNow() {
+    var box = batchBox();
+    fetch("/api/ai/batch/status").then(function (r) { return r.json(); }).then(function (j) {
+      var s = (j && j.job) || {};
+      if (box) {
+        box.innerHTML = '<div class="kb-au-est">已请求停止：跑完当前这篇就走（' +
+          (s.done || 0) + " / " + (s.total || 0) + "）</div>";
+      }
+    });
+  }
 
   function renderAudit(j) {
     var sum = $("kb-au-sum"), list = $("kb-au-list");
@@ -559,12 +716,15 @@
 
   var AUDIT_STATUS = { adopt: "adopted", dismiss: "dismissed", pending: "pending" };
 
-  function auditAction(id, title, sug, act, btn) {
+  function auditAction(id, title, sug, act, btn, scope) {
     var d = doc();
     var status = AUDIT_STATUS[act];
     if (!status) return;
+    // 域级待办没有"这一篇"可写批注，所以它只接受忽略 / 恢复两种处置
+    var path = scope === "domain" ? "@domain:" + (d && d.domain ? d.domain : "") : d.rel;
+    if (scope === "domain" && act === "adopt") { toast("域待办只能忽略或恢复：补哪一篇自己动手"); return; }
     var send = function () {
-      return post("/api/ai/audit/status", { path: d.rel, id: id, status: status })
+      return post("/api/ai/audit/status", { path: path, id: id, status: status })
         .then(function (j) {
           if (!j || j.ok !== true) {
             toast("状态没记住：" + ((j && j.error) || "未知错误"));
@@ -597,8 +757,11 @@
     ask: ask,
     preview: preview,
     rail: loadRail,
-    /** crumb 上的「查漏」按钮（workbench.html 直接 onclick 调它） */
-    audit: audit
+    /** crumb 上的「查漏」按钮 —— 由 app.js::renderCrumb 每次现拼，点了才判本模块在不在 */
+    audit: audit,
+    /** 批量：估算条上的两个按钮走这里（探针也走这里，不靠猜 DOM） */
+    batchEstimate: batchEstimate,
+    batchStart: batchStart
   };
 
   // 首屏：app.js 渲染正文是异步的，这里等一次 DOC 出现再挂 rail

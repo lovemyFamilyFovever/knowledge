@@ -179,7 +179,7 @@ def main() -> int:
                                              known_titles=[])
         check("A1b 代码围栏未闭合被抓到（单独一份样本：未闭合会把后半篇全吞掉，"
               "混在脏文档里会让别的判据期望值说不清）",
-              kinds(fenced_props) == {"unclosed_fence"},
+              kinds(fenced_props) == {"unclosed_fence", "empty_section"},
               [(p["kind"], p["evidence"]) for p in fenced_props])
         check("A2 每条建议都带证据与建议动作（光有结论的一律不予展示）",
               all(p["evidence"] and p["suggestion"] and p["severity"] for p in props),
@@ -188,6 +188,21 @@ def main() -> int:
               {p["kind"] for p in props if p["needs_ai"]} == {"should_link"},
               [(p["kind"], p["needs_ai"]) for p in props])
         sl = next(p for p in props if p["kind"] == "should_link")
+        tight = ('---\ntitle: "紧跟标点"\n---\n\n# 紧跟标点\n\n## 定义\n\n'
+                 '本项目用过 向量数据库。\n\n## 结尾\n\n完了。\n')
+        tp = ai_audit.local_checks(tight, path="baike/sub/tight.md", fm={},
+                                   known_titles=["向量数据库 ", " 事件循环 "])
+        sl2 = next((p2 for p2 in tp if p2["kind"] == "should_link"), None)
+        check("A4b 全库标题带首尾空格也能匹配（索引里存的就是带空格的样子，"
+              "带着空格去比对会让「应引未引」成片漏报）",
+              sl2 is not None and "向量数据库" in sl2["evidence"], tp)
+        selfdoc = ai_audit.local_checks(tight, path="baike/sub/tight.md",
+                                        fm={"title": "紧跟标点"},
+                                        known_titles=["紧跟标点", "向量数据库"])
+        sl3 = next((p2 for p2 in selfdoc if p2["kind"] == "should_link"), None)
+        check("A4c 不把自己算成候选（每篇正文里必然有它自己的标题，那是纯噪音）",
+              sl3 is not None and "紧跟标点" not in sl3["evidence"]
+              and "向量数据库" in sl3["evidence"], sl3 and sl3["evidence"])
         check("A4 候选词来自全库标题集合，且已经是双链的不重复出现在候选里",
               "向量数据库" in sl["evidence"] and "根本不存在的词条" not in sl["evidence"],
               sl["evidence"])
@@ -237,6 +252,12 @@ def main() -> int:
                                               known_titles=[]))
         check("A8b 连续两个 h1 不算空小节（h1 是文档标题，不该被当成只有标题没内容）",
               "empty_section" not in h1kinds, h1kinds)
+        tail_empty = ("---\ntitle: \"尾部空节\"\ncollected: 2024-01-05\n---\n\n"
+                      "# 尾部空节\n\n## 定义\n\n正文一句。\n\n## 待补\n")
+        tk = kinds(ai_audit.local_checks(tail_empty, path="baike/sub/tail.md", fm={},
+                                         known_titles=[]))
+        check("A8c 文档以空小节收尾也要抓（最后一节曾经免检，而\"## 待补\"写完就忘正是最常见的那种）",
+              "empty_section" in tk, tk)
         check("A8 outline 按层级如实列出（标题跳级不影响大纲）",
               [(h["level"], h["title"]) for h in ai_audit.outline(DIRTY)] ==
               [(1, "残缺词条"), (2, "定义"), (2, "细节"),
@@ -314,10 +335,15 @@ def main() -> int:
                   got.get(first_id) == "dismissed", got)
             (root / "content" / "baike" / "sub" / "dirty.md").write_text(CLEAN, encoding="utf-8")
             after_fix = c.post("/api/ai/audit", json={"path": "baike/sub/dirty.md"}).get_json()
+            # 干净正文允许只剩"应引未引"这一类候选（标题集合口径变严时它会跟着动，
+            # 但**旧建议必须被清掉**才是这条的本意 —— 所以按 kind 判，不按条数判）
+            kinds_fix = {x["kind"] for x in after_fix["proposals"]}
             check("B16 正文改好后旧建议被清掉（不会一直挂着上次的问题）",
-                  after_fix["local_count"] == 0 and after_fix["proposals"] == [], after_fix)
+                  "fm_missing" not in kinds_fix and "empty_section" not in kinds_fix
+                  and "heading_skip" not in kinds_fix, after_fix)
             check("B17 派生库里也真的被清空了（GET 与 POST 两条路给的是同一份事实）",
-                  c.get("/api/ai/audit?path=baike/sub/dirty.md").get_json()["proposals"] == [],
+                  c.get("/api/ai/audit?path=baike/sub/dirty.md").get_json()["proposals"]
+                  == after_fix["proposals"],
                   c.get("/api/ai/audit?path=baike/sub/dirty.md").get_json())
             # 判据读的是 #、```、[[双链]] —— 喂 HTML 只会查出一堆废话建议。
             # 前端靠「只在 .md 的面包屑上画查漏按钮」挡，后端这一层必须自己挡

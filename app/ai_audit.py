@@ -15,6 +15,7 @@
 """
 import hashlib
 import re
+from pathlib import Path
 
 AI_CHECK_KINDS = {"should_link", "possibly_outdated"}
 
@@ -29,6 +30,17 @@ _MD_LINK_RE = re.compile(r"!\[[^\]]*\]\(([^)\s]+)")
 FM_FIELDS = ("title", "source", "collected", "tags", "status")
 
 SEVERITY = {"high": "会影响阅读或检索", "medium": "结构/完整性问题", "low": "可选优化"}
+# 域级建议（覆盖空白）挂在派生库的"作用域键"下，而不是某一篇文档上：
+# 真实相对路径永远不会以 @ 开头，所以两类条目天然同住一表而不串台。
+DOMAIN_PREFIX = "@domain:"
+
+
+def domain_scope(domain: str) -> str:
+    return DOMAIN_PREFIX + str(domain or "").strip().strip("/")
+
+
+def is_domain_scope(rel: str) -> bool:
+    return str(rel or "").startswith(DOMAIN_PREFIX)
 
 
 def _pid(kind: str, path: str, key: str = "") -> str:
@@ -116,12 +128,12 @@ def local_checks(md: str, *, path: str, fm: dict, known_titles=None,
     # 4) 空小节（标题后没有正文，且它不是"只是给子节分组"的父标题）
     #    两条豁免都是实测出来的假阳性来源：h1 就是文档标题（正文天然从第一个 h2 开始）；
     #    h2 紧跟 h3 是在给子节分组（"## 章节"下面直接分小节是正常写法，不是空节）。
+    #    最后一节也要判：文档以"## 待补"收尾然后没下文，是最典型的那种空节。
     empties = []
-    for i, h in enumerate(heads[:-1]):
+    for i, h in enumerate(heads):
         if h["body_chars"] or h["level"] == 1:
             continue
-        nxt = heads[i + 1]
-        if nxt["level"] > h["level"]:
+        if i + 1 < len(heads) and heads[i + 1]["level"] > h["level"]:
             continue
         empties.append(h["title"])
     if empties:
@@ -168,7 +180,10 @@ def local_checks(md: str, *, path: str, fm: dict, known_titles=None,
             "low", key="long"))
 
     # 8) 失效双链 + 应引未引候选（都用全库标题集合）
-    titles = set(known_titles or [])
+    #    集合先 strip 再用：索引里的标题经 cjk_clean 会带一个尾空格，
+    #    而正文里的中文提及通常是"用过 向量数据库。"这样紧跟标点的 ——
+    #    带着尾空格去比对就永远匹配不上，「应引未引」会成片漏报（切片 4 钓出）。
+    titles = {t for t in (str(x).strip() for x in (known_titles or [])) if t}
     links = [m.group(1).strip() for m in _WIKILINK_RE.finditer(body)]
     if dead_links is not None:
         # 索引给的未解析清单口径与阅读器里的红链一致，但它是**滞后的**（watcher 才重建）。
@@ -188,9 +203,17 @@ def local_checks(md: str, *, path: str, fm: dict, known_titles=None,
 
     # 9) 正文里出现了全库已有词条、却没写成双链 → 只给候选，判断交给 AI
     plain = re.sub(r"\[\[[^\]]*\]\]", " ", body)   # 已经是双链的先排除
+    # 自己不算候选：一篇文档的正文里必然出现它自己的标题与 h1，把它们当"该引未引"
+    # 是纯粹的噪音（让人去给自己建双链毫无意义），所以先按三种身份排除：
+    # frontmatter 标题、文件名、正文里的第一个 h1。
+    mine = {str(fm.get("title") or "").strip().lower(),
+            Path(str(path or "")).stem.strip().lower()}
+    for h in heads:
+        if h["level"] == 1:
+            mine.add(str(h["title"]).strip().lower())
     cands = []
     for t in sorted(titles, key=len, reverse=True):
-        if len(t) < 2 or t in ("index", "README"):
+        if len(t) < 2 or t in ("index", "README") or t.lower() in mine:
             continue
         if t in plain:
             cands.append(t)
@@ -230,6 +253,38 @@ def ai_prompt(kind: str, ctx_text: str, selection: str) -> str:
             "（技术版本、价格、时间线、政策），逐条写进 terms（term=知识点，"
             "brief=为什么可能过时，不超过 60 字）。没有就明确说没有，不要凑数。\n\n"
             + ctx_text)
+
+
+def wikilinks(md: str) -> list:
+    """正文里出现过的 [[双链]] 目标原文（不去重、不判存在）。
+
+    判定留给 `coverage_gaps` —— 这里只负责"抄下来"，好让批量线程读一篇就能同时
+    喂给两个用途（本篇的死链、整个域的空白）。
+    """
+    return [m.group(1).strip() for m in _WIKILINK_RE.finditer(md) if m.group(1).strip()]
+
+
+def coverage_gaps(refs: dict, known_titles, scope: str) -> list:
+    """覆盖空白：某处写了 `[[X]]`，可全库根本没有 X 这一篇。
+
+    全本地、零调用 —— "引用集合 − 标题集合"是算得出来的，值不值得补由人看。
+    只认同名（路径式 / 别名式双链留给用户自己敲）：宁可少报，不冤枉一条好链。
+    """
+    titles = {str(t).strip().lower() for t in (known_titles or []) if t}
+    out = []
+    # 被引用越多的先报：三条以上说明"这个概念真的被用到了"，值得先补
+    for target in sorted(refs, key=lambda t: (-len(set(refs[t])), t.lower())):
+        norm = str(target).strip().lower()
+        if not norm or norm in titles:
+            continue
+        srcs = sorted(set(refs[target]))
+        n = len(srcs)
+        out.append(_proposal(
+            "coverage_gap", scope, f"有引用没词条：{target}",
+            f"{n} 篇里写了 [[{target}]]：" + "、".join(srcs[:5]) + ("…" if n > 5 else ""),
+            f"补一篇「{target}」，或者把那几处的 [[{target}]] 改回普通文字",
+            "medium" if n >= 3 else "low", key=target))
+    return out
 
 
 def merge_ai(local: list, parsed, kind: str, path: str) -> list:

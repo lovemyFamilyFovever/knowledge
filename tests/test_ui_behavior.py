@@ -2896,6 +2896,148 @@ def probe_ai_audit(base, tmp):
           "不会带着假结论出现）", d2.get("ai_real") == 0, d2)
 
 
+# ================================================================ 探针 24：批量查漏补缺（切片 4）
+AI_BATCH_JS = PRELUDE + r"""
+  const T = e => ((e && e.textContent) || '').replace(/\s+/g, ' ').trim();
+  const seen = [];
+  const real = window.fetch;
+  window.fetch = function (u, o) {
+    seen.push(String(u) + " " + ((o && o.method) || "GET"));
+    return real.apply(this, arguments);
+  };
+  out.spy = (window.fetch !== real);
+  const b = q('#kb-audit-btn'); if (b) b.click();
+  await sleep(1600);
+  const dom = q('#kb-au-domain');
+  out.domain_btn = !!dom;
+  if (dom) dom.click();
+  let est = '';
+  for (let i = 0; i < 80; i++) {
+    await sleep(250);
+    est = T(q('#kb-au-batch'));
+    if (est.indexOf('篇') >= 0) break;
+  }
+  out.est_text = est.slice(0, 240);
+  out.ai_btn_disabled = !!(q('#kb-au-b-ai') && q('#kb-au-b-ai').disabled);
+  out.ai_btn_absent = !q('#kb-au-b-ai');
+  out.local_btn = !!q('#kb-au-b-local');
+  if (q('#kb-au-b-local')) q('#kb-au-b-local').click();
+  let prog = '', done = false;
+  for (let i = 0; i < 160; i++) {
+    await sleep(250);
+    prog = T(q('#kb-au-batch'));
+    if (/done|stopped/.test(prog)) { done = true; break; }
+  }
+  out.prog_text = prog.slice(0, 200);
+  out.done = done;
+  // 回扫的证据不能只看汇总条上有没有"本地判据"四个字 —— 那句在不回扫时也一直挂着，
+  // 是条自证判据。真正要判的是"进度轮询停下之后，又发过一次 POST /api/ai/audit"。
+  let lastStatus = -1;
+  seen.forEach((u, i) => { if (u.indexOf('/api/ai/batch/status') === 0) lastStatus = i; });
+  out.rescan_posts = seen.slice(lastStatus + 1)
+    .filter(u => u.indexOf('/api/ai/audit POST') === 0).length;
+  await sleep(1500);
+  out.sum_after = T(q('#kb-au-sum'));
+  out.urls = [...new Set(seen.map(u => u.split(' ')[0]))];
+  window.fetch = real;
+  return JSON.stringify(out);
+})()"""
+
+
+AI_BATCH_AI_JS = PRELUDE + r"""
+  const T = e => ((e && e.textContent) || '').replace(/\s+/g, ' ').trim();
+  // 上一趟（纯本地那一批）没跑完就先等它：同一个库只允许一个作业，抢着点会吃 409
+  let idle = false;
+  for (let i = 0; i < 240 && !idle; i++) {
+    const st = await (await fetch('/api/ai/batch/status')).json();
+    idle = !st.job || !st.job.running;
+    if (!idle) await sleep(250);
+  }
+  out.prev_settled = idle;
+  const b = q('#kb-audit-btn'); if (b) b.click();
+  await sleep(1600);
+  const dom = q('#kb-au-domain'); if (dom) dom.click();
+  let est = '';
+  for (let i = 0; i < 80; i++) {
+    await sleep(250);
+    est = T(q('#kb-au-batch'));
+    if (est.indexOf('篇') >= 0) break;
+  }
+  out.est_text = est.slice(0, 240);
+  const ai = q('#kb-au-b-ai');
+  out.ai_btn_enabled = !!(ai && !ai.disabled);
+  if (ai) ai.click();
+  await sleep(1200);
+  out.toast = T(q('#toast'));
+  let prog = '', done = false;
+  for (let i = 0; i < 240; i++) {
+    await sleep(250);
+    prog = T(q('#kb-au-batch'));
+    if (/done|stopped|failed/.test(prog)) { done = true; break; }
+  }
+  out.prog_text = prog.slice(0, 200);
+  out.done = done;
+  return JSON.stringify(out);
+})()"""
+
+
+def probe_ai_batch(base, tmp):
+    print("== 24 批量查漏补缺：估算条 / 只跑本地 / 进度轮询 / 跑完回扫本篇 ==")
+    alpha = tmp / "content" / "ui-r" / "notes" / "alpha.md"
+    body = alpha.read_text(encoding="utf-8")
+    d = run_expr(base + "/doc/ui-r/notes/alpha.md", AI_BATCH_JS)
+    check("批量：fetch 桩真的在记（否则下面那批 URL 断言全是空气）",
+          d.get("spy") is True, d.get("spy"))
+    check("批量：查漏面板上有「扫描整个域」入口，点了真的出估算条",
+          d.get("domain_btn") and "篇" in (d.get("est_text") or ""), _safe(d.get("est_text")))
+    est = d.get("est_text") or ""
+    check("批量：估算条报的是本地扫出来的实数 —— 篇数 / 条数 / 要问几次 / 上限 / 剩余额度",
+          re.search(r"\d+ 篇", est) and "本地判据查出" in est and "还要问 AI" in est
+          and "最多" in est and "本月还剩" in est, _safe(est))
+    check("批量：没配 key 时「按估算开跑」直接不给（比灰着一颗钮更清楚：这条路口现在不存在）",
+          d.get("ai_btn_absent") is True and d.get("ai_btn_disabled") is False, d)
+    check("批量：「只跑本地」不受 key 影响，永远可点", d.get("local_btn") is True, d)
+    check("批量：开跑之后进度条会走完并如实收尾（state=done）",
+          d.get("done") is True and "done" in (d.get("prog_text") or ""),
+          _safe(d.get("prog_text")))
+    check("批量：纯本地那一趟的 AI 调用数是 0",
+          "问 AI 0 次" in (d.get("prog_text") or ""), _safe(d.get("prog_text")))
+    urls = d.get("urls") or []
+    check("批量：整趟只打了 batch 三件套 + 本篇查漏 + 域待办读接口，一次 explain 都没有",
+          any("/api/ai/batch/estimate" in u for u in urls)
+          and any("/api/ai/batch/start" in u for u in urls)
+          and any("/api/ai/batch/status" in u for u in urls)
+          and "/api/ai/audit?path=%40domain%3Aui-r" in urls
+          and not any("explain" in u or "/api/ask" in u for u in urls), urls)
+    check("批量：跑完自动回扫本篇（进度一停就真有一次 POST /api/ai/audit，不是停在进度文案上）",
+          d.get("rescan_posts", 0) >= 1 and "本地判据" in (d.get("sum_after") or ""),
+          {"posts": d.get("rescan_posts"), "sum": _safe(d.get("sum_after"))})
+    check("批量：整趟跑完正文一个字节都没变（不变量 9 ② 的浏览器侧证据）",
+          alpha.read_text(encoding="utf-8") == body, len(body))
+
+    # 带 AI 的那一趟：配一个指向本进程假 provider 的临时配置（只动 .ai-config.json，
+    # 不动语料 —— 语料一多起来别的探针的计数就变了），看按钮出来、跑得完。
+    from test_ai_config import start_provider
+    srv, pbase = start_provider()
+    cfg = tmp / ".ai-config.json"
+    cfg.write_text(json.dumps({"api_key": "sk-ui-batch-K7QF",
+                               "base_url": pbase + "/audit", "allow_local": True,
+                               "timeout_s": 10}), encoding="utf-8")
+    try:
+        d2 = run_expr(base + "/doc/ui-r/notes/alpha.md", AI_BATCH_AI_JS)
+        check("批量：配了 key 之后「按估算开跑」才出现，且估算条改口说已配 key",
+              d2.get("ai_btn_enabled") is True and "已配 key" in (d2.get("est_text") or ""),
+              _safe(d2.get("est_text")))
+        check("批量：带 AI 那一趟也能跑到终态（进度条报的是作业自己的 state，不是前端猜的）",
+              d2.get("done") is True and "done" in (d2.get("prog_text") or ""),
+              {"prog": _safe(d2.get("prog_text")), "toast": _safe(d2.get("toast"))})
+    finally:
+        srv.shutdown()
+        cfg.unlink(missing_ok=True)
+    check("批量：临时配置收走了，语料仍然一字节未变",
+          not cfg.exists() and alpha.read_text(encoding="utf-8") == body, None)
+
+
 # ================================================================ 探针 21：快捷键清单（唯一数据源）
 KEYS_JS = PRELUDE + r"""
   const T = e => ((e && e.textContent) || '').replace(/\s+/g, ' ').trim();
@@ -3706,6 +3848,7 @@ def main() -> int:
         run_probe("aicfg", probe_ai_settings, base, tmp)  # 写临时根的 .ai-config.json（探针收尾自己清掉）
         run_probe("aiask", probe_ai_ask, base, tmp)   # 选词问 AI：写 sidecar 批注 + 新建术语词条
         run_probe("aiaudit", probe_ai_audit, base, tmp)  # 查漏面板：忽略 / 采纳写 sidecar / 恢复
+        run_probe("aibatch", probe_ai_batch, base, tmp)  # 批量：估算条 / 只跑本地 / 进度轮询
         run_probe("keys", probe_keys, base)             # 只读：快捷键两处同源
         run_probe("novelbar", probe_novel_bar, base, tmp)  # 写：章评落旁挂 + 朗读/滚动/下载
         run_probe("stats", probe_stats, base, tmp)  # 写：/api/track 造当月事件后看统计页

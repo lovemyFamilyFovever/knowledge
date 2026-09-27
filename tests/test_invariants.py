@@ -236,7 +236,8 @@ AUDIT_ALLOWED = {
     ("tests/test_ai_config.py", "unlink"): 1,
     # 切片 2（选词问 AI）：两处 unlink 删的都是临时实例根下的 .ai-config.json
     # （探针自己写进去的假配置，跑完必须收掉，否则会污染同根后续探针）。
-    ("tests/test_ui_behavior.py", "unlink"): 2,
+    ("tests/test_ui_behavior.py", "unlink"): 3,   # 切片 4 的批量探针也要收走临时 .ai-config.json
+    ("tests/test_ai_batch.py", "unlink"): 1,      # 批量测试自己造的靶子与临时配置，用完就删
     ("tests/test_known_defects.py", "os_rmdir"): 1,    # 摘 junction 链（不穿透删目标，是 rmtree 前的安全前置）
     ("tests/test_known_defects.py", "rmtree"): 1,      # 临时目录（tempfile.mkdtemp）自清理
     # P3-B JS 性质测试：删的是 tempfile.mkdtemp 起的临时 KB_ROOT（内含自建的 content/ 与
@@ -635,6 +636,16 @@ def test_i10() -> None:
             cl.get("/api/ai/audit?path=ai/topic/A.md")
             cl.post("/api/ai/audit/status", json={"path": "ai/topic/A.md",
                                                   "id": "ffffffffffff", "status": "dismissed"})
+            # 批量三件套（切片 4）：一次扫整个域的端点更要钉死"不许碰正文" ——
+            # 它读的是全盘，写盘的任何一处都只会是灾难。
+            cl.post("/api/ai/batch/estimate", json={"scope": {"domain": "ai"}})
+            cl.post("/api/ai/batch/start", json={"scope": {"domain": "ai"}, "ai": False})
+            for _ in range(200):
+                import time as _t
+                _t.sleep(0.05)
+                if not cl.get("/api/ai/batch/status").get_json()["job"].get("running"):
+                    break
+            cl.post("/api/ai/batch/stop")
             cl.get("/api/ai/usage")
             cl.delete("/api/ai/config")
             after = tree_state()

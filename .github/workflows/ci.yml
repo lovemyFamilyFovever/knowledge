@@ -79,6 +79,9 @@ jobs:
       # 切片 3：单篇查漏补缺（本地判据为主，AI 只补判断），同一个假 provider。
       - name: AI single-doc audit smoke (local checks + AI verdicts; no network)
         run: python tests/test_ai_audit.py
+      # 切片 4：批量查漏补缺（假 provider 可配时延，验"估算零出站 + 长任务不挂在 fetch 上 + 预算帽"）
+      - name: AI batch audit smoke (estimate / async job / budget cap; no network)
+        run: python tests/test_ai_batch.py
       - name: Known-defects regression (empty-sub 500 / resolve-prefix 500)
         run: python tests/test_known_defects.py
       # 彻查 P3-B：浏览器侧书库解析性质测试。脚本自己探测 node/Chrome，

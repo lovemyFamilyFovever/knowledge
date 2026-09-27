@@ -484,6 +484,47 @@ def main() -> int:
               not (root / ".ai-config.json").exists()
               and jget(c.get("/api/ai/config")).get("key_present") is False)
 
+        # ---- 切片 4：批量查漏补缺（估算 / 起作业 / 进度 / 停止）----
+        r = c.post("/api/ai/batch/estimate", json={"scope": {"domain": "ai"}})
+        e = jget(r).get("estimate") or {}
+        check("POST /api/ai/batch/estimate 回 200：上限 >= 放大值，且报清这一批真会跑几篇",
+              r.status_code == 200 and e.get("docs", 0) >= 1
+              and e.get("calls_upper_bound", -1) >= e.get("calls_expected", -2)
+              and e.get("will_scan") == min(e.get("docs"), 500), str(jget(r))[:220])
+        check("POST /api/ai/batch/estimate 没配 key 时明说问了也不会跑",
+              jget(r).get("ai_available") is False, str(jget(r))[:160])
+        for bad, label in [({}, "缺 scope"), ({"scope": {}}, "空 scope"),
+                           ({"scope": {"domain": "没有这个域"}}, "不存在的域")]:
+            rr = c.post("/api/ai/batch/estimate", json=bad)
+            check(f"POST /api/ai/batch/estimate {label} → 4xx 且不泄露绝对路径",
+                  400 <= rr.status_code < 500 and not leaks(rr.get_data(as_text=True), root),
+                  f"status={rr.status_code}")
+        r = c.get("/api/ai/batch/status")
+        check("GET /api/ai/batch/status 空跑也回 200（前端不必先探有没有作业）",
+              r.status_code == 200 and "job" in jget(r), str(jget(r))[:160])
+        r = c.post("/api/ai/batch/start", json={"scope": {"domain": "ai"}, "ai": True})
+        check("POST /api/ai/batch/start 无 key 要求带 AI → 400 并给出 ai=false 这条退路",
+              r.status_code == 400 and jget(r).get("code") == "not_configured"
+              and "ai=false" in (jget(r).get("error") or ""), str(jget(r))[:200])
+        r = c.post("/api/ai/batch/start", json={"scope": {"domain": "ai"}, "ai": False})
+        check("POST /api/ai/batch/start 纯本地批量起得来并立刻回快照",
+              r.status_code == 200 and jget(r).get("job", {}).get("total", 0) >= 1,
+              str(jget(r))[:200])
+        for _ in range(120):
+            s = jget(c.get("/api/ai/batch/status")).get("job") or {}
+            if not s.get("running"):
+                break
+            time.sleep(0.25)
+        check("批量作业自己跑到了终态（不是永远 running）",
+              s.get("state") in ("done", "stopped", "failed") and s.get("done") == s.get("total"),
+              str(s)[:220])
+        check("纯本地批量一篇都没问 AI", s.get("ai_calls") == 0, str(s)[:200])
+        r = c.post("/api/ai/batch/stop")
+        check("POST /api/ai/batch/stop 没作业时说清没有在跑（不假装停掉了什么）",
+              r.status_code == 200 and jget(r).get("stopped") is False, str(jget(r))[:160])
+        check("批量端点全程没往临时根写 key，也没动语料",
+              not (root / ".ai-config.json").exists(), None)
+
         # ---- learn 只读（先 sync 才有卡）----
         r = c.post("/api/learn/sync", json={"force": True})
         check("POST /api/learn/sync ok", r.status_code == 200 and jget(r).get("ok") is True, str(jget(r))[:160])
