@@ -726,6 +726,154 @@ def main() -> int:
                   gr.get("ran") is False and "不出站" in (gr.get("reason") or ""), gr)
             check("H12 整趟零出站：不出站域连候选名都没发出去", CALLS == {}, CALLS)
 
+        # ============================================== I. 批量·与已有语料矛盾（切片 5b）
+        print("\n[I] 批量·与已有语料矛盾")
+        with tempfile.TemporaryDirectory() as td:
+            root = make_root(td)
+            app, c = client_for(root)
+            c.put("/api/ai/config", json={"api_key": KEY, "base_url": base + "/auditpair",
+                                          "allow_local": True, "timeout_s": 20,
+                                          "monthly_budget_calls": 0})
+            CALLS.clear()
+            e_off = c.post("/api/ai/batch/estimate",
+                           json={"scope": {"domain": "baike"}}).get_json()["estimate"]
+            e_on = c.post("/api/ai/batch/estimate", json={"scope": {"domain": "baike"},
+                                                          "conflict": True}).get_json()["estimate"]
+            check("I1 勾上矛盾核对就把每篇上限提到两次：上限与 token 一起翻倍（拦钱包看的是上限）",
+                  e_off["per_doc_calls"] == 1 and e_on["per_doc_calls"] == 2
+                  and e_on["calls_upper_bound"] == 2 * e_off["calls_upper_bound"]
+                  and e_on["tokens_out_est"] == 2 * e_off["tokens_out_est"]
+                  and e_on["docs"] == e_off["docs"],
+                  {"off": e_off["calls_upper_bound"], "on": e_on["calls_upper_bound"]})
+            check("I2 这一步估算照常零出站（多算一次上限也只是本地数字）",
+                  CALLS == {}, CALLS)
+            # 帽子卡在"1×上限"与"2×上限"之间：不勾能开、勾了必须被拦 ——
+            # 这锁的是 start 那一路真的把开关换算进了帽门，而不只是估算条上写着好看。
+            used = c.get("/api/ai/usage").get_json()["month"]["calls"]
+            cap = e_off["calls_upper_bound"] + 1
+            c.put("/api/ai/config", json={"monthly_budget_calls": used + cap})
+            # 先问被拦的那一路：429 不会起作业，所以紧接着还能起第二个
+            r_yes = c.post("/api/ai/batch/start", json={"scope": {"domain": "baike"},
+                                                        "ai": True, "conflict": True})
+            r_no = c.post("/api/ai/batch/start", json={"scope": {"domain": "baike"}, "ai": True})
+            wait_job(c)
+            check("I2b 帽门按 2× 上限拦：同一顶帽子下不勾能开、勾了就被 429 拦住",
+                  r_no.status_code == 200 and r_yes.status_code == 429
+                  and "2" in (r_yes.get_json().get("error") or ""),
+                  {"no": r_no.status_code, "yes": r_yes.status_code,
+                   "cap": cap, "err": (r_yes.get_json() or {}).get("error")})
+            c.put("/api/ai/config", json={"monthly_budget_calls": 0})
+            CALLS.clear()      # 上一趟（I2b 的整域批量）的出站数不能混进这一条对账
+            r = c.post("/api/ai/batch/start", json={"scope": {"paths": ["baike/sub/d0.md"]},
+                                                    "ai": True, "conflict": True})
+            ended, _ = wait_job(c)
+            rows = c.get("/api/ai/audit?path=baike/sub/d0.md").get_json()["proposals"]
+            conf = [p for p in rows if p["kind"] == "conflict"]
+            check("I3 批量按篇配出对照行并落派生库：最多三对，判为矛盾的那对带编号回到行上",
+                  r.status_code == 200 and 1 <= len(conf) <= 3
+                  and any(p.get("ai_terms") == ["与《向量数据库》"] for p in conf),
+                  [(p["title"], p.get("ai_terms")) for p in conf])
+            check("I3b 就叫这个名字的那篇排在最前（它是「在讲同一件事」的最强信号）",
+                  conf and "向量数据库" in conf[0]["title"], conf[:1])
+            check("I4 一篇问两次就记两次：进度条的「问 AI N 次」与真出站数同口径（按篇记会少数一半）",
+                  ended.get("ai_calls") == CALLS.get("audit") and ended.get("ai_calls") >= 2,
+                  {"job": ended.get("ai_calls"), "srv": CALLS})
+            check("I5 配对结论里带着两边各说了什么，不是只有一句「有矛盾」",
+                  conf and "本篇" in conf[0]["evidence"] and conf[0].get("ai_note"), conf[:1])
+            before = (root / "content" / "baike" / "sub" / "d0.md").read_text(encoding="utf-8")
+            check("I6 跑完正文一字节未变（不变量 9 ②）", before == dirty(0), len(before))
+
+        with tempfile.TemporaryDirectory() as td:
+            root = make_root(td)
+            app, c = client_for(root)
+            c.put("/api/ai/config", json={"api_key": KEY, "base_url": base + "/auditpair",
+                                          "allow_local": True, "timeout_s": 20,
+                                          "monthly_budget_calls": 0})
+            CALLS.clear()
+            c.post("/api/ai/batch/start", json={"scope": {"paths": ["baike/sub/d0.md"]},
+                                                "ai": True})
+            ended, _ = wait_job(c)
+            rows = c.get("/api/ai/audit?path=baike/sub/d0.md").get_json()["proposals"]
+            check("I7 不勾矛盾核对：一篇只问一次，也不建配对行（这条路口不由默认值替用户开）",
+                  ended.get("ai_calls") == 1 and not any(p["kind"] == "conflict" for p in rows),
+                  {"ai_calls": ended.get("ai_calls"), "kinds": [p["kind"] for p in rows]})
+
+        with tempfile.TemporaryDirectory() as td:
+            # 帽满有两种形状：开跑前就被拦（D 组已锁），和**跑到一半另一个标签页把额度用光**。
+            # 后者才轮到矛盾这一步表现：它必须让位，而行照旧入库（否则用户看到的是凭空少了几条）。
+            root = make_root(td)
+            app, c = client_for(root)
+            c.put("/api/ai/config", json={"api_key": KEY, "base_url": base + "/auditslow",
+                                          "allow_local": True, "timeout_s": 20,
+                                          "monthly_budget_calls": 0})
+            CALLS.clear()
+            r = c.post("/api/ai/batch/start", json={"scope": {"paths": [
+                "baike/sub/d%d.md" % i for i in range(3)]}, "ai": True, "conflict": True})
+            c.put("/api/ai/config", json={"monthly_budget_calls": 2})
+            ended, _ = wait_job(c)
+            rows = c.get("/api/ai/audit?path=baike/sub/d2.md").get_json()["proposals"]
+            conf = [p for p in rows if p["kind"] == "conflict"]
+            check("I8 中途撞帽：之后的篇不再问 AI，但配对行照旧入库（只是没结论）",
+                  r.status_code == 200 and ended.get("state") == "done"
+                  and CALLS.get("audit", 99) <= 2 and conf
+                  and all(not p.get("ai_terms") for p in conf),
+                  {"CALLS": CALLS, "conf": len(conf), "state": ended.get("state")})
+            check("I9 帽满降级要说清（否则用户看到没结论的配对行会以为是坏了）",
+                  "预算帽" in (ended.get("ai_stopped_reason") or ""),
+                  ended.get("ai_stopped_reason"))
+
+        with tempfile.TemporaryDirectory() as td:
+            root = make_root(td)
+            app, c = client_for(root)
+            c.put("/api/ai/config", json={"api_key": KEY, "base_url": base + "/auditpair",
+                                          "allow_local": True, "timeout_s": 20})
+            CALLS.clear()
+            r = c.post("/api/ai/batch/start", json={"scope": {"domain": "career"},
+                                                    "ai": True, "conflict": True})
+            ended, _ = wait_job(c)
+            rows = c.get("/api/ai/audit?path=career/B.md").get_json()["proposals"]
+            check("I10 不出站域勾了矛盾核对也只出本地配对行：整趟零出站（配对方在放行域也一样不发）",
+                  r.status_code == 200 and CALLS == {}
+                  and any(p["kind"] == "conflict" for p in rows),
+                  {"CALLS": CALLS, "kinds": [p["kind"] for p in rows]})
+
+        with tempfile.TemporaryDirectory() as td:
+            # 批量按篇检索必须复用同一条索引连接：每篇 open_db 一次会撞上
+            # watcher 的写锁（切片 4 实测 37 篇卡 40s，台账 §6 第 71 行）。
+            # 判据不能靠"跑得慢不慢"（时机不可靠），要就地打桩看它拿到的连接是不是同一个。
+            from app import routes_ai
+            root = make_root(td)
+            app, c = client_for(root)
+            c.put("/api/ai/config", json={"api_key": KEY, "base_url": base + "/auditpair",
+                                          "allow_local": True, "timeout_s": 20,
+                                          "monthly_budget_calls": 0})
+            real = routes_ai.fts_search
+            seen_cons = []
+
+            def spy(indexes, q, limit=50, con=None):
+                seen_cons.append((con is not None, id(con)))
+                return real(indexes, q, limit=limit, con=con)
+
+            routes_ai.fts_search = spy
+            try:
+                c.post("/api/ai/batch/start", json={"scope": {"domain": "baike"},
+                                                    "ai": False, "conflict": True})
+                ended, _ = wait_job(c)
+                uniq = {x[1] for x in seen_cons}
+                check("I11 打桩真的在链上（否则下面两条都是空气）", bool(seen_cons), seen_cons[:2])
+                check("I12 批量按篇检索复用的是同一条连接，且没有一篇是自己开库",
+                      all(x[0] for x in seen_cons) and len(uniq) == 1
+                      and ended.get("state") == "done", seen_cons[:4])
+                check("I13 每一篇都查到了（不是只查第一篇就断）",
+                      len(seen_cons) >= ended.get("done", 0)
+                      and ended.get("done") == N_DIRTY + 2, {"calls": len(seen_cons),
+                                                             "done": ended.get("done")})
+            finally:
+                routes_ai.fts_search = real
+            check("I14 桩收干净了（还原后真实检索仍能用）",
+                  routes_ai.fts_search is real
+                  and bool(real(Path(root / "indexes"), "向量数据库", limit=3)), None)
+
         print(f"\n{passed} passed, {failed} failed")
         if FAILS:
             print("FAILED CASES:")

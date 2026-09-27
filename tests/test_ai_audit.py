@@ -20,7 +20,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import _ci  # noqa: E402
 from test_ai_config import CALLS, start_provider  # noqa: E402
 
-from app import ai_audit  # noqa: E402
+from app import ai_audit, ai_qa  # noqa: E402
 from app.app import create_app  # noqa: E402
 
 KEY = "sk-AUDITCANARY-K7QF"
@@ -137,6 +137,13 @@ def make_root(tmp):
     (c / "baike" / "sub" / "fenced.md").write_text(FENCED, encoding="utf-8")
     (c / "baike" / "term" / "向量数据库.md").write_text(TERM, encoding="utf-8")
     (c / "career" / "B.md").write_text(CAREER, encoding="utf-8")
+    # 不出站域里也放一篇" dirty 正文提到了它"的词条：配对必须把对方滤掉
+    # （不变量 9 ① 不看谁发起，只看内容从哪个域来）
+    (c / "小说").mkdir(parents=True)
+    (c / "小说" / "事件循环.md").write_text(
+        '---\ntitle: "事件循环"\nsource: novel\ncollected: 2026-09-01\ntags: [设定]\n'
+        'status: stable\n---\n\n# 事件循环\n\n## 设定\n\n小说里那个不停重复同一天的循环设定，'
+        "用来验证不出站域的摘要连进候选都不配。\n", encoding="utf-8")
     (c / "_meta" / "taxonomy.json").write_text(
         json.dumps(TAXONOMY, ensure_ascii=False), encoding="utf-8")
     return root
@@ -407,9 +414,124 @@ def main() -> int:
             check("D2 不把失败说成成功（ai_enabled 仍为真但原因写清，条数不变）",
                   len(j.get("proposals") or []) == j.get("local_count"), j)
 
+        # ================================= E. 与已有语料矛盾（本地配对 + AI 只判真伪）
+        print("\n[E] 与已有语料矛盾：配对由本地算，AI 只判对不对立")
+        PAIRDOC = ('# 甲\n\n## 检索原理\n\n本库用倒排索引按词定位文档，词表就是主键。\n\n'
+                   '```\n## 围栏里的假标题\n```\n')
+        smap = ai_audit.section_map(PAIRDOC)
+        check("E1 section_map 给的是每节的正文原文，围栏里的 # 不算节",
+              [s["title"] for s in smap] == ["甲", "检索原理"]
+              and smap[1]["text"].startswith("本库用倒排索引")
+              and all("围栏" not in s["title"] for s in smap),
+              [(s["title"], s["text"][:20]) for s in smap])
+        hits = [{"rel": "baike/term/倒排索引.md", "title": "倒排索引",
+                 "text": "倒排索引按词建表，用词直接定位到含它的文档列表，索引体积约为语料的三成。"}]
+        rows = ai_audit.conflict_candidates(PAIRDOC, path="baike/sub/a.md", hits=hits)
+        check("E2 配出对照行：编号形如「与《对方篇名》」、两边原文都进证据、行标 needs_ai",
+              len(rows) == 1 and rows[0]["kind"] == "conflict"
+              and rows[0]["needs_ai"] is True and rows[0]["target"] == "与《倒排索引》"
+              and "本库用倒排索引" in rows[0]["evidence"]
+              and "按词建表" in rows[0]["evidence"], rows)
+        check("E3 对方摘要太短、或本篇没有一节真对得上 → 不建行（宁可少配，不拿废话问 AI）",
+              ai_audit.conflict_candidates(PAIRDOC, path="a.md",
+                                           hits=[dict(hits[0], text="太短")]) == []
+              and ai_audit.conflict_candidates("# 乙\n\n## 口味\n\n咖啡、红茶与威士忌的品鉴记录。\n",
+                                               path="b.md", hits=hits) == [], None)
+        check("E4 自己不算自己的对手（同一篇配自己是纯噪音）",
+              ai_audit.conflict_candidates(PAIRDOC, path="baike/term/倒排索引.md",
+                                           hits=[dict(hits[0], rel="baike/term/倒排索引.md")]) == [], None)
+        ctx = ai_audit.conflict_context(rows)
+        check("E5 配对原文包在语料数据块里（两边都是不可信内容，与问答侧同一套加固口径）",
+              ai_qa.BLOCK_BEGIN in ctx["text"] and ai_qa.BLOCK_END in ctx["text"]
+              and ctx["targets"] == ["与《倒排索引》"] and ctx["chars"] > 0, ctx["chars"])
+        check("E6 一次问完所有配对：配对超过三条时截到三条（不给上下文无限膨胀留口）",
+              len(ai_audit.conflict_context(
+                  [dict(rows[0], target="与《%d》" % i) for i in range(6)])["targets"]) == 3
+              and len(ai_audit.conflict_candidates(
+                  PAIRDOC, path="a.md", hits=[dict(hits[0], rel="x%d.md" % i,
+                                                   title="对手%d" % i) for i in range(6)])) == 3,
+              None)
+        wide = ai_audit.conflict_candidates(PAIRDOC, path="baike/sub/a.md",
+                                            hits=[{"rel": "baike/term/倒排索引.md",
+                                                   "title": "倒排索引", "text": hits[0]["text"]},
+                                                  {"rel": "baike/term/bt.md", "title": "布隆过滤器",
+                                                   "text": "布隆过滤器也按词定位文档，只是改用位数组判存在，可能误判。"}])
+        ctx2 = ai_audit.conflict_context(wide)
+        check("E6b 两对都进同一次上下文：编号一一对得上，两边原文都在数据块里",
+              ctx2["targets"] == ["与《倒排索引》", "与《布隆过滤器》"]
+              and ctx2["text"].count(ai_qa.BLOCK_BEGIN) == 2
+              and "位数组判存在" in ctx2["text"] and "本库用倒排索引" in ctx2["text"],
+              ctx2["targets"])
+        ai_audit.narrow_conflicts(wide, {"confidence": "medium", "terms": [
+            {"term": "与《倒排索引》", "brief": "本篇说词表是主键，那篇说只是索引结构"},
+            {"term": "与《AI 发明的配对》", "brief": "本地没有这一对"}]})
+        by = {r["target"]: r for r in wide}
+        check("E7 narrow_conflicts 只往配好的行上标结论：答复里发明新配对时行数一条不多",
+              len(wide) == 2 and not any("发明" in t for t in by), list(by))
+        check("E8 判为矛盾的对带两边各说了什么；没列进的对标的是「没把它列进」（缺席是推的）",
+              by["与《倒排索引》"]["ai_terms"] == ["与《倒排索引》"]
+              and "词表是主键" in by["与《倒排索引》"]["ai_note"]
+              and by["与《布隆过滤器》"]["ai_terms"] == []
+              and "没把这对列进" in by["与《布隆过滤器》"]["ai_note"]
+              and {r["ai_confidence"] for r in wide} == {"medium"}, list(by.values()))
+        check("E9 答复为空（AI 没跑成）时 narrow_conflicts 一个字都不改",
+              ai_audit.narrow_conflicts(
+                  ai_audit.conflict_candidates(PAIRDOC, path="baike/sub/a.md", hits=hits),
+                  None) == rows, None)
+        pr = ai_audit.ai_prompt("conflict", ctx["text"], "、".join(ctx["targets"]))
+        check("E10 提示词把口径写死：只判事实对立、编号原样照抄、不许发明新配对",
+              "互相矛盾" in pr and "原样照抄配对编号" in pr and "不要发明新配对" in pr
+              and "角度不同" in pr and "与《倒排索引》" in pr, pr[:150])
+
+        with tempfile.TemporaryDirectory() as td:
+            root = make_root(td)
+            app, c = client_for(root)
+            CALLS.clear()
+            r0 = c.post("/api/ai/audit", json={"path": "baike/sub/dirty.md"})
+            check("E11 不勾「查与库内矛盾」时一条配对都不建（读索引这一步由用户点出来，不默认花）",
+                  r0.status_code == 200
+                  and not any(p["kind"] == "conflict" for p in r0.get_json()["proposals"]),
+                  [p["kind"] for p in r0.get_json()["proposals"]])
+            jn = c.post("/api/ai/audit", json={"path": "baike/sub/dirty.md",
+                                               "conflict": True}).get_json()
+            conf_n = [p for p in jn.get("proposals") or [] if p["kind"] == "conflict"]
+            check("E12 没配 key 时勾了也只出本地配对行：行在、结论空、整趟零出站",
+                  bool(conf_n) and all(not p.get("ai_terms") for p in conf_n)
+                  and CALLS == {}, {"rows": len(conf_n), "CALLS": CALLS})
+            c.put("/api/ai/config", json={"api_key": KEY, "base_url": base + "/auditpair",
+                                          "allow_local": True, "timeout_s": 10})
+            r1 = c.post("/api/ai/audit", json={"path": "baike/sub/dirty.md", "conflict": True})
+            j1 = r1.get_json()
+            conf = [p for p in j1.get("proposals") or [] if p["kind"] == "conflict"]
+            check("E13 端点层真能配出对：对方就是正文提到过的那个已有词条",
+                  r1.status_code == 200 and len(conf) >= 1
+                  and "向量数据库" in conf[0]["title"], [p["title"] for p in conf])
+            check("E14 本地条数算上配对行（勾了却不计数 = 汇总条在少报）",
+                  j1.get("local_count") == len(j1.get("proposals") or [])
+                  and j1.get("local_count") > (r0.get_json().get("local_count") or 0),
+                  {"with": j1.get("local_count"), "without": r0.get_json().get("local_count")})
+            check("E15 AI 判完只标结论不加行，配对编号原样回到行上",
+                  any(p.get("ai_terms") == ["与《向量数据库》"] for p in conf)
+                  and len(conf) <= 3, [p.get("ai_terms") for p in conf])
+            check("E16 矛盾判断是一问-all：整篇最多三次（应引未引 / 过时 / 矛盾），不逐对各问",
+                  CALLS.get("audit", 0) <= 3, CALLS)
+            check("E17 不出站域的词条连进候选都不配（对方域是 career/小说时滤掉）",
+                  not any("事件循环" in p["title"] for p in conf), [p["title"] for p in conf])
+            body = (root / "content" / "baike" / "sub" / "dirty.md").read_text(encoding="utf-8")
+            check("E18 整趟跑完正文一字节未变（AI 的建议只进派生库与 sidecar）",
+                  body == DIRTY, len(body))
+            c.put("/api/ai/config", json={"api_key": KEY, "base_url": base + "/auth",
+                                          "allow_local": True, "timeout_s": 10})
+            r2 = c.post("/api/ai/audit", json={"path": "baike/sub/dirty.md", "conflict": True})
+            j2 = r2.get_json()
+            conf2 = [p for p in j2.get("proposals") or [] if p["kind"] == "conflict"]
+            check("E19 AI 判失败时配对行照常入库并说清哪步没跑成（不假装查全）",
+                  r2.status_code == 200 and conf2
+                  and any(not p.get("ai_terms") for p in conf2)
+                  and "矛盾判断没跑成" in (j2.get("ai_reason") or ""), j2.get("ai_reason"))
+
         print(f"\n{passed} passed, {failed} failed")
         if FAILS:
-            print("FAILED CASES:")
             for f in FAILS:
                 print("  -", f)
         return 1 if failed else 0

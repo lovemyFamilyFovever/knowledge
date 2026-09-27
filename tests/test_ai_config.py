@@ -152,6 +152,17 @@ def build_provider():
                       "usage": {"prompt_tokens": 200, "completion_tokens": 25,
                                 "total_tokens": 225}})
 
+    @app.route("/auditpair/chat/completions", methods=["POST"])
+    def audit_pair():
+        """切片 5b 用：判「与已有语料矛盾」的答复 —— 只认列出的配对编号，绝不新增配对。"""
+        counted("audit")
+        ans = {"answer": "两处对同一件事的说法确实对立。", "confidence": "high",
+               "terms": [{"term": "与《向量数据库》", "brief": "本篇说按词建表，那篇说按向量存"}],
+               "sources": []}
+        return reply({"choices": [{"message": {"content": json.dumps(ans, ensure_ascii=False)}}],
+                      "usage": {"prompt_tokens": 260, "completion_tokens": 30,
+                                "total_tokens": 290}})
+
     @app.route("/auditslow/chat/completions", methods=["POST"])
     def audit_slow():
         """切片 4 用：慢一点的 audit 答复，给"作业跑中途改配置"留出确定性窗口。

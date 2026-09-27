@@ -30,7 +30,7 @@ from werkzeug.exceptions import HTTPException
 from app import ai_audit, ai_batch, ai_config, ai_qa
 from app.ai_config import ConfigError
 from app.ai_usage import AUDIT_STATUSES, AiUsageStore
-from app.fts import cjk_clean, open_db
+from app.fts import cjk_clean, open_db, search as fts_search
 from app.store import md_files, parse_frontmatter
 
 ai_bp = Blueprint("ai", __name__)
@@ -368,11 +368,45 @@ def _asset_resolver(doc_path: Path):
     return exists
 
 
+def _conflict_hits(rel: str, terms=None, con=None, limit: int = 3) -> list:
+    """本地取段：检索"本篇在讲的那些已有词条"对应的**别的篇**，配成对照候选。
+
+    这一步零出站，且必须零出站 —— 配对是本地算出来的，AI 只判这两段对不对立
+    （与 should_link 同一套"本地出候选、AI 只收窄"的口径）。
+    检索词优先用 `terms`（= 本篇正文里出现的已有词条名，来自 should_link 的同一份候选集）；
+    没有候选时退回本篇标题 —— 也就是"别人提到我"这个方向。
+    两条硬过滤：① 对方域不出站时它的摘要一个字都不许进候选（配对里带的是原文片段，
+    放行就等于绕过不变量 9 ①）；② 本篇自己不算。
+    """
+    q = " ".join(str(t) for t in (terms or []) if t).strip() or Path(rel).stem
+    try:
+        rows = fts_search(Path(current_app.config["INDEXES"]), q, limit=limit * 6, con=con)
+    except Exception:
+        return []                       # 索引读不到就当没有候选：不猜、不造
+    blocked = ai_config.egress_blocked_domains(current_app.config["CONTENT"])
+    want = {str(t).strip().lower() for t in (terms or []) if str(t).strip()}
+    out, seen = [], set()
+    for r in rows:
+        hrel = str(r.get("path") or "").replace("\\", "/").strip("/")
+        if not hrel or hrel == rel or hrel in seen or not hrel.lower().endswith(".md"):
+            continue
+        if hrel.split("/", 1)[0] in blocked:
+            continue
+        seen.add(hrel)
+        title = str(r.get("title") or Path(hrel).stem).strip()
+        out.append({"rel": hrel, "title": title, "text": str(r.get("snippet") or ""),
+                    # 就叫这个名字的那篇最可能是"在讲同一件事"，排在前面
+                    "named": title.lower() in want})
+    out.sort(key=lambda h: (not h["named"], h["rel"]))
+    return out[:limit]
+
+
 @ai_bp.post("/api/ai/audit")
 def api_ai_audit():
     """单篇查漏补缺：本地判据必跑，AI 判断按闸门与 key 情况追加。"""
     data = request.get_json(force=True, silent=True) or {}
     want_ai = bool(data.get("ai", True))
+    want_conflict = bool(data.get("conflict", False))
     try:
         res = _resolve_doc(str(data.get("path") or ""))
         if not res["exists"]:
@@ -386,6 +420,13 @@ def api_ai_audit():
     proposals = ai_audit.local_checks(
         doc["md"], path=doc["rel"], fm=doc["fm"], known_titles=_known_titles(),
         dead_links=_dead_links(doc["rel"]), asset_exists=_asset_resolver(doc["path"]))
+    if want_conflict:
+        # 勾了「查与库内矛盾」才做本地配对：它要读索引，默认不替用户花这一步。
+        # 行一律 needs_ai —— 配对是本地算的，是不是真矛盾只有 AI 能判。
+        terms = next((p.get("cands") or [] for p in proposals
+                      if p["kind"] == "should_link"), [])
+        proposals.extend(ai_audit.conflict_candidates(
+            doc["md"], path=doc["rel"], hits=_conflict_hits(doc["rel"], terms)))
     # local_count 必须在 AI 之前取：它的口径是"本地判据查出几条"。
     # 放在后面量就等于把 AI 的行数也算进本地，C3 那条"AI 不许造条目"就永远判不出来了。
     local_count = len(proposals)
@@ -447,6 +488,18 @@ def _audit_with_ai(doc: dict, proposals: list):
             reasons.append("过时风险判断没跑成")
         else:
             ai_audit.merge_ai(proposals, got, "possibly_outdated", doc["rel"])
+    conf = [p for p in proposals if p["kind"] == "conflict"]
+    if conf:
+        # 一次问完所有配对（不逐对各问）：AI 只在这几对里挑哪些真矛盾，不许新增配对
+        ctx = ai_audit.conflict_context(conf)
+        asked += 1
+        sent += int(ctx["chars"])
+        got = _audit_ask(ctx, ai_audit.ai_prompt("conflict", ctx["text"],
+                                                "、".join(ctx["targets"])), c)
+        if got is None:
+            reasons.append("与已有语料的矛盾判断没跑成")
+        else:
+            ai_audit.narrow_conflicts(conf, got)
     return (True if asked else False), ("；".join(reasons) or "AI 判断已并入"), sent
 
 
@@ -586,13 +639,14 @@ def _batch_rows(entries: list) -> tuple[list, dict | None]:
                   "method": "等距抽样"}
 
 
-def _batch_estimate_of(entries: list) -> tuple:
+def _batch_estimate_of(entries: list, per_doc_calls: int = 1) -> tuple:
     rows, sample = _batch_rows(entries)
     c = _cfg()
     b = _budget_state()
     est = ai_batch.estimate(rows, budget_left=b["left"], sample=sample,
                             price_in_per_1k=c["price_in_per_1k"],
-                            price_out_per_1k=c["price_out_per_1k"])
+                            price_out_per_1k=c["price_out_per_1k"],
+                            per_doc_calls=per_doc_calls)
     return est, rows, b
 
 
@@ -604,13 +658,15 @@ def api_ai_batch_estimate():
     本地判据本身可能就是几十秒的长任务，估算不该把用户挂在那儿等它。
     """
     data = request.get_json(force=True, silent=True) or {}
+    want_conflict = bool(data.get("conflict", False))
     try:
         entries = _batch_entries(data.get("scope") or {})
     except ValueError as e:
         return jsonify({"ok": False, "error": str(e)[:200]}), 400
     if not entries:
         return jsonify({"ok": False, "error": "这个范围里没有可扫的 Markdown"}), 400
-    est, rows, b = _batch_estimate_of(entries)
+    # 开了矛盾核对 = 每篇最多多问一次；上限必须按 2 算，不然帽门就是形同虚设
+    est, rows, b = _batch_estimate_of(entries, 2 if want_conflict else 1)
     if not rows:
         return jsonify({"ok": False, "error": "范围内没有可读的文档"}), 400
     top = sorted(rows, key=lambda r: -r["count"])[:8]
@@ -629,6 +685,7 @@ def api_ai_batch_start():
     """
     data = request.get_json(force=True, silent=True) or {}
     want_ai = bool(data.get("ai", True))
+    want_conflict = bool(data.get("conflict", False))
     scope = data.get("scope") or {}
     try:
         entries = _batch_entries(scope)
@@ -637,7 +694,8 @@ def api_ai_batch_start():
     if not entries:
         return jsonify({"ok": False, "error": "这个范围里没有可扫的 Markdown"}), 400
 
-    est, _rows, b = _batch_estimate_of(entries)
+    pdc = 2 if want_conflict else 1
+    est, _rows, b = _batch_estimate_of(entries, pdc)
     if want_ai and est["over_budget"]:
         return jsonify({"ok": False, "code": "over_budget",
                         "error": f"这一批最坏要问 {est['calls_upper_bound']} 次，"
@@ -661,6 +719,15 @@ def api_ai_batch_start():
         only = {e["rel"].split("/", 1)[0] for e in entries}
         dom = only.pop() if len(only) == 1 else ""
     blocked = bool(dom) and _scope_blocked(dom)
+    # 「查与库内矛盾」要按篇查 FTS。整批 500 篇各开一次连接 = 撞上 watcher 的写锁
+    # （切片 4 就因为按篇开 index.db 卡过 40s，见台账 §6 第 71 行），
+    # 所以这里懒起一条连接给整批复用，收尾时关掉。
+    fts_box = {}
+
+    def _fts_con():
+        if "c" not in fts_box:
+            fts_box["c"] = open_db(Path(app_obj.config["INDEXES"]))
+        return fts_box["c"]
 
     def per_doc(job, it):
         # 每一篇都在 worker 线程里跑，所以整段都要自己把 app context 推进去；
@@ -670,9 +737,9 @@ def api_ai_batch_start():
             try:
                 md = it["p"].read_text(encoding="utf-8", errors="replace")
             except OSError as e:
-                return 0, False, f"读取失败：{type(e).__name__}"
+                return 0, 0, f"读取失败：{type(e).__name__}"
             if len(md) > ai_batch.MAX_DOC_BYTES:
-                return 0, False, "文档过大（>400KB），这一篇跳过"
+                return 0, 0, "文档过大（>400KB），这一篇跳过"
             for t in ai_audit.wikilinks(md):
                 refs.setdefault(t, []).append(it["rel"])
             fm, _ = parse_frontmatter(md)
@@ -681,7 +748,13 @@ def api_ai_batch_start():
                                           known_titles=known,
                                           dead_links=dead_map.get(it["rel"], []),
                                           asset_exists=_asset_resolver(it["p"]))
-            asked = False
+            if want_conflict:
+                terms = next((p.get("cands") or [] for p in props
+                              if p["kind"] == "should_link"), [])
+                props.extend(ai_audit.conflict_candidates(
+                    md, path=it["rel"],
+                    hits=_conflict_hits(it["rel"], terms, con=_fts_con())))
+            asked = 0
             if want_ai and not it["blocked"] and ai_batch.needs_ai(props):
                 if _budget_state()["exceeded"]:
                     job.note_ai_blocked("本月调用数已达预算帽，之后的篇只跑本地判据")
@@ -694,9 +767,19 @@ def api_ai_batch_start():
                         got = _audit_ask(ctx, ai_audit.ai_prompt("should_link", ctx["text"],
                                                                  cand["evidence"]), c)
                         if got is None:
-                            return len(props), False, "AI 判断没跑成（本地结果照常入库）"
+                            return len(props), asked, "AI 判断没跑成（本地结果照常入库）"
                         ai_audit.merge_ai(props, got, "should_link", it["rel"])
-                        asked = True
+                        asked += 1
+                    conf = [p for p in props if p["kind"] == "conflict"]
+                    if conf:
+                        # 一篇只问一次：所有配对进同一份上下文，AI 在里面挑哪些真矛盾
+                        ctx = ai_audit.conflict_context(conf)
+                        got = _audit_ask(ctx, ai_audit.ai_prompt("conflict", ctx["text"],
+                                                                 "、".join(ctx["targets"])), c)
+                        if got is None:
+                            return len(props), asked, "矛盾判断没跑成（本地配对照常入库）"
+                        ai_audit.narrow_conflicts(conf, got)
+                        asked += 1
             st = _qa_store()
             if st is not None:
                 st.audit_upsert(it["rel"], props)
@@ -714,6 +797,14 @@ def api_ai_batch_start():
         """
         if not dom:
             return
+        if fts_box.get("c") is not None:
+            # 这条连接是在 worker 线程里起的，也只能在这个线程里关（sqlite3 默认同线程校验）。
+            # 作业被中途 stop 时 finalize 不跑，交给 GC 收 —— 它只是读索引的派生缓存句柄。
+            try:
+                fts_box["c"].close()
+            except Exception:
+                pass
+            fts_box["c"] = None
         with app_obj.app_context():
             scope_key = ai_audit.domain_scope(dom)
             gaps = ai_audit.coverage_gaps(refs, known, scope_key)

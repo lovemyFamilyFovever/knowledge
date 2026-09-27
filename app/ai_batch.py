@@ -39,7 +39,8 @@ def needs_ai(proposals: list) -> bool:
 
 
 def estimate(items: list, *, budget_left, price_in_per_1k: float = 0.0,
-             price_out_per_1k: float = 0.0, sample: dict | None = None) -> dict:
+             price_out_per_1k: float = 0.0, sample: dict | None = None,
+             per_doc_calls: int = 1) -> dict:
     """把逐篇扫出来的结果汇总成一份**开跑前**的估算。
 
     items: [{"path", "bytes", "count", "need_ai"}] —— 由调用方跑本地判据得到（零出站）。
@@ -47,7 +48,10 @@ def estimate(items: list, *, budget_left, price_in_per_1k: float = 0.0,
     sample: {"from": 总篇数, "measured": 实扫篇数} —— 大范围的本地判据要读全盘，
             那种规模下只抽样，报数按抽样放大，并如实标 sampled。
             **放大出来的数用来给用户看花费；拦钱包的判据用不上它**（见 calls_upper_bound）。
+    per_doc_calls: 一篇**最多**问几次（默认 1 = 只判「应引未引」；开了"查与库内矛盾"就是 2）。
+            期望值只算本地能预知的那一次，上限按每篇都问满算 —— 拦钱包看的是上限。
     """
+    pdc = max(1, int(per_doc_calls or 1))
     docs = len(items)
     measured = docs
     scale = 1
@@ -65,10 +69,10 @@ def estimate(items: list, *, budget_left, price_in_per_1k: float = 0.0,
     # 精确扫过时 calls == 上限；抽样时 calls 是放大值，可能偏低 ——
     # 所以过不过帽看**上限**（每篇都可能问一次），花费看放大值（给人看的预算感）。
     calls = grow(len(need)) if scale == 1 else min(docs, grow(len(need)))
-    upper = docs if scale != 1 else calls
+    upper = docs * pdc if scale != 1 else calls * pdc
     tokens_in = int(chars * TOKENS_PER_CHAR * (scale if sample else 1)) \
-        + calls * PROMPT_OVERHEAD_TOKENS
-    tokens_out = calls * EST_OUT_TOKENS
+        + calls * pdc * PROMPT_OVERHEAD_TOKENS
+    tokens_out = calls * pdc * EST_OUT_TOKENS
     return {
         "docs": docs,
         "docs_with_findings": grow(len([it for it in items if it.get("count")])),
@@ -88,7 +92,7 @@ def estimate(items: list, *, budget_left, price_in_per_1k: float = 0.0,
         # 一次批量真正会扫的篇数（上限是 MAX_DOCS）：估算报的是"整个范围多少篇"，
         # 而作业只会跑前 MAX_DOCS 篇 —— 两个数都摆出来，别让人以为 2000 篇全跑了。
         "will_scan": min(docs, MAX_DOCS),
-        "per_doc_calls": 1,
+        "per_doc_calls": pdc,
     }
 
 
@@ -130,14 +134,20 @@ class BatchJob:
             self.gap_review = {"ran": not reason, "picked": int(picked),
                                "total": int(total), "reason": reason}
 
-    def tick(self, path: str, count: int, asked_ai: bool, error: str = ""):
+    def tick(self, path: str, count: int, asked_ai, error: str = ""):
+        """记一篇的账。`asked_ai` 是**这一篇问了几次**（bool 也收：True==1，向后兼容）。
+
+        为什么不是布尔：一篇最多可能问两次（应引未引 + 与库内矛盾），
+        进度条上的"问 AI N 次"必须与账本 `ai_calls` 同口径，按篇记就会少数一半。
+        """
+        n_ai = int(bool(asked_ai)) if isinstance(asked_ai, bool) else int(asked_ai or 0)
         with self._lock:
             self.done += 1
             self.current = path
             self.findings += int(count)
-            if asked_ai:
-                self.ai_calls += 1
-            rec = {"path": path, "count": int(count), "ai": bool(asked_ai)}
+            if n_ai:
+                self.ai_calls += n_ai
+            rec = {"path": path, "count": int(count), "ai": n_ai}
             if error:
                 rec["error"] = error[:200]
                 self.errors.append(f"{path}: {error[:160]}")
@@ -202,7 +212,7 @@ class BatchRunner:
             return self._job
 
     def start(self, items: list, per_doc, scope: dict, finalizer=None) -> BatchJob:
-        """启动作业。per_doc(job, item) 负责一篇，返回 (发现条数, 是否问了 AI, 错误)。
+        """启动作业。per_doc(job, item) 负责一篇，返回 (发现条数, 这一篇问了几次 AI, 错误)。
 
         finalizer(job) 在所有篇跑完**之后、收尾之前**于同一线程里执行 —— 给"要看完全部
         篇章才能算的那一步"（域级覆盖空白）用的。它坏了只记一条错，不把整批的结果带走。

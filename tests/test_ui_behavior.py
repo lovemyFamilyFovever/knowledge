@@ -2896,6 +2896,109 @@ def probe_ai_audit(base, tmp):
           "不会带着假结论出现）", d2.get("ai_real") == 0, d2)
 
 
+# ================================================================ 探针 23b：查与库内矛盾开关
+AI_AUDIT_CONFLICT_JS = PRELUDE + r"""
+  const T = e => ((e && e.textContent) || '').replace(/\s+/g, ' ').trim();
+  const seen = [];
+  const real = window.fetch;
+  const want = s => String(s).replace(/\s+/g, '').indexOf('"conflict":true') >= 0;
+  window.fetch = function (u, o) {
+    if (String(u).indexOf('/api/ai/audit') === 0 && o && o.method === 'POST') {
+      seen.push(String((o && o.body) || ''));
+    }
+    return real.apply(this, arguments);
+  };
+  out.spy = (window.fetch !== real);
+  const b = q('#kb-audit-btn'); if (b) b.click();
+  await sleep(1800);
+  const box = q('#kb-au-conf');
+  out.box_present = !!box;
+  if (box) { box.checked = true; box.dispatchEvent(new Event('change', {bubbles: true})); }
+  for (let i = 0; i < 80 && !seen.some(want); i++) await sleep(200);
+  out.on_seen = seen.some(want);
+  await sleep(1500);
+  const titles = () => [...document.querySelectorAll('#kb-au-list .kb-au-item')]
+    .map(e => T(e.querySelector('.kb-au-h b'))).filter(t => t.indexOf('讲冲突') >= 0);
+  out.rows_on = titles();
+  out.muted_on = [...document.querySelectorAll('#kb-au-list .kb-au-ai.muted')].map(e => T(e));
+  out.ai_all = [...document.querySelectorAll('#kb-au-list .kb-au-ai')].map(e => T(e));
+  // 头部那一行现在多了一个开关：宽度是固定的 520px 面板，重叠/溢出这种"稳定地错"
+  // 像素基线抓不到（矩阵里根本没有这一屏），只能就地量矩形。
+  const head = document.querySelector('#kb-audit-panel .kb-ai-ch');
+  const lab = q('#kb-au-conf'), rs = q('#kb-au-rescan'), xx = q('#kb-au-x');
+  if (head && lab && rs && xx) {
+    const H = head.getBoundingClientRect(), L = lab.getBoundingClientRect(),
+          R = rs.getBoundingClientRect(), X = xx.getBoundingClientRect();
+    out.head_fit = L.width > 0 && R.width > 0 && X.width > 0
+      && L.right <= R.left + 0.5 && R.right <= X.left + 0.5
+      && L.left >= H.left - 0.5 && X.right <= H.right + 0.5;
+    out.head_rects = [H, L, R, X].map(r => [Math.round(r.left), Math.round(r.right)]);
+  }
+  if (box) { box.checked = false; box.dispatchEvent(new Event('change', {bubbles: true})); }
+  for (let i = 0; i < 80; i++) {
+    await sleep(200);
+    const last = seen[seen.length - 1] || '';
+    if (seen.length >= 2 && last.indexOf('false') >= 0) break;
+  }
+  out.off_body = seen[seen.length - 1] || '';
+  await sleep(1500);
+  out.rows_off = titles();
+  window.fetch = real;
+  return JSON.stringify(out);
+})()"""
+
+
+PAIR_MD = ('---\ntitle: 矛盾靶子\ncollected: 2026-03-01\n---\n\n# 矛盾靶子\n\n'
+           "## 定义\n\n向量数据库 这一条在本库里已经有词条，可这一篇说的是另一套原理；\n"
+           "倒排索引 那条也在讲同一件事，但这一篇只说它慢，没说它错。\n")
+
+
+def probe_ai_conflict(base, tmp):
+    print("== 23b 查与库内矛盾：开关真的改请求体，配对行跟着开关生灭 ==")
+    pairdoc = tmp / "content" / "ui-r" / "conflict" / "pair靶子.md"
+    pairdoc.parent.mkdir(parents=True, exist_ok=True)
+    pairdoc.write_text(PAIR_MD, encoding="utf-8")
+    d = run_expr(base + "/doc/ui-r/conflict/" + quote("pair靶子.md"), AI_AUDIT_CONFLICT_JS)
+    check("矛盾开关：fetch 桩真的在记请求体（否则下面几条全是空气）",
+          d.get("spy") is True, d.get("spy"))
+    check("矛盾开关：面板上有这个开关，勾上之后发出去的请求体真的带 conflict:true",
+          d.get("box_present") is True and d.get("on_seen") is True,
+          {"box": d.get("box_present"), "seen": d.get("on_seen")})
+    check("矛盾开关：勾上之后本地配出对照行（对方就是正文提到的那个已有词条）",
+          len(d.get("rows_on") or []) >= 1 and "向量数据库" in str(d.get("rows_on")),
+          d.get("rows_on"))
+    check("矛盾开关：没配 key 时配对行标的是「要 AI 判断，本次没跑」，不是凭空少一条",
+          any("要 AI 判断" in x for x in (d.get("muted_on") or [])), d.get("muted_on"))
+    check("矛盾开关：面板头部那一行不重叠也不溢出（520px 定宽面板里多塞一个开关，量矩形）",
+          d.get("head_fit") is True, d.get("head_rects"))
+    check("矛盾开关：取消勾选再扫一次，配对行跟着消失（行由本次请求决定，不是越勾越多）",
+          d.get("off_body", "").find("false") >= 0 and not (d.get("rows_off") or []),
+          {"body": _safe(d.get("off_body")), "rows": d.get("rows_off")})
+
+    # 第二趟：配上本进程假 provider，判为矛盾的那一行要带上编号与"两边各说了什么"
+    from test_ai_config import start_provider
+    srv2, pbase2 = start_provider()
+    cfg2 = tmp / ".ai-config.json"
+    cfg2.write_text(json.dumps({"api_key": "sk-ui-conf-P9XM",
+                                "base_url": pbase2 + "/auditpair", "allow_local": True,
+                                "timeout_s": 10}), encoding="utf-8")
+    try:
+        d2 = run_expr(base + "/doc/ui-r/conflict/" + quote("pair靶子.md"), AI_AUDIT_CONFLICT_JS)
+        check("矛盾判定：配了 key 之后判为矛盾的那行写「AI 判为互相矛盾」并带回配对编号与两边说法",
+              any("AI 判为互相矛盾" in x and "向量数据库" in x for x in (d2.get("ai_all") or [])),
+              d2.get("ai_all"))
+        check("矛盾判定：没被判为矛盾的那对也要说话（缺席结论同样是结论，不许只留一行空白）",
+              len(d2.get("rows_on") or []) >= 2
+              and any("没把这对列进" in x for x in (d2.get("ai_all") or [])),
+              {"rows": d2.get("rows_on"), "ai": d2.get("ai_all")})
+    finally:
+        srv2.shutdown()
+        cfg2.unlink(missing_ok=True)
+        pairdoc.unlink(missing_ok=True)
+    check("矛盾判定：临时配置与靶子都收走了，正式语料一字节未变",
+          not cfg2.exists() and not pairdoc.exists(), None)
+
+
 # ================================================================ 探针 24：批量查漏补缺（切片 4）
 AI_BATCH_JS = PRELUDE + r"""
   const T = e => ((e && e.textContent) || '').replace(/\s+/g, ' ').trim();
@@ -2957,8 +3060,23 @@ AI_BATCH_AI_JS = PRELUDE + r"""
     if (!idle) await sleep(250);
   }
   out.prev_settled = idle;
+  // 开跑请求体也要记：开关是否真的一路带到批量，看的是 start 发了什么（配对行在
+  // 本篇探针里已经断过，这里不重复要画面）
+  const bodies = [];
+  const real = window.fetch;
+  window.fetch = function (u, o) {
+    if (o && o.method === "POST" && String(u).indexOf("/api/ai/batch/start") === 0) {
+      bodies.push(String(o.body || ""));
+    }
+    return real.apply(this, arguments);
+  };
   const b = q('#kb-audit-btn'); if (b) b.click();
   await sleep(1600);
+  // 勾上「查与库内矛盾」再估算：开关必须同时改变估算（每篇上限两次）与开跑的请求体
+  const cf = q('#kb-au-conf');
+  out.conflict_box = !!cf;
+  if (cf) { cf.checked = true; cf.dispatchEvent(new Event('change', {bubbles: true})); }
+  await sleep(2000);
   const dom = q('#kb-au-domain'); if (dom) dom.click();
   let est = '';
   for (let i = 0; i < 80; i++) {
@@ -2987,6 +3105,8 @@ AI_BATCH_AI_JS = PRELUDE + r"""
   out.gap_head = T(q('#kb-au-gaps')).slice(0, 120);
   out.gap_items = document.querySelectorAll('#kb-au-gaps .kb-au-item').length;
   out.gap_ai = [...document.querySelectorAll('#kb-au-gaps .kb-au-ai')].map(e => T(e));
+  out.start_bodies = bodies.map(s => s.slice(0, 120));
+  window.fetch = real;
   return JSON.stringify(out);
 })()"""
 
@@ -3070,6 +3190,13 @@ def probe_ai_batch(base, tmp):
               and any("AI 复核认为值得补" in x for x in (d2.get("gap_ai") or [])),
               {"head": _safe(d2.get("gap_head")), "items": d2.get("gap_items"),
                "ai": d2.get("gap_ai")})
+        check("批量：勾了「查与库内矛盾」之后估算改口 —— 每篇上限按两次报，并点名这个开关",
+              d2.get("conflict_box") is True and "已含" in (d2.get("est_text") or "")
+              and "问2次" in (d2.get("est_text") or "").replace(" ", ""),
+              _safe(d2.get("est_text")))
+        check("批量：勾了开关之后开跑请求体真的带 conflict:true（开关一路带到批量，不是只改估算条）",
+              any('"conflict":true' in (b or "").replace(" ", "")
+                  for b in (d2.get("start_bodies") or [])), d2.get("start_bodies"))
         # 第三条腿：一个确实没有空白的域（articles 那三篇互不引用）—— 复核跑过了、
         # 候选是 0 条，这时候硬刷一句"0 条里挑中 0 条"是噪声，不该出现
         # （与上面那条"有候选却没跑就必须报"成对）。
@@ -3900,6 +4027,7 @@ def main() -> int:
         run_probe("aicfg", probe_ai_settings, base, tmp)  # 写临时根的 .ai-config.json（探针收尾自己清掉）
         run_probe("aiask", probe_ai_ask, base, tmp)   # 选词问 AI：写 sidecar 批注 + 新建术语词条
         run_probe("aiaudit", probe_ai_audit, base, tmp)  # 查漏面板：忽略 / 采纳写 sidecar / 恢复
+        run_probe("aiconflict", probe_ai_conflict, base, tmp)  # 查与库内矛盾：开关改请求体 + 配对行生灭
         run_probe("aibatch", probe_ai_batch, base, tmp)  # 批量：估算条 / 只跑本地 / 进度轮询
         run_probe("keys", probe_keys, base)             # 只读：快捷键两处同源
         run_probe("novelbar", probe_novel_bar, base, tmp)  # 写：章评落旁挂 + 朗读/滚动/下载

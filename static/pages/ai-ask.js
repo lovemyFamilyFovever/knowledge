@@ -478,6 +478,8 @@
     el.hidden = true;
     el.innerHTML =
       '<div class="kb-ai-ch"><b>本篇查漏补缺</b>' +
+      '<label class="kb-au-conf" title="要读一遍全文索引给本篇配对照对手，每篇最多多问一次">' +
+      '<input type="checkbox" id="kb-au-conf">查与库内矛盾</label>' +
       '<button type="button" class="kb-ai-mini ghost" id="kb-au-rescan">重新扫描</button>' +
       '<button type="button" class="kb-ai-mini ghost" id="kb-au-domain">扫描整个域</button>' +
       '<button type="button" class="kb-ai-x" id="kb-au-x" aria-label="关闭">✕</button></div>' +
@@ -490,6 +492,9 @@
     document.body.appendChild(el);
     $("kb-au-x").addEventListener("click", function () { el.hidden = true; });
     $("kb-au-rescan").addEventListener("click", function () { audit(true); });
+    // 勾与不勾改变的是"要不要读索引配对 + 每篇多问一次"，所以一变更就重扫：
+    // 停在旧结果上的开关等于没开关（面板上那些行必须跟着这个开关动）。
+    $("kb-au-conf").addEventListener("change", function () { audit(true); });
     $("kb-au-domain").addEventListener("click", batchEstimate);
     function actHandler(scope) {
       return function (e) {
@@ -507,6 +512,11 @@
     return el;
   }
 
+  function conflictOn() {
+    var box = $("kb-au-conf");
+    return !!(box && box.checked);
+  }
+
   function audit(force) {
     var d = doc();
     if (!d || !d.rel) { toast("这一页没有可扫描的文档"); return; }
@@ -518,7 +528,7 @@
     panel.style.top = "86px";
     var sum = $("kb-au-sum");
     if (sum) sum.textContent = (force ? "重新扫描中…" : "扫描中…");
-    post("/api/ai/audit", { path: d.rel }).then(function (j) {
+    post("/api/ai/audit", { path: d.rel, conflict: conflictOn() }).then(function (j) {
       if (!j || j.ok !== true) {
         if (sum) sum.textContent = "扫描失败：" + ((j && j.error) || "未知错误");
         $("kb-au-list").innerHTML = "";
@@ -585,7 +595,9 @@
     var p = e.sampled ? "约 " : "";
     return e.docs + " 篇 · 本地判据" + (e.sampled ? "抽样推出" : "查出") + " " +
       p + e.findings + " 条 · 还要问 AI " + p + e.calls_expected + " 次" +
-      "（每篇都可能问一次，最多 " + e.calls_upper_bound + " 次）· " +
+      "（每篇都可能问" + (e.per_doc_calls > 1 ? e.per_doc_calls : "") + "次，最多 " +
+      e.calls_upper_bound + " 次" +
+      (e.per_doc_calls > 1 ? " · 已含「查与库内矛盾」" : "") + "）· " +
       (avail ? "已配 key" : "没配 key，问了也不会跑") + " · " +
       "预计 ≤ " + p + (e.tokens_in_est + e.tokens_out_est) + " tokens，" + money + " · " + left +
       (e.truncated ? " · 注：范围超过 " + e.will_scan + " 篇，这一批只跑前 " + e.will_scan + " 篇" : "");
@@ -597,7 +609,8 @@
     if (!d || !d.domain) { toast("这一页没有可扫描的域"); return; }
     box.hidden = false;
     box.innerHTML = '<div class="kb-au-est">正在估算…（本地扫一遍，不出网、不计费）</div>';
-    post("/api/ai/batch/estimate", { scope: { domain: d.domain } }).then(function (j) {
+    post("/api/ai/batch/estimate", { scope: { domain: d.domain },
+                                     conflict: conflictOn() }).then(function (j) {
       if (!j || j.ok !== true) {
         box.innerHTML = '<div class="kb-au-est bad">估算失败：' +
           esc((j && j.error) || "未知错误") + "</div>";
@@ -638,7 +651,8 @@
   }
 
   function batchStart(withAi, domain) {
-    post("/api/ai/batch/start", { scope: { domain: domain }, ai: withAi }).then(function (j) {
+    post("/api/ai/batch/start", { scope: { domain: domain }, ai: withAi,
+                                  conflict: conflictOn() }).then(function (j) {
       if (!j || j.ok !== true) {
         toast((j && j.error) || "批量没开起来");
         if (j && j.code === "over_budget") batchEstimate();
@@ -698,6 +712,21 @@
     });
   }
 
+  function aiLine(p) {
+    if (p.ai_terms && p.ai_terms.length) {
+      var lead = p.kind === "conflict" ? "AI 判为互相矛盾：" : "AI 认为值得做：";
+      return '<div class="kb-au-ai">' + lead + "<b>" + esc(p.ai_terms.join("、")) + "</b>" +
+        (p.ai_note ? "<span>" + esc(p.ai_note) + "</span>" : "") + "</div>";
+    }
+    // 判过而判"不是"也是一条结论，必须显示：只按 needs_ai 兜底会把"AI 看过说没有"
+    // 说成"AI 没看"，那是把答案吃掉了（覆盖空白的缺席判断同理）。
+    if (p.ai_note) return '<div class="kb-au-ai muted">' + esc(p.ai_note) + "</div>";
+    if (p.needs_ai) {
+      return '<div class="kb-au-ai muted">这条要 AI 判断，本次没跑（见上方原因）</div>';
+    }
+    return "";
+  }
+
   function renderAudit(j) {
     var sum = $("kb-au-sum"), list = $("kb-au-list");
     var ps = j.proposals || [];
@@ -711,10 +740,7 @@
       return;
     }
     list.innerHTML = ps.map(function (p) {
-      var ai = (p.ai_terms && p.ai_terms.length)
-        ? '<div class="kb-au-ai">AI 认为值得做：<b>' + esc(p.ai_terms.join("、")) + "</b>" +
-          (p.ai_note ? "<span>" + esc(p.ai_note) + "</span>" : "") + "</div>"
-        : (p.needs_ai ? '<div class="kb-au-ai muted">这条要 AI 判断，本次没跑（见上方原因）</div>' : "");
+      var ai = aiLine(p);
       return '<div class="kb-au-item" data-id="' + esc(p.id) + '" data-title="' + esc(p.title) +
         '" data-sug="' + esc(p.suggestion) + '" data-status="' + esc(p.status || "pending") + '">' +
         '<div class="kb-au-h"><span class="kb-au-sev ' + esc(p.severity) + '">' +

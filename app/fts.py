@@ -196,11 +196,17 @@ def _clean_snippet(s: str) -> str:
     return s.strip()
 
 
-def search(indexes: Path, q: str, limit: int = 50) -> list[dict]:
+def search(indexes: Path, q: str, limit: int = 50, con=None) -> list[dict]:
+    """FTS 检索。`con` 传入现成连接时**不自行开关库** —— 批量按篇检索要复用一条连接，
+    每篇 `open_db` 一次会撞上 watcher 的重建写锁（台账 §6 第 71 行实测卡过 40s）。
+    连接的所有权仍归调用方，本函数绝不 close。
+    """
     if not re.findall(r"\w+", q):
         return []
     match = build_match(q)
-    con = open_db(indexes)
+    own = con is None
+    if own:
+        con = open_db(indexes)
     try:
         rows = con.execute(
             "SELECT path, title, snippet(docs, 3, '<mark>', '</mark>', 12, 24) "
@@ -218,7 +224,8 @@ def search(indexes: Path, q: str, limit: int = 50) -> list[dict]:
                         "hit_in_snippet": max(0, hit_in_snippet)})
         return out
     finally:
-        con.close()
+        if own:
+            con.close()
 
 
 def upsert_doc_in_index(indexes: Path, rel_posix: str, p: Path, body: str) -> None:

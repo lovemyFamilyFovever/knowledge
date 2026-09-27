@@ -88,6 +88,10 @@
 /* ---- 查漏补缺面板（切片 3）：复用 .kb-ai-card 的壳，只加列表本身的排版 ---- */
 .kb-audit{width:520px;max-height:calc(100vh - 110px)}
 .kb-au-sum{font:500 11.5px/1.6 var(--f-mono);color:var(--c-ink);opacity:.82}
+/* 「查与库内矛盾」是个花费开关（每篇最多多问一次），别做成看不见的小灰勾 */
+.kb-au-conf{display:inline-flex;align-items:center;gap:4px;flex:none;cursor:pointer;
+  font:600 11.5px/1 var(--f-body);color:var(--c-ink);opacity:.9}
+.kb-au-conf input{width:13px;height:13px;margin:0;cursor:pointer;accent-color:var(--c-acc)}
 .kb-au-item{border:1px solid var(--c-line);border-radius:10px;padding:9px 11px;margin-top:8px;
   background:var(--c-bg)}
 .kb-au-item[data-status=dismissed],.kb-au-item[data-status=adopted]{opacity:.6}
