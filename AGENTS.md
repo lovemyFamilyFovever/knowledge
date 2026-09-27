@@ -18,7 +18,7 @@
 8. 阅读器同时支持 `start.bat`（任意 Python）与便携运行时（`.python\`）；`python app\app.py` 直启时项目根会自动补进 sys.path，不要依赖 cwd。
 9. **AI 出站三禁**（唯一允许出网的路径；设计见 `docs/spec-ai-assistant.md`，配置层 `app/ai_config.py`，账本 `app/ai_usage.py`）：
    ① 出站范围由 `taxonomy.json` 的域级 `"ai": false` 决定，且 `career` / `interview` 是 `app/store.py::AI_NEVER_EGRESS` 这个**代码下界**——JSON 里写 `"ai": true` 也放行不了；判定只走 `ai_config.egress_blocked_domains()`，前端隐藏入口不算防护。
-   ② AI 的建议**永不自动改正文**：采纳只写 sidecar `.notes.md`（或用户显式点「存为术语」新建词条）；AI 三个模块（routes_ai / ai_config / ai_usage）不许出现任何写 `content/` 的路径。
+   ② AI 的建议**永不自动改正文**：采纳只写 sidecar `.notes.md`（或用户显式点「存为术语」新建词条，走既有 `/api/save`）；AI 侧模块（routes_ai / ai_config / ai_usage / ai_qa）不许出现任何写 `content/` 的路径。
    ③ key 不落盘到会被索引或提交的位置：只存仓库根 `.ai-config.json`（gitignored，env 优先级更高），任何响应/日志/账本只出现**尾 4 位**；`base_url` 必须过 `validate_base_url()`（只收 http(s)，本机/内网要显式勾选 `allow_local`）。
 
 ## 常用命令
@@ -32,13 +32,15 @@ python tests\test_learn.py                     # 学习系统 smoke（255 断言
 python tests\test_predicates.py                # 判定谓词层 smoke（89 断言 · P6 存活清单回填）
 python tests\test_properties.py                # 性质测试（15 条 · 每条 240 个随机样本，固定种子）
 python tests\test_invariants.py                # 不变量门禁 I1~I10（87 断言 · 对 AGENTS 1-9）
-python tests\test_e2e_smoke.py                 # 端到端 smoke（207 断言 · 打满 63 条路由）
+python tests\test_e2e_smoke.py                 # 端到端 smoke（213 断言 · 打满 65 条路由）
 python tests\test_ai_config.py                 # AI 出站配置层（79 断言 · 假 provider 起在本进程，零外网）
+python tests\test_ai_qa.py                     # 选词问 AI（78 断言 · 上下文最小化 / 域级 403 / 缓存不计费 / 注入加固）
+python tests\test_ai_qa.py                     # 选词问 AI（74 断言 · 上下文最小化 / 域级 403 / 缓存不计费 / 注入加固）
 python tests\test_js_props.py                  # 浏览器侧书库解析性质测试（47 断言；缺 node/Chrome 自动 SKIP）
 python tests\test_ui_regress.py                # 视觉回归批处理（P5：22 张截图 vs tests/ui-baselines/ 基线 + 10 条顶栏几何断言）
 python tests\test_ui_regress.py --stability    #   只验"两次截图逐像素相同"（改矩阵/环境后先跑这个）
 python tests\test_ui_regress.py --update       #   确认改动无误后，用本次截图刷新基线
-python tests\test_ui_behavior.py               # UI 行为回归（385 断言 · 台账 §2 已升 E2E 的 58 行控件"点了到底有没有反应"；轮次 32 起 §2 的 110 行已全部下完判语。轮次 33 提速：一台 Chrome 跑完整套（会话档），185s/趟，作业间自动清存储保隔离；回退一次一档 `set KB_BEHAVIOR_SESSION=0`；缺 node/Chrome 自动 SKIP）
+python tests\test_ui_behavior.py               # UI 行为回归（406 断言 · 台账 §2 已升 E2E 的控件"点了到底有没有反应"；轮次 33 提速：一台 Chrome 跑完整套（会话档），~200s/趟，作业间自动清存储保隔离；回退一次一档 `set KB_BEHAVIOR_SESSION=0`；缺 node/Chrome 自动 SKIP）
 python tests\test_rag.py                       # RAG smoke（缺依赖自动 SKIP）
 python scripts\rag_search.py "查询" --json     # 语义检索 CLI / Agent 入口
 python scripts\govern_tags.py census|similar|merge|rename-sub   # 标签治理（merge/rename-sub 先预览后 --apply；详见 --help）
@@ -105,6 +107,7 @@ app/reading.py      月度阅读统计（reading.db 派生，事件制：open/re
 app/rag.py          语义检索：切块/嵌入/sqlite-vec（派生，RAG_CODE_VERSION 管版本）
 app/ai_config.py    AI 出站配置：env > .ai-config.json > 缺省、key 脱敏、URL 校验、域级黑名单
 app/ai_usage.py     AI 调用账本（indexes/ai.db 派生；每次操作现开连接，不留锁）
+app/ai_qa.py        选词问 AI：上下文装配（选区 ±1 段 + 大纲 + RAG Top-3）、注入加固、严格 JSON 解析、缓存键
 scripts/            迁移与维护脚本（rag_search.py 是 Agent 检索入口；agent/ 存跨会话常驻工具）
 requirements/       依赖清单（requirements.txt 核心 / -rag.txt 语义检索 / -lock.txt 便携环境重建锁）
 .githooks/          pre-commit：静态层（ruff/台账对账/悬空令牌/RAG 版本）串行 → 9 条纯 Python 套件**并行**（KB_GATE_PARALLEL 默认 4，=1 串行）→ 浏览器三套与 RAG 串行（缺依赖自动 SKIP）

@@ -13,6 +13,7 @@
 而进程重启就什么都没了。单价默认 0（MIMO 价目未知）→ 花费字段如实标 price_configured=false，
 不给假数字。
 """
+import json
 import sqlite3
 import time
 from contextlib import closing
@@ -37,6 +38,26 @@ CREATE TABLE IF NOT EXISTS ai_calls (
 );
 CREATE INDEX IF NOT EXISTS idx_ai_calls_day ON ai_calls(day);
 CREATE INDEX IF NOT EXISTS idx_ai_calls_ym ON ai_calls(ym);
+-- 切片 2：问答缓存。key 里含文档 hash 与 prompt 版本，所以"文档改了/提示词改版"自动失效，
+-- 不需要额外的失效逻辑；删表 = 只是重新计费，语料零影响（派生缓存，不变量 3）。
+CREATE TABLE IF NOT EXISTS ai_qa (
+    key TEXT PRIMARY KEY,
+    ts REAL NOT NULL,
+    path TEXT NOT NULL,
+    selection TEXT NOT NULL,
+    mode TEXT NOT NULL,
+    model TEXT,
+    prompt_ver INTEGER NOT NULL DEFAULT 1,
+    ok INTEGER NOT NULL DEFAULT 1,
+    answer TEXT,
+    confidence TEXT,
+    terms TEXT,
+    sources TEXT,
+    usage TEXT,
+    sent_chars INTEGER NOT NULL DEFAULT 0,
+    error TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_ai_qa_path ON ai_qa(path);
 """
 
 KINDS = {"test", "ask", "select", "audit"}
@@ -114,6 +135,44 @@ class AiUsageStore:
                       price_in_per_1k: float, price_out_per_1k: float) -> float:
         return round(tokens_in / 1000.0 * price_in_per_1k
                      + tokens_out / 1000.0 * price_out_per_1k, 6)
+
+    # ---- 切片 2：问答缓存（同一库文件，删表只是重新计费，语料零影响） -------------
+    def qa_get(self, key: str):
+        with closing(self._con()) as con:
+            row = con.execute(
+                "SELECT ts,ok,answer,confidence,terms,sources,usage,sent_chars,error,mode,"
+                "selection FROM ai_qa WHERE key=?", (key,)).fetchone()
+        if not row:
+            return None
+        return {"ts": row[0], "ok": bool(row[1]), "answer": row[2], "confidence": row[3],
+                "terms": json.loads(row[4] or "[]"), "sources": json.loads(row[5] or "[]"),
+                "usage": json.loads(row[6] or "{}"), "sent_chars": row[7], "error": row[8],
+                "mode": row[9], "selection": row[10], "cached": True}
+
+    def qa_put(self, key: str, *, path: str, selection: str, mode: str, model: str,
+               prompt_ver: int, ok: bool, answer: str = "", confidence: str = "",
+               terms=None, sources=None, usage=None, sent_chars: int = 0,
+               error: str = "") -> None:
+        with closing(self._con()) as con, con:
+            con.execute(
+                "INSERT OR REPLACE INTO ai_qa(key,ts,path,selection,mode,model,prompt_ver,ok,"
+                "answer,confidence,terms,sources,usage,sent_chars,error) "
+                "VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                (key, time.time(), path, selection[:400], mode, model, int(prompt_ver),
+                 1 if ok else 0, answer, confidence,
+                 json.dumps(terms or [], ensure_ascii=False),
+                 json.dumps(sources or [], ensure_ascii=False),
+                 json.dumps(usage or {}, ensure_ascii=False), int(sent_chars), error[:200]))
+
+    def qa_list_for_doc(self, path: str, n: int = 50) -> list:
+        """侧栏「本篇问过的」：只回成功的条目（失败的没有回看价值，也不该占位）。"""
+        with closing(self._con()) as con:
+            rows = con.execute(
+                "SELECT ts,selection,mode,answer,confidence,sent_chars FROM ai_qa "
+                "WHERE path=? AND ok=1 ORDER BY ts DESC LIMIT ?",
+                (path, max(1, min(int(n), 200)))).fetchall()
+        return [{"ts": r[0], "selection": r[1], "mode": r[2], "answer": r[3],
+                 "confidence": r[4], "sent_chars": r[5]} for r in rows]
 
     def cost_summary(self, month: str, price_in: float, price_out: float) -> dict:
         with closing(self._con()) as con:

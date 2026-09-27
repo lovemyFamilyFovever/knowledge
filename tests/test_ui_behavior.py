@@ -2565,6 +2565,242 @@ def probe_ai_settings(base, tmp):
     check("AI 清除：磁盘上的配置文件真的没了", not cfg.exists(), str(cfg))
 
 
+# ================================================================ 探针 22：选词问 AI（切片 2）
+# 这一支测的是"选区 → 按钮 → 卡片 → 档位 → 问 → 三个动作"整条动线，
+# 以及两条**只有前端能证明**的事：不出站的域连按钮都不该出现，
+# 而"本次将发送 N 字"必须真的随档位变化（那是最小上下文策略唯一的可见面）。
+# 后端语义（缓存不计费 / 闸门 / 注入）不在这里重复测 —— tests/test_ai_qa.py 有 74 条。
+AI_TERM_URL = "/doc/baike/term/" + quote("向量数据库.md")
+AI_BLOCKED_URL = "/doc/interview/fe/" + quote("事件循环.md")
+
+AI_ASK_JS = PRELUDE + r"""
+  const T = e => ((e && e.textContent) || '').replace(/\s+/g, ' ').trim();
+  const H = () => q('#article .a-body');
+  const pick = (needle) => {
+    const host = H(); if (!host) return null;
+    const walker = document.createTreeWalker(host, NodeFilter.SHOW_TEXT);
+    let n;
+    while ((n = walker.nextNode())) {
+      const i = (n.nodeValue || '').indexOf(needle);
+      if (i >= 0) return { node: n, i };
+    }
+    return null;
+  };
+  const select = (needle) => {
+    const hit = pick(needle); if (!hit) return false;
+    const r = document.createRange();
+    r.setStart(hit.node, hit.i); r.setEnd(hit.node, hit.i + needle.length);
+    const s = getSelection(); s.removeAllRanges(); s.addRange(r);
+    return true;
+  };
+  const chip = () => q('#kb-ai-chip');
+  out.host_present = !!H();
+  out.selected = select('倒排索引');
+  await sleep(900);
+  out.chip_visible = !!(chip() && chip().hidden === false);
+  out.chip_text = T(chip());
+  out.chip_in_view = !!(chip() && chip().getBoundingClientRect().top > 0);
+  if (chip()) chip().click();
+  await sleep(400);
+  const card = q('#kb-ai-card');
+  out.card_open = !!(card && card.hidden === false);
+  // 「本次将发送约 N 字」是异步预览的结果 —— 轮询等它落定，不靠固定 sleep 猜
+  let w = 0;
+  while (w < 40 && !/本次将发送|预览失败/.test(T(q('#kb-ai-size')))) { await sleep(150); w++; }
+  out.size_wait_ticks = w;
+  out.size_term = T(q('#kb-ai-size'));
+  out.modes = [...document.querySelectorAll('#kb-ai-modes [data-mode]')]
+    .map(b => b.dataset.mode + ':' + (b.classList.contains('on') ? 'on' : '-'));
+  out.answer_before = T(q('#kb-ai-answer'));
+  const full = q('#kb-ai-modes [data-mode="full"]'); if (full) full.click();
+  w = 0;
+  const t0 = T(q('#kb-ai-size'));
+  while (w < 40 && T(q('#kb-ai-size')) === t0) { await sleep(150); w++; }
+  out.size_full = T(q('#kb-ai-size'));
+  const term = q('#kb-ai-modes [data-mode="term"]'); if (term) term.click();
+  w = 0;
+  const t1 = T(q('#kb-ai-size'));
+  while (w < 40 && T(q('#kb-ai-size')) === t1) { await sleep(150); w++; }
+  const go = q('#kb-ai-go'); if (go) go.click();
+  let waited = 0;
+  while (waited < 60 && !/缓存|tokens/.test(T(q('#kb-ai-meta')))) { await sleep(200); waited++; }
+  out.answer = T(q('#kb-ai-answer'));
+  out.meta = T(q('#kb-ai-meta'));
+  out.rail_visible = !!(q('#kb-ai-rail') && q('#kb-ai-rail').hidden === false);
+  out.rail_items = document.querySelectorAll('.kb-ai-rail-i').length;
+  const qEl = q('#kb-ai-q');
+  if (qEl) { qEl.value = '那它和向量检索谁更准'; qEl.dispatchEvent(new Event('input', {bubbles: true})); }
+  if (go) go.click();
+  waited = 0;
+  while (waited < 60 && T(q('#kb-ai-meta')) === out.meta) { await sleep(200); waited++; }
+  out.meta_follow = T(q('#kb-ai-meta'));
+  const note = q('#kb-ai-note'); if (note) note.click();
+  await sleep(1400);
+  out.note_toast = T(q('#toast'));
+  const tm = q('#kb-ai-term'); if (tm) tm.click();
+  await sleep(500);
+  out.draft_open = !!(q('#kb-ai-draft') && q('#kb-ai-draft').hidden === false);
+  out.draft_path = (q('#kb-ai-dpath') || {}).value || '';
+  out.draft_head = ((q('#kb-ai-dtext') || {}).value || '').replace(/\s+/g, ' ').slice(0, 60);
+  const cp = q('#kb-ai-copy'); if (cp) cp.click();
+  await sleep(700);
+  out.copy_toast = T(q('#toast'));
+  const dc = q('#kb-ai-dcancel'); if (dc) dc.click();
+  await sleep(300);
+  out.draft_after_cancel = !!(q('#kb-ai-draft') && q('#kb-ai-draft').hidden === true);
+  // 选区落在卡片自己里面时不许再叠一层按钮（否则能无限套）
+  const host2 = q('#kb-ai-answer');
+  const w2 = host2 && document.createTreeWalker(host2, NodeFilter.SHOW_TEXT).nextNode();
+  let inCard = false;
+  if (w2 && (w2.nodeValue || '').trim().length >= 4) {
+    const r2 = document.createRange();
+    r2.setStart(w2, 0); r2.setEnd(w2, 4);
+    const s2 = getSelection(); s2.removeAllRanges(); s2.addRange(r2);
+    inCard = true;
+  }
+  await sleep(900);
+  out.chip_stays_out_of_card = inCard && (!chip() || chip().hidden === true);
+  return JSON.stringify(out);
+})()"""
+# 注意命名：切片 1 的「设置·AI 页签」探针已经占了 AI_SAVE_JS / AI_RELOAD_JS 两个名字，这一支必须另起
+AI_TERM_SAVE_JS = PRELUDE + r"""
+  const T = e => ((e && e.textContent) || '').replace(/\s+/g, ' ').trim();
+  window.KBAI.openFor('倒排索引', 'term');
+  await sleep(1500);
+  const go = q('#kb-ai-go'); if (go) go.click();
+  let waited = 0;
+  while (waited < 60 && !/缓存|tokens/.test(T(q('#kb-ai-meta')))) { await sleep(200); waited++; }
+  const tm = q('#kb-ai-term'); if (tm) tm.click();
+  await sleep(400);
+  const dp = q('#kb-ai-dpath');
+  if (dp) { dp.value = 'baike/term/倒排索引.md'; dp.dispatchEvent(new Event('input', {bubbles: true})); }
+  const save = q('#kb-ai-dsave'); if (save) save.click();
+  await sleep(600);          // 保存成功后页面会在 ~900ms 后跳走，这里赶在跳走前返回
+  out.toast = T(q('#toast'));
+  out.draft_hidden = !!(q('#kb-ai-draft') && q('#kb-ai-draft').hidden === true);
+  return JSON.stringify(out);
+})()"""
+
+AI_BLOCKED_JS = PRELUDE + r"""
+  const H = () => q('#article .a-body');
+  const pick = (needle) => {
+    const host = H(); if (!host) return null;
+    const w = document.createTreeWalker(host, NodeFilter.SHOW_TEXT);
+    let n;
+    while ((n = w.nextNode())) { const i = (n.nodeValue || '').indexOf(needle); if (i >= 0) return { node: n, i }; }
+    return null;
+  };
+  const hit = pick('事件循环');
+  if (hit) {
+    const r = document.createRange();
+    r.setStart(hit.node, hit.i); r.setEnd(hit.node, hit.i + 4);
+    const s = getSelection(); s.removeAllRanges(); s.addRange(r);
+  }
+  await sleep(1200);
+  const chip = q('#kb-ai-chip');
+  out.selected = !!hit;
+  out.chip_hidden = !chip || chip.hidden === true;
+  // 绕过前端直接打接口：闸门必须在后端再拦一次
+  const res = await fetch('/api/ai/explain', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin',
+    body: JSON.stringify({ path: 'interview/fe/事件循环.md', selection: '事件循环' })
+  });
+  out.api_status = res.status;
+  out.api_code = (await res.json()).code || '';
+  return JSON.stringify(out);
+})()"""
+
+AI_NOKEY_JS = PRELUDE + r"""
+  const T = e => ((e && e.textContent) || '').replace(/\s+/g, ' ').trim();
+  window.KBAI.state.cfg = null;                 // 逼它重读 /api/ai/config
+  window.KBAI.openFor('倒排索引', 'term');
+  await sleep(1500);
+  const go = q('#kb-ai-go'); if (go) go.click();
+  await sleep(1800);
+  out.answer = T(q('#kb-ai-answer'));
+  out.meta = T(q('#kb-ai-meta'));
+  return JSON.stringify(out);
+})()"""
+
+
+def probe_ai_ask(base, tmp):
+    print("== 22 选词问 AI：选区→按钮→卡片→档位→问→批注/存术语/复制 + 不出站域 ==")
+    from test_ai_config import start_provider  # 同一个假 provider，不造第二个桩
+    srv, pbase = start_provider()
+    cfg = tmp / ".ai-config.json"
+    cfg.write_text(json.dumps({"api_key": "sk-ui-behavior-K7QF",
+                               "base_url": pbase + "/qa", "allow_local": True,
+                               "timeout_s": 10}), encoding="utf-8")
+    try:
+        d = run_expr(base + AI_TERM_URL, AI_ASK_JS)
+        check("选词问 AI：正文里能选中，选完小按钮真的出现且不跑出视口",
+              d.get("host_present") and d.get("selected") and d.get("chip_visible")
+              and "问 AI" in (d.get("chip_text") or "") and d.get("chip_in_view"), d)
+        check("选词问 AI：点按钮开卡片，卡片上写明「本次将发送约 N 字」",
+              d.get("card_open") and "本次将发送" in (d.get("size_term") or "")
+              and re.search(r"\d+", d.get("size_term") or ""), d.get("size_term"))
+        check("选词问 AI：三个档位都在，默认停在「词」",
+              d.get("modes") == ["term:on", "passage:-", "full:-"], d.get("modes"))
+        n_term = int((re.search(r"(\d+)", d.get("size_term") or "") or ["", "0"])[1])
+        n_full = int((re.search(r"(\d+)", d.get("size_full") or "") or ["", "0"])[1])
+        check("选词问 AI：切到「整篇」字数明显变大（最小上下文不是话术，是真的少发）",
+              n_full > n_term > 0, {"term": d.get("size_term"), "full": d.get("size_full")})
+        check("选词问 AI：问出来的答案带来源与计费说明（缓存/新问都讲清）",
+              "倒排索引" in (d.get("answer") or "") or len(d.get("answer") or "") > 10,
+              d.get("answer"))
+        check("选词问 AI：答案下方如实标 tokens / 置信 / 发送字数",
+              all(k in (d.get("meta") or "") for k in ("tokens", "置信", "发送")), d.get("meta"))
+        check("选词问 AI：问过之后侧栏出现「本篇问过的」并列出这条",
+              d.get("rail_visible") and d.get("rail_items", 0) >= 1, d)
+        check("选词问 AI：追问走多轮（第二次元信息仍然完整，不是把首轮顶掉）",
+              all(k in (d.get("meta_follow") or "") for k in ("置信", "发送")),
+              {"first": d.get("meta"), "follow": d.get("meta_follow")})
+        check("选词问 AI：「加进本篇批注」给出成功反馈",
+              "已写进本篇批注" in (d.get("note_toast") or ""), d.get("note_toast"))
+        side = tmp / "content" / "baike" / "term" / "向量数据库.md.notes.md"
+        written = side.read_text(encoding="utf-8") if side.is_file() else ""
+        check("选词问 AI：批注真的落进 sidecar，且写明是 AI 问答",
+              "AI 问「倒排索引」" in written and "置信" in written, _safe(written[:200]))
+        check("选词问 AI：正文一个字节都没被改（不变量 9 ②）",
+              "倒排索引更准" in (tmp / "content" / "baike" / "term" / "向量数据库.md")
+              .read_text(encoding="utf-8"))
+        check("选词问 AI：「存为术语」给出可编辑草稿（路径 + 正文都能改）",
+              d.get("draft_open") and d.get("draft_path", "").endswith(".md")
+              and "一句话定义" in (d.get("draft_head") or ""), d.get("draft_head"))
+        check("选词问 AI：复制有反馈（成功或被拒都算反馈，静默才是坏）",
+              bool(d.get("copy_toast")), d.get("copy_toast"))
+        check("选词问 AI：取消草稿不会落盘", d.get("draft_after_cancel") is True)
+        check("选词问 AI：在卡片里选字不会再叠一层「问 AI」按钮（否则会无限套）",
+              d.get("chip_stays_out_of_card") is True, d.get("chip_stays_out_of_card"))
+
+        d2 = run_expr(base + AI_TERM_URL, AI_TERM_SAVE_JS)
+        check("选词问 AI：确认新建走的是 /api/save（反馈里能看到 frontmatter 处理方式）",
+              "已新建" in (d2.get("toast") or "") and d2.get("draft_hidden") is True, d2)
+        newdoc = tmp / "content" / "baike" / "term" / "倒排索引.md"
+        body = newdoc.read_text(encoding="utf-8") if newdoc.is_file() else ""
+        check("选词问 AI：术语草稿真的写回文件系统（不变量 1：磁盘才是真相）",
+              newdoc.is_file() and body.startswith("---") and "# 倒排索引" in body
+              and "由 AI 生成" in body, _safe(body[:160]))
+
+        d3 = run_expr(base + AI_BLOCKED_URL, AI_BLOCKED_JS)
+        check("选词问 AI：不出站的域（interview 是代码下界）连按钮都不出现",
+              d3.get("selected") and d3.get("chip_hidden") is True, d3)
+        check("选词问 AI：绕过前端直接打接口同样 403（前端隐藏不算防护）",
+              d3.get("api_status") == 403 and d3.get("api_code") == "domain_blocked", d3)
+
+        cfg.unlink()
+        d4 = run_expr(base + AI_TERM_URL, AI_NOKEY_JS)
+        check("选词问 AI：没配 key 时如实说未配置并指路设置，而不是转圈或假答案",
+              "没问出来" in (d4.get("answer") or "")
+              and "尚未配置 API key" in (d4.get("answer") or "")
+              and "设置 → AI 页签" in (d4.get("answer") or ""), d4.get("answer"))
+        check("选词问 AI：提示不重复（同一句话里「设置 → AI 页签」只出现一次）",
+              (d4.get("answer") or "").count("设置 → AI 页签") == 1, d4.get("answer"))
+    finally:
+        srv.shutdown()
+        cfg.unlink(missing_ok=True)
+
+
 # ================================================================ 探针 21：快捷键清单（唯一数据源）
 KEYS_JS = PRELUDE + r"""
   const T = e => ((e && e.textContent) || '').replace(/\s+/g, ' ').trim();
@@ -3373,6 +3609,7 @@ def main() -> int:
         run_probe("spark", probe_toc_spark, base)         # 写 reading.db 的事件（派生库，不动语料）
         run_probe("novelpref", probe_novel_prefs, base)  # 只写 localStorage（小说偏好）
         run_probe("aicfg", probe_ai_settings, base, tmp)  # 写临时根的 .ai-config.json（探针收尾自己清掉）
+        run_probe("aiask", probe_ai_ask, base, tmp)   # 选词问 AI：写 sidecar 批注 + 新建术语词条
         run_probe("keys", probe_keys, base)             # 只读：快捷键两处同源
         run_probe("novelbar", probe_novel_bar, base, tmp)  # 写：章评落旁挂 + 朗读/滚动/下载
         run_probe("stats", probe_stats, base, tmp)  # 写：/api/track 造当月事件后看统计页

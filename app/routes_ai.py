@@ -8,6 +8,8 @@
   GET/PUT /api/ai/config   读（脱敏）/ 写（校验后落 gitignored JSON）
   POST /api/ai/test        1-token 级连通性 ping，失败分类见 _classify_error()
   GET /api/ai/usage        今日/本月调用数、tokens、估算花费、预算余额
+  POST /api/ai/explain     切片 2：选词问 AI（dry=true 只回「将要发什么」，不出站、不计费）
+  GET /api/ai/qa           切片 2：本篇问过的（读派生缓存，不碰语料）
   POST /api/ask            RAG 问答（沿用旧行为，新增记账与预算帽）
   GET /api/ask/status      可用性（旧前端在用，保持兼容）
 
@@ -19,12 +21,15 @@ import threading
 import time
 import urllib.error
 import urllib.request
+from pathlib import Path
 
 from flask import Blueprint, current_app, jsonify, request
+from werkzeug.exceptions import HTTPException
 
-from app import ai_config
+from app import ai_config, ai_qa
 from app.ai_config import ConfigError
 from app.ai_usage import AiUsageStore
+from app.store import parse_frontmatter
 
 ai_bp = Blueprint("ai", __name__)
 
@@ -262,6 +267,192 @@ def api_ai_usage():
                     "model": c["model"], "key_present": bool(c["api_key"])})
 
 
+def _qa_store():
+    return _store()
+
+
+def _doc_for_explain(data: dict):
+    """校验 + 读盘 + 域级闸门。返回 (payload, None) 或 (None, (json, status))。
+
+    正文一律服务端现读：前端只交 path + selection，否则"发什么出去"由浏览器说了算，
+    域级闸门（不变量 9 ①）就拦不住了。
+    """
+    rel = str(data.get("path") or "").strip().replace("\\", "/")
+    while rel.startswith("./"):
+        rel = rel[2:]
+    selection = " ".join(str(data.get("selection") or "").split())
+    mode = str(data.get("mode") or "term").strip()
+    if mode not in ai_qa.MODES:
+        mode = "term"
+    if not rel or not selection:
+        return None, (jsonify({"ok": False, "error": "path 与 selection 都不能为空"}), 400)
+    if len(selection) < 2:
+        return None, (jsonify({"ok": False, "error": "选中的内容太短（至少 2 个字符）"}), 400)
+    if len(selection) > 4000:
+        return None, (jsonify({"ok": False, "error": "选中的内容太长（上限 4000 字）"}), 400)
+    try:
+        p = current_app.config["KB_HOOKS"]["safe_rel"](rel, {".md"})
+    except HTTPException as e:      # safe_rel 用 abort 拒绝：原样抛，别降级成 500
+        return None, (jsonify({"ok": False, "error": e.description}), e.code)
+    # 域名取**客户端传来的相对路径**的第一段，不要拿 p 去 relative_to(CONTENT)：
+    # safe_rel 里 p 是 resolve() 过的，而 Windows 临时目录常以 8.3 短名传入，
+    # 两者一个短一个长 → relative_to 直接 ValueError → 500（切片 2 实测踩过）。
+    domain = rel.split("/", 1)[0]
+    if not ai_config.domain_allows_egress(current_app.config["CONTENT"], domain):
+        # 硬门在后端：绕过前端直接打接口也一样 403（不变量 9 ①）。
+        # 闸门**排在存在性检查之前**：否则"这个路径存不存在"本身就成了对不出站
+        # 目录的一次探测，而且 404/403 两种答案会让前端有理由去猜内容。
+        return None, (jsonify({"ok": False, "code": "domain_blocked",
+                               "error": f"域「{domain}」被分类学标为不出站，AI 无法读取该文档"}),
+                      403)
+    if not p.is_file():
+        return None, (jsonify({"ok": False, "error": "文档不存在"}), 404)
+    try:
+        md = p.read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return None, (jsonify({"ok": False, "error": "文档读取失败"}), 500)
+    if len(md) > 400000:
+        return None, (jsonify({"ok": False, "error": "文档过大（超过 400KB），请改用整篇档以外的问题粒度"}),
+                      413)
+    # 选中超过 80 字 → 语义上就是"问这段"，不是"问这个词"
+    if mode == "term" and len(selection) > 80:
+        mode = "passage"
+    fm, _body = parse_frontmatter(md)
+    title = str(fm.get("title") or p.stem)
+    return {"path": rel, "domain": domain, "selection": selection, "mode": mode,
+            "md": md, "title": title, "digest": ai_qa.doc_hash(md)}, None
+
+
+@ai_bp.post("/api/ai/explain")
+def api_ai_explain():
+    """选词问 AI。dry=true 时只回"将要发出去什么"（本地算，不出站、不计费）。"""
+    data = request.get_json(force=True, silent=True) or {}
+    payload, refused = _doc_for_explain(data)
+    if refused:
+        return refused
+    dry = bool(data.get("dry"))
+    question = str(data.get("question") or "").strip()[:500]
+    history = data.get("history") if isinstance(data.get("history"), list) else []
+    if not ai_available():
+        return jsonify({"ok": False, "code": E_NOT_CONFIGURED,
+                        "error": "尚未配置 API key（设置 → AI 页签）"}), 503
+
+    hits = _rag_hits(question or payload["selection"], payload["domain"])
+    ctx = ai_qa.build_context(payload["md"], payload["selection"], payload["mode"], hits,
+                              payload["title"], payload["path"])
+    base = {"ok": True, "mode": payload["mode"], "located": ctx["located"],
+            "where": ctx["where"], "sent_chars": ctx["chars"],
+            "rag_hits": len(hits), "title": payload["title"]}
+    if dry:
+        base["preview"] = ctx["text"][:1200]
+        return jsonify(base)
+    if not ctx["located"]:
+        # 定位不到就不假装"我读了上下文"—— 如实说，让用户决定要不要换选区
+        base.update({"ok": False, "code": "not_located",
+                     "error": "在文档里没找到这段选中内容（可能文档刚被改过）"})
+        return jsonify(base), 422
+
+    st = _qa_store()
+    key = ai_qa.cache_key(payload["path"], payload["digest"], payload["selection"],
+                          payload["mode"], question, history)
+    # 命中与否**只由 key 决定**：key 里含文档 hash、选区、档位、问题与多轮历史，
+    # 所以调用点不需要再写一条「有追问就跳过缓存」的守卫 —— 那样判据就散成两处，
+    # 而且实测是冗余的（把那条守卫短路掉，全套一条都不红）。判据只留 cache_key 一处。
+    if st is not None:
+        cached = st.qa_get(key)
+        if cached and cached["ok"]:
+            base.update({"answer": cached["answer"], "confidence": cached["confidence"],
+                         "terms": cached["terms"], "sources": cached["sources"],
+                         "usage": cached["usage"], "cached": True, "cached_at": cached["ts"]})
+            return jsonify(base)
+
+    b = _budget_state()
+    if b["exceeded"]:
+        return jsonify({"ok": False, "error": "budget_exceeded", "code": "budget_exceeded",
+                        "hint": f"本月已用 {b['used_month']} 次，达到预算帽 {b['budget']}"}), 429
+
+    c = _cfg()
+    msgs = ai_qa.build_messages(ctx["text"], payload["selection"], payload["mode"],
+                                question, history)
+    parsed, usage, err = None, {}, ""
+    for attempt in (1, 2):
+        try:
+            raw, usage = _chat(msgs, timeout=int(c["timeout_s"]), kind="select")
+        except RuntimeError as e:
+            parts = str(e).split(":", 2)
+            err = _test_hint(parts[1] if len(parts) > 1 else E_UNREACHABLE)
+            usage = {}
+            break                                  # 网络类失败不重试（重试就是双倍计费）
+        parsed = ai_qa.parse_answer(raw)
+        if parsed:
+            err = ""
+            break
+        err = "模型没有按约定的 JSON 结构回答"
+        msgs.append({"role": "user", "content": ai_qa.SCHEMA_HINT + "（上一次输出无法解析，只输出 JSON）"})
+    if st is not None:
+        st.qa_put(key, path=payload["path"], selection=payload["selection"],
+                  mode=payload["mode"], model=c["model"], prompt_ver=ai_qa.PROMPT_VERSION,
+                  ok=bool(parsed), answer=(parsed or {}).get("answer", ""),
+                  confidence=(parsed or {}).get("confidence", ""),
+                  terms=(parsed or {}).get("terms"), sources=(parsed or {}).get("sources"),
+                  usage=usage, sent_chars=ctx["chars"], error=err)
+    if not parsed:
+        code = "provider_error" if err.startswith(("鉴权", "端点", "请求超时", "服务")) else "bad_schema"
+        base.update({"ok": False, "code": code, "error": err or "回答失败",
+                     "sent_chars": ctx["chars"]})
+        return jsonify(base), 502
+    base.update({"answer": parsed["answer"], "confidence": parsed["confidence"],
+                 "terms": parsed["terms"], "sources": parsed["sources"],
+                 "usage": usage, "cached": False, "model": c["model"]})
+    return jsonify(base)
+
+
+@ai_bp.get("/api/ai/qa")
+def api_ai_qa_list():
+    """本篇问过的（侧栏回看）：读派生缓存，不碰语料。"""
+    rel = request.args.get("path", "").strip()
+    if not rel:
+        return jsonify({"ok": False, "error": "缺少 path"}), 400
+    st = _qa_store()
+    if st is None:
+        return jsonify({"ok": True, "available": False, "items": []})
+    return jsonify({"ok": True, "available": True, "path": rel, "items": st.qa_list_for_doc(rel)})
+
+
+def _rag_ready() -> bool:
+    """向量模型是否已在位。**不构造 embedder**：get_rag() 会去加载/下载权重，
+    把一次"选词问 AI"的预览卡成几十秒（§6 第 5 行 /api/rag/status 同款事故，
+    这条路径是切片 2 的探针在真实实例上第一次跑出来才发现的）。"""
+    ready = (current_app.config.get("KB_HOOKS") or {}).get("rag_model_ready")
+    return bool(ready()) if ready else False
+
+
+def _rag_hits(q: str, domain: str) -> list:
+    """本地语义检索 Top-3，并且**按域过滤掉不出站的文档**：
+    RAG 命中里混进 career/小说 的话，把它们当上下文发出去 = 绕过闸门。"""
+    hooks = current_app.config.get("KB_HOOKS") or {}
+    get_rag = hooks.get("get_rag")
+    if not (get_rag and hooks.get("query_rag")) or not _rag_ready():
+        return []
+    content = Path(current_app.config["CONTENT"])
+    try:
+        emb, rstore = get_rag()
+        if emb is None or rstore is None:
+            return []
+        hits = hooks["query_rag"](rstore, emb, q, k=6) or []
+    except Exception:
+        return []
+    blocked = ai_config.egress_blocked_domains(content)
+    out = []
+    for h in hits:
+        f = str(h.get("file") or "")
+        dom = f.split("/", 1)[0] if "/" in f else f
+        if dom in blocked:
+            continue
+        out.append(h)
+    return out[:3]
+
+
 @ai_bp.post("/api/ask")
 def api_ask():
     """RAG 问答：语义检索 Top-K 语料 → 拼 prompt → LLM 生成 → 带引用返回。"""
@@ -278,11 +469,12 @@ def api_ask():
                         "hint": f"本月已用 {b['used_month']} 次，达到预算帽 "
                                 f"{b['budget']}；可在设置里调整预算"}), 429
 
-    # 复用 routes_rag 的 KB_HOOKS 单例（rag 可选依赖缺失 → hits 留空，纯 chat 兜底）
+    # 复用 routes_rag 的 KB_HOOKS 单例（rag 可选依赖缺失 → hits 留空，纯 chat 兜底）。
+    # 与 _rag_hits 同一个守卫：模型不在位就别碰 get_rag()，否则这个请求会去加载/下载权重。
     hits = []
     hooks = current_app.config.get("KB_HOOKS") or {}
     get_rag = hooks.get("get_rag")
-    if get_rag and hooks.get("query_rag"):
+    if get_rag and hooks.get("query_rag") and _rag_ready():
         try:
             emb, rstore = get_rag()
             if emb is not None and rstore is not None:

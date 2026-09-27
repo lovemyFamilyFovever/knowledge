@@ -134,6 +134,11 @@ function tab(id, el) {
 
 /* ---------- 正文渲染 ---------- */
 let DOC = null;
+/* 把当前文档发布到 window：顶层 `let` 不会挂到 window 上，而跨脚本消费者读的就是
+   window.DOC（pages/wikilink-suggest.js 排除本篇、pages/ai-ask.js 判当前域）。
+   这个缺口是切片 2 的探针抓出来的 —— 在那之前 `if (window.DOC && ...)` 恒为假，
+   「双链补全排除当前文档」从来没生效过。换文档一律走 setDoc()，别再裸赋值。 */
+function setDoc(v) { DOC = v; window.DOC = v; return v; }
 let CUR = null; // {domain, sub, name}
 
 /* ---------- 渲染预处理（需求 #8/#9/#6） ----------
@@ -1412,13 +1417,13 @@ async function openDoc(domain, sub, name) {
       if (CUR) { const s2 = findSub(CUR.domain, CUR.sub); if (s2) renderDocList(s2.docs, s2.label, null); } }
     // bug 修复：404 也必须重建 crumb 按钮——此前 crumb 停在上一态（可能是“已删除”纯文本），
     // 用户看到的就是「编辑/删除/收藏按钮全消失」
-    DOC = null;
+    setDoc(null);
     renderCrumb();
     updateStatusBarPath();
     return;
   }
   const data = await r.json();
-  DOC = data.doc;
+  setDoc(data.doc);
   DOC.info_rows = data.info_rows || []; // /api/doc 把 info_rows 放在 doc 同级，不接上则元信息卡空白
   try { localStorage.setItem("kb-last-doc", ED_LAST_HREF || location.pathname + location.search); } catch (e) {}
   MD_SRC_ON = false;   // 换文档重置视图偏好（避免上一篇的 Markdown 源状态带过来）
@@ -1429,6 +1434,9 @@ async function openDoc(domain, sub, name) {
   const artEl2 = $("#article"); if (artEl2) artEl2.style.display = "";
   ED_OPEN = false;
   renderArticle();
+  /* 选词问 AI（切片 2）：正文渲染完再通知，KBAI 要拿 .a-body 判选区落在哪、
+     并按新文档的 rel 去读「本篇问过的」。 */
+  if (window.KBAI) KBAI.onDoc();
   renderCrumb();
   renderInfo();
   renderNotes();
@@ -1916,7 +1924,7 @@ async function deleteDoc() {
     renderDocList(s.docs, s.label, null);
   }
   closeEditor(); // 删除已确认，编辑器（若开着）随文档一并作废
-  DOC = null;
+  setDoc(null);
   $("#article").innerHTML = `<div class="a-kicker">已删除</div>
     <h1 class="a-title">文档已移入回收站</h1>
     <div class="a-rule"></div>
@@ -2734,7 +2742,7 @@ async function ctxDiscardDoc(rel, title, deletedJustNow) {
     renderDocList(s.docs, s.label, null);
   }
   closeEditor();
-  DOC = null;
+  setDoc(null);
   $("#article").innerHTML = `<div class="a-kicker">已删除</div>
     <h1 class="a-title">文档已移入回收站</h1>
     <div class="a-rule"></div>
@@ -3289,7 +3297,7 @@ initSearchDrop();
 const docData = document.getElementById("doc-data");
 if (docData) {
   try {
-    DOC = JSON.parse(docData.textContent);
+    setDoc(JSON.parse(docData.textContent));
     CUR = { domain: DOC.domain, sub: DOC.sub, name: DOC.name };
     renderArticle();
     renderCrumb();

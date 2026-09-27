@@ -1,0 +1,86 @@
+/* =====================================================================
+   知库 · pages/aiask.css —— 选词问 AI（切片 2）的外观
+   只用 style.css 的令牌（check_dangling_tokens 会盯未定义的 var）。
+   视觉口径（用户 2026-09 定）：黑字白底、边框克制、不灰字、不用绿色。
+   ===================================================================== */
+
+/* 选区旁的小按钮：跟着选区浮动，所以 fixed */
+.kb-ai-chip{position:fixed;z-index:960;display:inline-flex;align-items:center;gap:5px;
+  padding:5px 10px;border:1px solid var(--c-acc);border-radius:999px;background:var(--c-panel);
+  color:var(--c-acc);font:600 12px/1 var(--f-body);cursor:pointer;
+  box-shadow:0 6px 18px rgba(24,26,20,.16)}
+.kb-ai-chip:hover{background:var(--acc-soft)}
+
+/* 浮卡 */
+.kb-ai-card{position:fixed;z-index:970;width:380px;max-width:calc(100vw - 24px);
+  max-height:calc(100vh - 24px);overflow:auto;display:flex;flex-direction:column;gap:10px;
+  padding:14px 16px 16px;border:1px solid var(--c-line);border-radius:12px;
+  background:var(--c-panel);color:var(--c-ink);box-shadow:var(--elev-pop)}
+.kb-ai-ch{display:flex;align-items:center;gap:8px}
+.kb-ai-ch b{font:700 14px/1.35 var(--f-disp);letter-spacing:.01em;min-width:0;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.kb-ai-x{margin-left:auto;width:24px;height:24px;flex:none;border:1px solid transparent;
+  border-radius:var(--rd-ctl);background:transparent;color:var(--c-ink);cursor:pointer;font-size:13px}
+.kb-ai-x:hover{border-color:var(--c-line);background:var(--c-sunk)}
+
+/* 档位三钮 + 字数（"本次将发送 N 字"是这条链路上唯一的隐私可见面，别做小做淡） */
+.kb-ai-modes{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.kb-ai-modes [data-mode]{border:1px solid var(--c-line);background:var(--c-bg);color:var(--c-ink);
+  border-radius:999px;padding:4px 11px;font:600 11.5px/1 var(--f-body);cursor:pointer}
+.kb-ai-modes [data-mode].on{border-color:var(--c-acc);background:var(--acc-soft);color:var(--c-acc)}
+.kb-ai-size{margin-left:auto;font:600 11.5px/1 var(--f-mono);color:var(--c-ink)}
+
+.kb-ai-warn{border:1px solid var(--c-warn);border-radius:8px;padding:8px 10px;
+  font-size:12px;line-height:1.55;color:var(--c-warn);background:var(--c-sunk)}
+.kb-ai-answer{font-size:13.5px;line-height:1.75;color:var(--c-ink);word-break:break-word}
+.kb-ai-answer p{margin:0 0 .6em}
+.kb-ai-answer p:last-child{margin-bottom:0}
+.kb-ai-answer code{font:500 12.5px/1.5 var(--f-mono);background:var(--c-sunk);
+  border:1px solid var(--c-line);border-radius:4px;padding:1px 4px}
+.kb-ai-meta{font:500 11.5px/1.6 var(--f-mono);color:var(--c-ink);opacity:.78}
+.kb-ai-src{margin-top:4px;display:flex;flex-wrap:wrap;gap:4px}
+.kb-ai-src code{font-size:11px;background:var(--c-sunk);border:1px solid var(--c-line);
+  border-radius:4px;padding:1px 5px}
+
+.kb-ai-ask{display:flex;gap:6px}
+.kb-ai-ask input{flex:1;min-width:0;box-sizing:border-box;padding:6px 9px;
+  border:1px solid var(--c-line);border-radius:var(--rd-ctl);background:var(--c-bg);
+  color:var(--c-ink);font:500 12.5px/1.4 var(--f-body)}
+.kb-ai-ask input:focus{outline:none;border-color:var(--c-acc);box-shadow:0 0 0 2px var(--acc-soft)}
+.kb-ai-mini{border:1px solid var(--acc-line);background:var(--acc-soft);color:var(--c-acc);
+  border-radius:var(--rd-ctl);padding:6px 11px;font:600 12px/1 var(--f-body);cursor:pointer;white-space:nowrap}
+.kb-ai-mini:hover:not(:disabled){border-color:var(--c-acc)}
+.kb-ai-mini:disabled{opacity:.5;cursor:wait}
+.kb-ai-mini.ghost{background:transparent;border-color:var(--c-line);color:var(--c-ink)}
+.kb-ai-acts{display:flex;gap:6px;flex-wrap:wrap}
+
+/* 存为术语的草稿区：路径与正文都可改，确认才落盘 */
+.kb-ai-draft{border-top:1px solid var(--c-line);padding-top:10px;display:flex;flex-direction:column;gap:6px}
+.kb-ai-draft label{font:600 11px/1 var(--f-mono);letter-spacing:.04em;color:var(--c-ink)}
+.kb-ai-draft input,.kb-ai-draft textarea{box-sizing:border-box;width:100%;padding:6px 8px;
+  border:1px solid var(--c-line);border-radius:var(--rd-ctl);background:var(--c-bg);color:var(--c-ink);
+  font:500 12px/1.6 var(--f-mono);resize:vertical}
+.kb-ai-dacts{display:flex;gap:6px}
+.kb-ai-note{font-size:11px;line-height:1.6;color:var(--c-ink);opacity:.72;margin:2px 0 0}
+
+/* 侧栏累积：本篇问过的 */
+.kb-ai-rail{position:fixed;z-index:955;right:14px;bottom:52px;width:250px;
+  max-height:46vh;overflow:auto;display:flex;flex-direction:column;
+  border:1px solid var(--c-line);border-radius:12px;background:var(--c-panel);
+  box-shadow:var(--elev-pop)}
+.kb-ai-rail-h{display:flex;align-items:center;gap:8px;padding:9px 10px 8px;
+  border-bottom:1px solid var(--c-line);font:700 12px/1 var(--f-disp);letter-spacing:.02em}
+.kb-ai-rail-b{padding:4px}
+.kb-ai-rail-i{display:flex;flex-direction:column;gap:2px;width:100%;text-align:left;
+  border:none;border-bottom:1px solid var(--c-line);background:transparent;cursor:pointer;
+  padding:7px 8px;color:var(--c-ink);border-radius:6px}
+.kb-ai-rail-i:last-child{border-bottom:none}
+.kb-ai-rail-i:hover{background:var(--c-sunk)}
+.kb-ai-rail-i b{font:600 12px/1.4 var(--f-body)}
+.kb-ai-rail-i span{font:400 11px/1.5 var(--f-body);color:var(--c-ink);opacity:.72}
+
+/* 窄屏：卡片与侧栏都收满，别叠出屏幕外 */
+@media (max-width:820px){
+  .kb-ai-card{left:12px!important;right:12px;width:auto}
+  .kb-ai-rail{display:none}
+}

@@ -234,6 +234,9 @@ AUDIT_ALLOWED = {
     # 切片 1（AI 配置层）：删的是 tempfile 临时根里的 taxonomy.json，
     # 用来验"分类学缺失时代码下界照样拦"；删除目标是自造文件，与真实语料无关。
     ("tests/test_ai_config.py", "unlink"): 1,
+    # 切片 2（选词问 AI）：两处 unlink 删的都是临时实例根下的 .ai-config.json
+    # （探针自己写进去的假配置，跑完必须收掉，否则会污染同根后续探针）。
+    ("tests/test_ui_behavior.py", "unlink"): 2,
     ("tests/test_known_defects.py", "os_rmdir"): 1,    # 摘 junction 链（不穿透删目标，是 rmtree 前的安全前置）
     ("tests/test_known_defects.py", "rmtree"): 1,      # 临时目录（tempfile.mkdtemp）自清理
     # P3-B JS 性质测试：删的是 tempfile.mkdtemp 起的临时 KB_ROOT（内含自建的 content/ 与
@@ -622,6 +625,9 @@ def test_i10() -> None:
             cl.post("/api/ai/test", json={"base_url": "http://127.0.0.1:9/v1",
                                           "allow_local": False})
             cl.post("/api/ask", json={"q": "量子"})       # key 在、端点是 .invalid：只可能 DNS 失败
+            cl.post("/api/ai/explain", json={"path": "ai/topic/A.md", "selection": "可见正文"})
+            cl.post("/api/ai/explain", json={"path": "career/B.md", "selection": "职业"})
+            cl.get("/api/ai/qa?path=ai/topic/A.md")
             cl.get("/api/ai/usage")
             cl.delete("/api/ai/config")
             after = tree_state()

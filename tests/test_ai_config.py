@@ -37,6 +37,20 @@ PASSKEY = "sk-PASS-abcdefghijklmnop"
 passed = failed = 0
 FAILS = []
 CAPTURED = {}
+# 每个前缀被调用了几次 —— 切片 2 用它证明「缓存命中不重复计费」与「只重试一次」
+CALLS = {}
+
+
+def counted(seg):
+    """按路径首段计数，并记下这次**真的发出去了**什么（headers + body）。
+
+    不靠回显到响应里：那会把 Authorization 原文带回我们自己的 HTTP 响应，
+    反而污染「响应里没有 key」那条断言。
+    """
+    CALLS[seg] = CALLS.get(seg, 0) + 1
+    CAPTURED.clear()
+    CAPTURED.update({"auth": request.headers.get("Authorization", ""),
+                     "body": request.get_json(silent=True) or {}, "path": seg})
 
 
 def check(name, cond, extra=""):
@@ -51,7 +65,8 @@ def check(name, cond, extra=""):
 
 
 # ---------------------------------------------------------------- 假 provider
-# 路径前缀决定行为：/ok /auth /nf /slow /garbage /emptychoices；/nokey 需要 Bearer 里有 "REAL"
+# 路径前缀决定行为：/ok /auth /nf /slow /garbage /emptychoices /boom /capture /qa /badjson；
+# /ok 与 /qa 要求 Bearer 里含 "REAL"，用来证明「没配好 key 时压根不发请求」。
 def build_provider():
     app = Flask("fake-provider")
 
@@ -98,12 +113,28 @@ def build_provider():
         # 把「到底发出去了什么」记进模块级字典，供 C 组直接断言 ——
         # 不能靠回显到响应里：那等于让测试自己造一条 key 上路的假象，且会把 Authorization
         # 原文带回我们的 HTTP 响应，反而污染「响应里没有 key」这条断言。
-        CAPTURED.clear()
-        CAPTURED.update({"auth": request.headers.get("Authorization", ""),
-                         "body": request.get_json(silent=True) or {}})
+        counted("capture")
         return reply({"choices": [{"message": {"content": "captured ok"}}],
                       "usage": {"prompt_tokens": 11, "completion_tokens": 5,
                                 "total_tokens": 16}})
+
+    # ---- 切片 2 用：按约定 JSON schema 回答 / 故意不按 schema 回答（用来试重试上限） ----
+    @app.route("/qa/chat/completions", methods=["POST"])
+    def qa():
+        counted("qa")
+        ans = {"answer": "贝尔不等式：定域隐变量理论对关联函数给出的上界，量子力学可违反。",
+               "confidence": "high",
+               "terms": [{"term": "定域隐变量", "brief": "测量结果只由本地隐变量决定"}],
+               "sources": ["baike/sub/A.md"]}
+        return reply({"choices": [{"message": {"content": json.dumps(ans, ensure_ascii=False)}}],
+                      "usage": {"prompt_tokens": 120, "completion_tokens": 40,
+                                "total_tokens": 160}})
+
+    @app.route("/badjson/chat/completions", methods=["POST"])
+    def badjson():
+        counted("badjson")
+        return reply({"choices": [{"message": {"content": "这是一段散文，不是约定的 JSON。"}}],
+                      "usage": {"total_tokens": 9}})
 
     return app
 

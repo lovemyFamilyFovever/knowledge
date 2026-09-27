@@ -194,6 +194,11 @@ if [ -f "tests/test_e2e_smoke.py" ]; then step e2e_smoke $PY tests/test_e2e_smok
 # 畸形 JSON 四种坏味道 —— 那些分支用真服务商是复现不出来的。 tempfile 迷你语料。
 if [ -f "tests/test_ai_config.py" ]; then step ai_config $PY tests/test_ai_config.py; fi
 
+# 切片 2（选词问 AI）：上下文最小化 / 域级闸门 / 缓存不计费 / 注入加固。
+# 同样打本进程的假 provider —— "dry 预览一次都不出站"与"缓存命中不再计费"这两条
+# 只有对着可计数的桩才证得出来。
+if [ -f "tests/test_ai_qa.py" ]; then step ai_qa $PY tests/test_ai_qa.py; fi
+
 # 已知缺陷回归锚（P4 发现 → 修复轮转绿后接入）：空子域 /browse 500、
 # resolve 前缀分歧致 /api/rmdir · /api/import 500。若被重新引入，提交即被拦下。
 if [ -f "tests/test_known_defects.py" ]; then step known_defects $PY tests/test_known_defects.py; fi

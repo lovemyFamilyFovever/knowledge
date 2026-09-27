@@ -51,6 +51,8 @@ export default [
         KBED: "readonly",
         // Story 4：标签补全浮层（pages/tag-suggest.js 暴露）
         TagSuggest: "readonly",
+        // 切片 2：选词问 AI（pages/ai-ask.js 暴露，app.js 换文档时通知它）
+        KBAI: "readonly",
         // base.html / vendor 库暴露：
         DOMPurify: "readonly",
         marked: "readonly",

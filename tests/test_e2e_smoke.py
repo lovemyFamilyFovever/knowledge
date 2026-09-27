@@ -426,6 +426,26 @@ def main() -> int:
         r = c.delete("/api/ai/config")
         check("DELETE /api/ai/config 200（没文件也如实回 removed=false，不 500）",
               r.status_code == 200 and jget(r).get("removed") is False, str(jget(r))[:160])
+        # 切片 2：选词问 AI 的两个新端点。**域级闸门排在 key 检查之前** ——
+        # 这里全程没有 key，career 域仍然必须 403（而不是"没配 key 所以 503"）。
+        r = c.post("/api/ai/explain", json={"path": "career/B.md", "selection": "简历要与岗位关键词"})
+        check("POST /api/ai/explain 求职域 → 403 domain_blocked（无 key 也一样拦）",
+              r.status_code == 403 and jget(r).get("code") == "domain_blocked",
+              str(jget(r))[:160])
+        check("POST /api/ai/explain 403 不回正文内容",
+              "岗位关键词" not in r.get_data(as_text=True))
+        r = c.post("/api/ai/explain", json={"path": "ai/llm-and-agents/A.md", "selection": ""})
+        check("POST /api/ai/explain 空选区 → 400 且不泄露绝对路径",
+              r.status_code == 400 and not leaks(r.get_data(as_text=True), root),
+              f"status={r.status_code}")
+        r = c.post("/api/ai/explain", json={"path": "../../app/app.py", "selection": "贝尔不等式"})
+        check("POST /api/ai/explain 路径穿越 → 4xx 且不泄露绝对路径",
+              400 <= r.status_code < 500 and not leaks(r.get_data(as_text=True), root),
+              f"status={r.status_code}")
+        r = c.get("/api/ai/qa?path=ai/llm-and-agents/A.md")
+        check("GET /api/ai/qa 200 且没问过就是空列表",
+              r.status_code == 200 and jget(r).get("items") == [], str(jget(r))[:160])
+        check("GET /api/ai/qa 缺 path → 400", c.get("/api/ai/qa").status_code == 400)
         check("配置类端点全程没往临时根写过 key",
               not (root / ".ai-config.json").exists()
               and jget(c.get("/api/ai/config")).get("key_present") is False)
