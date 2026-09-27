@@ -127,6 +127,17 @@ def locate(md: str, selection: str, window: int = 1) -> dict:
             "where": f"第 {hit + 1}/{len(blocks)} 段"}
 
 
+def rag_hit_text(h: dict) -> str:
+    """从一条向量检索命中里取正文。**键名以 `app/rag.COLS` 为准，是 `contents`**。
+
+    这不是防御性冗余，是补一道形状锁：本仓库的假 RAG 桩一度写的是 `text`，
+    而真接口给的是 `contents` —— 于是"选词问 AI 的 RAG 增强"在测试里全绿、
+    在真实库上永远喂进空片段（上下文最小化恰好把空值拼得很像成功）。
+    这里**不留 `text` 兼容分支**：留了就等于允许两处形状各活一份，下次漂移照样没人报。
+    """
+    return str(h.get("contents") or "")
+
+
 def build_context(md: str, selection: str, mode: str, hits: list,
                   title: str, path: str, max_rag: int = 3) -> dict:
     """最小上下文：选中词 + 邻段 + 大纲 + RAG Top-N（默认不发整篇）。
@@ -149,7 +160,7 @@ def build_context(md: str, selection: str, mode: str, hits: list,
     if hits:
         rag = "\n\n".join(
             f"[片段 {i + 1}] 路径: {h.get('file', '')}\n" + BLOCK_BEGIN + "\n"
-            + str(h.get("text", ""))[:1200] + "\n" + BLOCK_END
+            + rag_hit_text(h)[:1200] + "\n" + BLOCK_END
             for i, h in enumerate(hits[:max_rag]))
         parts.append("本地语义检索命中：\n" + rag)
     body = "\n\n".join(parts)

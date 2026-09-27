@@ -368,37 +368,110 @@ def _asset_resolver(doc_path: Path):
     return exists
 
 
-def _conflict_hits(rel: str, terms=None, con=None, limit: int = 3) -> list:
-    """本地取段：检索"本篇在讲的那些已有词条"对应的**别的篇**，配成对照候选。
+RAG_QUERY_CHARS = 800      # 送进嵌入模型的本篇文本上限（本地算，不出网，也不无止境）
+RAG_MIN_QUERY_CHARS = 24   # 短到一句完整话都没有的篇（存根、目录页）不值得为它跑一次嵌入
+RAG_CAND_K = 8             # 语义索引一次取回几段：剔掉自己那几段后还够挑三对
+FTS_FETCH_K = 18             # 第一路一次捞几条：合流、去重、剔自己之后还要够挑三对
+
+
+def _conflict_hits(rel: str, terms=None, con=None, limit: int = 3, md: str = "") -> list:
+    """本地取段：配出"这两篇可能在讲同一件事"的对照候选，两条来源合成一份名单。
 
     这一步零出站，且必须零出站 —— 配对是本地算出来的，AI 只判这两段对不对立
     （与 should_link 同一套"本地出候选、AI 只收窄"的口径）。
-    检索词优先用 `terms`（= 本篇正文里出现的已有词条名，来自 should_link 的同一份候选集）；
-    没有候选时退回本篇标题 —— 也就是"别人提到我"这个方向。
-    两条硬过滤：① 对方域不出站时它的摘要一个字都不许进候选（配对里带的是原文片段，
-    放行就等于绕过不变量 9 ①）；② 本篇自己不算。
+
+    **第一路 FTS（永远在）**：检索词优先用 `terms`（= 本篇正文里出现的已有词条名，
+    来自 should_link 的同一份候选集）；没有候选时退回本篇标题 —— 也就是"别人提到我"。
+    它的天花板很明确：**只找得到互相点名的两篇**。
+    **第二路向量（可选）**：模型在位时再问一次语义索引，专补"讲同一件事却没提对方术语名"
+    那种对。两条路**共用同一道本地门槛**（`conflict_candidates` 的汉字重叠 + 长度），
+    向量只负责换一种找候选的办法，不许因为"它是模型给的"就降低标准。
+
+    两条来源**先合流、再去重、再剔掉本篇、最后才截断** —— 顺序反了就会让本篇自己
+    占掉一个名额（变异 ⑬ 就是冲这个顺序来的：它只少一行结果，不改任何判定）。
     """
+    rows = list(_fts_conflict_hits(terms, con, rel))
+    if md:
+        rows += _rag_conflict_hits(md)
+    seen, out = {rel}, []
+    for h in rows:
+        if h["rel"] in seen:
+            continue                      # 两路撞见同一篇只留一条（FTS 那条在前，线索更准）
+        seen.add(h["rel"])
+        out.append(h)
+    out.sort(key=lambda h: (not h["named"], h["rel"]))
+    return out[:limit]
+
+
+def _fts_conflict_hits(terms, con, rel):
+    """第一路：全文索引。只负责"找得到"，去重 / 剔自己 / 截断都在 `_conflict_hits`。"""
     q = " ".join(str(t) for t in (terms or []) if t).strip() or Path(rel).stem
     try:
-        rows = fts_search(Path(current_app.config["INDEXES"]), q, limit=limit * 6, con=con)
+        rows = fts_search(Path(current_app.config["INDEXES"]), q, limit=FTS_FETCH_K, con=con)
     except Exception:
-        return []                       # 索引读不到就当没有候选：不猜、不造
+        return []                         # 索引读不到就当没有候选：不猜、不造
     blocked = ai_config.egress_blocked_domains(current_app.config["CONTENT"])
     want = {str(t).strip().lower() for t in (terms or []) if str(t).strip()}
     out, seen = [], set()
     for r in rows:
         hrel = str(r.get("path") or "").replace("\\", "/").strip("/")
-        if not hrel or hrel == rel or hrel in seen or not hrel.lower().endswith(".md"):
-            continue
-        if hrel.split("/", 1)[0] in blocked:
+        if not hrel or hrel in seen or not hrel.lower().endswith(".md"):
             continue
         seen.add(hrel)
+        if hrel.split("/", 1)[0] in blocked:
+            continue
         title = str(r.get("title") or Path(hrel).stem).strip()
+        named = title.lower() in want
         out.append({"rel": hrel, "title": title, "text": str(r.get("snippet") or ""),
                     # 就叫这个名字的那篇最可能是"在讲同一件事"，排在前面
-                    "named": title.lower() in want})
-    out.sort(key=lambda h: (not h["named"], h["rel"]))
-    return out[:limit]
+                    "named": named,
+                    "via": "同名词条" if named else "正文提到同一个词"})
+    return out
+
+
+def _rag_lead(score) -> str:
+    """把向量相似度拼成一句人话；拿不到分数就不硬编一个数。"""
+    try:
+        return "（向量检索，两篇没有互相点名，相似度 %.2f）" % float(score)
+    except (TypeError, ValueError):
+        return "（向量检索，两篇没有互相点名）"
+
+
+def _rag_conflict_hits(md: str) -> list:
+    """第二路：语义索引找"没点名却在讲同一件事"的段；模型不在位就直接交空表。
+
+    守卫与问答侧同一条：`_rag_ready()` 假时**绝不碰 `get_rag()`** ——
+    那会当场加载/下载几十 MB 权重，把一个查漏请求卡成一分多钟（§6 第 5 行同款事故，
+    切片 2 在真实实例上踩过）。
+    """
+    hooks = current_app.config.get("KB_HOOKS") or {}
+    get_rag = hooks.get("get_rag")
+    if not (get_rag and hooks.get("query_rag")) or not _rag_ready():
+        return []
+    secs = [s for s in ai_audit.section_map(md) if s.get("text")]
+    q = " ".join(s["title"] + " " + s["text"] for s in secs)[:RAG_QUERY_CHARS].strip()
+    if len(q) < RAG_MIN_QUERY_CHARS:
+        return []
+    try:
+        emb, rstore = get_rag()
+        if emb is None or rstore is None:
+            return []
+        hits = hooks["query_rag"](rstore, emb, q, k=RAG_CAND_K) or []
+    except Exception:
+        return []                         # 语义索引坏了不影响查漏：降级为只有第一路
+    blocked = ai_config.egress_blocked_domains(current_app.config["CONTENT"])
+    out = []
+    for h in hits:
+        hrel = str(h.get("file") or "").replace("\\", "/").strip("/")
+        if not hrel or not hrel.lower().endswith(".md"):
+            continue                      # 自己那几段必然排最前，由合流处统一剔
+        if hrel.split("/", 1)[0] in blocked:
+            continue
+        out.append({"rel": hrel,
+                    "title": str(h.get("title") or Path(hrel).stem).strip(),
+                    "text": ai_qa.rag_hit_text(h), "named": False,
+                    "via": "语义相近" + _rag_lead(h.get("score"))})
+    return out
 
 
 @ai_bp.post("/api/ai/audit")
@@ -426,7 +499,7 @@ def api_ai_audit():
         terms = next((p.get("cands") or [] for p in proposals
                       if p["kind"] == "should_link"), [])
         proposals.extend(ai_audit.conflict_candidates(
-            doc["md"], path=doc["rel"], hits=_conflict_hits(doc["rel"], terms)))
+            doc["md"], path=doc["rel"], hits=_conflict_hits(doc["rel"], terms, md=doc["md"])))
     # local_count 必须在 AI 之前取：它的口径是"本地判据查出几条"。
     # 放在后面量就等于把 AI 的行数也算进本地，C3 那条"AI 不许造条目"就永远判不出来了。
     local_count = len(proposals)
@@ -753,7 +826,7 @@ def api_ai_batch_start():
                               if p["kind"] == "should_link"), [])
                 props.extend(ai_audit.conflict_candidates(
                     md, path=it["rel"],
-                    hits=_conflict_hits(it["rel"], terms, con=_fts_con())))
+                    hits=_conflict_hits(it["rel"], terms, con=_fts_con(), md=md)))
             asked = 0
             if want_ai and not it["blocked"] and ai_batch.needs_ai(props):
                 if _budget_state()["exceeded"]:
@@ -1062,7 +1135,7 @@ def api_ask():
             hits = []
 
     ctx = "\n\n".join(
-        f"[片段 {i + 1}] 路径: {h.get('file', '')}\n{str(h.get('text', ''))[:1200]}"
+        f"[片段 {i + 1}] 路径: {h.get('file', '')}\n{ai_qa.rag_hit_text(h)[:1200]}"
         for i, h in enumerate(hits)) if hits else "（未检索到相关语料）"
     messages = [
         {"role": "system", "content": SYSTEM_PROMPT},

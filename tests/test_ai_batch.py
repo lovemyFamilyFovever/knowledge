@@ -26,6 +26,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import _ci  # noqa: E402
 from test_ai_config import CALLS, start_provider  # noqa: E402
+from test_ai_qa import rag_hit  # noqa: E402  向量命中的形状只写一份，两处共用
 
 from app import ai_audit, ai_batch, ai_qa  # noqa: E402
 from app.app import create_app  # noqa: E402
@@ -98,11 +99,17 @@ def make_root(tmp):
     return root
 
 
-def client_for(root):
+def client_for(root, rag_hits=None):
     app = create_app(root)
     app.config["_AI_USAGE"] = None
-    app.config["KB_HOOKS"]["get_rag"] = lambda: (None, None)
-    app.config["KB_HOOKS"]["query_rag"] = lambda *a, **k: []
+    if rag_hits is None:
+        app.config["KB_HOOKS"]["get_rag"] = lambda: (None, None)
+        app.config["KB_HOOKS"]["query_rag"] = lambda *a, **k: []
+    else:
+        # 假向量索引（形状照 app/rag.COLS，与 test_ai_qa 的 rag_hit 共用一份）
+        app.config["KB_HOOKS"]["get_rag"] = lambda: (object(), object())
+        app.config["KB_HOOKS"]["query_rag"] = lambda *a, **k: list(rag_hits)
+        app.config["KB_HOOKS"]["rag_model_ready"] = lambda: True
     return app, app.test_client()
 
 
@@ -873,6 +880,43 @@ def main() -> int:
             check("I14 桩收干净了（还原后真实检索仍能用）",
                   routes_ai.fts_search is real
                   and bool(real(Path(root / "indexes"), "向量数据库", limit=3)), None)
+
+        # ============================================ I2. 第二路候选在批量线程里也走得通
+        print("\n[I2] 批量·第二路（向量索引）")
+        with tempfile.TemporaryDirectory() as td:
+            root = make_root(td)
+            # 这篇不提任何已有词条 → FTS 那一路空手，只有第二路配得出对
+            (root / "content" / "baike" / "sub" / "onlyrag.md").write_text(
+                '---\ntitle: 只有语义相近\nsource: baike\ncollected: 2024-01-05\n'
+                'tags: [检索]\nstatus: stable\n---\n\n# 只有语义相近\n\n## 原理\n\n'
+                "把语句压成坐标存进索引，查询时按距离取回最像的几条，这就是它的全部说法。\n",
+                encoding="utf-8")
+            hits = [rag_hit("把语句压成坐标存进索引，查询时按距离取回最像的几条。",
+                            "baike/sub/onlyrag.md", 0.95, title="只有语义相近"),
+                    rag_hit("把文本变成坐标、按距离找相似内容的存储。",
+                            "baike/term/向量数据库.md", 0.72, title="向量数据库")]
+            app, c = client_for(root, rag_hits=hits)
+            c.put("/api/ai/config", json={"api_key": KEY, "base_url": base + "/auditpair",
+                                          "allow_local": True, "timeout_s": 20,
+                                          "monthly_budget_calls": 0})
+            CALLS.clear()
+            r = c.post("/api/ai/batch/start",
+                       json={"scope": {"paths": ["baike/sub/onlyrag.md"]},
+                             "ai": True, "conflict": True})
+            ended, _ = wait_job(c)
+            rows = c.get("/api/ai/audit?path=baike/sub/onlyrag.md").get_json()["proposals"]
+            conf = [p for p in rows if p["kind"] == "conflict"]
+            check("I15 worker 线程里第二路照跑：配出对、零报错、结论落库",
+                  r.status_code == 200 and ended.get("error_count") == 0
+                  and len(conf) == 1 and bool(conf[0].get("ai_terms")),
+                  {"err": ended.get("errors"), "conf": [(p["title"], p.get("ai_terms"))
+                                                        for p in conf]})
+            check("I16 第二路不多问 AI：一篇还是最多两次（它只换找候选的办法，不加判断种类）",
+                  ended.get("ai_calls") == CALLS.get("audit") and ended.get("ai_calls") <= 2,
+                  {"job": ended.get("ai_calls"), "srv": CALLS})
+            check("I17 线索来源写进行上（批量与单篇同一份证据口径，不各写一套）",
+                  conf and "配对线索" in conf[0]["evidence"]
+                  and "语义相近" in conf[0]["evidence"], conf[:1])
 
         print(f"\n{passed} passed, {failed} failed")
         if FAILS:

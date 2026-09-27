@@ -388,10 +388,12 @@ def _shared_cjk(a: str, b: str) -> float:
 def conflict_candidates(md, *, path, hits, max_rows: int = CONFLICT_MAX_ROWS) -> list:
     """与已有语料的「可能矛盾」候选：本篇某一节 × 检索到的另一篇的对应段。
 
-    全本地、零调用 —— 「哪两篇在讲同一件事」FTS 算得出来；这两段是不是**事实对立**
-    才需要 AI 判，所以行一律带 needs_ai。本篇这一侧挑共享字最多的那节（两篇都叫
-    「定义」不叫证据，所以按内容配、不按节名配）。摘要太短、没有一节真的对得上，
-    都不建行 —— 宁可少配，不拿一句废话去问 AI。
+    全本地、零调用 —— 「哪两篇可能在讲同一件事」本地算得出来（两条来源：FTS 与
+    可选的向量索引，见 `routes_ai._conflict_hits`）；这两段是不是**事实对立**才需要 AI 判，
+    所以行一律带 needs_ai。本篇这一侧挑共享字最多的那节（两篇都叫「定义」不叫证据，
+    所以按内容配、不按节名配）。摘要太短、没有一节真的对得上，都不建行 ——
+    宁可少配，不拿一句废话去问 AI。**两条来源共用这同一道门槛**：
+    向量那路只是换了找候选的办法，不许因为"它是 AI 算的"就降低本地标准。
     """
     secs = [s for s in section_map(md) if s.get("text")]
     out = []
@@ -408,10 +410,12 @@ def conflict_candidates(md, *, path, hits, max_rows: int = CONFLICT_MAX_ROWS) ->
         if best is None or score < 0.2:
             continue
         title = str(h.get("title") or Path(rel).stem)
+        lead = str(h.get("via") or "").strip()
         row = _proposal(
             "conflict", path, f"可能与《{title}》讲冲突：{best['title']}",
             f"本篇「{best['title']}」：{best['text'][:CONFLICT_SNIPPET]}；"
-            f"《{title}》：{other[:CONFLICT_SNIPPET]}",
+            f"《{title}》：{other[:CONFLICT_SNIPPET]}"
+            + (f"（配对线索：{lead}）" if lead else ""),
             "自己核对这两处对同一件事的说法；确实不一致就改一条，或注明口径与时间"
             "（AI 不替你改正文）",
             "medium", needs_ai=True, key=rel)

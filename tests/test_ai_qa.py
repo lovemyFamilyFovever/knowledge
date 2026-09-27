@@ -88,6 +88,22 @@ def make_root(tmp):
     return root
 
 
+def rag_hit(contents: str, file: str, score: float = 0.9, title: str = "命中词条",
+            heading: str = "定义") -> dict:
+    """按 `app/rag.py::COLS` 的真实形状造一条向量命中。
+
+    以前这里手写 {"file","text","score"} —— 少数字段名就少一层真相：
+    真接口那列叫 `contents`，消费端跟着桩读 `text`，于是"带了 RAG 上下文"这件事
+    在测试里为真、在真实库上永远是空片段。
+    """
+    cols = ("contents", "file", "title", "heading", "source", "collected", "tags",
+            "chunk_ix", "chunk_n", "score")
+    h = dict(zip(cols, (contents, file, title, heading, "knowledge", "2026-09-01",
+                        "标签", 0, 1, score)))
+    h["url"] = "/doc/" + file
+    return h
+
+
 def client_for(root, rag_hits=None):
     app = create_app(root)
     app.config["_AI_USAGE"] = None
@@ -324,9 +340,12 @@ def main() -> int:
         print("\n[G] RAG 命中按域过滤")
         with tempfile.TemporaryDirectory() as td:
             root = make_root(td)
-            hits = [{"file": "baike/sub/A.md", "text": "量子片段 zzraggood", "score": 0.9},
-                    {"file": "career/简历乙.md", "text": "求职片段 zzragblocked", "score": 0.8},
-                    {"file": "小说/网文丙.md", "text": "网文片段 zzragblocked2", "score": 0.7}]
+            # 假命中**必须照真接口的形状造**：`app/rag.COLS` 里正文那列叫 `contents`，
+            # 不叫 `text`。这套桩原先写的是 `text`，于是消费端读 `h["text"]` 读到空、
+            # 测试却全绿 —— "RAG 增强"在真实库上一直喂的是空片段（本轮才查出，见台账 §6）。
+            hits = [rag_hit("量子片段 zzraggood", "baike/sub/A.md", 0.9),
+                    rag_hit("求职片段 zzragblocked", "career/简历乙.md", 0.8),
+                    rag_hit("网文片段 zzragblocked2", "小说/网文丙.md", 0.7)]
             app, c = client_for(root, rag_hits=hits)
             c.put("/api/ai/config", json={"api_key": KEY, "base_url": base + "/qa",
                                          "allow_local": True, "timeout_s": 10})
@@ -334,11 +353,25 @@ def main() -> int:
             r = c.post("/api/ai/explain", json={"path": "baike/sub/A.md",
                                                 "selection": "贝尔不等式"})
             sent = json.dumps(CAPTURED["body"], ensure_ascii=False)
-            check("G1 允许出站的 RAG 命中进了上下文", "zzraggood" in sent, r.get_json())
+            check("G1 允许出站的 RAG 命中进了上下文（读的是真接口的 contents 列）",
+                  "zzraggood" in sent, r.get_json())
             check("G2 不出站域的 RAG 命中被丢掉（否则等于绕过闸门）",
                   "zzragblocked" not in sent and "zzragblocked2" not in sent, sent[:300])
             check("G3 响应如实报告带了几条命中", r.get_json().get("rag_hits") == 1,
                   r.get_json())
+            check("G4 上下文里有几段就报几段，且不把空片段算成一段（sent_chars 要跟着涨）",
+                  r.get_json().get("sent_chars", 0) > 0
+                  and ai_qa.rag_hit_text(hits[0]) == "量子片段 zzraggood",
+                  {"sent": r.get_json().get("sent_chars")})
+            try:                                # 字段名单方核对：缺 RAG 依赖时如实 SKIP，不假绿
+                from app.rag import COLS as RAG_COLS
+            except Exception:
+                RAG_COLS = None
+            if RAG_COLS is None:
+                print("  SKIP G5 字段名单方核对（本机/CI 无 numpy，装不上 app.rag）")
+            else:
+                check("G5 真接口给的列名仍是 contents（改了名就要同步消费端与这里的桩）",
+                      "contents" in RAG_COLS and "text" not in RAG_COLS, RAG_COLS)
 
         # ============================================== H. 侧栏回看 + 预算帽
         print("\n[H] 本篇问过的 / 预算帽")

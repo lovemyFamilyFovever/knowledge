@@ -17,7 +17,7 @@
 7. 嵌入 / 分词 / 切块逻辑变更必须递增 `app/rag.py::RAG_CODE_VERSION`（触发向量索引自动全量重建），并用 `tokenizers` 库做逐 token 交叉验证后再提交。
 8. 阅读器同时支持 `start.bat`（任意 Python）与便携运行时（`.python\`）；`python app\app.py` 直启时项目根会自动补进 sys.path，不要依赖 cwd。
 9. **AI 出站三禁**（唯一允许出网的路径；设计见 `docs/spec-ai-assistant.md`，配置层 `app/ai_config.py`，账本 `app/ai_usage.py`）：
-   ① 出站范围由 `taxonomy.json` 的域级 `"ai": false` 决定，且 `career` / `interview` 是 `app/store.py::AI_NEVER_EGRESS` 这个**代码下界**——JSON 里写 `"ai": true` 也放行不了；判定只走 `ai_config.egress_blocked_domains()`，前端隐藏入口不算防护。
+   ① 出站范围由 `taxonomy.json` 的域级 `"ai": false` 决定，且 `career` / `interview` 是 `app/store.py::AI_NEVER_EGRESS` 这个**代码下界**——JSON 里写 `"ai": true` 也放行不了；判定只走 `ai_config.egress_blocked_domains()`，前端隐藏入口不算防护。**同一道闸门也管检索回来的片段**：FTS 与向量索引的命中在进上下文/配对前都要按对方所属域过滤（`app/routes_ai.py` 的 `_conflict_hits` / `_rag_conflict_hits`）—— 从索引里捞出来的也算出站内容。
    ② AI 的建议**永不自动改正文**：采纳只写 sidecar `.notes.md`（或用户显式点「存为术语」新建词条，走既有 `/api/save`）；AI 侧模块（routes_ai / ai_config / ai_usage / ai_qa）不许出现任何写 `content/` 的路径。
    ③ key 不落盘到会被索引或提交的位置：只存仓库根 `.ai-config.json`（gitignored，env 优先级更高），任何响应/日志/账本只出现**尾 4 位**；`base_url` 必须过 `validate_base_url()`（只收 http(s)，本机/内网要显式勾选 `allow_local`）。
    ④ 批量同理：域闸门在作业里**逐篇生效**（`blocked` 一路带到 per_doc），超预算帽只看最坏上界（每篇都可能问一次，抽样放大的期望值不作数；用户勾了「查与库内矛盾」时上界按**每篇两次**算）；长任务一律 daemon 线程 + 轮询，绝不挂在一个 fetch 上（`app/ai_batch.py`）。
@@ -35,14 +35,14 @@ python tests\test_properties.py                # 性质测试（15 条 · 每条
 python tests\test_invariants.py                # 不变量门禁 I1~I10（87 断言 · 对 AGENTS 1-9）
 python tests\test_e2e_smoke.py                 # 端到端 smoke（235 断言 · 打满 72 条路由）
 python tests\test_ai_config.py                 # AI 出站配置层（79 断言 · 假 provider 起在本进程，零外网）
-python tests\test_ai_qa.py                     # 选词问 AI（78 断言 · 上下文最小化 / 域级 403 / 缓存不计费 / 注入加固）
-python tests\test_ai_audit.py                  # 单篇查漏补缺（71 断言 · 本地判据 10 类 + 干净文档控制组 + AI 只收窄不造条目 + 与已有语料矛盾的本地配对）
-python tests\test_ai_batch.py                  # 批量查漏补缺（117 断言 · 估算零出站 / 长任务不挂在 fetch 上 / 预算帽看上界 / 域级覆盖空白 + 覆盖空白的 AI 复核只收窄不造条目 + 矛盾核对按每篇两次计）
+python tests\test_ai_qa.py                     # 选词问 AI（80 断言 · 上下文最小化 / 域级 403 / 缓存不计费 / 注入加固）
+python tests\test_ai_audit.py                  # 单篇查漏补缺（86 断言 · 本地判据 10 类 + 干净文档控制组 + AI 只收窄不造条目 + 矛盾候选两条来源：FTS 恒在 / 向量补「没互相点名」的对）
+python tests\test_ai_batch.py                  # 批量查漏补缺（120 断言 · 估算零出站 / 长任务不挂在 fetch 上 / 预算帽看上界 / 域级覆盖空白 + 覆盖空白的 AI 复核只收窄不造条目 + 矛盾核对按每篇两次计）
 python tests\test_js_props.py                  # 浏览器侧书库解析性质测试（47 断言；缺 node/Chrome 自动 SKIP）
 python tests\test_ui_regress.py                # 视觉回归批处理（P5：22 张截图 vs tests/ui-baselines/ 基线 + 10 条顶栏几何断言）
 python tests\test_ui_regress.py --stability    #   只验"两次截图逐像素相同"（改矩阵/环境后先跑这个）；并把历轮每镜头最大 AE 累计进 tests/ui-baselines/floor.json（跟踪文件，阈值 AE≤2 的实测出处）
 python tests\test_ui_regress.py --update       #   确认改动无误后，用本次截图刷新基线
-python tests\test_ui_behavior.py               # UI 行为回归（447 断言 · 台账 §2 已升 E2E 的控件"点了到底有没有反应"；轮次 33 提速：一台 Chrome 跑完整套（会话档），~200s/趟，作业间自动清存储保隔离；回退一次一档 `set KB_BEHAVIOR_SESSION=0`；缺 node/Chrome 自动 SKIP）
+python tests\test_ui_behavior.py               # UI 行为回归（448 断言 · 台账 §2 已升 E2E 的控件"点了到底有没有反应"；轮次 33 提速：一台 Chrome 跑完整套（会话档），~200s/趟，作业间自动清存储保隔离；回退一次一档 `set KB_BEHAVIOR_SESSION=0`；缺 node/Chrome 自动 SKIP）
 python tests\test_rag.py                       # RAG smoke（缺依赖自动 SKIP）
 python scripts\rag_search.py "查询" --json     # 语义检索 CLI / Agent 入口
 python scripts\govern_tags.py census|similar|merge|rename-sub   # 标签治理（merge/rename-sub 先预览后 --apply；详见 --help）
@@ -111,7 +111,7 @@ app/ai_config.py    AI 出站配置：env > .ai-config.json > 缺省、key 脱�
 app/ai_usage.py     AI 调用账本（indexes/ai.db 派生；每次操作现开连接，不留锁）
 app/ai_qa.py        选词问 AI：上下文装配（选区 ±1 段 + 大纲 + RAG Top-3）、注入加固、严格 JSON 解析、缓存键
 app/ai_batch.py     批量查漏补缺：开跑前估算（本地扫，大范围等距抽样）+ daemon 线程作业 + 进度轮询 + 预算帽硬门（按每篇上限次数算最坏上界）
-app/ai_audit.py     单篇查漏补缺：本地判据（元数据/层级/围栏/空节/截断/失效链接/附件）+ AI 只判「应引未引 / 可能过时 / 与已有语料矛盾」
+app/ai_audit.py     单篇查漏补缺：本地判据（元数据/层级/围栏/空节/截断/失效链接/附件）+ AI 只判「应引未引 / 可能过时 / 与已有语料矛盾」（矛盾候选由 routes_ai 两路取段：FTS + 可选向量）
 scripts/            迁移与维护脚本（rag_search.py 是 Agent 检索入口；agent/ 存跨会话常驻工具）
 requirements/       依赖清单（requirements.txt 核心 / -rag.txt 语义检索 / -lock.txt 便携环境重建锁）
 .githooks/          pre-commit：静态层（ruff/台账对账/悬空令牌/RAG 版本）串行 → 13 条纯 Python 套件**并行**（KB_GATE_PARALLEL 默认 4，=1 串行）→ 浏览器三套与 RAG 串行（缺依赖自动 SKIP）

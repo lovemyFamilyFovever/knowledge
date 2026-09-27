@@ -2922,6 +2922,9 @@ AI_AUDIT_CONFLICT_JS = PRELUDE + r"""
   out.rows_on = titles();
   out.muted_on = [...document.querySelectorAll('#kb-au-list .kb-au-ai.muted')].map(e => T(e));
   out.ai_all = [...document.querySelectorAll('#kb-au-list .kb-au-ai')].map(e => T(e));
+  // 证据行要写清这对照是哪条来源配的（同名词条 / 正文提到 / 语义相近）——
+  // 用户看到"这两篇打架"时，第一个问题就是"凭什么把这两篇摆一起"。
+  out.ev_lines = [...document.querySelectorAll('#kb-au-list .kb-au-ev')].map(e => T(e));
   // 头部那一行现在多了一个开关：宽度是固定的 520px 面板，重叠/溢出这种"稳定地错"
   // 像素基线抓不到（矩阵里根本没有这一屏），只能就地量矩形。
   const head = document.querySelector('#kb-audit-panel .kb-ai-ch');
@@ -2971,6 +2974,8 @@ def probe_ai_conflict(base, tmp):
           any("要 AI 判断" in x for x in (d.get("muted_on") or [])), d.get("muted_on"))
     check("矛盾开关：面板头部那一行不重叠也不溢出（520px 定宽面板里多塞一个开关，量矩形）",
           d.get("head_fit") is True, d.get("head_rects"))
+    check("矛盾开关：证据行写明这对照是哪条来源配的（同名词条 / 正文提到 / 语义相近）",
+          any("配对线索" in x for x in (d.get("ev_lines") or [])), d.get("ev_lines"))
     check("矛盾开关：取消勾选再扫一次，配对行跟着消失（行由本次请求决定，不是越勾越多）",
           d.get("off_body", "").find("false") >= 0 and not (d.get("rows_off") or []),
           {"body": _safe(d.get("off_body")), "rows": d.get("rows_off")})

@@ -19,6 +19,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import _ci  # noqa: E402
 from test_ai_config import CALLS, start_provider  # noqa: E402
+from test_ai_qa import rag_hit  # noqa: E402  向量命中的形状只写一份，两处共用
 
 from app import ai_audit, ai_qa  # noqa: E402
 from app.app import create_app  # noqa: E402
@@ -149,11 +150,18 @@ def make_root(tmp):
     return root
 
 
-def client_for(root):
+def client_for(root, rag_hits=None, rag_ready=None):
     app = create_app(root)
     app.config["_AI_USAGE"] = None
-    app.config["KB_HOOKS"]["get_rag"] = lambda: (None, None)
-    app.config["KB_HOOKS"]["query_rag"] = lambda *a, **k: []
+    if rag_hits is None:
+        app.config["KB_HOOKS"]["get_rag"] = lambda: (None, None)
+        app.config["KB_HOOKS"]["query_rag"] = lambda *a, **k: []
+    else:
+        # 假 RAG 只借形状，不碰模型：字段名照 app/rag.COLS 的真顺序拼
+        # （与 test_ai_qa 共用同一个 rag_hit，免得两处桩各写一份形状、又各飘一次）。
+        app.config["KB_HOOKS"]["get_rag"] = lambda: (object(), object())
+        app.config["KB_HOOKS"]["query_rag"] = lambda *a, **k: list(rag_hits)
+        app.config["KB_HOOKS"]["rag_model_ready"] = rag_ready or (lambda: True)
     return app, app.test_client()
 
 
@@ -482,6 +490,15 @@ def main() -> int:
         check("E10 提示词把口径写死：只判事实对立、编号原样照抄、不许发明新配对",
               "互相矛盾" in pr and "原样照抄配对编号" in pr and "不要发明新配对" in pr
               and "角度不同" in pr and "与《倒排索引》" in pr, pr[:150])
+        # 上限有两处（合流处截名额、纯函数默认 max_rows），各得有一条断言咬住自己那一处：
+        # 端点层的 F11 只能证明名额生效，证明不了纯函数的默认值。
+        four = [dict(hits[0], rel="baike/t/a.md", title="对手甲"),
+                dict(hits[0], rel="baike/t/b.md", title="对手乙"),
+                dict(hits[0], rel="baike/t/c.md", title="对手丙"),
+                dict(hits[0], rel="baike/t/d.md", title="对手丁")]
+        check("E11 conflict_candidates 自己就带三对上限（默认值等于 CONFLICT_MAX_ROWS，不靠调用方截）",
+              len(ai_audit.conflict_candidates(PAIRDOC, path="baike/sub/a.md", hits=four)) == 3
+              == ai_audit.CONFLICT_MAX_ROWS, len(four))
 
         with tempfile.TemporaryDirectory() as td:
             root = make_root(td)
@@ -529,6 +546,151 @@ def main() -> int:
                   r2.status_code == 200 and conf2
                   and any(not p.get("ai_terms") for p in conf2)
                   and "矛盾判断没跑成" in (j2.get("ai_reason") or ""), j2.get("ai_reason"))
+
+        # ============================================ F. 第二路候选：语义索引（可选依赖）
+        print("\n[F] 与已有语料矛盾·第二路（向量索引补「没互相点名」的对）")
+        RAGONLY = ('---\ntitle: 只有语义相近\nsource: baike\ncollected: 2026-09-01\n'
+                   'tags: [检索]\nstatus: stable\n---\n\n# 只有语义相近\n\n## 原理\n\n'
+                   "把语句压成坐标存进索引，查询时按距离取回最像的几条。\n")
+        with tempfile.TemporaryDirectory() as td:
+            root = make_root(td)
+            (root / "content" / "baike" / "sub" / "onlyrag.md").write_text(
+                RAGONLY, encoding="utf-8")
+            # 命中形状与真接口一致（contents / file / **title 是对方篇的标题**）
+            hits = [rag_hit("把语句压成坐标存进索引，查询时按距离取回最像的几条。",
+                            "baike/sub/onlyrag.md", 0.95, title="只有语义相近"),
+                    rag_hit("把循环设定压成坐标存进索引，按距离取回最像的几条。",
+                            "小说/事件循环.md", 0.90, title="事件循环"),
+                    rag_hit("把文本变成坐标、按距离找相似内容的存储。",
+                            "baike/term/向量数据库.md", 0.72, title="向量数据库")]
+            app, c = client_for(root, rag_hits=hits)
+            c.put("/api/ai/config", json={"api_key": KEY, "base_url": base + "/auditpair",
+                                          "allow_local": True, "timeout_s": 10})
+            CALLS.clear()
+            r = c.post("/api/ai/audit", json={"path": "baike/sub/onlyrag.md",
+                                              "conflict": True})
+            j = r.get_json()
+            conf = [p for p in j.get("proposals") or [] if p["kind"] == "conflict"]
+            check("F1 第二路配出**没有互相点名**的那对（这一篇正文不提任何已有词条，第一路空手）",
+                  r.status_code == 200 and len(conf) == 1
+                  and "向量数据库" in conf[0]["title"],
+                  [p["title"] for p in conf])
+            check("F2 行上写明配对线索来自语义相近并带相似度（用户能知道这对照是怎么来的）",
+                  bool(conf) and "配对线索" in conf[0]["evidence"]
+                  and "语义相近" in conf[0]["evidence"] and "0.72" in conf[0]["evidence"],
+                  conf[:1])
+            check("F3 自己那几段被剔掉（向量检索必然把本篇排最前，不剔就是自己配自己）",
+                  bool(conf) and "onlyrag" not in conf[0]["evidence"].split("；")[-1]
+                  and "与《只有语义相近》" not in conf[0].get("target", ""), conf[:1])
+            check("F4 不出站域的 RAG 命中连进候选都不配（第二路透出去的是原文片段，同样受闸门管）",
+                  not any("事件循环" in p["title"] for p in conf), [p["title"] for p in conf])
+            check("F5 第二路零出站：它是本地计算，AI 只在该问的时候问一次",
+                  CALLS.get("audit", 0) <= 2, CALLS)
+
+            app2, c2 = client_for(root, rag_hits=[
+                rag_hit("咖啡、红茶与威士忌的品鉴记录，跟检索毫无关系。",
+                        "baike/term/向量数据库.md", 0.99, title="向量数据库")])
+            c2.put("/api/ai/config", json={"api_key": KEY, "base_url": base + "/auditpair",
+                                           "allow_local": True, "timeout_s": 10})
+            j2 = c2.post("/api/ai/audit", json={"path": "baike/sub/onlyrag.md",
+                                                "conflict": True}).get_json()
+            check("F6 向量只换找候选的办法、不降本地标准：分数再高，两边对不上也不建行",
+                  not any(p["kind"] == "conflict" for p in j2.get("proposals") or []),
+                  [p["kind"] for p in j2.get("proposals") or []])
+
+            app3, c3 = client_for(root, rag_hits=hits)
+            touched = {"n": 0}
+
+            def boom():
+                touched["n"] += 1
+                raise AssertionError("模型不在位时不该构造 embedder")
+
+            app3.config["KB_HOOKS"]["get_rag"] = boom
+            app3.config["KB_HOOKS"]["rag_model_ready"] = lambda: False
+            j3 = app3.test_client().post("/api/ai/audit", json={
+                "path": "baike/sub/dirty.md", "conflict": True}).get_json()
+            check("F7 模型不在位时第二路连 get_rag 都不碰（越守卫会当场加载权重把请求卡成几十秒）",
+                  touched["n"] == 0 and any(p["kind"] == "conflict" for p in j3["proposals"]),
+                  {"touched": touched["n"],
+                   "kinds": [p["kind"] for p in j3["proposals"]]})
+            app3.config["KB_HOOKS"]["rag_model_ready"] = lambda: True
+            app3.config["KB_HOOKS"]["query_rag"] = lambda *a, **k: []
+            app3.test_client().post("/api/ai/audit", json={"path": "baike/sub/onlyrag.md",
+                                                           "conflict": True})
+            check("F8 控制组：模型在位时确实会去取（否则 F7 是恒真的空气断言）",
+                  touched["n"] >= 1, touched["n"])
+
+            app4, c4 = client_for(root, rag_hits=[
+                rag_hit("按词建表、用词直接定位到含它的文档列表，是倒排那一套。",
+                        "baike/term/倒排索引.md", 0.80, title="倒排索引")] + hits)
+            c4.put("/api/ai/config", json={"api_key": KEY, "base_url": base + "/auditpair",
+                                           "allow_local": True, "timeout_s": 10})
+            j4 = c4.post("/api/ai/audit", json={"path": "baike/sub/dirty.md",
+                                                "conflict": True}).get_json()
+            conf4 = [p for p in j4.get("proposals") or [] if p["kind"] == "conflict"]
+            titles4 = [p["title"] for p in conf4]
+            check("F9 两路撞见同一篇只配一行（去重靠 rel，不按来源各留一份）",
+                  len(titles4) == len({t.split("：")[0] for t in titles4}), titles4)
+            check("F10 第一路优先占名额：同名词条那条的线索标注不是「语义相近」",
+                  conf4 and "同名词条" in conf4[0]["evidence"], conf4[:1])
+
+        with tempfile.TemporaryDirectory() as td:
+            # 两条路各自都能给三条：合并后仍然受同一个上限管，且同一篇只占一名
+            root = make_root(td)
+            # 多造一篇**允许出站**的词条，让候选本来有 4 条 —— 只有这样"上限 3"才是被压过一次的
+            (root / "content" / "baike" / "term" / "布隆过滤器.md").write_text(
+                '---\ntitle: "布隆过滤器"\nsource: baike\ncollected: 2026-09-01\n'
+                'tags: [检索]\nstatus: stable\n---\n\n# 布隆过滤器\n\n## 定义\n\n'
+                "按位数组判存在，向量数据库也常用它做前置过滤。\n", encoding="utf-8")
+            many = [rag_hit("正文内容，这里提到 向量数据库 这个词，也提到 事件循环，按词建表才准。",
+                            "baike/term/向量数据库.md", 0.80, title="向量数据库"),
+                    rag_hit("正文内容，这里提到 向量数据库 这个词，一句话定义就够了。",
+                            "baike/sub/clean.md", 0.78, title="干净词条"),
+                    rag_hit("正文内容，这里提到 向量数据库 这个词，围栏没关也是同一套写法。",
+                            "baike/sub/fenced.md", 0.76, title="围栏没关"),
+                    rag_hit("正文内容，这里提到 向量数据库 这个词，也提到 事件循环 用位数组。",
+                            "baike/term/布隆过滤器.md", 0.75, title="布隆过滤器")]
+            app, c = client_for(root, rag_hits=many)
+            c.put("/api/ai/config", json={"api_key": KEY, "base_url": base + "/auditpair",
+                                          "allow_local": True, "timeout_s": 10})
+            j5 = c.post("/api/ai/audit", json={"path": "baike/sub/dirty.md",
+                                               "conflict": True}).get_json()
+            conf5 = [p for p in j5.get("proposals") or [] if p["kind"] == "conflict"]
+            check("F11 四条候选摆在面前时只留三对（上限是个真数字，不是拿常量自己比自己）",
+                  len(conf5) == 3 == ai_audit.CONFLICT_MAX_ROWS
+                  and len({p["title"].split("：")[0] for p in conf5}) == 3,
+                  [p["title"] for p in conf5])
+            check("F12 名额先给第一路：第一行的线索是 FTS 那种（同名词条 / 正文提到同一个词），"
+                  "不是向量补的",
+                  bool(conf5) and ("同名词条" in conf5[0]["evidence"]
+                                    or "正文提到同一个词" in conf5[0]["evidence"]), conf5[:1])
+
+        with tempfile.TemporaryDirectory() as td:
+            # 嵌入不是免费的：短到没内容的存根篇不该为它跑一次模型。
+            # 判据不能只看"没建行"（本地门槛也会拦），要看**有没有去问向量索引**。
+            root = make_root(td)
+            stub = root / "content" / "baike" / "sub" / "stub.md"
+            stub.write_text('---\ntitle: 存根\nsource: baike\ncollected: 2026-09-01\n'
+                            'tags: [检索]\nstatus: stable\n---\n\n# 存根\n\n## 定义\n\n'
+                            "只有九个字。\n", encoding="utf-8")
+            asked = []
+
+            def spy(store, emb, q, **kw):
+                asked.append(len(q))
+                return []
+
+            app, c = client_for(root, rag_hits=[])
+            app.config["KB_HOOKS"]["query_rag"] = spy
+            c.put("/api/ai/config", json={"api_key": KEY, "base_url": base + "/auditpair",
+                                          "allow_local": True, "timeout_s": 10})
+            c.post("/api/ai/audit", json={"path": "baike/sub/stub.md", "conflict": True})
+            stub_asks = len(asked)
+            c.post("/api/ai/audit", json={"path": "baike/sub/dirty.md", "conflict": True})
+            long_asks = len(asked) - stub_asks
+            check("F13 存根篇不去跑嵌入（查询文本短到连一句完整话都没有）",
+                  stub_asks == 0, {"stub_asks": stub_asks})
+            check("F14 控制组：同一根探针在正文够长的篇上确实会去问（否则 F13 是空气）",
+                  long_asks >= 1, {"long_asks": long_asks, "q_lens": asked})
 
         print(f"\n{passed} passed, {failed} failed")
         if FAILS:
