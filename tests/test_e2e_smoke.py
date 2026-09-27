@@ -401,6 +401,35 @@ def main() -> int:
         r = c.get("/api/ask/status")
         check("GET /api/ask/status 200", r.status_code == 200)
 
+        # ---- AI 出站配置（切片 1）：五个新端点各打一遍，语义留给 test_ai_config.py
+        r = c.get("/api/ai/config")
+        gj = jget(r)
+        check("GET /api/ai/config 200 且只回脱敏视图（没有 api_key 这个键）",
+              r.status_code == 200 and "api_key" not in gj, str(gj)[:160])
+        check("GET /api/ai/config 不泄露绝对路径",
+              not leaks(r.get_data(as_text=True), root))
+        check("GET /api/ai/config 把出站黑名单一起给出（前端据此藏入口）",
+              {"career", "interview"} <= set(gj.get("egress_blocked_domains") or []),
+              gj.get("egress_blocked_domains"))
+        # 这里**故意不放合法 key**：一放进去，本套末尾那条 /api/ask「503 不联网」
+        # 就会变成真去请求外部 LLM。合法路径由 tests/test_ai_config.py 拿假 provider 覆盖。
+        r = c.put("/api/ai/config", json={"base_url": "file:///etc/passwd"})
+        check("PUT /api/ai/config 非法端点 → 400", r.status_code == 400, str(jget(r))[:160])
+        check("PUT /api/ai/config 400 不泄露绝对路径",
+              not leaks(r.get_data(as_text=True), root))
+        r = c.post("/api/ai/test")
+        check("POST /api/ai/test 未配置 key → 503 not_configured",
+              r.status_code == 503 and jget(r).get("code") == "not_configured", str(jget(r))[:160])
+        r = c.get("/api/ai/usage")
+        check("GET /api/ai/usage 200 且给出预算态", r.status_code == 200
+              and "budget" in jget(r), str(jget(r))[:160])
+        r = c.delete("/api/ai/config")
+        check("DELETE /api/ai/config 200（没文件也如实回 removed=false，不 500）",
+              r.status_code == 200 and jget(r).get("removed") is False, str(jget(r))[:160])
+        check("配置类端点全程没往临时根写过 key",
+              not (root / ".ai-config.json").exists()
+              and jget(c.get("/api/ai/config")).get("key_present") is False)
+
         # ---- learn 只读（先 sync 才有卡）----
         r = c.post("/api/learn/sync", json={"force": True})
         check("POST /api/learn/sync ok", r.status_code == 200 and jget(r).get("ok") is True, str(jget(r))[:160])

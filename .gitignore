@@ -13,6 +13,8 @@ content/_trash/
 
 # 本地私有环境变量（AI key 等，绝不入库）
 _local_env.bat
+# AI 出站配置（设置抽屉写这个：含 api_key，明文只存本机 —— AGENTS 不变量 9 ③）
+.ai-config.json
 
 # 便携 Python 运行时与本地嵌入模型（机器本地，可重建）
 .python/

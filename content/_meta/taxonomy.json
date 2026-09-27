@@ -1,5 +1,5 @@
 {
-  "_comment": "知库分类学权威 —— 改这里，不改代码。domains.label=显示名/hue=域色相；subs 键支持 域/子域 scoped 形式；sources/status 键值对。代码内置缺省在 app/store.py，JSON 覆盖缺省。",
+  "_comment": "知库分类学权威 —— 改这里，不改代码。domains.label=显示名/hue=域色相；subs 键支持 域/子域 scoped 形式；sources/status 键值对。代码内置缺省在 app/store.py，JSON 覆盖缺省。domains.ai=false = 该域正文永不外发 AI（不变量 9）。",
   "domains": {
     "baike": {
       "label": "百科",
@@ -11,7 +11,8 @@
     },
     "interview": {
       "label": "面试",
-      "hue": 340
+      "hue": 340,
+      "ai": false
     },
     "projects": {
       "label": "项目",
@@ -23,7 +24,8 @@
     },
     "career": {
       "label": "职业",
-      "hue": 42
+      "hue": 42,
+      "ai": false
     },
     "ai-assets": {
       "label": "AI 资产",
@@ -31,7 +33,8 @@
     },
     "小说": {
       "label": "网文",
-      "search": false
+      "search": false,
+      "ai": false
     }
   },
   "subs": {

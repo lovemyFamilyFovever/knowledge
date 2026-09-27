@@ -246,6 +246,34 @@ html [hidden]{display:none}
 .kb-keys-list .kb-help-row{border-radius:6px;padding-left:6px;padding-right:6px}
 .kb-keys-list .kb-help-row:hover{background:var(--c-panel)}
 
+/* [5a] AI 页签（切片 1：填写 → 测试 → 保存 → 用量） =====
+   输入框单独走 .kb-ai-in 而不是给 .kb-pref-row 里的 input 加类型选择器：
+   后者会把「动效」页签那个裸 checkbox 一起卷进来改外观（抽屉是逐像素基线覆盖区）。 */
+.kb-pref-row .kb-ai-in{width:100%;min-width:0;box-sizing:border-box;padding:5px 8px;
+  border:1px solid var(--c-line);border-radius:var(--rd-ctl);background:var(--c-bg);
+  color:var(--c-ink);font:500 12px/1.4 var(--f-mono)}
+.kb-pref-row .kb-ai-in:focus{outline:none;border-color:var(--c-acc);box-shadow:0 0 0 2px var(--acc-soft)}
+.kb-pref-row .kb-ai-in::placeholder{color:var(--faint);font-style:normal}
+.kb-ai-state{display:block;margin:2px 0 10px;padding:8px 10px;border-radius:var(--rd-ctl);
+  border:1px solid var(--c-line);background:var(--c-sunk);color:var(--muted);
+  font:500 11.5px/1.6 var(--f-mono);word-break:break-all}
+/* 生效来源标签：env（环境变量压过文件）必须一眼看见，否则"改了没生效"无处可查 */
+.kb-pref-row .kb-ai-src{font:500 10.5px/1 var(--f-mono);color:var(--faint)}
+.kb-pref-row .kb-ai-src[data-src=env]{color:var(--c-warn)}
+.kb-pref-row .kb-ai-src[data-src=file]{color:var(--c-acc)}
+.kb-ai-result{margin:10px 0 2px;padding:9px 11px;border-radius:var(--rd-ctl);
+  border:1px solid var(--c-line);background:var(--c-sunk);color:var(--c-ink);
+  font:500 11.5px/1.6 var(--f-mono);word-break:break-all}
+.kb-ai-result[data-kind=ok]{border-color:var(--acc-line);background:var(--acc-soft)}
+.kb-ai-result[data-kind=bad]{border-color:var(--c-danger);background:var(--danger-soft)}
+.kb-ai-result[data-kind=run]{color:var(--muted)}
+.kb-ai-block{margin:10px 0 4px;font-size:11px;line-height:1.6;color:var(--c-warn)}
+/* 「本机」那一行：勾选框和说明要在同一格里贴在一起。默认网格会把裸 checkbox 甩到中间、
+   把说明挤进 62px 的第三列竖排成四行（实测截图难看）。 */
+.kb-pref-row .kb-ai-check{display:flex;align-items:center;gap:8px;min-width:0}
+.kb-ai-check .kb-pref-note{flex:1;min-width:0}
+.kb-pref-note code{font:500 10.5px/1 var(--f-mono);color:var(--c-acc)}
+
 /* [5b] 小说设置面板（独立「小说」tab） ===== */
 .nv-set{padding-top:2px}
 .nv-grp{margin:0 0 16px}

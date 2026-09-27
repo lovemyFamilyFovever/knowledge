@@ -1,47 +1,150 @@
 # -*- coding: utf-8 -*-
-"""AI 问答（中期功能 #1）：OpenAI 兼容 chat 客户端 + RAG 检索增强回答。
+"""AI 出站层：OpenAI 兼容 chat 客户端 + RAG 检索增强回答 + 配置/测试/用量端点。
 
-端点约定（环境变量可覆盖）：
-  KB_AI_BASE_URL  默认 https://api.agnes-ai.cn/v1（AgnesAI，OpenAI 兼容）
-  KB_AI_API_KEY   Bearer 令牌（key 走环境变量 / start.bat，不进 git）
-  KB_AI_MODEL     默认 gpt-4o-mini（换成 AgnesAI 支持的任意 chat 模型名即可）
-
+配置的唯一入口是 app/ai_config.py（env > .ai-config.json > 缺省），本模块只消费不回显明文 key。
 只依赖标准库 urllib —— 与 AGENTS「任意 Python 可启动」兼容。
+
+端点：
+  GET/PUT /api/ai/config   读（脱敏）/ 写（校验后落 gitignored JSON）
+  POST /api/ai/test        1-token 级连通性 ping，失败分类见 _classify_error()
+  GET /api/ai/usage        今日/本月调用数、tokens、估算花费、预算余额
+  POST /api/ask            RAG 问答（沿用旧行为，新增记账与预算帽）
+  GET /api/ask/status      可用性（旧前端在用，保持兼容）
+
 key 未配置时 /api/ask 返回 not_configured(503)，前端优雅降级；
 RAG 组件缺失时自动跳过检索（纯 chat 仍可用）。
 """
 import json
-import os
+import threading
+import time
 import urllib.error
 import urllib.request
-from pathlib import Path
 
 from flask import Blueprint, current_app, jsonify, request
 
+from app import ai_config
+from app.ai_config import ConfigError
+from app.ai_usage import AiUsageStore
+
 ai_bp = Blueprint("ai", __name__)
+
+# 失败分类（前端按 code 出文案，后端按 code 记账）
+E_NOT_CONFIGURED = "not_configured"
+E_AUTH = "auth"
+E_MODEL_404 = "model_404"
+E_TIMEOUT = "timeout"
+E_UNREACHABLE = "unreachable"
+E_HTTP = "http_error"
+
+_LOCK = threading.Lock()
+
+
+def _root():
+    return current_app.config["ROOT"]
 
 
 def _cfg() -> dict:
-    return {
-        "base": os.environ.get("KB_AI_BASE_URL", "https://api.xiaomimimo.com/v1").rstrip("/"),
-        "key": os.environ.get("KB_AI_API_KEY", ""),
-        "model": os.environ.get("KB_AI_MODEL", "mimo-v2.5"),
-    }
+    """生效配置（含明文 key，仅本模块内部使用，严禁进响应/日志）。"""
+    return ai_config.effective(_root())["values"]
 
 
 def ai_available() -> bool:
-    return bool(_cfg()["key"])
+    return bool(_cfg()["api_key"])
 
 
-def _chat(messages: list[dict], timeout: int = 60) -> str:
-    c = _cfg()
-    body = json.dumps({"model": c["model"], "messages": messages, "temperature": 0.3}).encode("utf-8")
+def _store() -> AiUsageStore | None:
+    """indexes/ai.db 的账本句柄（派生缓存，建不起就返回 None 让调用方降级为不记账）。"""
+    st = current_app.config.get("_AI_USAGE")
+    if st is not None:
+        return st
+    with _LOCK:
+        st = current_app.config.get("_AI_USAGE")
+        if st is None:
+            try:
+                st = AiUsageStore(current_app.config["INDEXES"])
+            except Exception:
+                st = False
+            current_app.config["_AI_USAGE"] = st
+    return st if st is not False else None
+
+
+def _record(kind, **kw):
+    st = _store()
+    if st is None:
+        return
+    try:
+        st.record(kind, **kw)
+    except Exception:
+        pass  # 记账失败绝不能反噬主流程（账本可事后重建）
+
+
+def _classify_error(e, http_status: int = 0) -> str:
+    """把异常/状态码归到固定分类；未知一律 http_error/unreachable，不给"看起来成功了"的余地。"""
+    if isinstance(e, urllib.error.HTTPError):
+        code = e.code
+    elif http_status:
+        code = http_status
+    else:
+        code = 0
+    if code in (401, 403):
+        return E_AUTH
+    if code == 404:
+        return E_MODEL_404
+    if code:
+        return E_HTTP
+    if isinstance(e, (TimeoutError,)) or "timed out" in str(e).lower():
+        return E_TIMEOUT
+    return E_UNREACHABLE
+
+
+def _chat(messages: list[dict], timeout: int = 60, max_tokens: int | None = None,
+          kind: str = "ask", cfg: dict | None = None) -> tuple[str, dict]:
+    """一次出站 chat，返回 (content, usage)。失败抛 RuntimeError("ai:<code>:<detail>")。
+
+    cfg 可传入「表单态」配置（/api/ai/test 要在不落盘的前提下试跑），缺省用生效配置。
+    """
+    c = cfg or _cfg()
+    key = c["api_key"]
+    if not key:
+        raise RuntimeError(f"ai:{E_NOT_CONFIGURED}:未配置 API key")
+    try:
+        base = ai_config.validate_base_url(c["base_url"], bool(c["allow_local"]))
+    except ConfigError as e:
+        raise RuntimeError(f"ai:{E_UNREACHABLE}:{e}") from None
+
+    payload = {"model": c["model"], "messages": messages, "temperature": 0.3}
+    if max_tokens:
+        payload["max_tokens"] = max_tokens
+    body = json.dumps(payload).encode("utf-8")
     req = urllib.request.Request(
-        c["base"] + "/chat/completions", data=body, method="POST",
-        headers={"Authorization": "Bearer " + c["key"], "Content-Type": "application/json"})
-    with urllib.request.urlopen(req, timeout=timeout) as r:
-        data = json.loads(r.read().decode("utf-8"))
-    return (data.get("choices") or [{}])[0].get("message", {}).get("content", "").strip()
+        base + "/chat/completions", data=body, method="POST",
+        headers={"Authorization": "Bearer " + key, "Content-Type": "application/json"})
+    t0 = time.perf_counter()
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as r:
+            data = json.loads(r.read().decode("utf-8"))
+    except urllib.error.HTTPError as e:
+        detail = ""
+        try:
+            detail = e.read().decode("utf-8", "replace")[:200]
+        except Exception:
+            pass
+        code = _classify_error(e)
+        _record(kind, model=c["model"], ok=False, error=f"{code}:{e.code}",
+                latency_ms=int((time.perf_counter() - t0) * 1000))
+        raise RuntimeError(f"ai:{code}:{detail}") from None
+    except Exception as e:  # URLError / 超时 / DNS / JSON 解析失败
+        code = _classify_error(e)
+        _record(kind, model=c["model"], ok=False, error=f"{code}:{type(e).__name__}",
+                latency_ms=int((time.perf_counter() - t0) * 1000))
+        raise RuntimeError(f"ai:{code}:{e}") from None
+    latency = int((time.perf_counter() - t0) * 1000)
+    usage = data.get("usage") if isinstance(data.get("usage"), dict) else {}
+    content = (data.get("choices") or [{}])[0].get("message", {}).get("content", "")
+    if not isinstance(content, str):
+        content = str(content)
+    _record(kind, model=c["model"], ok=True, usage=usage, latency_ms=latency)
+    return content.strip(), usage
 
 
 SYSTEM_PROMPT = (
@@ -49,6 +152,114 @@ SYSTEM_PROMPT = (
     "语料不足以回答时明确说明。回答使用简体中文，简洁、结构化，"
     "并在结尾列出引用的文档路径（[来源] 前缀）。"
 )
+
+
+def _budget_state() -> dict:
+    c = _cfg()
+    st = _store()
+    used = st.summary()["month_usage"]["calls"] if st else 0
+    budget = int(c["monthly_budget_calls"] or 0)
+    return {"used_month": used, "budget": budget,
+            "left": (budget - used) if budget > 0 else None,
+            "exceeded": bool(budget > 0 and used >= budget)}
+
+
+@ai_bp.get("/api/ai/config")
+def api_ai_config_get():
+    """脱敏配置视图 —— 永不返回明文 key。"""
+    return jsonify(ai_config.public_config(_root()))
+
+
+@ai_bp.put("/api/ai/config")
+def api_ai_config_put():
+    data = request.get_json(force=True, silent=True)
+    if not isinstance(data, dict):
+        return jsonify({"ok": False, "error": "请求体必须是 JSON 对象"}), 400
+    try:
+        pub = ai_config.save_config(_root(), data)
+    except ConfigError as e:
+        return jsonify({"ok": False, "error": str(e)}), 400
+    pub["message"] = "已保存到 " + ai_config.CONFIG_FILENAME + "（本机文件，不入库）"
+    return jsonify(pub)
+
+
+@ai_bp.delete("/api/ai/config")
+def api_ai_config_delete():
+    removed = ai_config.clear_config(_root())
+    return jsonify({"ok": True, "removed": removed,
+                    "config": ai_config.public_config(_root())})
+
+
+@ai_bp.post("/api/ai/test")
+def api_ai_test():
+    """连通性 ping：一条极短消息 + max_tokens 上限，如实回分类结果与延迟。
+
+    请求体可选带**未保存的表单值**（base_url / model / timeout_s / allow_local / api_key），
+    这样「填完先测、测通再存」的动线成立；不落盘、不改配置。api_key 留空 = 用已存的 key。
+    """
+    body = request.get_json(force=True, silent=True) or {}
+    eff = ai_config.effective(_root())
+    c = dict(eff["values"])
+    key_from = eff["sources"]["api_key"]
+    for field in ("base_url", "model", "timeout_s", "allow_local"):
+        if field in body and body[field] not in (None, ""):
+            try:
+                c[field] = ai_config.coerce(field, body[field])
+            except ConfigError as e:
+                return jsonify({"ok": False, "code": "bad_config", "error": str(e)}), 400
+    typed_key = str(body.get("api_key") or "").strip()
+    if typed_key:
+        c["api_key"] = typed_key
+        key_from = "form"
+    if "base_url" in body and body["base_url"]:
+        try:
+            c["base_url"] = ai_config.validate_base_url(c["base_url"], bool(c["allow_local"]))
+        except ConfigError as e:
+            return jsonify({"ok": False, "code": "bad_config", "error": str(e)}), 400
+    if not c["api_key"]:
+        return jsonify({"ok": False, "code": E_NOT_CONFIGURED,
+                        "error": "尚未配置 API key"}), 503
+    try:
+        content, usage = _chat([{"role": "user", "content": "ping"}],
+                               timeout=int(c["timeout_s"]), max_tokens=8, kind="test", cfg=c)
+    except RuntimeError as e:
+        parts = str(e).split(":", 2)
+        code = parts[1] if len(parts) > 1 else E_UNREACHABLE
+        detail = parts[2] if len(parts) > 2 else str(e)
+        return jsonify({"ok": False, "code": code, "error": _test_hint(code),
+                        "detail": detail[:200], "model": c["model"]}), 502
+    return jsonify({"ok": True, "code": "ok", "model": c["model"],
+                    "reply": content[:120], "usage": usage,
+                    "base_url": c["base_url"], "key_source": key_from})
+
+
+def _test_hint(code: str) -> str:
+    return {
+        E_NOT_CONFIGURED: "未配置 API key",
+        E_AUTH: "鉴权失败：key 无效或已过期",
+        E_MODEL_404: "模型名不被该端点接受（404）",
+        E_TIMEOUT: "请求超时：端点无响应或网络太慢",
+        E_UNREACHABLE: "端点不可达：地址、DNS 或网络有问题",
+        E_HTTP: "服务端返回异常状态",
+    }.get(code, "未知错误")
+
+
+@ai_bp.get("/api/ai/usage")
+def api_ai_usage():
+    c = _cfg()
+    st = _store()
+    if st is None:
+        return jsonify({"ok": True, "available": False,
+                        "detail": "账本不可用（indexes/ 建不起来）",
+                        "budget": _budget_state()})
+    s = st.summary()
+    cost = st.cost_summary(s["ym"], float(c["price_in_per_1k"]), float(c["price_out_per_1k"]))
+    price_ok = float(c["price_in_per_1k"]) > 0 or float(c["price_out_per_1k"]) > 0
+    return jsonify({"ok": True, "available": True, "period": {"day": s["day"], "ym": s["ym"]},
+                    "today": s["today"], "month": s["month_usage"], "by_kind": s["by_kind"],
+                    "cost": {**cost, "price_configured": price_ok},
+                    "budget": _budget_state(), "recent": st.recent(10),
+                    "model": c["model"], "key_present": bool(c["api_key"])})
 
 
 @ai_bp.post("/api/ask")
@@ -59,8 +270,13 @@ def api_ask():
     if not q:
         return jsonify({"ok": False, "error": "问题不能为空"}), 400
     if not ai_available():
-        return jsonify({"ok": False, "error": "not_configured",
-                        "hint": "未配置 KB_AI_API_KEY 环境变量"}), 503
+        return jsonify({"ok": False, "error": E_NOT_CONFIGURED, "code": E_NOT_CONFIGURED,
+                        "hint": "未配置 KB_AI_API_KEY 环境变量或 .ai-config.json"}), 503
+    b = _budget_state()
+    if b["exceeded"]:
+        return jsonify({"ok": False, "error": "budget_exceeded", "code": "budget_exceeded",
+                        "hint": f"本月已用 {b['used_month']} 次，达到预算帽 "
+                                f"{b['budget']}；可在设置里调整预算"}), 429
 
     # 复用 routes_rag 的 KB_HOOKS 单例（rag 可选依赖缺失 → hits 留空，纯 chat 兜底）
     hits = []
@@ -81,23 +297,28 @@ def api_ask():
         {"role": "system", "content": SYSTEM_PROMPT},
         {"role": "user", "content": f"语料片段：\n{ctx}\n\n问题：{q}"},
     ]
+    c = _cfg()
     try:
-        answer = _chat(messages)
-    except urllib.error.HTTPError as e:
-        detail = e.read().decode("utf-8", "replace")[:200]
-        return jsonify({"ok": False, "error": f"AI 服务返回 {e.code}", "detail": detail}), 502
-    except Exception as e:  # 网络等
-        return jsonify({"ok": False, "error": f"AI 服务不可达：{e}"}), 502
+        answer, usage = _chat(messages, timeout=int(c["timeout_s"]), kind="ask")
+    except RuntimeError as e:
+        parts = str(e).split(":", 2)
+        code = parts[1] if len(parts) > 1 else E_UNREACHABLE
+        detail = parts[2] if len(parts) > 2 else str(e)
+        status = 503 if code == E_NOT_CONFIGURED else 502
+        return jsonify({"ok": False, "error": _test_hint(code), "code": code,
+                        "detail": detail[:200]}), status
 
     sources = [{"path": h.get("file", ""), "url": h.get("url"),
                 "score": round(h.get("score", 0) or 0, 4)} for h in hits]
-    return jsonify({"ok": True, "answer": answer, "sources": sources, "model": _cfg()["model"]})
+    return jsonify({"ok": True, "answer": answer, "sources": sources,
+                    "model": c["model"], "usage": usage})
 
 
 @ai_bp.get("/api/ask/status")
 def api_ask_status():
-    return jsonify({"ok": True, "available": ai_available(),
-                    "base": _cfg()["base"], "model": _cfg()["model"]})
+    c = _cfg()
+    return jsonify({"ok": True, "available": bool(c["api_key"]),
+                    "base": c["base_url"], "model": c["model"]})
 
 
 def register(app):

@@ -2410,6 +2410,161 @@ def probe_novel_prefs(base):
           hc.get("size") == "26" and hc.get("line") == "1.5" and hc.get("theme_key") == ["white"], hc)
 
 
+# ================================================================ 探针 20b：设置·AI 页签（切片 1）
+# 为什么值得单开一支：AI 配置是本项目**第一条会把密钥写进磁盘**的 UI 路径。
+# 后端契约已有 tests/test_ai_config.py 74 条锁着，这里只补"前端到底有没有照契约做"：
+#   · 填完不保存就点测试 —— 必须拿表单值去试（用户动线是 填 → 测 → 存）；
+#   · 保存成功后输入框里的明文 key 必须被清掉、只留 placeholder 的尾 4 位；
+#   · 生效来源标签要如实（file / env），否则"改了没生效"在界面上无处可查；
+#   · 磁盘上真的落一个 .ai-config.json，且里面**不含**脱敏字段（展示字段不许回灌）。
+AI_SAVE_JS = PRELUDE + r"""
+  const V = id => q('#kb-ai-' + id);
+  const val = id => { const e = V(id); if (!e) return null; return e.type === 'checkbox' ? !!e.checked : e.value; };
+  const setv = (id, v) => {
+    const e = V(id); if (!e) return;
+    if (e.type === 'checkbox') e.checked = !!v; else e.value = String(v);
+    e.dispatchEvent(new Event('input', {bubbles: true}));
+  };
+  const res = () => { const e = V('result'); return (!e || e.hidden) ? null
+    : {kind: e.dataset.kind || '', text: (e.textContent || '').replace(/\s+/g, ' ').trim()}; };
+  const press = async (id, wait) => { const e = V(id); if (e) e.click(); await sleep(wait || 800); return res(); };
+  const openai = async () => {
+    const btn = q('#kb-settings-btn'); if (btn) btn.click();
+    await sleep(600);
+    const tab = q('#kb-set-tabs [data-sec="ai"]'); if (tab) tab.click();
+    await sleep(1000);
+    const sec = q('.kb-set-sec[data-sec="ai"]');
+    return {btn: !!btn, tab: !!tab, shown: !!(sec && !sec.hidden)};
+  };
+  out.open = await openai();
+  out.tabs = [...document.querySelectorAll('#kb-set-tabs [data-sec]')].map(b => b.dataset.sec);
+  out.state0 = txt('#kb-ai-state');
+  out.d0 = {base: val('base'), model: val('model'), timeout: val('timeout'), budget: val('budget'),
+            pin: val('pin'), key: val('key'), local: val('local')};
+  out.ph0 = (V('key') || {}).placeholder;
+  out.src0 = {base: txt('#kb-ai-base-s'), model: txt('#kb-ai-model-s'), key: txt('#kb-ai-key-s'),
+              local: txt('#kb-ai-local-s')};
+  out.blocked = txt('#kb-ai-block');
+  // 1) 一个 key 都没配就点测试：必须如实报"未配置"，而且不发任何出站请求
+  out.no_key = await press('test', 900);
+  // 2) 填一个非法地址保存：后端 400，界面必须把原因摊开（而不是静默）
+  setv('base', 'file:///etc/passwd');
+  out.bad_save = await press('save', 900);
+  out.bad_state = txt('#kb-ai-state');
+  // 3) 合法但不可达的端点 + 一个合成 key：保存应成功
+  setv('base', 'http://kb-ai-no-such-host.invalid/v1');
+  setv('key', 'sk-ui-behavior-K7QF');
+  setv('model', 'mimo-ui-r');
+  out.saved = await press('save', 1400);
+  out.after_save = {state: txt('#kb-ai-state'), key_val: val('key'),
+                    ph: (V('key') || {}).placeholder, model: val('model'), base: val('base'),
+                    src_key: txt('#kb-ai-key-s'), src_model: txt('#kb-ai-model-s')};
+  // 4) 直接点测试：拿的是**已保存**的表单值，端点解析不了 → 分类必须是 unreachable
+  out.test = await press('test', 5000);
+  out.after_test = txt('#kb-ai-state');
+  return JSON.stringify(out);
+})()"""
+
+AI_RELOAD_JS = PRELUDE + r"""
+  const V = id => q('#kb-ai-' + id);
+  const val = id => { const e = V(id); if (!e) return null; return e.type === 'checkbox' ? !!e.checked : e.value; };
+  const res = () => { const e = V('result'); return (!e || e.hidden) ? null
+    : {kind: e.dataset.kind || '', text: (e.textContent || '').replace(/\s+/g, ' ').trim()}; };
+  const press = async (id, wait) => { const e = V(id); if (e) e.click(); await sleep(wait || 800); return res(); };
+  const btn = q('#kb-settings-btn'); if (btn) btn.click();
+  await sleep(600);
+  const tab = q('#kb-set-tabs [data-sec="ai"]'); if (tab) tab.click();
+  await sleep(1200);
+  // 重新打开抽屉 = 重新 GET /api/ai/config：值与来源都必须从磁盘回来，而不是内存残留
+  out.reloaded = {base: val('base'), model: val('model'), state: txt('#kb-ai-state'),
+                  ph: (V('key') || {}).placeholder, src_base: txt('#kb-ai-base-s'),
+                  src_key: txt('#kb-ai-key-s')};
+  window.confirm = () => true;      // 「清除文件」是确认式动作，探针替用户点确定
+  out.cleared = await press('clear', 1500);
+  out.after_clear = {base: val('base'), model: val('model'), state: txt('#kb-ai-state'),
+                     src_key: txt('#kb-ai-key-s')};
+  return JSON.stringify(out);
+})()"""
+
+
+def probe_ai_settings(base, tmp):
+    print("== 20b 设置·AI 页签：填 / 测 / 存 / 清 + 磁盘落点 ==")
+    url = base + "/doc/ui-r/notes/beta.md"
+    d = run_expr(url, AI_SAVE_JS)
+    o = d.get("open") or {}
+    check("AI 页签：设置抽屉能打开、页签条里真的有 AI、点得到、section 可见",
+          o.get("btn") and o.get("tab") and o.get("shown") is True, d.get("open"))
+    check("AI 页签：页签顺序没被改坏（外观/排版/AI/小说/快捷键）",
+          d.get("tabs") == ["look", "type", "ai", "novel", "keys"], d.get("tabs"))
+    dd = d.get("d0") or {}
+    check("AI 配置：首屏控件是从后端读出来的缺省值，不是空壳",
+          dd.get("base") == "https://api.xiaomimimo.com/v1" and dd.get("model") == "mimo-v2.5"
+          and dd.get("timeout") == "30" and dd.get("budget") == "300", dd)
+    check("AI 配置：没配 key 时密钥框是空的、placeholder 写明未配置",
+          dd.get("key") == "" and d.get("ph0") == "(未配置)",
+          {"key": dd.get("key"), "ph": d.get("ph0")})
+    check("AI 配置：生效来源逐字段如实标（未落盘时全标缺省，含「本机」那行的勾选框）",
+          set((d.get("src0") or {}).values()) == {"缺省"}, d.get("src0"))
+    check("AI 配置：状态条在未配置时讲清楚没有密钥",
+          "未配置" in (d.get("state0") or ""), d.get("state0"))
+    check("AI 配置：禁用出站的域在界面上点名（代码下界两域必在，与合成分类学里有哪几域无关）",
+          all(k in (d.get("blocked") or "") for k in ("career", "interview")),
+          d.get("blocked"))
+    nk = d.get("no_key") or {}
+    check("AI 测试：一个 key 都没有时点测试 → 界面摊开说未配置，不假装在跑",
+          nk.get("kind") == "bad" and "not_configured" in (nk.get("text") or ""), nk)
+    bs = d.get("bad_save") or {}
+    check("AI 保存：非法端点被后端挡下，原因原文显示在结果条里（不静默、不落盘）",
+          bs.get("kind") == "bad" and "http(s)" in (bs.get("text") or ""), bs)
+    check("AI 保存：保存失败后状态条仍是旧的（没把失败说成成功）",
+          "未配置" in (d.get("bad_state") or ""), d.get("bad_state"))
+    sv = d.get("saved") or {}
+    check("AI 保存：合法值保存成功并给出落盘文件名",
+          sv.get("kind") == "ok" and ".ai-config.json" in (sv.get("text") or ""), sv)
+    af = d.get("after_save") or {}
+    check("AI 保存：表单里的明文 key 立刻被清掉，只留尾 4 位占位",
+          af.get("key_val") == "" and "K7QF" in (af.get("ph") or ""), af)
+    check("AI 保存：状态条改口报密钥已配（尾 4 位）+ 来源标文件",
+          "K7QF" in (af.get("state") or "") and af.get("src_key") == "文件"
+          and af.get("src_model") == "文件", af)
+    check("AI 保存：保存后重画控件用的是服务器回值（模型跟着变成新值）",
+          af.get("model") == "mimo-ui-r", af)
+    tt = d.get("test") or {}
+    check("AI 测试：端点解析不了时分类报 unreachable（而不是含糊的失败）",
+          tt.get("kind") == "bad" and "unreachable" in (tt.get("text") or ""), tt)
+    m = re.search(r"本月\s*(\d+)\s*次", d.get("after_test") or "")
+    check("AI 测试：失败调用照样进用量条（本月次数出现且不是 0）",
+          bool(m) and int(m.group(1)) > 0, d.get("after_test"))
+
+    cfg = tmp / ".ai-config.json"
+    check("AI 落盘：写在**临时实例根**下（实例 root 就是 tmp，仓库根不会被这条路径碰到）",
+          cfg.is_file() and str(tmp) != str(ROOT), str(cfg))
+    if cfg.is_file():
+        raw = cfg.read_text(encoding="utf-8")
+        j = json.loads(raw)
+        check("AI 落盘：文件里是明文 key（本机私有，靠 gitignore 兜住），且 key 是刚填的那个",
+              j.get("api_key") == "sk-ui-behavior-K7QF", sorted(j))
+        check("AI 落盘：展示字段不回灌（key_masked/sources/message 都不许进文件）",
+              not ({"key_masked", "sources", "message"} & set(j)), sorted(j))
+        check("AI 落盘：脱敏串不会被误写进文件", "******" not in raw, raw[:120])
+
+    d2 = run_expr(url, AI_RELOAD_JS)
+    rl = d2.get("reloaded") or {}
+    check("AI 重开：重新打开抽屉能把磁盘上的值读回控件（不是靠页面内存残留）",
+          rl.get("base") == "http://kb-ai-no-such-host.invalid/v1"
+          and rl.get("model") == "mimo-ui-r", rl)
+    check("AI 重开：来源标签重算为文件、状态条仍报尾 4 位",
+          rl.get("src_key") == "文件" and "K7QF" in (rl.get("state") or ""), rl)
+    cl = d2.get("cleared") or {}
+    check("AI 清除：点「清除文件」后给出已删除的反馈",
+          cl.get("kind") == "ok" and "已删除配置文件" in (cl.get("text") or ""), cl)
+    ac = d2.get("after_clear") or {}
+    check("AI 清除：界面回到缺省值与未配置（不是把旧值留在框里骗人）",
+          ac.get("model") == "mimo-v2.5" and "未配置" in (ac.get("state") or "")
+          and ac.get("src_key") == "缺省", ac)
+    check("AI 清除：磁盘上的配置文件真的没了", not cfg.exists(), str(cfg))
+
+
 # ================================================================ 探针 21：快捷键清单（唯一数据源）
 KEYS_JS = PRELUDE + r"""
   const T = e => ((e && e.textContent) || '').replace(/\s+/g, ' ').trim();
@@ -3217,6 +3372,7 @@ def main() -> int:
         run_probe("finish", probe_finish_bar, base, tmp)  # 写 reading.db 的 doc_marks（不动语料）
         run_probe("spark", probe_toc_spark, base)         # 写 reading.db 的事件（派生库，不动语料）
         run_probe("novelpref", probe_novel_prefs, base)  # 只写 localStorage（小说偏好）
+        run_probe("aicfg", probe_ai_settings, base, tmp)  # 写临时根的 .ai-config.json（探针收尾自己清掉）
         run_probe("keys", probe_keys, base)             # 只读：快捷键两处同源
         run_probe("novelbar", probe_novel_bar, base, tmp)  # 写：章评落旁挂 + 朗读/滚动/下载
         run_probe("stats", probe_stats, base, tmp)  # 写：/api/track 造当月事件后看统计页

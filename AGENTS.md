@@ -4,7 +4,7 @@
 
 ## 项目一句话
 
-个人知识库单一入口：全部语料以 **Markdown 文件为唯一事实源**，仓库提供迁移管线、本地阅读器（Flask）与本地语义检索（RAG），不依赖任何外部 API，语料不出网。
+个人知识库单一入口：全部语料以 **Markdown 文件为唯一事实源**，仓库提供迁移管线、本地阅读器（Flask）与本地语义检索（RAG）。**默认不依赖任何外部 API、语料不出网**；唯一的例外是用户手动填 key 才开启的 AI 出站，受不变量 9「AI 出站三禁」约束。
 
 ## 不变量（违反 = 破坏性改动）
 
@@ -12,10 +12,14 @@
 2. 新知识只从 `content/_inbox/` 进；`_` 前缀目录（`_inbox/_assets/_trash/_meta/_unfiled`）不进分类树、不进任何索引。
 3. `indexes/`（index.db / rag.db）是纯派生缓存：可随时删除重建；禁止手改、禁止 git 跟踪。
 4. 删除必须走软删除（→ `content/_trash/`，`/api/delete`），git 历史是第二重保险。
-5. 分类学（域 / 子域 / 来源 / 状态 / 色相）的权威是 `content/_meta/taxonomy.json`；代码里的字典只是缺省回退。改分类先改 JSON，不改代码。域条目可选 `"search": false` = 该域不进搜索浮层的筛选钮（小说域全是 `.txt/.epub`、FTS 只收 `.md/.html`，给了钮就是恒 0 结果）；模板与 CSS 一律**不许再抄一份域名单**（浮层钮由 `LABELS` 派生，色点用 `--dh=色相数字`）。
+5. 分类学（域 / 子域 / 来源 / 状态 / 色相）的权威是 `content/_meta/taxonomy.json`；代码里的字典只是缺省回退。改分类先改 JSON，不改代码。域条目可选 `"search": false` = 该域不进搜索浮层的筛选钮（小说域全是 `.txt/.epub`、FTS 只收 `.md/.html`，给了钮就是恒 0 结果）；可选 `"ai": false` = 该域正文**永不出站**给 AI（见不变量 9，与 `search` 同一口径：开关写在 JSON 里，模板与代码不许再抄一份域名单）。模板与 CSS 一律**不许再抄一份域名单**（浮层钮由 `LABELS` 派生，色点用 `--dh=色相数字`）。
 6. frontmatter 只存身世与元数据（title/source/collected/tags/favorite/status），不存阅读统计等高频运行时数据——阅读统计走 app/reading.py（indexes/reading.db 事件制：open/read_minute/finish 只追加，语料零污染），标签治理/重命名一律先 dry-run（scripts/govern_tags.py）。
 7. 嵌入 / 分词 / 切块逻辑变更必须递增 `app/rag.py::RAG_CODE_VERSION`（触发向量索引自动全量重建），并用 `tokenizers` 库做逐 token 交叉验证后再提交。
 8. 阅读器同时支持 `start.bat`（任意 Python）与便携运行时（`.python\`）；`python app\app.py` 直启时项目根会自动补进 sys.path，不要依赖 cwd。
+9. **AI 出站三禁**（唯一允许出网的路径；设计见 `docs/spec-ai-assistant.md`，配置层 `app/ai_config.py`，账本 `app/ai_usage.py`）：
+   ① 出站范围由 `taxonomy.json` 的域级 `"ai": false` 决定，且 `career` / `interview` 是 `app/store.py::AI_NEVER_EGRESS` 这个**代码下界**——JSON 里写 `"ai": true` 也放行不了；判定只走 `ai_config.egress_blocked_domains()`，前端隐藏入口不算防护。
+   ② AI 的建议**永不自动改正文**：采纳只写 sidecar `.notes.md`（或用户显式点「存为术语」新建词条）；AI 三个模块（routes_ai / ai_config / ai_usage）不许出现任何写 `content/` 的路径。
+   ③ key 不落盘到会被索引或提交的位置：只存仓库根 `.ai-config.json`（gitignored，env 优先级更高），任何响应/日志/账本只出现**尾 4 位**；`base_url` 必须过 `validate_base_url()`（只收 http(s)，本机/内网要显式勾选 `allow_local`）。
 
 ## 常用命令
 
@@ -27,13 +31,14 @@ python tests\test_new_project.py               # 脚手架 smoke（9 断言）
 python tests\test_learn.py                     # 学习系统 smoke（255 断言）
 python tests\test_predicates.py                # 判定谓词层 smoke（89 断言 · P6 存活清单回填）
 python tests\test_properties.py                # 性质测试（15 条 · 每条 240 个随机样本，固定种子）
-python tests\test_invariants.py                # 不变量门禁 I1~I9（71 断言）
-python tests\test_e2e_smoke.py                 # 端到端 smoke（198 断言 · 打满 58 条路由）
+python tests\test_invariants.py                # 不变量门禁 I1~I10（87 断言 · 对 AGENTS 1-9）
+python tests\test_e2e_smoke.py                 # 端到端 smoke（207 断言 · 打满 63 条路由）
+python tests\test_ai_config.py                 # AI 出站配置层（79 断言 · 假 provider 起在本进程，零外网）
 python tests\test_js_props.py                  # 浏览器侧书库解析性质测试（47 断言；缺 node/Chrome 自动 SKIP）
 python tests\test_ui_regress.py                # 视觉回归批处理（P5：22 张截图 vs tests/ui-baselines/ 基线 + 10 条顶栏几何断言）
 python tests\test_ui_regress.py --stability    #   只验"两次截图逐像素相同"（改矩阵/环境后先跑这个）
 python tests\test_ui_regress.py --update       #   确认改动无误后，用本次截图刷新基线
-python tests\test_ui_behavior.py               # UI 行为回归（360 断言 · 台账 §2 已升 E2E 的 58 行控件"点了到底有没有反应"；轮次 32 起 §2 的 110 行已全部下完判语。轮次 33 提速：一台 Chrome 跑完整套（会话档），185s/趟，作业间自动清存储保隔离；回退一次一档 `set KB_BEHAVIOR_SESSION=0`；缺 node/Chrome 自动 SKIP）
+python tests\test_ui_behavior.py               # UI 行为回归（385 断言 · 台账 §2 已升 E2E 的 58 行控件"点了到底有没有反应"；轮次 32 起 §2 的 110 行已全部下完判语。轮次 33 提速：一台 Chrome 跑完整套（会话档），185s/趟，作业间自动清存储保隔离；回退一次一档 `set KB_BEHAVIOR_SESSION=0`；缺 node/Chrome 自动 SKIP）
 python tests\test_rag.py                       # RAG smoke（缺依赖自动 SKIP）
 python scripts\rag_search.py "查询" --json     # 语义检索 CLI / Agent 入口
 python scripts\govern_tags.py census|similar|merge|rename-sub   # 标签治理（merge/rename-sub 先预览后 --apply；详见 --help）
@@ -98,6 +103,8 @@ app/store.py        语料层：frontmatter、扫描、分类树、备注、taxo
 app/fts.py          FTS5 全文索引 + [[双链]]解析（派生）
 app/reading.py      月度阅读统计（reading.db 派生，事件制：open/read_minute/finish 只追加）
 app/rag.py          语义检索：切块/嵌入/sqlite-vec（派生，RAG_CODE_VERSION 管版本）
+app/ai_config.py    AI 出站配置：env > .ai-config.json > 缺省、key 脱敏、URL 校验、域级黑名单
+app/ai_usage.py     AI 调用账本（indexes/ai.db 派生；每次操作现开连接，不留锁）
 scripts/            迁移与维护脚本（rag_search.py 是 Agent 检索入口；agent/ 存跨会话常驻工具）
 requirements/       依赖清单（requirements.txt 核心 / -rag.txt 语义检索 / -lock.txt 便携环境重建锁）
 .githooks/          pre-commit：静态层（ruff/台账对账/悬空令牌/RAG 版本）串行 → 9 条纯 Python 套件**并行**（KB_GATE_PARALLEL 默认 4，=1 串行）→ 浏览器三套与 RAG 串行（缺依赖自动 SKIP）
