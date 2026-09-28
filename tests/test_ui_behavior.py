@@ -1774,7 +1774,11 @@ MOCK_JS = PRELUDE + r"""
   out.meta2 = T(q('.kb-rep-meta'));
   const ex = q('#kb-mock-exit');
   if (ex) ex.click();
-  for (let i = 0; i < 60 && txt('#kb-learn-sub').indexOf('到期') < 0 && txt('#kb-learn-sub').indexOf('本轮完成') < 0; i++) await sleep(150);
+  // 「本轮跳过」是轮次 49 加的第三种态（翻完一张没记分）；退出模拟面试时若撞上它，
+  // 这句也得认，否则等待会白转 9 秒再判失败。
+  for (let i = 0; i < 60 && txt('#kb-learn-sub').indexOf('到期') < 0
+       && txt('#kb-learn-sub').indexOf('本轮完成') < 0
+       && txt('#kb-learn-sub').indexOf('本轮跳过') < 0; i++) await sleep(150);
   out.exit_sub = txt('#kb-learn-sub');
   out.exit_no_rep = !q('.kb-rep');
   out.exit_foot = txt('#kb-learn-foot');
@@ -1852,7 +1856,8 @@ def probe_mock(base):
           d.get("score2") == f"0 / {n_paper}" and "正确率 0%" in (d.get("meta2") or ""),
           {"score": d.get("score2"), "meta": d.get("meta2")})
     check("模拟面试：「返回普通刷题」退出模拟态（副标题回到队列口径、成绩单消失、底部条不再写模拟）",
-          ("到期" in (d.get("exit_sub") or "") or "本轮完成" in (d.get("exit_sub") or ""))
+          (("到期" in (d.get("exit_sub") or "")) or ("本轮完成" in (d.get("exit_sub") or ""))
+           or ("本轮跳过" in (d.get("exit_sub") or "")))
           and d.get("exit_no_rep") is True and "模拟面试" not in (d.get("exit_foot") or ""),
           {"sub": d.get("exit_sub"), "foot": d.get("exit_foot")})
     # 这一条是本轮那个真缺陷的**唯一直接证据**：旧实现用 el.stage.innerHTML 写
@@ -4311,14 +4316,17 @@ def probe_review(base):
           {"feet": [x.get("foot") for x in (w.get("seen") or [])],
            "hidden": w.get("card_hidden_at_end"), "attached": w.get("card_attached"),
            "note": w.get("note_visible")})
-    # 这条钉的是**现状**，不是认可：一张都没记分、只是把队列走到底，界面仍写
-    # 「本轮完成 0 张 · 已全部过完」+「今日已复习完」。文案撒谎与 showDone 里 B9 那条同源，
-    # 缺陷已如实记进台账 §6（改文案要连带 P5 的 review_* 镜头，留给用户拍板）。
-    check("复习页：跳过到底的 done 态文案（现状：0 张也报「已全部过完」，缺陷记 §6）",
-          "本轮完成 0 张" in (w.get("done_line") or "")
-          and "已全部过完" in (w.get("done_line") or "")
-          and "今日已复习完" in (w.get("note_text") or ""),
-          {"sub": w.get("done_line"), "note": _ws(w.get("note_text"))[:40]})
+    # 全跳过（一张都没记分）走到队尾：这档以前共用「已全部过完 / 今日已复习完」的文案，
+    # 等于把"没做"说成"做完"（跳过不推进 SM-2）。轮次 49 修成第三种态，这里双向钉：
+    # 新的诚实文案必须在，旧的撒谎文案必须不在 —— 反向改回去也会红。
+    check("复习页：整轮走到底一张都没记分 —— done 态必须写「跳过 / 没记分」，不许说「已全部过完」「已复习完」",
+          "本轮完成 0 张" not in (w.get("done_line") or "")
+          and "已全部过完" not in (w.get("done_line") or "")
+          and "今日已复习完" not in (w.get("note_text") or "")
+          and "一张都没记分" in (w.get("note_text") or "")
+          and "没记分，排期不变" in (w.get("done_line") or "")
+          and "本轮跳过" in (w.get("done_line") or ""),
+          {"sub": w.get("done_line"), "note": _ws(w.get("note_text"))[:60]})
 
     m = run_expr(base + "/review", REVIEW_MAIN_JS)
     boot_term = (m.get("boot") or {}).get("term")

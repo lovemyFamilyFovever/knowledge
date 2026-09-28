@@ -305,11 +305,17 @@
     // showCard，全新用户零卡零复习会看到「今日已复习完」（文案撒谎）。没答过任何
     // 一张且队列本就为空 = 没卡可学；答过才算「这批过完」。
     var first = S.doneN === 0 && S.queue.length === 0;
+    /* 第三种态（轮次 49 补）：**翻完整轮却一张都没记分** —— 全是「跳过」。
+       原先这档共用「今日已复习完 / 已全部过完」的文案，等于把"没做"说成"做完"：
+       跳过不推进 SM-2，那些卡该什么时候到期还什么时候到期（§6 第 89 行）。 */
+    var skipped = S.doneN === 0;
     stageNote(
-      '  <div class="kb-done-t">' + U.esc(first ? "暂时没有可学的卡" : C.doneTitle) + "</div>" +
+      '  <div class="kb-done-t">' + U.esc(first ? "暂时没有可学的卡"
+                                          : (skipped ? "这一轮一张都没记分" : C.doneTitle)) + "</div>" +
       '  <div class="kb-done-d">' + U.esc(first
         ? "这个筛选下没有到期也没未学的卡。换个子域，或先去总览触发一次抽卡同步。"
-        : C.doneDesc) + "</div>" +
+        : (skipped ? "只是把它们翻过去了 —— 跳过不改动复习排期，想让它排进计划得回卡片按 1 / 2 / 3 / 4 记个分。"
+                   : C.doneDesc)) + "</div>" +
       '  <div class="kb-done-acts">' +
       '    <a class="kb-btn primary" href="' + C.doneHref + '">' + icon("i-progress-ring", 13) + U.esc(C.doneText) + "</a>" +
       '    <a class="kb-btn" href="/glossary">' + icon("i-sort-alpha", 13) + "逛术语百科</a>" +
@@ -317,7 +323,9 @@
       "  </div>");
     el.sub.innerHTML = first
       ? '<span class="kb-warn">队列为空</span> · 到期 ' + S.stats.due_n + " · 未学 " + S.stats.new_n
-      : "本轮完成 " + S.doneN + " 张 · " + '<span class="kb-ok">已全部过完</span>';
+      : (skipped
+          ? "本轮跳过 " + S.queue.length + " 张 · " + '<span class="kb-warn">没记分，排期不变</span>'
+          : "本轮完成 " + S.doneN + " 张 · " + '<span class="kb-ok">已全部过完</span>');
   }
 
   /* ---------------- 模拟面试（quiz 页专属）：随机卷 + 计时 + 成绩单 ---------------- */
