@@ -22,6 +22,23 @@ sys.path.insert(0, str(ROOT))
 from app.rag import OnnxEmbedder, RagStore, query_rag, rag_status, sync_rag  # noqa: E402
 
 
+def _console_safe() -> None:
+    """Windows 默认控制台是 GBK：命中正文里的 emoji（📌/✅ 这类）会把 `print` 本身炸成
+    UnicodeEncodeError —— 而且炸在**活儿干完之后**（同步与检索都已成功），于是成功被报成失败、
+    退出码非零。轮次 49 实测：重建完 22006 块后 `--json` 就是这样死的。
+    与 `tests/_ci.py::_safe`、`scripts/check_ledger_counts.py` 同一口径：**编不出来就替换，绝不抛异常**。"""
+    for s in (sys.stdout, sys.stderr):
+        try:
+            s.reconfigure(errors="replace")
+        except (AttributeError, ValueError):
+            pass   # 被重定向成非文本流（管道/测试替身）时没这能力，不影响正确性
+
+
+# 放在**模块导入时**而不是 main() 里：这样"导入了这个 CLI 却没走防护路径"这种变异体杀得掉
+# （判据见 tests/test_rag.py::test_cli_stdout_survives_gbk_console —— 它只 import，不调 main）。
+_console_safe()
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description="知库本地语义检索（RAG）")
     ap.add_argument("query", help="自然语言查询")

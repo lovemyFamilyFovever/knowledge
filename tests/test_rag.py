@@ -160,12 +160,49 @@ def test_end_to_end_semantic_search():
         store.close()
     print("ok  end-to-end: 语义检索命中正确文档，score 极性正确")
 
+def test_cli_stdout_survives_gbk_console():
+    """轮次 49 实测的真 bug（不是假想）：全量重嵌 22006 块**成功跑完**之后，
+    `python scripts/rag_search.py "index" --json` 死在打印那一刻 ——
+    `UnicodeEncodeError: 'gbk' codec can't encode character '\\U0001f4cc'`。
+    控制台是 GBK 时，命中正文里的 emoji 会让 `print` 自己抛异常，于是
+    **成功被报成失败**（退出码非零、JSON 一个字都没出来）。修法见 `rag_search._console_safe()`。
+
+    这条判据自带对照组：第二段不调护栏、同样打印 emoji，**必须**炸 ——
+    否则第一段就是空判（本机控制台已被工具链设成 UTF-8 时，两边都会"通过"，那是假绿）。
+    """
+    import subprocess
+    script_dir = ROOT / "scripts"
+    env = dict(__import__("os").environ, PYTHONIOENCODING="gbk")
+    # 只 import、不调 main：防护必须在**导入时**就生效，否则"写在 main 里但某条路径没走到"
+    # 这种变异体杀不掉（判据见 scripts/rag_search.py 的 _console_safe 调用位置）。
+    guarded = (
+        "import sys; sys.path.insert(0, %r); import rag_search;"
+        "print('\\U0001F4CC ok')" % str(script_dir))
+    raw = "import sys; print('\\U0001F4CC boom')"
+    a = subprocess.run([sys.executable, "-c", guarded], capture_output=True, text=True,
+                       env=env, timeout=180, encoding="utf-8", errors="replace")
+    b = subprocess.run([sys.executable, "-c", raw], capture_output=True, text=True,
+                       env=env, timeout=180, encoding="utf-8", errors="replace")
+    gbk_strict = b.returncode != 0 and "UnicodeEncodeError" in (b.stderr or "")
+    if not gbk_strict:
+        print("SKIP  CLI GBK 控制台判据：这台机器的 GBK 编码下打印 emoji 竟然不炸，对照组不成立"
+              f"（rc={b.returncode}）—— 这条不算通过也不算失败")
+        _ci.skipped("rag", "console-not-gbk-strict")
+        return
+    assert a.returncode == 0 and "ok" in (a.stdout or ""), (
+        f"加了 _console_safe 仍然炸：rc={a.returncode} err={(a.stderr or '')[-200:]}")
+    assert "?" in (a.stdout or "") or "\ufffd" in (a.stdout or ""), (
+        f"护栏没起作用（emoji 原样进了 GBK 流？）：{a.stdout!r}")
+    print("ok  rag_search CLI：GBK 控制台上打印 emoji 不再炸（对照组确认同样打印确实会炸）")
+
+
 def _main():
     _ci.started("rag")
     test_model_files_ready()
     test_markdown_split()
     test_tokenizer_matches_wordpiece_reference()
     test_tokenizer_cross_validated_against_library()
+    test_cli_stdout_survives_gbk_console()
     test_end_to_end_semantic_search()
     print("\nRAG TESTS OK")
     return 0
