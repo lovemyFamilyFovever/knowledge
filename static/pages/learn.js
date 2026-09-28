@@ -288,6 +288,7 @@
       return;
     }
     // 回退：只回到本轮还没评过分的卡，避免重复计分
+    if (S.idx <= 0) { U.toast("已经是这一轮的第一张了"); return; }
     for (var i = S.idx - 1; i >= 0; i--) {
       if (!S.graded[S.queue[i].card_id]) { S.idx = i; showCard(); return; }
     }

@@ -79,6 +79,57 @@ def test_tokenizer_matches_wordpiece_reference():
     print("ok  tokenizer: 特殊 token 与 WordPiece 行为对齐")
 
 
+def test_tokenizer_cross_validated_against_library():
+    """不变量 7 要求的那次**逐 token 交叉验证**，现在每次跑都真做（原先只是注释里写着
+    "已用 tokenizers 库交叉验证"，实际只钉了几个已知 id —— 台账 §5 那行「部分覆盖」就是这么来的）。
+
+    判据：同一份 `tokenizer.json`，纯标准库实现（`HFTokenizer`）与 Rust `tokenizers`
+    对每个样本产出的 **id 序列必须完全相等**（id 相等 ⇒ 归一化、预切分、`##` 续接、
+    [UNK] 落点、特殊 token 全都一致 —— 比"看起来一样"强）。
+
+    `tokenizers` **不在** requirements-rag.txt 里：它是验证工具，不是运行时依赖
+    （`app/rag.py` 第 13 行的契约就是不引入 transformers/tokenizers）。
+    缺库或缺模型时 SKIP；但"本机跑通"才是提交前的硬要求 —— 拿 SKIP 当"验过了"不算。
+    """
+    try:
+        from tokenizers import Tokenizer
+    except ImportError:
+        print("SKIP: 缺 tokenizers 库（验证工具，非运行时依赖）")
+        _ci.skipped("rag", "no-tokenizers-lib")
+        return
+    tok_path = ROOT / "app" / "rag_models" / "tokenizer.json"
+    if not tok_path.is_file():
+        print("SKIP: 模型未下载")
+        _ci.skipped("rag", "tokenizer-not-downloaded")
+        return
+    ref = Tokenizer.from_file(str(tok_path))
+    mine = HFTokenizer(tok_path)
+    samples = [
+        "量子纠缠",                                    # 中文逐字（handle_chinese_chars）
+        "The Quick brown fox",                         # 大写英文在本词表落 [UNK]
+        "BERT 用 [CLS] 与 [SEP] 标边界；WordPiece 用 ## 续接。",  # 中英混排 + 全角标点
+        "2026 年的 RAG 命中率 98.6%",                   # 数字与百分号
+        "全角ＡＢＣ与半角ABC混排",                       # 全角字母不做 NFKC，原样进词表
+        "控制\x01字符要被 clean_text 丢掉",             # clean_text 分支
+        "超长的英文词" + "a" * 60,                      # max_input_chars_per_word 上限
+        "café naïve Ñ 重音",                           # lowercase/NFD 分支（本机 false → 原样）
+        "换行\n与\t制表都算空白",                        # 预分词的空白切
+        "subtokenization 会切成多个 piece",             # WordPiece 贪心最长匹配
+    ]
+    bad, n_tok = [], 0
+    for s in samples:
+        a, b = mine.encode(s), ref.encode(s).ids
+        n_tok += len(a)
+        if a != b:
+            bad.append((s[:16], len(a), len(b), a[:8], b[:8]))
+    assert not bad, "与 tokenizers 库逐 token 不一致（%d/%d）：%r" % (len(bad), len(samples), bad[:3])
+    # 自证不是空跑：样本得真的切出多个 piece，否则整条判据可能只是恒等的空比较
+    assert any(len(mine.encode(s)) > 4 for s in samples), "样本太短，交叉验证形同虚设"
+    assert mine.unk_id in mine.encode("The Quick brown fox"), "本词表下大写词就该落 UNK，不许偷偷小写化"
+    print("ok  tokenizer 交叉验证：%d 个样本 / %d 个 token 与 Rust tokenizers 逐 id 一致"
+          % (len(samples), n_tok))
+
+
 def test_end_to_end_semantic_search():
     model_dir = ROOT / "app" / "rag_models"
     if not (model_dir / "model.onnx").is_file():
@@ -114,6 +165,7 @@ def _main():
     test_model_files_ready()
     test_markdown_split()
     test_tokenizer_matches_wordpiece_reference()
+    test_tokenizer_cross_validated_against_library()
     test_end_to_end_semantic_search()
     print("\nRAG TESTS OK")
     return 0

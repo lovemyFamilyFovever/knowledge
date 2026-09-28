@@ -14,7 +14,7 @@
 4. 删除必须走软删除（→ `content/_trash/`，`/api/delete`），git 历史是第二重保险。
 5. 分类学（域 / 子域 / 来源 / 状态 / 色相）的权威是 `content/_meta/taxonomy.json`；代码里的字典只是缺省回退。改分类先改 JSON，不改代码。域条目可选 `"search": false` = 该域不进搜索浮层的筛选钮（小说域全是 `.txt/.epub`、FTS 只收 `.md/.html`，给了钮就是恒 0 结果）；可选 `"ai": false` = 该域正文**永不出站**给 AI（见不变量 9，与 `search` 同一口径：开关写在 JSON 里，模板与代码不许再抄一份域名单）。模板与 CSS 一律**不许再抄一份域名单**（浮层钮由 `LABELS` 派生，色点用 `--dh=色相数字`）。
 6. frontmatter 只存身世与元数据（title/source/collected/tags/favorite/status），不存阅读统计等高频运行时数据——阅读统计走 app/reading.py（indexes/reading.db 事件制：open/read_minute/finish 只追加，语料零污染），标签治理/重命名一律先 dry-run（scripts/govern_tags.py）。
-7. 嵌入 / 分词 / 切块逻辑变更必须递增 `app/rag.py::RAG_CODE_VERSION`（触发向量索引自动全量重建），并用 `tokenizers` 库做逐 token 交叉验证后再提交。
+7. 嵌入 / 分词 / 切块逻辑变更必须递增 `app/rag.py::RAG_CODE_VERSION`（触发向量索引自动全量重建），并用 `tokenizers` 库做逐 token 交叉验证后再提交。**这条现在有断言在管**：`tests/test_rag.py::test_tokenizer_cross_validated_against_library()` 每次跑都拿参考库逐 id 比对，`test_predicates.py` 另有不依赖模型文件的合成 `tokenizer.json` 断言（轮次 49 第一次真跑就抓到一条真偏差：正文里字面的 `[CLS]` 被拆成三块碎片，而参考实现当它是一个 special token → 新增 `HFTokenizer._split_specials()` 并递增到 v4）。
 8. 阅读器同时支持 `start.bat`（任意 Python）与便携运行时（`.python\`）；`python app\app.py` 直启时项目根会自动补进 sys.path，不要依赖 cwd。
 9. **AI 出站三禁**（唯一允许出网的路径；设计见 `docs/spec-ai-assistant.md`，配置层 `app/ai_config.py`，账本 `app/ai_usage.py`）：
    ① 出站范围由 `taxonomy.json` 的域级 `"ai": false` 决定，且 `career` / `interview` 是 `app/store.py::AI_NEVER_EGRESS` 这个**代码下界**——JSON 里写 `"ai": true` 也放行不了；判定只走 `ai_config.egress_blocked_domains()`，前端隐藏入口不算防护。**同一道闸门也管检索回来的片段**：FTS 与向量索引的命中在进上下文/配对前都要按对方所属域过滤（`app/routes_ai.py` 的 `_conflict_hits` / `_rag_conflict_hits`）—— 从索引里捞出来的也算出站内容。
@@ -30,7 +30,7 @@ start.bat --dev                                # 开发模式（py/模板改动�
 python tests\test_reader.py                    # 阅读器 smoke（82 断言）
 python tests\test_new_project.py               # 脚手架 smoke（9 断言）
 python tests\test_learn.py                     # 学习系统 smoke（255 断言）
-python tests\test_predicates.py                # 判定谓词层 smoke（89 断言 · P6 存活清单回填）
+python tests\test_predicates.py                # 判定谓词层 smoke（93 断言 · 合成 tokenizer.json 钉分词 special 字面量 · P6 存活清单回填）
 python tests\test_properties.py                # 性质测试（15 条 · 每条 240 个随机样本，固定种子）
 python tests\test_invariants.py                # 不变量门禁 I1~I10（87 断言 · 对 AGENTS 1-9）
 python tests\test_e2e_smoke.py                 # 端到端 smoke（235 断言 · 打满 72 条路由）
@@ -42,8 +42,8 @@ python tests\test_js_props.py                  # 浏览器侧书库解析性质�
 python tests\test_ui_regress.py                # 视觉回归批处理（P5：22 张截图 vs tests/ui-baselines/ 基线 + 10 条顶栏几何断言）
 python tests\test_ui_regress.py --stability    #   只验"两次截图逐像素相同"（改矩阵/环境后先跑这个）；并把历轮每镜头最大 AE 累计进 tests/ui-baselines/floor.json（跟踪文件，阈值 AE≤2 的实测出处）
 python tests\test_ui_regress.py --update       #   确认改动无误后，用本次截图刷新基线
-python tests\test_ui_behavior.py               # UI 行为回归（448 断言 · 台账 §2 已升 E2E 的控件"点了到底有没有反应"；轮次 33 提速：一台 Chrome 跑完整套（会话档），~200s/趟，作业间自动清存储保隔离；回退一次一档 `set KB_BEHAVIOR_SESSION=0`；缺 node/Chrome 自动 SKIP）
-python tests\test_rag.py                       # RAG smoke（缺依赖自动 SKIP）
+python tests\test_ui_behavior.py               # UI 行为回归（521 断言 · 台账 §2 已升 E2E 的控件"点了到底有没有反应"；轮次 33 提速：一台 Chrome 跑完整套（会话档），~200s/趟，作业间自动清存储保隔离；回退一次一档 `set KB_BEHAVIOR_SESSION=0`；缺 node/Chrome 自动 SKIP）
+python tests\test_rag.py                       # RAG smoke（含**与 Rust tokenizers 逐 token 交叉验证**：缺库/缺模型才 SKIP，本机跑通才是提交口径）
 python scripts\rag_search.py "查询" --json     # 语义检索 CLI / Agent 入口
 python scripts\govern_tags.py census|similar|merge|rename-sub   # 标签治理（merge/rename-sub 先预览后 --apply；详见 --help）
 python scripts\check_ledger_counts.py             # 台账对账：§0 数字必须等于按 §1~§5 状态列重算的数（已入 pre-commit + CI）

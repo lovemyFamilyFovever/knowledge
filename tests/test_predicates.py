@@ -383,6 +383,49 @@ def test_rag_cfg_and_stream() -> None:
         def read(self, _n):
             return self._c.pop(0) if self._c else b""
 
+    # ---- added_tokens：正文里的 [CLS] 是一个整 token，不是三个碎片（轮次 49 交叉验证抓出来的）
+    with tempfile.TemporaryDirectory() as td:
+        fake = {
+            "model": {"type": "WordPiece", "unk_token": "[UNK]",
+                      "max_input_chars_per_word": 100,
+                      "continuing_subword_prefix": "##",
+                      "vocab": {"[PAD]": 0, "[UNK]": 1, "[CLS]": 2, "[SEP]": 3, "[MASK]": 4,
+                                "用": 10, "与": 11, "[": 12, "]": 13, "un": 14, "##known": 15}},
+            "normalizer": {"type": "BertNormalizer", "clean_text": True,
+                           "handle_chinese_chars": True, "lowercase": False},
+            "pre_tokenizer": {"type": "BertPreTokenizer"},
+            "added_tokens": [
+                {"id": 0, "content": "[PAD]", "special": True},
+                {"id": 1, "content": "[UNK]", "special": True},
+                {"id": 2, "content": "[CLS]", "special": True},
+                {"id": 3, "content": "[SEP]", "special": True},
+                {"id": 4, "content": "[MASK]", "special": True},
+                {"id": 9, "content": "[不在词表]", "special": True},
+            ],
+        }
+        p = Path(td) / "tokenizer.json"
+        p.write_text(json.dumps(fake, ensure_ascii=False), encoding="utf-8")
+        cfg2 = parse_tokenizer_json(fake)
+        check("parse_tokenizer_json：added_tokens 里 special=True 且在词表里的才进 special_tokens（长的排前面）",
+              {n for n, _ in cfg2["special_tokens"]} == {"[PAD]", "[UNK]", "[CLS]", "[SEP]", "[MASK]"}
+              and all(len(a) >= len(b) for a, b in zip(cfg2["special_tokens"],
+                                                       cfg2["special_tokens"][1:])),
+              cfg2["special_tokens"])
+        from app.rag import HFTokenizer
+        tok = HFTokenizer(p)
+        got = tok.encode("用[CLS]与")
+        check("HFTokenizer：正文里的 [CLS] 落成一个整 token（不再被拆成 [ + [UNK] + ]）",
+              got == [2, 10, 2, 11, 3], f"got {got}")
+        check("HFTokenizer：special 只吃字面量，普通词照旧走 WordPiece 贪心最长匹配（un + ##known）",
+              tok.encode("unknown 与") == [2, 14, 15, 11, 3], f"got {tok.encode('unknown 与')}")
+        plain = {"model": fake["model"], "normalizer": fake["normalizer"],
+                 "pre_tokenizer": fake["pre_tokenizer"]}
+        p2 = Path(td) / "no_added.json"
+        p2.write_text(json.dumps(plain, ensure_ascii=False), encoding="utf-8")
+        check("HFTokenizer：没有 added_tokens 的 json 退化成整段处理（不许因为新分支崩掉）",
+              HFTokenizer(p2).encode("用与") == [2, 10, 11, 3],
+              f"got {HFTokenizer(p2).encode('用与')}")
+
     with tempfile.TemporaryDirectory() as td:
         dest = Path(td) / "part.bin"
         n = drain_stream(_Resp([b"abc", b"de"]), dest)

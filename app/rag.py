@@ -53,7 +53,9 @@ OVERLAP_CHARS = 60      # 相邻块重叠，防止答案恰好被切断
 
 QUERY_PREFIX = "为这个句子生成表示以用于检索相关文章："  # bge 官方查询前缀
 EMBED_BATCH = 16
-RAG_CODE_VERSION = "3"  # 嵌入/批量/分词逻辑变更时递增；不匹配则触发全量重建
+RAG_CODE_VERSION = "4"  # 嵌入/批量/分词逻辑变更时递增；不匹配则触发全量重建
+# v4（轮次 49）：正文里出现的 added_tokens 字面量（[CLS]/[SEP]/[MASK]/[PAD]/[UNK]）
+# 改成一个整 token，与 Rust tokenizers 对齐 —— 命中那份库要重建向量索引，属预期。
 
 SYNC_LOCK = threading.Lock()  # 后台 watcher 与查询线程并发同步的互斥锁
 
@@ -93,6 +95,17 @@ def parse_tokenizer_json(data: dict) -> dict:
     cls_id, sep_id = vocab.get("[CLS]"), vocab.get("[SEP]")
     if cls_id is None or sep_id is None:
         raise ValueError("vocab missing [CLS]/[SEP]")
+    # tokenizer-core 在**归一化之前**先按 added_tokens 里的 special 字面量切句：正文里出现
+    # "[CLS]" 这种字符串时它是一个 token，不是 `[` + UNK + `]` 三块碎片。
+    # 真实那份 json 的 5 个 special 都是"用户不会打在正文里"的假设以前从没被验证过 ——
+    # 与 Rust tokenizers 的逐 token 交叉验证第一次真跑就把它抓出来了（技术文档正文里真会写 [CLS]）。
+    # 按长度降序排，保证 [CLS] 这类前缀不会被更短的 special 抢先吃掉。
+    specials: list[tuple[str, int]] = [
+        (t["content"], vocab[t["content"]])
+        for t in (data.get("added_tokens") or [])
+        if t.get("special") and t.get("content") in vocab
+    ]
+    specials.sort(key=lambda kv: -len(kv[0]))
     return {
         "vocab": vocab, "unk": unk, "unk_id": vocab[unk],
         "max_input_chars_per_word": int(model.get("max_input_chars_per_word", 100)),
@@ -101,14 +114,19 @@ def parse_tokenizer_json(data: dict) -> dict:
         "clean_text": bool(nrm.get("clean_text", True)),
         "handle_chinese_chars": bool(nrm.get("handle_chinese_chars", True)),
         "cls_id": cls_id, "sep_id": sep_id,
+        "special_tokens": specials,
     }
 
 
 class HFTokenizer:
     """tokenizer.json（WordPiece）最小实现。与 Rust tokenizers 的 BERT 管线逐
-    token 对齐（已用 tokenizers 库交叉验证）：BertNormalizer（clean_text +
-    handle_chinese_chars 逐字拆分 + 按 json 的小写化策略）→ BertPreTokenizer
-    （Unicode 标点两侧切断）→ WordPiece 贪心最长匹配 → [CLS]/[SEP]。
+    token 对齐——这条**不再是注释里的口头声明**：`tests/test_rag.py::
+    test_tokenizer_cross_validated_against_library()` 每次跑都拿 `tokenizers` 库
+    对同一份 tokenizer.json 逐 id 比对（缺库时 SKIP，本机跑通是提交前的硬要求，
+    不变量 7）。第一轮真跑就抓出"正文里的 [CLS] 被拆成三个碎片"这条偏差，
+    于是加了 `_split_specials()`（先按 added_tokens 切 special，再归一化）：
+    BertNormalizer（clean_text + handle_chinese_chars 逐字拆分 + 按 json 的小写化策略）
+    → BertPreTokenizer（Unicode 标点两侧切断）→ WordPiece 贪心最长匹配 → [CLS]/[SEP]。
     仅支持 WordPiece，其他模型类型（BPE/UNigram）直接抛错。"""
 
     # Rust tokenizers BertNormalizer.is_chinese_char 的 CJK 区段
@@ -132,6 +150,8 @@ class HFTokenizer:
         self.handle_chinese_chars = cfg["handle_chinese_chars"]
         self.cls_id = cfg["cls_id"]
         self.sep_id = cfg["sep_id"]
+        self.specials = {name: tid for name, tid in cfg["special_tokens"]}
+        self.special_names = [name for name, _ in cfg["special_tokens"]]
 
     @classmethod
     def _is_cjk(cls, ch: str) -> bool:
@@ -196,11 +216,41 @@ class HFTokenizer:
 
     def encode(self, text: str, add_special: bool = True) -> list[int]:
         ids: list[int] = []
-        for w in self._pre(self._norm(text)):
-            ids.extend(self._wordpiece(w))
+        for seg, tid in self._split_specials(text):
+            if tid is not None:
+                ids.append(tid)          # special 是一个整 token，不进 WordPiece
+                continue
+            for w in self._pre(self._norm(seg)):
+                ids.extend(self._wordpiece(w))
         if add_special:
             ids = [self.cls_id] + ids + [self.sep_id]
         return ids
+
+    def _split_specials(self, text: str) -> list[tuple[str, int | None]]:
+        """按 added_tokens 的 special 字面量把原文切成 [(片段, None), ("", id), ...]。
+
+        与 tokenizer-core 同序：**先切 special，再归一化**，所以 special 内部的空白与控制
+        字符不会被 clean_text/小写化改动。没有 special 的 json 退化成整段返回。
+        """
+        if not self.special_names:
+            return [(text, None)]
+        out: list[tuple[str, int | None]] = []
+        buf: list[str] = []
+        i = 0
+        while i < len(text):
+            hit = next((n for n in self.special_names if text.startswith(n, i)), None)
+            if hit is None:
+                buf.append(text[i])
+                i += 1
+                continue
+            if buf:
+                out.append(("".join(buf), None))
+                buf = []
+            out.append(("", self.specials[hit]))
+            i += len(hit)
+        if buf:
+            out.append(("".join(buf), None))
+        return out
 
     def token_count(self, text: str) -> int:
         return len(self.encode(text, add_special=False))

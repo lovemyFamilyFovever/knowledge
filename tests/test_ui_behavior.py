@@ -221,6 +221,120 @@ status: stable
 
 代价是误判率与位图大小此消彼长，所以它只做第一道闸，不做判据。
 """,
+    # 第四张卡**故意没有答案**（`build_card` 的护栏③：back < 20 字 → has_answer=0；
+    # 而 def < 8 字干脆不成卡，所以这行卡在 8~19 字之间）。
+    # 复习页的 CTA 有两副面孔：有答案 = 「显示答案」，没答案 = 「跳转原文 ↗ + 跳过这张」，
+    # 而 P5 的 review_card 镜头只拍到了前者 —— 后者（也就是 #kb-skip 这颗钮）从来没被点过。
+    # 放进已有的 db 子域：术语页的子域钮数量由接口派生，加子域会把「>= 2 个子域」那条判据挪走。
+    "content/baike/db/汉明距离.md": """---
+title: 汉明距离
+source: knowledge
+collected: 2026-01-14
+tags: [检索]
+status: stable
+---
+
+# 汉明距离
+
+## 定义
+
+**一句话定义：** 两个等长串之间不同的位数。
+
+## 分析
+
+等长才谈得上，长度不一致时先补对齐；补什么、怎么补原文里没写。
+""",
+    # 复习队列的**余量**（轮次 49）：探针 26 要走完「记分 → 跳过 → 回退」一整圈，而队里的卡会被
+    # 前面的探针消耗 —— 探针 12 把一张 baike 卡「加入复习」，那张卡从此既不到期也不算新卡，
+    # 直接退出队列。单跑很稳（4 张），全量跑到探针 26 时只剩 3 张：记两分再跳就见底
+    # （实测底部条读成 None、三红）。补齐到 7 张 —— 判据依赖的形状要在语料里造出来，
+    # 不是指望运行顺序刚好剩下够用的卡（台账 §6 第 77 行同源）。
+    "content/baike/db/跳表.md": """---
+title: 跳表
+source: knowledge
+collected: 2026-01-15
+tags: [检索]
+status: stable
+---
+
+# 跳表
+
+## 定义
+
+**一句话定义：** 多层链表配随机层级，用跳跃换掉二分查找对数组的前提。
+
+## 分析
+
+写路径只改指针，所以并发场景比平衡树省事。
+""",
+    "content/baike/db/布谷鸟过滤器.md": """---
+title: 布谷鸟过滤器
+source: knowledge
+collected: 2026-01-16
+tags: [检索]
+status: stable
+---
+
+# 布谷鸟过滤器
+
+## 定义
+
+**一句话定义：** 两个候选桶加踢出重放的位图指纹，支持删除的概率型集合。
+
+## 分析
+
+指纹仍会误判，所以"存在"要回源确认；可删除才是它相对布隆过滤器的真正优势。
+""",
+    "content/baike/db/LSM树.md": """---
+title: LSM 树
+source: knowledge
+collected: 2026-01-17
+tags: [检索]
+status: stable
+---
+
+# LSM 树
+
+## 定义
+
+**一句话定义：** 写先进内存表与日志，再批量落盘分层合并的写优化结构。
+
+## 分析
+
+读放大是它的税，所以布隆过滤器与块缓存几乎总是配套出现。
+""",
+    # 治理页「断链批量处置」的靶子（轮次 49）：#dead-all / #dead-toplain / #dead-remove 这三颗钮
+    # 只有 P5 的 governance_dead_selected 一张截图，从来没真点过 —— 而它们会**改写正文**。
+    # 专门开一个子域放两篇：批量操作只动勾选的那几篇，另一篇必须一个字节都不变（对照靶子）。
+    # 别名那条给的是 `[[x|别名]] → 别名` 这个只有 toplain 分支才走得到的写法。
+    "content/ui-r/gov/dead-a.md": """---
+title: 断链靶子甲
+source: knowledge
+collected: 2026-03-01
+tags: [基线]
+status: stable
+---
+
+# 断链靶子甲
+
+正文里挂着一个裸断链 [[不存在的甲]]，以及一个带别名的 [[不存在的乙|别名文字]]。
+
+两者都指向库里没有的术语，正好一份文档两处、两种写法。
+""",
+    "content/ui-r/gov/dead-b.md": """---
+title: 断链靶子乙
+source: knowledge
+collected: 2026-03-02
+tags: [基线]
+status: stable
+---
+
+# 断链靶子乙
+
+这一篇只挂一个断链：[[不存在的丙]]。
+
+它是**没被勾选**的那一篇，用来证明批量操作只动选中的文档。
+""",
 }
 
 # 治理页「展开全部」的靶子：`governance.js::renderOrphans` 的折叠线写死在 **30 篇**
@@ -378,7 +492,10 @@ def run_expr(url, js, width=PROBE_WIDTH, click="", click_wait=1800, init="", fre
     `init` 非空时在页面任何脚本执行**之前**注入（验"刷新后偏好仍然生效"用）。
     """
     QA.mkdir(parents=True, exist_ok=True)
-    f = QA / "behavior-expr.js"
+    # 表达式落盘按 PID 命名：写死同一个文件名时，**两个并发跑会互相覆盖对方的表达式**
+    # （轮次 49 实测：我不小心同时起两趟，两趟都在求值别人最后写进去的那份 JS —— 症状是
+    # "莫名红/莫名崩"，跟被测代码毫无关系）。一次跑内是无害的，并发跑才是致命的。
+    f = QA / ("behavior-expr-%d.js" % os.getpid())
     f.write_text(js, encoding="utf-8")
     if init:
         # 两条路共用同一道闸：会话档也必须先验桩的语法（坏桩会被 CDP 静默丢弃 = 假绿）
@@ -392,8 +509,12 @@ def run_expr(url, js, width=PROBE_WIDTH, click="", click_wait=1800, init="", fre
         if row is not None and "value" in row:
             try:
                 return json.loads(row["value"])
-            except ValueError as e:
-                check("CDP 探针返回值能解析", False, f"{e} / {str(row)[:200]}")
+            except (TypeError, ValueError) as e:
+                # TypeError = value 根本不是字符串（页面里抛了异常，CDP 把 error 对象塞进 value）。
+                # 只捕 ValueError 会让整条套件以 Traceback 收场 —— 变异跑法下那就是
+                # "判据没红 / 套件崩了"两种信号长得一模一样（轮次 49 实测）。
+                check("CDP 探针返回值能解析", False,
+                      _safe(f"{type(e).__name__}: {e} / value={row.get('value')!r}")[:400])
                 return {}
         if row is not None:
             check("CDP 探针表达式执行无异常", False, _safe(row))
@@ -2451,15 +2572,21 @@ AI_SAVE_JS = PRELUDE + r"""
   setv('base', 'file:///etc/passwd');
   out.bad_save = await press('save', 900);
   out.bad_state = txt('#kb-ai-state');
-  // 3) 合法但不可达的端点 + 一个合成 key：保存应成功
-  setv('base', 'http://kb-ai-no-such-host.invalid/v1');
+  // 3) 合法但**连不上**的端点 + 一个合成 key：保存应成功
+  //    地址用回环上的一个关闭端口（127.0.0.1:1），而不是 `.invalid` 域名：
+  //    后者要靠 DNS 解析失败才落成 unreachable，装了透明代理 / NXDOMAIN 重定向的机器上
+  //    会有服务器替你答一个状态码 → 分类变成 http_error，红得跟产品没关系（台账 §6 轮次 49）。
+  //    urllib 对 localhost 一律绕过代理，且回环不查 DNS —— 这条才是确定的。
+  setv('local', true);
+  setv('base', 'http://127.0.0.1:1/v1');
   setv('key', 'sk-ui-behavior-K7QF');
   setv('model', 'mimo-ui-r');
   out.saved = await press('save', 1400);
   out.after_save = {state: txt('#kb-ai-state'), key_val: val('key'),
                     ph: (V('key') || {}).placeholder, model: val('model'), base: val('base'),
+                    local: val('local'),
                     src_key: txt('#kb-ai-key-s'), src_model: txt('#kb-ai-model-s')};
-  // 4) 直接点测试：拿的是**已保存**的表单值，端点解析不了 → 分类必须是 unreachable
+  // 4) 直接点测试：拿的是**已保存**的表单值，端点连不上 → 分类必须是 unreachable
   out.test = await press('test', 5000);
   out.after_test = txt('#kb-ai-state');
   return JSON.stringify(out);
@@ -2477,7 +2604,7 @@ AI_RELOAD_JS = PRELUDE + r"""
   await sleep(1200);
   // 重新打开抽屉 = 重新 GET /api/ai/config：值与来源都必须从磁盘回来，而不是内存残留
   out.reloaded = {base: val('base'), model: val('model'), state: txt('#kb-ai-state'),
-                  ph: (V('key') || {}).placeholder, src_base: txt('#kb-ai-base-s'),
+                  local: val('local'), ph: (V('key') || {}).placeholder, src_base: txt('#kb-ai-base-s'),
                   src_key: txt('#kb-ai-key-s')};
   window.confirm = () => true;      // 「清除文件」是确认式动作，探针替用户点确定
   out.cleared = await press('clear', 1500);
@@ -2530,7 +2657,7 @@ def probe_ai_settings(base, tmp):
     check("AI 保存：保存后重画控件用的是服务器回值（模型跟着变成新值）",
           af.get("model") == "mimo-ui-r", af)
     tt = d.get("test") or {}
-    check("AI 测试：端点解析不了时分类报 unreachable（而不是含糊的失败）",
+    check("AI 测试：端点连不上时分类报 unreachable（而不是含糊的失败）",
           tt.get("kind") == "bad" and "unreachable" in (tt.get("text") or ""), tt)
     m = re.search(r"本月\s*(\d+)\s*次", d.get("after_test") or "")
     check("AI 测试：失败调用照样进用量条（本月次数出现且不是 0）",
@@ -2551,8 +2678,8 @@ def probe_ai_settings(base, tmp):
     d2 = run_expr(url, AI_RELOAD_JS)
     rl = d2.get("reloaded") or {}
     check("AI 重开：重新打开抽屉能把磁盘上的值读回控件（不是靠页面内存残留）",
-          rl.get("base") == "http://kb-ai-no-such-host.invalid/v1"
-          and rl.get("model") == "mimo-ui-r", rl)
+          rl.get("base") == "http://127.0.0.1:1/v1"
+          and rl.get("model") == "mimo-ui-r" and rl.get("local") is True, rl)
     check("AI 重开：来源标签重算为文件、状态条仍报尾 4 位",
           rl.get("src_key") == "文件" and "K7QF" in (rl.get("state") or ""), rl)
     cl = d2.get("cleared") or {}
@@ -3936,6 +4063,875 @@ def probe_tag_merge(base, tmp):
 
 
 
+# ================================================================ 探针 26：复习页（/review）
+# 台账 §2 三行「基线」：翻面 #kb-reveal + 评分 #kb-grades(1-4) + #kb-skip、进度环 #kb-ring*、
+# 侧栏 #kb-side-stats。此前只有 P5 的两张像素镜头（review_card / review_graded）——
+# 像素基线的口径是"和上次一样吗"，这四颗钮点了到底有没有反应、评分有没有真进 SM-2，无人值守。
+# 队列顺序不保证（新卡走 `ORDER BY RANDOM()`，实测同一份语料两次起手第一张就不同），
+# 所以判据一律**以接口为预言**：每张卡的 CTA 形态、背面文字、记分后的状态，
+# 都拿 /api/learn 的返回逐项对，而不是对某个写死的下标。
+DUE_PARAMS = "domain=baike&limit=20&include_new=true&new_ratio=0.3"
+
+REVIEW_WALK_JS = PRELUDE + r"""
+  // T 这里**同时**收选择器与元素：漏了字符串分支就会读出一堆空串，
+  // 于是所有"等文字变了"的轮询立刻为真，整条判据链静默跑空（本探针第一版就是这么假的）。
+  // T 走 innerText（人眼看到的），TX 走 textContent（藏在 hidden 容器里的也要能读）。
+  const SQ = e => (typeof e === 'string' ? q(e) : e);
+  const T = e => { const n = SQ(e); return ((n && (n.innerText || n.textContent)) || '').replace(/\s+/g, ' ').trim(); };
+  const TX = e => { const n = SQ(e); return ((n && n.textContent) || '').replace(/\s+/g, ' ').trim(); };
+  const real = window.fetch;
+  const due = await (await real('/api/learn/due?""" + DUE_PARAMS + r"""')).json();
+  const byTerm = {};
+  (due.cards || []).forEach(c => { byTerm[c.term] = c; });
+  out.api_terms = Object.keys(byTerm).sort();
+  for (let i = 0; i < 80 && !(q('#kb-card') && !q('#kb-card').hidden); i++) await sleep(120);
+  out.boot_card = !!(q('#kb-card') && !q('#kb-card').hidden);
+  out.queue_n = Number((due.cards || []).length);
+  const seen = [];
+  for (let n = 0; n < 10; n++) {
+    const card = q('#kb-card');
+    if (!card || card.hidden) break;
+    const term = T('#kb-card-term');
+    const api = byTerm[term] || {};
+    seen.push({term: term, has_answer: api.has_answer,
+               reveal: !!q('#kb-reveal'), skip: !!q('#kb-skip'),
+               src: q('#kb-open-src') ? (q('#kb-open-src').getAttribute('href') || '') : null,
+               back_hidden: q('#kb-card-back-wrap') ? !!q('#kb-card-back-wrap').hidden : null,
+               grades_hidden: q('#kb-grades') ? !!q('#kb-grades').hidden : null,
+               front: T('#kb-card-front'), back_text: TX('#kb-card-back'),
+               foot: T('#kb-learn-foot'), sub: T('#kb-learn-sub'),
+               back_len_api: ((byTerm[term] || {}).back || '').length});
+    const sk = q('#kb-skip');
+    const prev = term;
+    if (sk) sk.click();
+    else document.dispatchEvent(new KeyboardEvent('keydown', {key: 'j', bubbles: true}));
+    for (let i = 0; i < 40 && T('#kb-card-term') === prev
+         && !(q('#kb-card') && q('#kb-card').hidden); i++) await sleep(120);
+    await sleep(200);
+  }
+  out.seen = seen;
+  out.note_visible = !!(q('#kb-stage-note') && !q('#kb-stage-note').hidden);
+  out.note_text = T('#kb-stage-note');
+  out.done_line = T('#kb-learn-sub');
+  out.foot_after_walk = T('#kb-learn-foot');
+  out.card_hidden_at_end = !!(q('#kb-card') && q('#kb-card').hidden);
+  out.card_attached = !!(q('#kb-card') && document.contains(q('#kb-card')));
+  return JSON.stringify(out);
+})()"""
+
+REVIEW_MAIN_JS = PRELUDE + r"""
+  const SQ = e => (typeof e === 'string' ? q(e) : e);
+  const T = e => { const n = SQ(e); return ((n && (n.innerText || n.textContent)) || '').replace(/\s+/g, ' ').trim(); };
+  const TX = e => { const n = SQ(e); return ((n && n.textContent) || '').replace(/\s+/g, ' ').trim(); };
+  const A = (s, a) => { const e = q(s); return e ? e.getAttribute(a) : null; };
+  const stats = () => [...document.querySelectorAll('#kb-side-stats > div')]
+    .map(x => ({v: T(x.querySelector('b')), lab: T(x.querySelector('span'))}));
+  const ring = () => ({off: Number(A('#kb-ring-fg', 'stroke-dashoffset')),
+                       n: T('#kb-ring-n'), lab: T('#kb-ring-l')});
+  const grades = () => [...document.querySelectorAll('#kb-grades .kb-grade')]
+    .map(b => ({q: b.dataset.q, k: T(b.querySelector('.kb-k')), t: T(b.querySelector('span:last-child'))}));
+  const footN = () => { const m = /本轮已答 (\d+) 张/.exec(T('#kb-learn-foot')); return m ? Number(m[1]) : null; };
+  const real = window.fetch;
+  const posts = [];
+  window.fetch = function (u, o) {
+    if (String(u).indexOf('/api/learn/review') === 0 && o && o.method === 'POST') {
+      posts.push(String((o && o.body) || ''));
+    }
+    return real.apply(this, arguments);
+  };
+  const due = await (await real('/api/learn/due?""" + DUE_PARAMS + r"""')).json();
+  const byTerm = {};
+  (due.cards || []).forEach(c => { byTerm[c.term] = c; });
+  const key = k => document.dispatchEvent(new KeyboardEvent('keydown', {key: k, bubbles: true}));
+  const settled = async (pred, ticks) => { for (let i = 0; i < (ticks || 40); i++) { if (pred()) return true; await sleep(120); } return false; };
+
+  for (let i = 0; i < 80 && !(q('#kb-card') && !q('#kb-card').hidden); i++) await sleep(120);
+  await settled(() => document.querySelectorAll('#kb-side-stats > div').length === 4, 60);
+  const t0 = T('#kb-card-term');
+  out.boot = {term: t0, sub: T('#kb-learn-sub'), stats: stats(), ring: ring(),
+              back_hidden: !!q('#kb-card-back-wrap').hidden,
+              grades_hidden: !!q('#kb-grades').hidden,
+              cta: T('#kb-learn-cta'), foot: footN()};
+
+  key('k');
+  await sleep(350);
+  out.k_head = {term: T('#kb-card-term'), toast: T('#toast'), foot: footN()};
+
+  out.no_answer = [];
+  for (let n = 0; n < 6; n++) {
+    const term = T('#kb-card-term');
+    const api = byTerm[term] || {};
+    if (Number(api.has_answer) !== 0) break;
+    out.no_answer.push({term: term, skip: !!q('#kb-skip'), reveal: !!q('#kb-reveal'),
+                        src: A('#kb-open-src', 'href'), api_src: api.url,
+                        back_text: TX('#kb-card-back')});
+    const sk = q('#kb-skip'); const prev = term;
+    if (sk) sk.click();
+    if (!await settled(() => T('#kb-card-term') !== prev, 40)) break;
+    await sleep(200);
+  }
+  out.at_answer = T('#kb-card-term');
+
+  const rv = q('#kb-reveal');
+  if (rv) rv.click();
+  await sleep(350);
+  out.revealed = {term: T('#kb-card-term'), back_hidden: !!q('#kb-card-back-wrap').hidden,
+                  back_text: TX('#kb-card-back'), grades_hidden: !!q('#kb-grades').hidden,
+                  grade_items: grades(), cta_after: T('#kb-learn-cta')};
+
+  const g5 = document.querySelector('#kb-grades .kb-grade[data-q="5"]');
+  if (g5) g5.click();
+  await settled(() => posts.length >= 1 && footN() === 1, 60);
+  await sleep(500);
+  out.graded = {posted: posts.slice(), toast: T('#toast'), foot: footN(),
+                next_term: T('#kb-card-term'), stats: stats(), ring: ring(),
+                sub: T('#kb-learn-sub'), back_hidden_again: !!q('#kb-card-back-wrap').hidden,
+                grades_hidden_again: !!q('#kb-grades').hidden,
+                cta_again: T('#kb-learn-cta')};
+
+  const kb4 = T('#kb-card-term');
+  key('2');
+  await settled(() => posts.length >= 2 && footN() === 2, 60);
+  await sleep(500);
+  out.kbd = {before: kb4, after: T('#kb-card-term'), posted: posts.slice(),
+             foot: footN(), toast: T('#toast')};
+
+  const before_skip = T('#kb-card-term');
+  key('j');
+  await settled(() => T('#kb-card-term') !== before_skip, 40);
+  await sleep(250);
+  out.skipped = {from: before_skip, to: T('#kb-card-term'), foot: footN()};
+
+  const backs = [];
+  for (let n = 0; n < 6; n++) {
+    const prev = T('#kb-card-term');
+    key('k');
+    await sleep(320);
+    backs.push({before: prev, term: T('#kb-card-term'), toast: T('#toast'), foot: footN()});
+    if (T('#toast')) break;
+  }
+  out.backs = backs;
+  out.final = {stats: stats(), ring: ring(), foot: footN(), sub: T('#kb-learn-sub'),
+               card_attached: !!(q('#kb-card') && document.contains(q('#kb-card')))};
+  window.fetch = real;
+  return JSON.stringify(out);
+})()"""
+
+
+# 进度环与侧栏四格统计的两个分支（total==0 走「总掌握度」、total>0 走「今日进度」）
+# 靠真实状态撞出来是碰运气：前一个探针记过分、或队列里有到期卡，boot 就不是那个态。
+# 所以这里用 learn.js 自己留的测试缝（window.KBLEARN.refreshStats，见该文件末尾的 P5 注释）
+# 灌**桩数据**，两个分支各测一次；期望数字写在 Python 侧，不由页面自己算。
+REVIEW_RING_JS = PRELUDE + r"""
+  const SQ = e => (typeof e === 'string' ? q(e) : e);
+  const T = e => { const n = SQ(e); return ((n && (n.innerText || n.textContent)) || '').replace(/\s+/g, ' ').trim(); };
+  const A = (s, a) => { const e = q(s); return e ? e.getAttribute(a) : null; };
+  const stats = () => [...document.querySelectorAll('#kb-side-stats > div')]
+    .map(x => ({v: T(x.querySelector('b')), lab: T(x.querySelector('span'))}));
+  const ring = () => ({off: Number(A('#kb-ring-fg', 'stroke-dashoffset')),
+                       n: T('#kb-ring-n'), lab: T('#kb-ring-l')});
+  for (let i = 0; i < 80 && !(q('#kb-card') && !q('#kb-card').hidden); i++) await sleep(120);
+  out.seam = !!(window.KBLEARN && typeof window.KBLEARN.refreshStats === 'function');
+  if (!out.seam) return JSON.stringify(out);
+  const api = window.KB.api;
+  const realToday = api.today;
+  const stub = s => { api.today = () => Promise.resolve({stats: s}); };
+  stub({done_today: 0, due_n: 0, mastered_pct: 37, streak_days: 5, new_left: 2});
+  // 打桩自证：必须**先打桩再比引用**，反着写就是恒真的假证（learn.js 取属性在调用时，所以补丁有效）
+  out.spy = (api.today !== realToday);
+  window.KBLEARN.refreshStats();
+  await sleep(500);
+  out.zero = {ring: ring(), stats: stats()};
+  stub({done_today: 2, due_n: 6, mastered_pct: 37, streak_days: 5, new_left: 2});
+  window.KBLEARN.refreshStats();
+  await sleep(500);
+  out.some = {ring: ring(), stats: stats()};
+  api.today = realToday;
+  out.restored = (api.today === realToday);
+  return JSON.stringify(out);
+})()"""
+
+
+def _pct(text):
+    """环上文字是「37%」这种，取出数字；取不到就 0（宁可让比较失败也不静默通过）。"""
+    m = re.search(r"-?\d+(?:\.\d+)?", str(text or ""))
+    return float(m.group(0)) if m else 0.0
+
+
+def _ws(text):
+    """折叠空白：DOM 侧读出的是 innerText/textContent 压平后的串，接口原文可能带换行。"""
+    return re.sub(r"\s+", " ", str(text or "")).strip()
+
+
+def probe_review(base):
+    print("== 26 复习页：翻面 / 四档评分 / 跳过 / 进度环 / 侧栏统计（真点击 + 接口当预言） ==")
+    due = json.loads(urllib_get(base + "/api/learn/due?" + DUE_PARAMS) or "{}")
+    cards = {c.get("term"): c for c in (due.get("cards") or [])}
+    today_before = (json.loads(urllib_get(base + "/api/learn/today?domain=baike") or "{}")).get("stats") or {}
+    check("复习页：接口确实给出一张**没有答案**的卡（#kb-skip 那副 CTA 的靶子，缺它下面三条全是空判）",
+          any(int(c.get("has_answer") or 0) == 0 for c in cards.values())
+          and any(int(c.get("has_answer") or 0) == 1 for c in cards.values()),
+          {"terms": {k: v.get("has_answer") for k, v in cards.items()}})
+    # 队列余量是**这条探针的前提**，不是运气：走完「记两分 + 跳一张 + 回退」至少要 4 张，
+    # 而队里的卡会被前面的探针消耗掉一张（见 EXTRA 里那三张补余量的词条）。
+    check("复习页：队列里有足够余量（>= 5 张）供本探针走完记分/跳过/回退，不足就是语料形状被改动过",
+          len(cards) >= 5, {"n": len(cards), "terms": sorted(cards)})
+
+    w = run_expr(base + "/review", REVIEW_WALK_JS)
+    check("复习页：队列里的每张卡都被走到、且一个不漏（术语集合与接口逐项相同）",
+          sorted(x.get("term") for x in (w.get("seen") or [])) == (w.get("api_terms") or [])
+          and len(w.get("seen") or []) >= 3,
+          {"seen": [x.get("term") for x in (w.get("seen") or [])], "api": w.get("api_terms")})
+    shape_ok = all(
+        (int(x.get("has_answer") or 0) == 1
+         and x.get("reveal") is True and x.get("skip") is False)
+        or (int(x.get("has_answer") or 0) == 0
+            and x.get("skip") is True and x.get("reveal") is False
+            and (x.get("src") or "").startswith("/doc/")
+            and (x.get("src") or "").split("#")[0] == (cards.get(x.get("term")) or {}).get("url"))
+        for x in (w.get("seen") or []))
+    check("复习页：CTA 的两副面孔按 has_answer 分派 —— 有答案只给「显示答案」，没答案只给「跳转原文 + 跳过这张」（且原文链接就是那篇）",
+          shape_ok and bool(w.get("seen")),
+          [{"t": x.get("term"), "a": x.get("has_answer"), "reveal": x.get("reveal"),
+            "skip": x.get("skip"), "src": x.get("src")} for x in (w.get("seen") or [])])
+    def _face(x):
+        api = cards.get(x.get("term")) or {}
+        return _ws(x.get("back_text")) == _ws(api.get("back"))
+
+    check("复习页：没翻面之前背面与评分区都收着 —— 正面题面与背面答案都取自接口那张卡",
+          all(x.get("back_hidden") is True and x.get("grades_hidden") is True
+              and _ws(x.get("front")) == _ws((cards.get(x.get("term")) or {}).get("front"))
+              and _face(x) for x in (w.get("seen") or [])),
+          [{"t": x.get("term"), "bh": x.get("back_hidden"), "gh": x.get("grades_hidden"),
+            "dom_back": _ws(x.get("back_text"))[:40]} for x in (w.get("seen") or [])])
+    check("复习页：整轮走「跳过」一张都不记分（每张的底部条都写 0 张），走完卡片收起但节点仍在文档里",
+          w.get("card_hidden_at_end") is True and w.get("card_attached") is True
+          and all("本轮已答 0 张" in (x.get("foot") or "") for x in (w.get("seen") or []))
+          and w.get("note_visible") is True,
+          {"feet": [x.get("foot") for x in (w.get("seen") or [])],
+           "hidden": w.get("card_hidden_at_end"), "attached": w.get("card_attached"),
+           "note": w.get("note_visible")})
+    # 这条钉的是**现状**，不是认可：一张都没记分、只是把队列走到底，界面仍写
+    # 「本轮完成 0 张 · 已全部过完」+「今日已复习完」。文案撒谎与 showDone 里 B9 那条同源，
+    # 缺陷已如实记进台账 §6（改文案要连带 P5 的 review_* 镜头，留给用户拍板）。
+    check("复习页：跳过到底的 done 态文案（现状：0 张也报「已全部过完」，缺陷记 §6）",
+          "本轮完成 0 张" in (w.get("done_line") or "")
+          and "已全部过完" in (w.get("done_line") or "")
+          and "今日已复习完" in (w.get("note_text") or ""),
+          {"sub": w.get("done_line"), "note": _ws(w.get("note_text"))[:40]})
+
+    m = run_expr(base + "/review", REVIEW_MAIN_JS)
+    boot_term = (m.get("boot") or {}).get("term")
+    st0 = {x.get("lab"): x.get("v") for x in ((m.get("boot") or {}).get("stats") or [])}
+    want0 = {"待复习": str(today_before.get("due_n")), "连续天数": str(today_before.get("streak_days")),
+             "今日已答": str(today_before.get("done_today")),
+             "掌握度": f"{today_before.get('mastered_pct')}%"}
+    check("复习页侧栏四格统计的标签与数字逐项等于 /api/learn/today（不是模板里的占位）",
+          sorted(st0) == sorted(want0) and all(st0.get(k) == v for k, v in want0.items()),
+          {"dom": st0, "api": want0})
+    r0 = (m.get("boot") or {}).get("ring") or {}
+    # 这条在**单跑本探针**时是不敏感的：boot 那一刻 due_n 与 done_today 都是 0，p=0，
+    # 任何换算写法都算出 276.46。真正咬住换算式的是下面 REVIEW_RING_JS 那两条桩数据断言，
+    # 以及记分后那条（p=100）。留在这里是为了在全量跑（前面探针已记过分、p≠0）时多一层兜。
+    check("复习页进度环：环线偏移与环上文字同源（dashoffset == 276.46 x (1 - p/100)，p 从文字里读）",
+          abs((r0.get("off") or 0) - 276.46 * (1 - _pct(r0.get("n")) / 100.0)) < 0.6,
+          r0)
+    check("复习页：开头按 k 回退不越界 —— 卡还是那张，并报名「第一张」（改前它误报「前面都评过分了」）",
+          (m.get("k_head") or {}).get("term") == boot_term
+          and "第一张" in ((m.get("k_head") or {}).get("toast") or ""), m.get("k_head"))
+    at = m.get("at_answer")
+    na = m.get("no_answer") or []
+    check("复习页：没答案的卡没有「显示答案」钮、只有跳过与跳转原文（原文链接就是那篇）；跳过它们之后落到的那张**必须有答案**（出口条件由接口说了算，不靠运气）",
+          all(x.get("skip") is True and x.get("reveal") is False
+              and (x.get("src") or "").split("#")[0] == x.get("api_src")
+              for x in na)
+          and int((cards.get(at) or {}).get("has_answer") or 0) == 1,
+          {"n": len(na), "first": na[0] if na else None, "at": at})
+    rv = m.get("revealed") or {}
+    check("复习页：点「显示答案」背面出现，文字就是接口那张卡的 back（内容真的 flowed 到卡片）",
+          rv.get("term") == at and rv.get("back_hidden") is False
+          and _ws(rv.get("back_text")) == _ws((cards.get(at) or {}).get("back")),
+          {"term": at, "dom": rv.get("back_text"), "api": (cards.get(at) or {}).get("back")})
+    check("复习页：翻面后评分区是**四档**且**已经展开**，data-q 恰为 0/3/4/5、文案恰为 重来/困难/良好/简单（枚举值写死）",
+          [(g.get("q"), g.get("t")) for g in (rv.get("grade_items") or [])]
+          == [("0", "重来"), ("3", "困难"), ("4", "良好"), ("5", "简单")]
+          and [g.get("k") for g in (rv.get("grade_items") or [])] == ["1", "2", "3", "4"]
+          and rv.get("grades_hidden") is False,
+          rv)
+    check("复习页：翻面后「显示答案」钮自己清空（不是一层死皮，二次翻面没有判据）",
+          (rv.get("cta_after") or "") == "" and rv.get("grades_hidden") is False, rv)
+    posted = ((m.get("graded") or {}).get("posted") or [""])[0]
+    body = json.loads(posted) if posted else {}
+    check("复习页：点「简单」真的发了一次 /api/learn/review，请求体带的就是这张卡的 card_id、q=5、耗时数",
+          body.get("card_id") == (cards.get(at) or {}).get("card_id")
+          and body.get("q") == 5 and isinstance(body.get("elapsed_ms"), int)
+          and len((m.get("graded") or {}).get("posted") or []) == 1,
+          {"body": body, "api_card": (cards.get(at) or {}).get("card_id")})
+    g = m.get("graded") or {}
+    check("复习页：记分后 toast 报名下次见面、底部条从 0 张变 1 张、卡片推进到下一张",
+          ("后再见" in (g.get("toast") or "") or "稍后再见" in (g.get("toast") or ""))
+          and g.get("foot") == 1 and (g.get("next_term") or "") != at
+          and (g.get("back_hidden_again") is True and g.get("grades_hidden_again") is True), g)
+    st1 = {x.get("lab"): x.get("v") for x in (g.get("stats") or [])}
+    check("复习页：记分后侧栏「今日已答」+1（DOM 与 /api/learn/today 同一个真相）",
+          st1.get("今日已答") == str(int(want0.get("今日已答", "0")) + 1)
+          and st1.get("待复习") is not None, {"dom": st1, "before": want0})
+    r1 = g.get("ring") or {}
+    check("复习页：记分后进度环依旧自洽（偏移与文字互为唯一来源，改任一处换算都会红）",
+          abs((r1.get("off") or 0) - 276.46 * (1 - _pct(r1.get("n")) / 100.0)) < 0.6,
+          {"before": r0, "after": r1})
+    kb = m.get("kbd") or {}
+    kb_body = json.loads((kb.get("posted") or ["", ""])[1]) if len(kb.get("posted") or []) > 1 else {}
+    check("复习页：键盘「2」= 先翻面再记 q=3（困难），第二次请求的就是当时那张卡",
+          kb_body.get("card_id") == (cards.get(kb.get("before")) or {}).get("card_id")
+          and kb_body.get("q") == 3 and (kb.get("foot") or 0) == 2
+          and (kb.get("after") or "") != (kb.get("before") or ""),
+          {"body": kb_body, "before": kb.get("before"), "foot": kb.get("foot")})
+    sk = m.get("skipped") or {}
+    check("复习页：键盘「j」跳过**不记分** —— 张数还是 2，卡片确实换了一张",
+          sk.get("foot") == 2 and (sk.get("to") or "") != (sk.get("from") or ""), sk)
+    graded_terms = {at, kb.get("before")}
+    backs = m.get("backs") or []
+    check("复习页：一路按 k 回退，从不回到已评过分的卡，也不许偷偷记分",
+          bool(backs) and all(b.get("term") not in graded_terms for b in backs)
+          and all(b.get("foot") == 2 for b in backs),
+          {"graded": sorted(graded_terms), "backs": [{"t": b.get("term"), "to": b.get("toast")}
+                                                     for b in backs]})
+    today_after = (json.loads(urllib_get(base + "/api/learn/today?domain=baike") or "{}")).get("stats") or {}
+    check("复习页：服务端是唯一真相 —— 本轮两次记分后 done_today 比进来时 +2（不是 DOM 自己加的）",
+          (today_after.get("done_today") or 0) - (today_before.get("done_today") or 0) == 2,
+          {"before": today_before.get("done_today"), "after": today_after.get("done_today")})
+    rows = json.loads(urllib_get(base + "/api/learn/cards?domain=baike&kind=baike_def&limit=50") or "{}")
+    by_id = {c.get("card_id"): c for c in (rows.get("items") or [])}
+    st_at = (by_id.get((cards.get(at) or {}).get("card_id")) or {}).get("state") or {}
+    check("复习页：评分真的推进了 SM-2 —— 那张卡 reps=1、interval=1（q=5 对新手卡的确定结果）",
+          st_at.get("reps") == 1 and st_at.get("interval") == 1
+          and st_at.get("is_new") is False, {"state": st_at, "term": at})
+    fin = m.get("final") or {}
+    check("复习页：整轮跑完答题卡仍在文档里（消息层不炸常驻节点，§6 第 35 行那条不复发）",
+          fin.get("card_attached") is True and fin.get("foot") == 2, fin)
+
+    rg = run_expr(base + "/review", REVIEW_RING_JS)
+    check("复习页进度环：learn.js 留的测试缝在位（KBLEARN.refreshStats 存在，且桩确实换掉了 KB.api.today）",
+          rg.get("seam") is True and rg.get("spy") is True and rg.get("restored") is True, rg)
+    z = (rg.get("zero") or {}).get("ring") or {}
+    check("复习页进度环：今日没答、也没到期卡时走**总掌握度**那一支（环上 37%、环线停在 276.46x0.63，标签写「总掌握度」）",
+          z.get("lab") == "总掌握度" and z.get("n") == "37%"
+          and abs((z.get("off") or 0) - 276.46 * 0.63) < 0.6, z)
+    zs = {x.get("lab"): x.get("v") for x in ((rg.get("zero") or {}).get("stats") or [])}
+    check("复习页侧栏：四格的标签写死为 待复习/连续天数/今日已答/掌握度，数字逐项取自接口",
+          zs == {"待复习": "0", "连续天数": "5", "今日已答": "0", "掌握度": "37%"}, zs)
+    s = (rg.get("some") or {}).get("ring") or {}
+    check("复习页进度环：今日已答 2 / 待复习 6 时走**今日进度**那一支（25%，环线 276.46x0.75）",
+          s.get("lab") == "今日进度" and s.get("n") == "25%"
+          and abs((s.get("off") or 0) - 276.46 * 0.75) < 0.6, s)
+    ss = {x.get("lab"): x.get("v") for x in ((rg.get("some") or {}).get("stats") or [])}
+    check("复习页侧栏：换一组接口数字后四格跟着换（不是渲染一次就定住）",
+          ss == {"待复习": "6", "连续天数": "5", "今日已答": "2", "掌握度": "37%"}, ss)
+
+
+# ================================================================ 探针 27：治理页三桶 + 断链批量处置
+# 台账 §2 两行「基线」：#gov-scan-btn + 三个 bucket 页签、#dead-all / #dead-toplain / #dead-remove。
+# 后两颗是**破坏性**的（改写正文），P5 只有 governance_dead_selected 一张截图 —— 截图只证明
+# "长这样"，不证明"点了真的只改勾选那篇、另一篇一个字节没动"。本探针真点、真读盘比对。
+GOV_SCAN_JS = PRELUDE + r"""
+  const SQ = e => (typeof e === 'string' ? q(e) : e);
+  const T = e => { const n = SQ(e); return ((n && (n.innerText || n.textContent)) || '').replace(/\s+/g, ' ').trim(); };
+  const real = window.fetch;
+  const api = await (await real('/api/governance/scan')).json();
+  out.api = {dead: (api.dead_links || []).length, orphans: (api.orphans || []).length,
+             pairs: (api.tag_pairs || []).length, counts: api.counts,
+             dead0: (api.dead_links || [])[0] || null};
+  out.idle_before = !q('#gov-idle').hidden;
+  out.result_before = !!q('#gov-result').hidden;
+  out.summary_before = T('#gov-summary');
+  const btn = q('#gov-scan-btn');
+  out.btn_before = T(btn);
+  btn.click();
+  out.btn_during = T(btn);                  // 同步读：扫描中…
+  out.disabled_during = !!btn.disabled;
+  for (let i = 0; i < 160 && (q('#gov-result') && q('#gov-result').hidden); i++) await sleep(150);
+  out.scanned = !q('#gov-result').hidden && q('#gov-idle').hidden;
+  out.btn_after = T(btn);
+  out.disabled_after = !!btn.disabled;
+  out.summary = T('#gov-summary');
+  out.cnt = {dead: T('#cnt-dead'), orphan: T('#cnt-orphan'), tag: T('#cnt-tag')};
+  const rows = b => document.querySelectorAll('#list-' + b + ' .gov-item').length;
+  const onPanes = () => [...document.querySelectorAll('.gov-pane')]
+    .filter(p => p.classList.contains('on')).map(p => p.id);
+  const per = {};
+  for (const b of ['dead_links', 'orphans', 'tag_pairs']) {
+    const tab = document.querySelector('.gov-tab[data-bucket="' + b + '"]');
+    tab.click();
+    await sleep(250);
+    per[b] = {on: tab.classList.contains('on'), ar: tab.getAttribute('aria-selected'),
+              rows: rows(b), panes_on: onPanes(),
+              first: T('#list-' + b + ' .gov-item'),
+              none: T('#list-' + b + ' .gov-none'),
+              more: T('#list-' + b + ' .gov-more'),
+              expand: (() => { const e = q('#orphan-expand'); return e ? {hidden: !!e.hidden, text: T(e)} : null; })()};
+  }
+  out.per = per;
+  out.tab_labels = [...document.querySelectorAll('.gov-tab')].map(T);
+  out.dead_items = [...document.querySelectorAll('#list-dead_links .gov-item')].map(x => ({
+    raw: T(x.querySelector('.gov-raw')), sug: T(x.querySelector('.gov-sug')),
+    where: T(x.querySelector('.gov-where')), href: x.querySelector('.gov-open') ? x.querySelector('.gov-open').getAttribute('href') : null,
+    ck: !!x.querySelector('.dead-ck')}));
+  return JSON.stringify(out);
+})()"""
+
+GOV_DEAD_TMPL = PRELUDE + r"""
+  const SQ = e => (typeof e === 'string' ? q(e) : e);
+  const T = e => { const n = SQ(e); return ((n && (n.innerText || n.textContent)) || '').replace(/\s+/g, ' ').trim(); };
+  const real = window.fetch;
+  const toasts = [];
+  const rt = KB.util.toast;
+  KB.util.toast = function (s) { toasts.push(String(s || '')); return rt.apply(KB.util, arguments); };
+  out.toast_spy = (KB.util.toast !== rt);
+  const RAW = @@RAW@@, ACT = '@@ACT@@', PATH = '@@PATH@@';
+  const api = await (await real('/api/governance/scan')).json();
+  const items = api.dead_links || [];
+  const idx = items.findIndex(it => it.raw === RAW && it.src === PATH);
+  out.idx = idx; out.api_dead = items.length;
+  q('#gov-scan-btn').click();
+  for (let i = 0; i < 160 && (q('#gov-result') && q('#gov-result').hidden); i++) await sleep(150);
+  const cks = () => [...document.querySelectorAll('#list-dead_links .dead-ck')];
+  let cs = cks();
+  const all = q('#dead-all');
+  out.before = {rows: cs.length, all_checked: !!all.checked,
+                top_disabled: !!q('#dead-toplain').disabled, rem_disabled: !!q('#dead-remove').disabled};
+  all.click(); await sleep(250);
+  cs = cks();
+  out.after_all = {every: cs.length > 0 && cs.every(c => c.checked), all_checked: !!all.checked,
+                   top_disabled: !!q('#dead-toplain').disabled, rem_disabled: !!q('#dead-remove').disabled};
+  const other = cs.find(c => Number(c.dataset.idx) !== idx);
+  if (other) { other.click(); await sleep(250); }
+  cs = cks();
+  out.after_uncheck_one = {all_checked: !!all.checked, top_disabled: !!q('#dead-toplain').disabled,
+                           checked_n: cs.filter(c => c.checked).length};
+  cs.filter(c => c.checked).forEach(c => c.click()); await sleep(250);
+  cs = cks();
+  out.after_clear = {checked_n: cs.filter(c => c.checked).length,
+                     top_disabled: !!q('#dead-toplain').disabled, rem_disabled: !!q('#dead-remove').disabled};
+  const mine = cs.find(c => Number(c.dataset.idx) === idx);
+  mine.click(); await sleep(250);
+  cs = cks();
+  out.only_mine = {checked_n: cs.filter(c => c.checked).length,
+                   top_disabled: !!q('#dead-toplain').disabled, rem_disabled: !!q('#dead-remove').disabled,
+                   item_cls: (mine.closest('.gov-item') || {}).className || ''};
+  q('#' + ACT).click();
+  for (let i = 0; i < 40 && !document.querySelector('.gov-ok'); i++) await sleep(150);
+  out.modal = {present: !!document.querySelector('.kbm'), title: T('.kbm-title'), body: T('.kbm-body')};
+  document.querySelector('.gov-cancel').click();
+  await sleep(500);
+  const afterCancel = await (await real(KB.util.rawUrl(PATH))).text();
+  out.after_cancel = {modal_gone: !document.querySelector('.kbm'),
+                      raw: afterCancel.replace(/\r\n/g, '\n'),
+                      checked_n: cks().filter(c => c.checked).length};
+  q('#' + ACT).click();
+  for (let i = 0; i < 40 && !document.querySelector('.gov-ok'); i++) await sleep(150);
+  document.querySelector('.gov-ok').click();
+  // 等**批次那一条**报名：batchDead 末尾还会 scan() 再报一条「扫描完成：…」，
+  // 屏幕上只剩后一条 —— 所以判据读的是 toast 桩收集到的序列，不是 #toast 的当前文本。
+  for (let i = 0; i < 120 && !toasts.some(t => t.indexOf('完成：成功') >= 0); i++) await sleep(200);
+  await sleep(1500);                        // 等 batchDead 末尾那次 scan() 把桶刷回来
+  out.done = {toasts: toasts.slice(), toast: T('#toast'), rows_after: cks().length,
+              summary: T('#gov-summary'), cnt_dead: T('#cnt-dead'),
+              raw: (await (await real(KB.util.rawUrl(PATH))).text()).replace(/\r\n/g, '\n')};
+  return JSON.stringify(out);
+})()"""
+
+
+def gov_dead_js(raw: str, act: str, path: str) -> str:
+    return (GOV_DEAD_TMPL.replace("@@RAW@@", json.dumps(raw, ensure_ascii=False))
+            .replace("@@ACT@@", act).replace("@@PATH@@", path))
+
+
+def probe_governance(base, tmp):
+    print("== 27 治理页：扫描态 / 三个桶页签 / 断链批量转纯文本与移除（真点 + 真读盘） ==")
+    api = json.loads(urllib_get(base + "/api/governance/scan") or "{}")
+    f_a = tmp / "content" / "ui-r" / "gov" / "dead-a.md"
+    f_b = tmp / "content" / "ui-r" / "gov" / "dead-b.md"
+    g = run_expr(base + "/governance", GOV_SCAN_JS)
+    want_summary = f"{api['counts']['dead_links']} 断链 · {api['counts']['orphans']} 孤儿 · "\
+                   f"{api['counts']['tag_pairs']} 标签对"
+    check("治理页：没扫之前是空态（#gov-idle 在、#gov-result 收着、汇总写「尚未扫描」）",
+          g.get("idle_before") is True and g.get("result_before") is True
+          and g.get("summary_before") == "尚未扫描", g)
+    check("治理页：点「重新扫描」先进同步的进行中态（钮文案变扫描中且禁用），扫完自己恢复",
+          "扫描中" in (g.get("btn_during") or "") and g.get("disabled_during") is True
+          and "扫描中" not in (g.get("btn_after") or "") and g.get("disabled_after") is False,
+          {"during": g.get("btn_during"), "after": g.get("btn_after")})
+    check("治理页：扫完空态收起、汇总行写的就是接口 counts（三个数字一个都不能是自己拼的）",
+          g.get("scanned") is True and g.get("summary") == want_summary,
+          {"dom": g.get("summary"), "api": want_summary})
+    check("治理页：三个页签上的数字 == 接口各桶长度",
+          g.get("cnt") == {"dead": str(api["counts"]["dead_links"]),
+                           "orphan": str(api["counts"]["orphans"]),
+                           "tag": str(api["counts"]["tag_pairs"])}, g.get("cnt"))
+    per = g.get("per") or {}
+    ok_switch = all(
+        (per.get(b) or {}).get("on") is True and (per.get(b) or {}).get("ar") == "true"
+        and (per.get(b) or {}).get("panes_on") == [f"pane-{b}"]
+        for b in ("dead_links", "orphans", "tag_pairs"))
+    check("治理页：点页签后**只有**对应面板 .on、aria-selected 跟着搬（role=tab 的无障碍语义不是摆设）",
+          ok_switch, {b: (per.get(b) or {}).get("panes_on") for b in per})
+    want_rows = {"dead_links": api["counts"]["dead_links"],
+                 "orphans": min(30, api["counts"]["orphans"]),   # 孤儿列表折叠线写死 30
+                 "tag_pairs": api["counts"]["tag_pairs"]}
+    got_rows = {b: (per.get(b) or {}).get("rows") for b in per}
+    check("治理页：每个桶渲染的行数与接口一致（孤儿那一桶按折叠线只出前 30 行）",
+          got_rows == want_rows and want_rows["dead_links"] >= 2, {"dom": got_rows, "want": want_rows})
+    check("治理页：孤儿超过 30 篇时「展开全部」在位，列表下方写着还剩几篇（折叠线与提示同源）",
+          (per.get("orphans") or {}).get("expand", {}).get("hidden") is False
+          and "展开全部" in ((per.get("orphans") or {}).get("expand", {}).get("text") or "")
+          and f"还有 {api['counts']['orphans'] - 30} 篇未显示" in ((per.get("orphans") or {}).get("more") or ""),
+          {"expand": (per.get("orphans") or {}).get("expand"),
+           "more": (per.get("orphans") or {}).get("more"),
+           "orphans": api["counts"]["orphans"]})
+    dl = g.get("dead_items") or []
+    api_dl = api.get("dead_links") or []
+    check("治理页：断链每一行写的是 [[原文]]、建议改法与所在文档，并带勾选框与「打开」链接",
+          len(dl) == len(api_dl) and all(
+              d.get("raw") == f"[[{a.get('raw')}]]" and bool(d.get("ck"))
+              and bool(d.get("where")) and (d.get("href") or "").startswith("/doc/")
+              and ((f"→ 建议改为 [[{a.get('suggest')}]]" == d.get("sug")) if a.get("suggest")
+                   else d.get("sug") == "")
+              for d, a in zip(dl, api_dl)),
+          {"dom": dl[:3], "api": [{"raw": a.get("raw"), "sug": a.get("suggest"),
+                                   "src": a.get("src"), "title": a.get("src_title")}
+                                  for a in api_dl[:3]]})
+
+    path_a = "ui-r/gov/dead-a.md"
+    before_a = f_a.read_text(encoding="utf-8").replace("\r\n", "\n")
+    before_b = f_b.read_bytes()
+    check("治理页：靶子确实齐 —— 甲篇有裸断链与带别名断链各一处，乙篇一处（缺一条下面的判据就是空判）",
+          "[[不存在的甲]]" in before_a and "[[不存在的乙|别名文字]]" in before_a
+          and "[[不存在的丙]]" in before_b.decode("utf-8"),
+          {"a": before_a[:120]})
+
+    m1 = run_expr(base + "/governance", gov_dead_js("不存在的乙", "dead-toplain", path_a))
+    check("治理页断链批量：一条都没勾时两颗动作钮都是禁用的（不是点了没反应的死钮）",
+          m1.get("before", {}).get("top_disabled") is True
+          and m1.get("before", {}).get("rem_disabled") is True
+          and m1.get("before", {}).get("all_checked") is False, m1.get("before"))
+    check("治理页断链批量：点「全选」勾上所有行、两颗钮同时解锁",
+          m1.get("after_all", {}).get("every") is True
+          and m1.get("after_all", {}).get("all_checked") is True
+          and m1.get("after_all", {}).get("top_disabled") is False
+          and m1.get("after_all", {}).get("rem_disabled") is False, m1.get("after_all"))
+    check("治理页断链批量：取消其中一行后「全选」自己掉勾，但动作钮仍可用（还有得选）",
+          m1.get("after_uncheck_one", {}).get("all_checked") is False
+          and m1.get("after_uncheck_one", {}).get("checked_n", -1) >= 1
+          and m1.get("after_uncheck_one", {}).get("top_disabled") is False,
+          m1.get("after_uncheck_one"))
+    check("治理页断链批量：清空全部勾选时两颗动作钮重新禁用（守卫跟着数量走，不是只加不减）",
+          m1.get("after_clear", {}).get("checked_n") == 0
+          and m1.get("after_clear", {}).get("top_disabled") is True
+          and m1.get("after_clear", {}).get("rem_disabled") is True, m1.get("after_clear"))
+    check("治理页断链批量：只勾靶子那一行时动作钮解锁，且弹层写的是「批量转为纯文本」+ 命中数与篇名",
+          m1.get("only_mine", {}).get("checked_n") == 1
+          and m1.get("only_mine", {}).get("top_disabled") is False
+          and "批量转为纯文本" in ((m1.get("modal") or {}).get("title") or "")
+          and "1" in ((m1.get("modal") or {}).get("body") or "")
+          and path_a in ((m1.get("modal") or {}).get("body") or ""),
+          {"sel": m1.get("only_mine"), "modal": m1.get("modal")})
+    check("治理页断链批量：点「取消」什么都不写 —— 弹层关掉、勾选还在、原文里 [[不存在的乙|别名文字]] 一个字节没动",
+          m1.get("after_cancel", {}).get("modal_gone") is True
+          and m1.get("after_cancel", {}).get("checked_n") == 1
+          and "[[不存在的乙|别名文字]]" in (m1.get("after_cancel", {}).get("raw") or "")
+          and m1.get("after_cancel", {}).get("raw") == before_a,
+          {"cancel": m1.get("after_cancel")})
+    after_top = m1.get("done", {}).get("raw") or ""
+    tlist1 = (m1.get("done") or {}).get("toasts") or []
+    check("治理页断链批量：确认执行「转为纯文本」只把那一条换成别名 —— 别名留下、方括号没了，另一条裸断链原样还在",
+          any("转为纯文本完成：成功 1 处" in t for t in tlist1)
+          and "[[不存在的乙|别名文字]]" not in after_top
+          and "别名文字" in after_top
+          and "[[不存在的甲]]" in after_top, {"toasts": tlist1, "raw": after_top[:160]})
+    check("治理页断链批量：干完自动重扫 —— 汇总与页签数字都少 1，列表行数同步减一（不是只改了文件）",
+          (m1.get("done") or {}).get("cnt_dead") == str(api["counts"]["dead_links"] - 1)
+          and f"{api['counts']['dead_links'] - 1} 断链" in ((m1.get("done") or {}).get("summary") or "")
+          and (m1.get("done") or {}).get("rows_after") == api["counts"]["dead_links"] - 1,
+          {"cnt": (m1.get("done") or {}).get("cnt_dead"),
+           "summary": (m1.get("done") or {}).get("summary"),
+           "rows": (m1.get("done") or {}).get("rows_after"),
+           "api_before": api["counts"]["dead_links"]})
+    check("治理页断链批量：没被勾选的那一篇一个字节都没动（批量只作用于选中项）",
+          f_b.read_bytes() == before_b, str(f_b))
+
+    m2 = run_expr(base + "/governance", gov_dead_js("不存在的甲", "dead-remove", path_a))
+    after_rm = m2.get("done", {}).get("raw") or ""
+    tlist2 = (m2.get("done") or {}).get("toasts") or []
+    check("治理页断链批量：换「移除链接标记」这条路 —— 整条 [[不存在的甲]] 被删掉，正文其余保留",
+          any("移除链接标记完成：成功 1 处" in t for t in tlist2)
+          and "[[不存在的甲]]" not in after_rm
+          and "断链靶子甲" in after_rm and "别名文字" in after_rm,
+          {"toasts": tlist2, "raw": after_rm[:160]})
+    left = json.loads(urllib_get(base + "/api/governance/scan") or "{}")
+    check("治理页断链批量：两处都处置完后接口里已经没有这两条（甲篇不再出现在断链桶）",
+          left["counts"]["dead_links"] == api["counts"]["dead_links"] - 2
+          and not [d for d in (left.get("dead_links") or []) if d.get("src") == path_a],
+          {"before": api["counts"]["dead_links"], "after": left["counts"]["dead_links"]})
+    check("治理页断链批量：正文里剩下的普通句子没被误伤（只删链接标记，不删字）",
+          "两者都指向库里没有的术语" in after_rm and "它是" not in after_rm, after_rm[:200])
+
+
+# ================================================================ 探针 28：标签页勾选条 + 标签云
+# 台账 §2 两行「基线」：`.t-check / #tag-selbar / #tag-sel-count / #tag-merge-sel / #tag-clear`
+# 与 `#tag-cloud`。已有的 probe_tag_merge 走的是"合并到底"那一路（两段确认 + 写 frontmatter），
+# probe_drawer 走的是"点胶囊开抽屉"那一路 —— 唯独**勾选态**（批量准备的入口）与
+# 「点胶囊」和「点勾选框」必须走两条不同分支 这件事没人点过。
+TAGS_JS = PRELUDE + r"""
+  const SQ = e => (typeof e === 'string' ? q(e) : e);
+  const T = e => { const n = SQ(e); return ((n && (n.innerText || n.textContent)) || '').replace(/\s+/g, ' ').trim(); };
+  const pillTags = () => [...document.querySelectorAll('#tag-cloud .t[data-tag]')].map(x => x.dataset.tag);
+  const pill = t => document.querySelector('#tag-cloud .t[data-tag="' + t + '"]');
+  const ck = t => document.querySelector('#tag-cloud .t[data-tag="' + t + '"] .t-check');
+  const sel = () => ({hidden: !!q('#tag-selbar').hidden, count: T('#tag-sel-count'),
+                      disabled: !!q('#tag-merge-sel').disabled,
+                      n_sel: document.querySelectorAll('#tag-cloud .t.sel').length,
+                      n_ck: document.querySelectorAll('#tag-cloud .t-check:checked').length});
+  const nOf = t => (pill(t) ? pill(t).getAttribute('data-count') : null);
+  out.tags = pillTags();
+  out.n_pills = out.tags.length;
+  out.server_json = !!q('#tags-data');
+  out.init = sel();
+  const A = out.tags[0], B = out.tags[1], C = out.tags[2];
+  out.A = A; out.B = B; out.C = C;
+  ck(A).click(); await sleep(250);
+  out.after_ck_a = Object.assign(sel(), {pill_sel: pill(A).classList.contains('sel'),
+                                         drawer_open: !q('#tag-drawer') ? null : !q('#tag-drawer').hidden});
+  ck(B).click(); await sleep(250);
+  out.after_ck_b = sel();
+  ck(A).click(); await sleep(250);
+  out.after_unclick_a = Object.assign(sel(), {a_sel: pill(A).classList.contains('sel'),
+                                              b_sel: pill(B).classList.contains('sel')});
+  q('#tag-clear').click(); await sleep(250);
+  out.after_clear = sel();
+  q('#tag-merge-sel').click(); await sleep(350);
+  out.merge_disabled_click = {modal: !!document.querySelector('.kbm')};
+  const pC = pill(C);
+  const nC = nOf(C);
+  pC.click(); await sleep(350);
+  out.drawer_c = {open: !q('#tag-drawer').hidden, head: T('#drawer-h'),
+                  docs: document.querySelectorAll('#drawer-docs .result').length,
+                  marked: pC.classList.contains('open'), pill_n: nC};
+  const pA = pill(A); const nA = nOf(A);
+  pA.click(); await sleep(350);
+  out.drawer_switch = {head: T('#drawer-h'), docs: document.querySelectorAll('#drawer-docs .result').length,
+                       only_a_open: document.querySelectorAll('#tag-cloud .t.open').length,
+                       a_open: pA.classList.contains('open'), c_open: pC.classList.contains('open'), pill_n: nA};
+  pA.click(); await sleep(300);
+  out.drawer_toggle_off = {open: !q('#tag-drawer').hidden, marked: !!document.querySelector('#tag-cloud .t.open')};
+  return JSON.stringify(out);
+})()"""
+
+
+def probe_tags_selection(base):
+    print("== 28 标签页：勾选条生灭 / 清空 / 「点胶囊」与「点勾选框」分岔 / 抽屉跟随 ==")
+    g = run_expr(base + "/tags", TAGS_JS)
+    tags = g.get("tags") or []
+    check("标签页：服务端把标签数据带进页面（#tags-data 在），标签云渲染出的胶囊数 >= 3（不足则下面全是空判）",
+          g.get("server_json") is True and len(tags) >= 3 and g.get("n_pills") == len(tags),
+          {"n": len(tags), "tags": tags[:6]})
+    check("标签页：一条都没勾时合并条收着、读数写「未选择标签」、合并钮禁用",
+          g.get("init", {}).get("hidden") is True
+          and g.get("init", {}).get("count") == "未选择标签"
+          and g.get("init", {}).get("disabled") is True
+          and g.get("init", {}).get("n_sel") == 0, g.get("init"))
+    ck_a = g.get("after_ck_a") or {}
+    check("标签页：点勾选框只进勾选态 —— 合并条现身、读数「已选 1 个标签」、胶囊带 .sel、**抽屉不许被带出来**",
+          ck_a.get("hidden") is False and ck_a.get("count") == "已选 1 个标签"
+          and ck_a.get("n_sel") == 1 and ck_a.get("pill_sel") is True
+          and ck_a.get("n_ck") == 1 and ck_a.get("drawer_open") is False, ck_a)
+    ck_b = g.get("after_ck_b") or {}
+    check("标签页：再勾一个，读数跟着变 2（累加而不是覆盖）",
+          ck_b.get("count") == "已选 2 个标签" and ck_b.get("n_sel") == 2
+          and ck_b.get("n_ck") == 2, ck_b)
+    uc_a = g.get("after_unclick_a") or {}
+    check("标签页：取消第一个 —— 读数回到 1、那枚胶囊的 .sel 撤掉、另一枚还留着（选中态逐枚独立）",
+          uc_a.get("count") == "已选 1 个标签" and uc_a.get("n_sel") == 1
+          and uc_a.get("a_sel") is False and uc_a.get("b_sel") is True, uc_a)
+    cl = g.get("after_clear") or {}
+    check("标签页：点「清空」一次撤掉所有勾选 —— 合并条收起、读数复位、合并钮重新禁用",
+          cl.get("hidden") is True and cl.get("count") == "未选择标签"
+          and cl.get("disabled") is True and cl.get("n_sel") == 0 and cl.get("n_ck") == 0, cl)
+    check("标签页：合并钮禁用时点它什么都不发生（不弹层，不给一个能点但没反应的死钮）",
+          (g.get("merge_disabled_click") or {}).get("modal") is False,
+          g.get("merge_disabled_click"))
+    dc = g.get("drawer_c") or {}
+    check("标签页：点**胶囊本体**（不是勾选框）开抽屉，标题与文档条数都取自那枚胶囊上的篇数",
+          dc.get("open") is True and (g.get("C") or "") in (dc.get("head") or "")
+          and dc.get("marked") is True and bool(dc.get("pill_n"))
+          and dc.get("docs") == int(dc.get("pill_n") or -1), dc)
+    ds = g.get("drawer_switch") or {}
+    check("标签页：抽屉同时只能开一枚 —— 点第二枚时第一枚的 .open 撤掉、抽屉内容整体换成第二枚",
+          ds.get("only_a_open") == 1 and ds.get("a_open") is True and ds.get("c_open") is False
+          and (g.get("A") or "") in (ds.get("head") or "")
+          and ds.get("docs") == int(ds.get("pill_n") or -1), ds)
+    dt = g.get("drawer_toggle_off") or {}
+    check("标签页：再点同一枚胶囊是把抽屉关掉（开关可逆），且不留 .open 标记",
+          dt.get("open") is False and dt.get("marked") is False, dt)
+
+
+# ================================================================ 探针 29：搜索结果页的分面
+# 台账 §2 行「搜索页 · #kb-hits / #kb-facets / #kb-facet-clear」：只有 search_results 一张像素基线。
+# 搜索浮层（顶部那个）早就有 E2E，但**结果页**的分面多选没人点过 —— 而它的过滤真相在服务端
+# （B19：多选全量传参），本地只留一层降级防御。所以判据一律拿 /api/search 的同参数返回当预言。
+SEARCH_JS = PRELUDE + r"""
+  const SQ = e => (typeof e === 'string' ? q(e) : e);
+  const T = e => { const n = SQ(e); return ((n && (n.innerText || n.textContent)) || '').replace(/\s+/g, ' ').trim(); };
+  const real = window.fetch;
+  const seen = [];                      // 发出去的 /api/search 请求（分面是否真传给后端，只能看这里）
+  window.fetch = function (u, o) { const s = String(u); if (s.indexOf('/api/search') === 0) seen.push(s);
+                                   return real.apply(this, arguments); };
+  const Q = new URLSearchParams(location.search).get('q') || '';
+  const call = async (p) => (await (await real('/api/search?q=' + encodeURIComponent(Q) + '&limit=50' + p))).json();
+  const rows = () => [...document.querySelectorAll('#kb-hits .result')];
+  const chips = () => [...document.querySelectorAll('#kb-facets .kb-facet:not(.clear)')].map(b => ({
+    t: b.dataset.type, id: b.dataset.id, n: T(b.querySelector('.kb-facet-n')),
+    on: b.classList.contains('on'), ap: b.getAttribute('aria-pressed')}));
+  const clear = () => { const c = q('#kb-facet-clear'); return c ? {present: true, hidden: !!c.hidden} : {present: false}; };
+  const settle = async (pred, ticks) => { for (let i = 0; i < (ticks || 60); i++) { if (pred()) return true; await sleep(150); } return false; };
+  const mark = () => seen.length;
+
+  const j0 = await call('');
+  out.n0 = (j0.exact || []).length + (j0.hits || []).length;
+  out.api_domains = (j0.facets.domains || []).map(d => ({id: d.id, n: d.n}));
+  out.api_tags = (j0.facets.tags || []).map(t => ({id: t.tag, n: t.n}));
+  await settle(() => rows().length > 0, 60);
+  out.rows0 = rows().length;
+  out.meta0 = T('.srch-meta');
+  out.groups = [...document.querySelectorAll('#kb-facets .kb-facet-t')].map(T);
+  out.chips0 = chips();
+  out.clear0 = clear();
+  out.url0 = location.search;
+
+  // 选一个"会真的减少结果"的域（n < 总数）
+  const dPick = out.api_domains.filter(d => d.n < out.n0)[0] || out.api_domains[0];
+  const chipSel = (t, id) => document.querySelector('#kb-facets .kb-facet[data-type="' + t + '"][data-id="' + id + '"]');
+  const jd = await call('&domain=' + encodeURIComponent(dPick.id));
+  const nd = (jd.exact || []).length + (jd.hits || []).length;
+  let m0 = mark();
+  chipSel('domain', dPick.id).click();
+  await settle(() => chips().some(c => c.t === 'domain' && c.id === dPick.id && c.on), 60);
+  await sleep(400);
+  out.after_domain = {rows: rows().length, api_n: nd, url: location.search, reqs: seen.slice(m0),
+                      chip: chips().find(c => c.t === 'domain' && c.id === dPick.id) || null,
+                      hues: [...new Set(rows().map(r => r.getAttribute('data-hue')))],
+                      clear: clear(), meta: T('.srch-meta')};
+
+  chipSel('domain', dPick.id).click();
+  await settle(() => !chips().some(c => c.t === 'domain' && c.id === dPick.id && c.on), 60);
+  await sleep(400);
+  out.after_undo = {rows: rows().length, url: location.search, clear: clear(),
+                    any_on: chips().some(c => c.on)};
+
+  const tPick = out.api_tags.filter(t => t.n < out.n0)[0] || out.api_tags[0];
+  const jboth = await call('&domain=' + encodeURIComponent(dPick.id) + '&tag=' + encodeURIComponent(tPick.id));
+  const nboth = (jboth.exact || []).length + (jboth.hits || []).length;
+  chipSel('domain', dPick.id).click(); await sleep(350);
+  m0 = mark();
+  chipSel('tag', tPick.id).click();
+  await settle(() => chips().filter(c => c.on).length === 2, 60);
+  await sleep(400);
+  out.after_two = {rows: rows().length, api_n: nboth, url: location.search, reqs: seen.slice(m0),
+                   on: chips().filter(c => c.on).map(c => c.t + ':' + c.id),
+                   hues: [...new Set(rows().map(r => r.getAttribute('data-hue')))],
+                   meta: T('.srch-meta')};
+
+  m0 = mark();
+  q('#kb-facet-clear').click();
+  await settle(() => !chips().some(c => c.on) && rows().length === out.n0, 60);
+  out.after_clear = {rows: rows().length, url: location.search, clear: clear(), reqs: seen.slice(m0),
+                     any_on: chips().some(c => c.on), meta: T('.srch-meta')};
+
+  // 浏览器后退：后退到"带域筛选"那一步，界面必须跟着 URL 回到那个态
+  chipSel('domain', dPick.id).click();
+  await settle(() => chips().some(c => c.t === 'domain' && c.id === dPick.id && c.on), 60);
+  await sleep(400);
+  // 只有**确实 pushState 过**才敢 back()：pushUrl 坏掉时 back() 会直接离开这一页，
+  // 整个表达式在别的文档里求值 → 崩溃点落在测量工具上，看不出是判据红（变异体实测）。
+  out.pushed = location.search.indexOf('domain=') >= 0;
+  if (out.pushed) {
+    try { history.back(); } catch (e) { out.back_threw = String(e); }
+    await settle(() => !chips().some(c => c.on), 60);
+    await sleep(500);
+  }
+  out.after_back = {skipped: !out.pushed, url: location.search,
+                    any_on: chips().some(c => c.on), rows: rows().length,
+                    has_facets: !!q('#kb-facets'), clear: clear()};
+  out.pick = {domain: dPick, tag: tPick};
+  return JSON.stringify(out);
+})()"""
+
+
+def probe_search_facets(base):
+    print("== 29 搜索结果页：命中列表 / 分面多选 / 清空 / 浏览器后退 ==")
+    q = quote("标签")
+    api = json.loads(urllib_get(base + f"/api/search?q={q}&limit=50") or "{}")
+    n_api = len(api.get("exact") or []) + len(api.get("hits") or [])
+    s = run_expr(base + f"/search?q={q}", SEARCH_JS)
+    check("搜索页：查询词在**多个域**里都有命中（分面多选需要这个形状，否则后面全是同义反复）",
+          len((api.get("facets") or {}).get("domains") or []) >= 2 and n_api >= 2,
+          {"domains": (api.get("facets") or {}).get("domains"), "n": n_api})
+    check("搜索页：#kb-hits 渲染的行数 == 接口 exact+hits 的条数，顶部读数「共 N 条」跟着它",
+          s.get("rows0") == n_api == s.get("n0")
+          and f"共 {n_api} 条" in (s.get("meta0") or ""),
+          {"rows": s.get("rows0"), "api": n_api, "meta": s.get("meta0")})
+    want_chips = {f"domain:{d['id']}": d["n"] for d in s.get("api_domains") or []}
+    want_chips.update({f"tag:{t['id']}": t["n"] for t in s.get("api_tags") or []})
+    got_chips = {(c["t"] + ":" + c["id"]): int(c["n"]) for c in (s.get("chips0") or [])}
+    check("搜索页：每组分面钮的标题只有非空的组、钮上的篇数逐项等于接口 facets",
+          all(got_chips.get(k) == v for k, v in want_chips.items())
+          and all(c.get("on") is False and c.get("ap") == "false" for c in (s.get("chips0") or []))
+          and (s.get("clear0") or {}).get("present") is False,
+          {"dom": got_chips, "api": want_chips, "groups": s.get("groups")})
+    ad = s.get("after_domain") or {}
+    pick_d = (s.get("pick") or {}).get("domain") or {}
+    want_d = "domain=" + quote(pick_d.get("id") or "")
+    check("搜索页：点一个域分面后真的收窄 —— 行数等于接口同参数的返回、每行 data-hue 都是那个域",
+          ad.get("rows") == ad.get("api_n") and ad.get("api_n") < s.get("n0")
+          and ad.get("hues") == [pick_d.get("id")], ad)
+    # 这一条是变异「域筛选不传给后端」的唯一捕手：search.js 在 renderResults 里留了一层
+    # **本地兜底过滤**（B19 注释：正常恒为恒等），所以只比行数时"没传参"和"传了参"长得一模一样。
+    check("搜索页：过滤的真相在服务端 —— 点完分面**发出去的请求 URL 里带着 domain=**（本地兜底那条不算）",
+          any(want_d in r for r in (ad.get("reqs") or [])), {"want": want_d, "reqs": ad.get("reqs")})
+    check("搜索页：选中的分面钮带 .on 且 aria-pressed=true，URL 同步写 domain=（可分享/可刷新回来）",
+          (ad.get("chip") or {}).get("on") is True and (ad.get("chip") or {}).get("ap") == "true"
+          and f"domain={quote(pick_d.get('id') or '')}" in (ad.get("url") or "")
+          and (ad.get("clear") or {}).get("present") is True, ad)
+    check("搜索页：顶部读数跟着筛选改（「共 N 条」是屏幕实际条数，不是接口未过滤的那个数）",
+          f"共 {ad.get('rows')} 条" in (ad.get("meta") or ""), ad)
+    au = s.get("after_undo") or {}
+    check("搜索页：再点同一颗是分面**取消** —— 条数回到全量、URL 里 domain 参数消失、清空钮自己收掉",
+          au.get("rows") == s.get("n0") and "domain=" not in (au.get("url") or "")
+          and au.get("any_on") is False and (au.get("clear") or {}).get("present") is False, au)
+    at2 = s.get("after_two") or {}
+    pick_t = (s.get("pick") or {}).get("tag") or {}
+    check("搜索页：跨组多选（域 + 标签）是**交集**而不是并集 —— 行数等于接口带两个参数的返回",
+          at2.get("rows") == at2.get("api_n") and at2.get("api_n") <= min(
+              (s.get("after_domain") or {}).get("api_n", 10 ** 6), s.get("n0"))
+          and sorted(at2.get("on") or []) == sorted([f"domain:{pick_d.get('id')}", f"tag:{pick_t.get('id')}"])
+          and f"tag={quote(pick_t.get('id') or '')}" in (at2.get("url") or ""), at2)
+    check("搜索页：两组筛选**同时进同一个请求**（一次请求带 domain 与 tag，而不是本地拼两次结果）",
+          any(("domain=" in r and "tag=" in r) for r in (at2.get("reqs") or [])),
+          {"reqs": at2.get("reqs")})
+    ac = s.get("after_clear") or {}
+    check("搜索页：点「清空筛选」一次撤掉所有组 —— 没有 .on、URL 只剩 q、条数回到全量、按钮自己消失",
+          ac.get("any_on") is False and ac.get("rows") == s.get("n0")
+          and (ac.get("clear") or {}).get("present") is False
+          and "domain=" not in (ac.get("url") or "") and "q=" in (ac.get("url") or ""), ac)
+    check("搜索页：清空之后那次请求不带任何分面参数（撤的是状态，不是只撤高亮）",
+          any("domain=" not in r and "tag=" not in r for r in (ac.get("reqs") or [])),
+          {"reqs": ac.get("reqs")})
+    ab = s.get("after_back") or {}
+    check("搜索页：浏览器后退回到上一步 URL 时，分面态跟着 URL 走（不是留着旧的高亮和旧结果）",
+          ab.get("skipped") is False and "domain=" not in (ab.get("url") or "")
+          and ab.get("any_on") is False and ab.get("rows") == s.get("n0"), ab)
+
+
 # ---------------------------------------------------------------- 探针 25：会话隔离护栏
 # 这条不测产品，测的是**提速改动本身**：本套大量判据默认"localStorage 是干净的"
 # （默认排版、默认小说偏好、空看板）。一次一档时那是白来的（每趟新 profile），
@@ -4022,7 +5018,10 @@ def main() -> int:
         run_probe("home", probe_home_today, base)       # 只读：首页今日学习卡（必须在下面两个记分探针之前）
         run_probe("glossary", probe_glossary, base)     # 读 + 一次「加入复习」记分（baike 卡）
         run_probe("mock", probe_mock, base)             # 读 + 面试卡记分；14b 只读 /search
+        run_probe("review", probe_review, base)         # 点：复习页翻面/四档评分/跳过/进度环/侧栏
         run_probe("orphans", probe_orphan_expand, base, tmp)   # 只写 localStorage 白名单
+        run_probe("gov", probe_governance, base, tmp)          # 写：治理页断链批量（只动 ui-r/gov 两篇靶子）
+        run_probe("search", probe_search_facets, base)        # 只读：结果页命中/分面多选/清空/后退
         run_probe("chips", probe_head_chips, base)             # 只读：chips / 右栏跳转 / 元信息 / 编辑提示
         run_probe("tree", probe_tree_open, base)          # 只读：点树里的文档真的换页
         run_probe("pretty", probe_pretty, base)           # 只读：美化版出口与只读态
@@ -4038,6 +5037,7 @@ def main() -> int:
         run_probe("novelbar", probe_novel_bar, base, tmp)  # 写：章评落旁挂 + 朗读/滚动/下载
         run_probe("stats", probe_stats, base, tmp)  # 写：/api/track 造当月事件后看统计页
         run_probe("tagmerge", probe_tag_merge, base, tmp)  # 写：标签合并两段确认（真改 frontmatter）
+        run_probe("tagsel", probe_tags_selection, base)    # 只读：勾选条生灭 + 胶囊/勾选框两条分岔
         run_probe("isolation", probe_isolation, base)      # 只读：复用浏览器的隔离性自证
         run_probe("newdoc", probe_newdoc, base, tmp)    # 写：在空子域里建一篇
         run_probe("inbox", probe_inbox, base, tmp)      # 写：_trash 软删 + 物理 purge（只动 _inbox 两个靶子）
