@@ -211,6 +211,11 @@ if [ -f "tests/test_ai_batch.py" ]; then step ai_batch $PY tests/test_ai_batch.p
 # resolve 前缀分歧致 /api/rmdir · /api/import 500。若被重新引入，提交即被拦下。
 if [ -f "tests/test_known_defects.py" ]; then step known_defects $PY tests/test_known_defects.py; fi
 
+# Agent 工具自身的回归（2026-09-29）：`scripts/agent/watch_ci.py` 的三类"读不到"必须分开
+# 点名（够不着 / 限流 / 真没有 run），代理不通时自动改直连。判据打的是**本进程的假 GitHub**
+# （现挑端口、零外网）—— 别为了"顺手"把它改成跑真 API，那会让门禁依赖配额与出口 IP。
+if [ -f "tests/test_watch_ci.py" ]; then step watch_ci $PY tests/test_watch_ci.py; fi
+
 # frontmatter 结构门禁（2026-09-25 发布事故）：公开站 Quartz 用 js-yaml 严格解析，
 # 本地阅读器的手写解析器却容错 —— `title:"x"`（冒号后缺空格）能正常显示、能过所有
 # 测试，只在 npx quartz build 时把整站构建打挂。这里提前拦：只在本次提交动了语料时跑。
