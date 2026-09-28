@@ -735,6 +735,87 @@ def test_rag_pure_helpers() -> None:
           len(kept) == 1 and kept[0]["heading"] == "第一节", f"got {kept}")
 
 
+# ---------------------------------------------------------------- rag：全量重建的「逐篇续跑」判据
+def test_rag_resume_plan() -> None:
+    """`plan_sync` / `stamp_legacy`：把"这次到底该重嵌哪些文件"从 sqlite 与模型里剥出来。
+
+    来历（轮次 51）：`sync_rag` 的全量重建**没有中间态**——`meta.code_version` 只在函数
+    最后一把提交，所以任何一次中途 kill 都把已嵌入的上千块全作废，下一趟自检仍判"版本不符"
+    → 从第 0 块重来（台账 §6 第 93 行，实测一趟 38 分钟 / 22006 块）。改成逐篇盖章 `embed_ver`
+    之后，判定必须**只看每篇自己的章**，不能再留一道"全局版本不符就全量"的闸门 ——
+    同一规则两处实现，拆掉任一处另一处都兜得住，变异必存活（§6 第 87 行那条教训）。
+    这几条不依赖 numpy 之外的东西，也不需要模型与 sqlite-vec。
+    """
+    try:
+        from app import rag as _rag
+    except Exception as e:                             # numpy / tokenizers 缺失
+        print(f"  SKIP rag 续跑判据（依赖不可用：{e}）")
+        return
+    check("plan_sync 与 stamp_legacy 存在（判定剥出 sqlite，无模型也能测）",
+          hasattr(_rag, "plan_sync") and hasattr(_rag, "stamp_legacy"))
+    if not (hasattr(_rag, "plan_sync") and hasattr(_rag, "stamp_legacy")):
+        return
+    plan, V = _rag.plan_sync, "4"
+
+    r = plan(known={}, current={"a.md": 1.0, "b.md": 1.0}, code_version=V,
+             n_vec=0, sum_chunks=0)
+    check("新库首建：两篇都要嵌，skipped 是 0（不是「全都被跳过」）",
+          r["changed"] == ["a.md", "b.md"] and r["skipped"] == 0, f"got {r}")
+    check("新库首建：reason 是 normal（索引还没内容，谈不上不完整）",
+          r["reason"] == "normal", f"got {r['reason']}")
+
+    known = {"a.md": (1.0, V), "b.md": (1.0, V)}
+    r = plan(known=known, current={"a.md": 2.0, "b.md": 1.0}, code_version=V,
+             n_vec=6, sum_chunks=6)
+    check("mtime 变新：只重嵌那一篇，另一篇进 skipped",
+          r["changed"] == ["a.md"] and r["skipped"] == 1, f"got {r}")
+
+    r = plan(known={"a.md": (2.0, "3"), "b.md": (1.0, V)}, current={"a.md": 2.0, "b.md": 1.0},
+             code_version=V, n_vec=6, sum_chunks=6)
+    check("mtime 没变但章是旧版本 → 仍然重嵌它（版本递增就靠这一路生效）",
+          r["changed"] == ["a.md"], f"got {r}")
+
+    r = plan(known={"a.md": (1.0, "3"), "b.md": (1.0, "3"), "c.md": (1.0, "3")},
+             current={"a.md": 1.0, "b.md": 1.0, "c.md": 1.0}, code_version=V,
+             n_vec=9, sum_chunks=9)
+    check("RAG_CODE_VERSION 递增 = 全量重算（不需要第二道全局闸门也照样全中）",
+          len(r["changed"]) == 3 and r["skipped"] == 0, f"got {r}")
+
+    half = {f"{i}.md": (1.0, V if i < 3 else None) for i in range(8)}
+    r = plan(known=half, current={f"{i}.md": 1.0 for i in range(8)}, code_version=V,
+             n_vec=6, sum_chunks=6)
+    check("中断续跑：已盖章的 3 篇跳过、没章的 5 篇重嵌（省掉的就是这 5 篇之前的全部）",
+          len(r["changed"]) == 5 and r["skipped"] == 3, f"got {r}")
+    check("续跑时 skipped 是真数字（写成常量 0 的实现必须在这里红）",
+          r["skipped"] == 3, f"got {r['skipped']}")
+
+    r = plan(known={"a.md": (1.0, V), "b.md": (1.0, V)}, current={"a.md": 1.0, "b.md": 1.0},
+             code_version=V, n_vec=10, sum_chunks=12)
+    check("vec 行数与元数据不符：索引不可信 → 全部重算且 reason=integrity",
+          len(r["changed"]) == 2 and r["reason"] == "integrity", f"got {r}")
+
+    r = plan(known={"a.md": (1.0, V), "gone.md": (1.0, V)}, current={"a.md": 1.0},
+             code_version=V, n_vec=3, sum_chunks=3)
+    check("语料里被删掉的文件进 deleted（known 有、current 没有）",
+          r["deleted"] == ["gone.md"], f"got {r}")
+    check("deleted 的那篇不出现在 changed 里，也没进 skipped",
+          "gone.md" not in r["changed"] and r["skipped"] == 1, f"got {r}")
+
+    import inspect
+    names = list(inspect.signature(plan).parameters)
+    check("plan_sync 的参数里不许再有全局版本闸门（防「同一规则两处实现」复活）",
+          not any("meta" in n for n in names), f"got {names}")
+
+    check("stamp_legacy：meta 版本相符 + 行数一致 → 才给旧库盖章（免白嵌 22006 块）",
+          _rag.stamp_legacy("4", V, 22006, 22006) is True)
+    check("stamp_legacy：meta 版本不符 → 不盖章（来历不明就重嵌）",
+          _rag.stamp_legacy("3", V, 22006, 22006) is False)
+    check("stamp_legacy：行数与元数据不符 → 不盖章（and 写成 or 就在这里红）",
+          _rag.stamp_legacy("4", V, 20000, 22006) is False)
+    check("stamp_legacy：meta 里没有版本（全新库/被删过的派生缓存）→ 不盖章",
+          _rag.stamp_legacy(None, V, 0, 0) is False)
+
+
 def main() -> int:
     print("== store：解码与 frontmatter 手术 ==")
     test_decode_and_frontmatter()
@@ -762,6 +843,8 @@ def main() -> int:
     test_no_content_and_retired_counter()
     print("== rag：切块与分词纯函数 ==")
     test_rag_pure_helpers()
+    print("== rag：全量重建的逐篇续跑判据 ==")
+    test_rag_resume_plan()
     print("== rag：tokenizer 配置与写盘 ==")
     test_rag_cfg_and_stream()
     print("== cards：抽卡切块边界 ==")

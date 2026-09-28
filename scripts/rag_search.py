@@ -76,7 +76,8 @@ def main() -> int:
         return 0
 
     print(f"「{args.query}」— {len(hits)} 条结果 · {dt:.1f}s"
-          f"（索引 {stat['total_chunks']} 块，本次同步 {stat['changed']} 文件）")
+          f"（索引 {stat['total_chunks']} 块，本次同步 {stat['changed']} 文件"
+          + (f"，续跑跳过 {stat['skipped']} 篇" if stat.get("skipped") else "") + "）")
     for i, h in enumerate(hits, 1):
         score = f"{h['score']:.3f}"
         head = f"  [{i}] {score}  {h['title']}"

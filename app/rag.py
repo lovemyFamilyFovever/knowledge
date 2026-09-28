@@ -53,7 +53,7 @@ OVERLAP_CHARS = 60      # 相邻块重叠，防止答案恰好被切断
 
 QUERY_PREFIX = "为这个句子生成表示以用于检索相关文章："  # bge 官方查询前缀
 EMBED_BATCH = 16
-RAG_CODE_VERSION = "4"  # 嵌入/批量/分词逻辑变更时递增；不匹配则触发全量重建
+RAG_CODE_VERSION = "4"  # 嵌入/批量/分词逻辑变更时递增；递增后每篇的 files.embed_ver 都变旧 → 自动全量重嵌（可续跑）
 # v4（轮次 49）：正文里出现的 added_tokens 字面量（[CLS]/[SEP]/[MASK]/[PAD]/[UNK]）
 # 改成一个整 token，与 Rust tokenizers 对齐 —— 命中那份库要重建向量索引，属预期。
 
@@ -452,8 +452,21 @@ class RagStore:
                 embedding float[{dim}])"""
         )
         self.con.execute(
-            "CREATE TABLE IF NOT EXISTS files(path TEXT PRIMARY KEY, mtime REAL, chunk_n INTEGER)")
+            "CREATE TABLE IF NOT EXISTS files(path TEXT PRIMARY KEY, mtime REAL, chunk_n INTEGER,"
+            " embed_ver TEXT)")
         self.con.execute("CREATE TABLE IF NOT EXISTS meta(k TEXT PRIMARY KEY, v TEXT)")
+        # 旧库升级（轮次 51）：`files` 以前没有 embed_ver —— 全量重建的进度没地方落，
+        # 中途被 kill 就等于整趟白跑（实测一趟 38 分钟 / 22006 块，见台账 §6 第 93 行）。
+        cols = [r[1] for r in self.con.execute("PRAGMA table_info(files)")]
+        if "embed_ver" not in cols:
+            self.con.execute("ALTER TABLE files ADD COLUMN embed_ver TEXT")
+            # 能不能给既有向量补章，判据在 stamp_legacy 里（不相符就留 NULL，让它们重嵌）。
+            ver = self.con.execute("SELECT v FROM meta WHERE k='code_version'").fetchone()
+            n_vec = self.con.execute("SELECT count(*) FROM vec_docs").fetchone()[0]
+            sum_n = self.con.execute(
+                "SELECT COALESCE(sum(chunk_n),0) FROM files").fetchone()[0]
+            if stamp_legacy(ver[0] if ver else None, RAG_CODE_VERSION, n_vec, sum_n):
+                self.con.execute("UPDATE files SET embed_ver=?", (RAG_CODE_VERSION,))
         self.con.commit()
 
     def upsert_file(self, rel: str, mtime: float, chunks: list[dict],
@@ -473,9 +486,10 @@ class RagStore:
                      np.asarray(v, dtype=np.float32).tobytes()),
                 )
             cur.execute(
-                "INSERT INTO files(path,mtime,chunk_n) VALUES(?,?,?) "
-                "ON CONFLICT(path) DO UPDATE SET mtime=excluded.mtime, chunk_n=excluded.chunk_n",
-                (rel, mtime, n),
+                "INSERT INTO files(path,mtime,chunk_n,embed_ver) VALUES(?,?,?,?) "
+                "ON CONFLICT(path) DO UPDATE SET mtime=excluded.mtime, "
+                "chunk_n=excluded.chunk_n, embed_ver=excluded.embed_ver",
+                (rel, mtime, n, RAG_CODE_VERSION),
             )
             cur.execute("INSERT OR REPLACE INTO meta(k,v) VALUES('built_at',?)",
                         (str(time.time()),))
@@ -491,6 +505,15 @@ class RagStore:
 
     def known_files(self) -> dict[str, float]:
         return {r[0]: r[1] for r in self.con.execute("SELECT path, mtime FROM files")}
+
+    def file_states(self) -> dict[str, tuple[float, str | None]]:
+        """{相对路径: (mtime, embed_ver)}。
+
+        `embed_ver` 是"这一篇的向量是哪一版嵌入代码算的"**唯一落点**：逐篇写、逐篇比，
+        所以全量重嵌天然可续跑（跑完一篇就落一篇的章），也所以版本递增不需要额外的全局闸门。
+        """
+        return {r[0]: (r[1], r[2]) for r in
+                self.con.execute("SELECT path, mtime, embed_ver FROM files")}
 
     def count_chunks(self) -> int:
         for r in self.con.execute("SELECT count(*) FROM vec_docs"):
@@ -582,24 +605,71 @@ def parse_fm(md_text: str) -> dict:
     return fm
 
 
+def stamp_legacy(meta_version: str | None, code_version: str,
+                 n_vec: int, sum_chunks: int) -> bool:
+    """旧库（还没有 `files.embed_ver` 这一列）升级时，能不能给既有向量补上当前的章。
+
+    两个条件**同时**成立才盖：`meta.code_version` 与当前版本相符（这批向量确实是现在这套
+    嵌入代码算的），且 `vec_docs` 行数与 `files.chunk_n` 总和一致（索引本身没缺块）。
+    任一不符就留 NULL —— 宁可重嵌半小时，也不给来历不明的向量发一张"已对齐"的收据。
+    这条判据只服务于**一次性迁移**，不是同步的常规闸门（常规判据只在 plan_sync 一处）。
+    """
+    return bool(meta_version) and meta_version == code_version and n_vec == sum_chunks
+
+
+def plan_sync(known: dict[str, tuple[float, str | None]], current: dict[str, float],
+              code_version: str, n_vec: int, sum_chunks: int) -> dict:
+    """这次该重嵌哪些文件 —— 纯判定，不碰 sqlite / 模型 / 磁盘（所以 CI 无权重也咬得住）。
+
+    返回 `{"changed": [...], "deleted": [...], "skipped": int, "reason": str}`。
+
+    两条规则，**版本变更不另设全局闸门**：
+      * `n_vec != sum_chunks` → 索引自身不可信（缺块/多块，无法逐篇归因）→ 全部重算，
+        `reason="integrity"`；
+      * 否则逐篇判：没进过库、mtime 变新、或 `embed_ver` 不等于当前版本 → 进 changed，
+        其余进 skipped。不变量 7 递增 `RAG_CODE_VERSION` 时，每一篇的章都变成旧版本，
+        于是自动等价于全量重建 —— 中途被 kill 的话，已盖章的那些下次直接跳过（续跑）。
+    「同一规则两处实现」是台账 §6 第 87 行点过名的坑，所以这里刻意**不读** `meta.code_version`。
+    """
+    deleted = sorted(set(known) - set(current))
+    if n_vec != sum_chunks:
+        return {"changed": sorted(current), "deleted": deleted,
+                "skipped": 0, "reason": "integrity"}
+    changed: list[str] = []
+    skipped = 0
+    for rel, mt in current.items():
+        st = known.get(rel)
+        if st is None:
+            changed.append(rel)
+            continue
+        old_mt, ver = st
+        if ver != code_version or old_mt < mt:
+            changed.append(rel)
+        else:
+            skipped += 1
+    return {"changed": sorted(changed), "deleted": deleted,
+            "skipped": skipped, "reason": "normal"}
+
+
 def sync_rag(content: Path, embedder: "OnnxEmbedder", store: RagStore, log=None) -> dict:
     """增量同步：mtime 变化的文件重新切块嵌入，删除的文件清出索引。
 
-    完整性自检：vec_docs 行数与 files 表 chunk_n 总和不符、或代码版本
-    变更（pooling/批量逻辑修复过）时，全量重建 —— 保证索引与嵌入逻辑
-    始终一致，无需手工删库。"""
+    完整性自检：vec_docs 行数与 files 表 chunk_n 总和不符 → 全量重建（索引不可信，
+    逐篇归因不了）。嵌入代码版本变更（不变量 7）走的是**逐篇的 `files.embed_ver`**：
+    版本一递增，每篇的章都成了旧的，于是自动全量；而全量途中被 kill 不再等于整趟白跑——
+    每篇跑完就落自己的章（`upsert_file` 一事务），下一趟只补没章的那些。
+    `meta.code_version` 仍写，但只是**记录**（状态展示与迁移判据用），不再是第二道闸门。
+    """
     with SYNC_LOCK:
-        known = store.known_files()
+        known = store.file_states()
         current = md_corpus_files(content)
-        changed = [rel for rel, mt in current.items() if rel not in known or known[rel] < mt]
-        deleted = [rel for rel in known if rel not in current]
-        # 完整性自检：行数与元数据不符 / 嵌入代码版本变更 → 全量重建
+        n_vec = store.con.execute("SELECT count(*) FROM vec_docs").fetchone()[0]
         sum_chunks = store.con.execute(
             "SELECT COALESCE(sum(chunk_n),0) FROM files").fetchone()[0]
-        n_vec = store.con.execute("SELECT count(*) FROM vec_docs").fetchone()[0]
-        ver = store.con.execute("SELECT v FROM meta WHERE k='code_version'").fetchone()
-        if (not ver or ver[0] != RAG_CODE_VERSION) or n_vec != sum_chunks:
-            changed = list(current.keys())  # 嵌入逻辑或索引完整性异常：全部重算
+        plan = plan_sync(known, current, RAG_CODE_VERSION, n_vec, sum_chunks)
+        changed, deleted = plan["changed"], plan["deleted"]
+        if log and plan["reason"] == "integrity":
+            log("[rag] 索引行数与元数据不符，全量重建")
         for rel in deleted:
             store.delete_file(rel)
         total = len(changed)
@@ -633,16 +703,25 @@ def sync_rag(content: Path, embedder: "OnnxEmbedder", store: RagStore, log=None)
                           (RAG_CODE_VERSION,))
         store.con.commit()
         return {"changed": total, "deleted": len(deleted),
-                "new_chunks": n_chunks, "total_chunks": n_all}
+                "new_chunks": n_chunks, "total_chunks": n_all,
+                "skipped": plan["skipped"], "reason": plan["reason"]}
 
 
 def rag_status(store: "RagStore | None") -> dict:
     if store is None:
-        return {"enabled": False, "chunks": 0, "model": ""}
+        return {"enabled": False, "chunks": 0, "model": "", "version": RAG_CODE_VERSION,
+                "files_total": 0, "stale": 0}
     row = store.con.execute("SELECT v FROM meta WHERE k='n_chunks'").fetchone()
     mid = store.con.execute("SELECT v FROM meta WHERE k='model_id'").fetchone()
+    # stale = **已入库的文件里**有多少篇的章不是当前嵌入版本。全量重嵌被中断时它就是剩余工作量
+    # （版本刚递增时等于总篇数，跑一篇少一篇；0 表示已入库部分完全对齐）。
+    # 它**不含**从没进过库的新文件 —— 那部分只在同步时按 changed 报，首建进度看 sync 的回执。
+    tot, stamped = store.con.execute(
+        "SELECT COUNT(*), COALESCE(SUM(embed_ver = ?), 0) FROM files",
+        (RAG_CODE_VERSION,)).fetchone()
     return {"enabled": True, "chunks": int(row[0]) if row else 0,
-            "model": mid[0] if mid else MODEL_ID}
+            "model": mid[0] if mid else MODEL_ID, "version": RAG_CODE_VERSION,
+            "files_total": int(tot), "stale": int(tot) - int(stamped)}
 
 
 # ---------------- 查询 ----------------

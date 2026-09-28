@@ -21,8 +21,8 @@ try:
     # 这里显式 import，缺它时走统一 SKIP——否则测试跑到 end-to-end 才 ModuleNotFoundError
     # （2026-09-13 GitHub Desktop 提交实测：PATH python 有 flask/tokenizers 无 onnxruntime）
     import onnxruntime  # noqa: F401
-    from app.rag import (OnnxEmbedder, RagStore, markdown_split, model_files_ready,
-                         sync_rag, query_rag, HFTokenizer)
+    from app.rag import (DIM, OnnxEmbedder, RagStore, markdown_split, model_files_ready,
+                         sync_rag, query_rag, HFTokenizer, rag_status)
 except Exception as e:  # 依赖缺失：跳过（基础阅读器不依赖 RAG）
     _ci.skip("rag", "rag-deps-missing", f"SKIP: RAG 依赖不可用（{e}）")
     sys.exit(0)
@@ -196,6 +196,182 @@ def test_cli_stdout_survives_gbk_console():
     print("ok  rag_search CLI：GBK 控制台上打印 emoji 不再炸（对照组确认同样打印确实会炸）")
 
 
+class _CountingEmbedder:
+    """假嵌入器：向量按文本哈希定死，并**数得清每篇被嵌了几次**。
+
+    续跑唯一能被证明的形式是"第二次同步没有回头重嵌已盖章的那几篇"，而这只有对着可计数的
+    桩才证得出来 —— 真模型跑一趟 38 分钟，而且篇级调用次数根本看不见（台账 §6 第 93 行）。
+    `fail_after` 用来模拟"嵌够 N 篇就被 kill"。
+    """
+
+    def __init__(self):
+        self.calls = []
+        self.fail_after = None
+
+    def embed_chunks(self, chunks):
+        if self.fail_after is not None and len(self.calls) >= self.fail_after:
+            raise RuntimeError("模拟中断")
+        self.calls.append(chunks[0]["title"])
+        import hashlib
+        h = hashlib.sha256("|".join(c["text"] for c in chunks).encode("utf-8")).digest()
+        v = [b / 255.0 for b in h[:DIM]] if DIM <= len(h) else \
+            [b / 255.0 for b in h] + [0.0] * (DIM - len(h))
+        return [v for _ in chunks]
+
+
+def _mkcorpus(content: Path, n: int) -> None:
+    d = content / "baike" / "db"
+    d.mkdir(parents=True, exist_ok=True)
+    for i in range(1, n + 1):
+        (d / ("%d.md" % i)).write_text(
+            '---\ntitle: "第%d篇"\n---\n\n# 标%d\n\n' % (i, i) + ("正文内容%d。" % i) * 40,
+            encoding="utf-8")
+
+
+def test_resume_after_interrupt():
+    """全量重嵌可续跑（轮次 51）：中途被 kill 之后，第二次只补没盖章的那几篇。
+
+    三条独立证据，缺一条都可能是假绿：
+      · sync 回执的 changed / skipped 数字；
+      · **假嵌入器实际被调用的次数与是哪几篇**（回执会撒谎，计数不会）；
+      · rag_status 的 stale —— 中断时它是剩余量，跑完必须归 0。
+    """
+    import app.rag as rag
+    with tempfile.TemporaryDirectory() as td:
+        root = Path(td)
+        content = root / "content"
+        content.mkdir()
+        _mkcorpus(content, 4)
+        store = RagStore(root / "indexes")
+        emb = _CountingEmbedder()
+        old_ver = rag.RAG_CODE_VERSION
+        try:
+            stat = sync_rag(content, emb, store)
+            assert stat["changed"] == 4 and stat["skipped"] == 0, f"首建该嵌 4 篇：{stat}"
+            assert len(emb.calls) == 4, f"首建该被调 4 次：{emb.calls}"
+            assert rag_status(store)["stale"] == 0, "首建完不该有剩"
+
+            # 版本递增 + 嵌到第 3 篇被 kill：前 2 篇已是新章，后 2 篇还挂着旧章
+            rag.RAG_CODE_VERSION = old_ver + "-t"
+            emb.calls, emb.fail_after = [], 2
+            interrupted = False
+            try:
+                sync_rag(content, emb, store)
+            except RuntimeError:
+                interrupted = True
+            assert interrupted, "假嵌入器该在第 3 篇抛异常（静默通过=中断没被模拟出来）"
+            st = rag_status(store)
+            assert st["stale"] == 2, f"中断后该剩 2 篇没盖章：{st}"
+
+            # 续跑：只补那 2 篇，已盖章的 2 篇不许回头重嵌
+            emb.fail_after, emb.calls = None, []
+            stat = sync_rag(content, emb, store)
+            assert stat["changed"] == 2, f"续跑只该重嵌剩余 2 篇，got {stat}"
+            assert stat["skipped"] == 2, f"已盖章的 2 篇该进 skipped，got {stat}"
+            assert len(emb.calls) == 2, f"续跑实际嵌了 {len(emb.calls)} 篇（>2 就是回头重嵌了）"
+            assert rag_status(store)["stale"] == 0
+            assert stat["reason"] == "normal", f"行数一致时不该报 integrity：{stat}"
+        finally:
+            rag.RAG_CODE_VERSION = old_ver
+            store.close()
+    print("ok  续跑：中断后第二次同步只嵌剩余 2 篇（回执 + 调用计数 + stale 三证）")
+
+
+def test_integrity_fallback_and_no_second_gate():
+    """完整性自检与「只有一处版本判据」。
+
+    ① vec 行数与 files.chunk_n 不符 → 整趟全量（reason=integrity），逐篇归因这时不可信；
+    ② 版本判据**只活在 files.embed_ver 一处**：sync 不再读 meta.code_version 来决定
+       要不要全量 —— 留着就是同一规则两份实现（台账 §6 第 87 行），变异拆掉任一处都不会红。
+    """
+    import app.rag as rag
+    with tempfile.TemporaryDirectory() as td:
+        root = Path(td)
+        content = root / "content"
+        content.mkdir()
+        _mkcorpus(content, 3)
+        store = RagStore(root / "indexes")
+        emb = _CountingEmbedder()
+        old_ver = rag.RAG_CODE_VERSION
+        try:
+            sync_rag(content, emb, store)
+            assert len(emb.calls) == 3
+            # 造"索引缺块"：删掉任意一条向量，行数与 files.chunk_n 就对不上
+            victim = store.con.execute("SELECT chunk_id FROM vec_docs LIMIT 1").fetchone()[0]
+            store.con.execute("DELETE FROM vec_docs WHERE chunk_id=?", (victim,))
+            store.con.commit()
+            emb.calls = []
+            stat = sync_rag(content, emb, store)
+            assert stat["reason"] == "integrity", f"行数不符必须报 integrity：{stat}"
+            assert stat["changed"] == 3 and len(emb.calls) == 3, \
+                f"完整性不符时该全量重算，got {stat} / {emb.calls}"
+
+            # 第二道闸门的物证：把 meta.code_version 改成别的，同步**不该**因此全量
+            sync_rag(content, emb, store)                      # 先补回一致状态
+            store.con.execute("INSERT OR REPLACE INTO meta(k,v) VALUES('code_version',?)",
+                              ("9-编的",))
+            store.con.commit()
+            emb.calls = []
+            stat = sync_rag(content, emb, store)
+            assert stat["changed"] == 0 and emb.calls == [], \
+                f"meta 版本已经不是判据了，改它不该触发重嵌：{stat} / {emb.calls}"
+        finally:
+            rag.RAG_CODE_VERSION = old_ver
+            store.close()
+    print("ok  完整性不符 → 全量；meta.code_version 不再是第二道闸门（改它零重嵌）")
+
+
+def test_legacy_db_migration():
+    """旧库（还没有 files.embed_ver 这一列）打开时该怎样 —— 迁移不能变成一次白嵌。
+
+    相符才盖章：`meta.code_version` 与当前版本一致 **且** vec 行数与元数据一致，才给既有
+    向量补章（免掉一次 38 分钟的无谓重嵌）；任一不符就留 NULL，让它们按新判据重嵌 ——
+    宁可重嵌，也不给来历不明的向量发一张"已对齐"的收据。
+    """
+    import sqlite3
+    import app.rag as rag
+    if sqlite3.sqlite_version_info < (3, 35):
+        print("SKIP  旧库迁移断言（本机 SQLite %s 不支持 DROP COLUMN，造不出旧库形状）"
+              % sqlite3.sqlite_version)
+        return
+    with tempfile.TemporaryDirectory() as td:
+        root = Path(td)
+        idx = root / "indexes"
+        store = RagStore(idx)
+        for i in range(3):
+            store.upsert_file("baike/db/%d.md" % i, 1.0,
+                              [{"text": "正文", "title": "t%d" % i, "heading": "h",
+                                "source": "", "collected": "", "tags": ""}],
+                              [[0.1] * DIM])
+        store.con.execute("INSERT OR REPLACE INTO meta(k,v) VALUES('code_version',?)",
+                          (rag.RAG_CODE_VERSION,))
+        store.con.commit()
+        store.close()
+
+        def _strip_column(meta_ver):
+            raw = sqlite3.connect(idx / "rag.db")
+            raw.execute("ALTER TABLE files DROP COLUMN embed_ver")
+            raw.execute("INSERT OR REPLACE INTO meta(k,v) VALUES('code_version',?)", (meta_ver,))
+            raw.commit()
+            raw.close()
+
+        _strip_column(rag.RAG_CODE_VERSION)          # 相符 + 行数一致 → 该盖章
+        store = RagStore(idx)
+        cols = [r[1] for r in store.con.execute("PRAGMA table_info(files)")]
+        assert "embed_ver" in cols, f"打开旧库没补列：{cols}"
+        st = rag_status(store)
+        assert st["stale"] == 0 and st["files_total"] == 3, \
+            f"来历可确认的旧库该直接盖章（否则白嵌 3 篇）：{st}"
+        store.close()
+
+        _strip_column("0-来历不明")                   # 版本不符 → 不许盖章
+        store = RagStore(idx)
+        st = rag_status(store)
+        assert st["stale"] == 3, f"来历不明的 3 篇必须留 NULL 等重嵌：{st}"
+        store.close()
+    print("ok  旧库迁移：相符才盖章（免白嵌），版本不符留 NULL 重嵌")
+
+
 def _main():
     _ci.started("rag")
     test_model_files_ready()
@@ -203,6 +379,9 @@ def _main():
     test_tokenizer_matches_wordpiece_reference()
     test_tokenizer_cross_validated_against_library()
     test_cli_stdout_survives_gbk_console()
+    test_resume_after_interrupt()
+    test_integrity_fallback_and_no_second_gate()
+    test_legacy_db_migration()
     test_end_to_end_semantic_search()
     print("\nRAG TESTS OK")
     return 0
