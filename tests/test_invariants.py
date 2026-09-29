@@ -241,8 +241,9 @@ AUDIT_ALLOWED = {
     ("tests/test_ai_config.py", "unlink"): 1,
     # 切片 2（选词问 AI）：两处 unlink 删的都是临时实例根下的 .ai-config.json
     # （探针自己写进去的假配置，跑完必须收掉，否则会污染同根后续探针）。
-    ("tests/test_ui_behavior.py", "unlink"): 6,   # 两条 AI 探针各自收走临时 .ai-config.json 与临时靶子
-    ("tests/test_ai_batch.py", "unlink"): 1,      # 批量测试自己造的靶子与临时配置，用完就删
+    # 只剩选词问那一条 AI 探针：撤 key 时 unlink 一次、finally 里再收一次。
+    # （轮次 53 前是 6 处 —— 查漏 / 矛盾 / 批量三条 AI 探针各自收临时 .ai-config.json 与靶子，随功能一起删了）
+    ("tests/test_ui_behavior.py", "unlink"): 2,
     ("tests/test_known_defects.py", "os_rmdir"): 1,    # 摘 junction 链（不穿透删目标，是 rmtree 前的安全前置）
     ("tests/test_known_defects.py", "rmtree"): 1,      # 临时目录（tempfile.mkdtemp）自清理
     # P3-B JS 性质测试：删的是 tempfile.mkdtemp 起的临时 KB_ROOT（内含自建的 content/ 与
@@ -257,7 +258,7 @@ AUDIT_ALLOWED = {
     # 的域（zz-clean），跑完整域搬走，免得留一份只属于这一趟的语料。本套会真的删语料
     # （crumb 删除 / #ed-del / 收件箱 del+purge），但全部落在临时根上，尾部有一条断言亲自
     # 证明删除目标在系统临时目录下、仓库 content/ 完好。
-    ("tests/test_ui_behavior.py", "rmtree"): 2,
+    ("tests/test_ui_behavior.py", "rmtree"): 1,   # 轮次 53 前是 2：另一处随批量探针一起删除
 }
 AUDIT_SELF = "tests/test_invariants.py"   # 本文件自身含这些字面量，排除以免自指
 
@@ -612,7 +613,7 @@ def test_i10() -> None:
             root = Path(td)
             c = seed(root)
             app = create_app(root)
-            # 摘掉 RAG 钩子：/api/ask 一旦真去初始化 RagStore，它那条长连接会把
+            # 摘掉 RAG 钩子：一旦被真去初始化 RagStore，它那条长连接会把
             # indexes/rag.db 锁住，Windows 上临时根就删不掉（实测 PermissionError）。
             # 本条断言要证的是"AI 不写语料"，与向量库无关。
             app.config["KB_HOOKS"]["get_rag"] = None
@@ -631,27 +632,18 @@ def test_i10() -> None:
             cl.put("/api/ai/config", json={"base_url": "http://192.168.0.1/v1"})  # 内网：该拒
             cl.post("/api/ai/test", json={"base_url": "http://127.0.0.1:9/v1",
                                           "allow_local": False})
-            cl.post("/api/ask", json={"q": "量子"})       # key 在、端点是 .invalid：只可能 DNS 失败
             cl.post("/api/ai/explain", json={"path": "ai/topic/A.md", "selection": "可见正文"})
             cl.post("/api/ai/explain", json={"path": "career/B.md", "selection": "职业"})
-            cl.get("/api/ai/qa?path=ai/topic/A.md")
-            # 查漏三个端点（切片 3）：面板入口再多一条，也不许碰正文。
-            # 「采纳」动作写的是 sidecar，走 /api/note —— 那条路径由 I2 管，不在这里。
-            cl.post("/api/ai/audit", json={"path": "ai/topic/A.md"})
-            cl.post("/api/ai/audit", json={"path": "career/B.md"})
-            cl.get("/api/ai/audit?path=ai/topic/A.md")
-            cl.post("/api/ai/audit/status", json={"path": "ai/topic/A.md",
-                                                  "id": "ffffffffffff", "status": "dismissed"})
-            # 批量三件套（切片 4）：一次扫整个域的端点更要钉死"不许碰正文" ——
-            # 它读的是全盘，写盘的任何一处都只会是灾难。
-            cl.post("/api/ai/batch/estimate", json={"scope": {"domain": "ai"}})
-            cl.post("/api/ai/batch/start", json={"scope": {"domain": "ai"}, "ai": False})
-            for _ in range(200):
-                import time as _t
-                _t.sleep(0.05)
-                if not cl.get("/api/ai/batch/status").get_json()["job"].get("running"):
-                    break
-            cl.post("/api/ai/batch/stop")
+            # 轮次 53：问吧 / 查漏 / 批量 / 侧栏回看四个端点按用户要求整体移除。
+            # 这里仍然逐个打一遍 —— 断的是"路由确实不在了"（404），
+            # 而不是"从这份清单上悄悄删掉就完事了"。
+            for gone, meth in (("/api/ask", "post"), ("/api/ask/status", "get"),
+                               ("/api/ai/qa?path=ai/topic/A.md", "get"),
+                               ("/api/ai/audit", "post"), ("/api/ai/batch/estimate", "post"),
+                               ("/api/ai/batch/start", "post"), ("/api/ai/batch/stop", "post")):
+                rr = (cl.post(gone, json={}) if meth == "post" else cl.get(gone))
+                check(f"I10 ② {gone.split('?')[0]} 已下线 → 404", rr.status_code == 404,
+                      f"status={rr.status_code}")
             cl.get("/api/ai/usage")
             cl.delete("/api/ai/config")
             after = tree_state()

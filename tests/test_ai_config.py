@@ -78,6 +78,11 @@ def check(name, cond, extra=""):
 # ---------------------------------------------------------------- 假 provider
 # 路径前缀决定行为：/ok /auth /nf /slow /garbage /emptychoices /boom /capture /qa /badjson；
 # /ok 与 /qa 要求 Bearer 里含 "REAL"，用来证明「没配好 key 时压根不发请求」。
+# /fenced 桩要回的形状：一段被代码围栏包住的纯文本。写成常量而不是字符串里的 \\n，
+# 是因为这些测试脚本会被 git 以 CRLF 落盘 —— 行内转义在两种行尾下不好核对。
+FENCED_ANSWER = "```" + "\n包在围栏里的一段解释\n" + "```"
+
+
 def build_provider():
     app = Flask("fake-provider")
 
@@ -129,9 +134,12 @@ def build_provider():
                       "usage": {"prompt_tokens": 11, "completion_tokens": 5,
                                 "total_tokens": 16}})
 
-    # ---- 切片 2 用：按约定 JSON schema 回答 / 故意不按 schema 回答（用来试重试上限） ----
+    # ---- 选词问 AI（轮次 53 极简版）用：模型可能回的四五种输出形状 ----
+    # 提示词现在只要一段纯文本，但模型仍可能自作主张回 JSON、给文本套上代码围栏、
+    # 回一段散文（这在新契约下是**合法**答案）、或回空白（这是失败，必须如实报）。
     @app.route("/qa/chat/completions", methods=["POST"])
     def qa():
+        """模型自作主张回了个 JSON 对象：消费端要把 answer 那一个字取出来。"""
         counted("qa")
         ans = {"answer": "贝尔不等式：定域隐变量理论对关联函数给出的上界，量子力学可违反。",
                "confidence": "high",
@@ -141,55 +149,32 @@ def build_provider():
                       "usage": {"prompt_tokens": 120, "completion_tokens": 40,
                                 "total_tokens": 160}})
 
-    @app.route("/audit/chat/completions", methods=["POST"])
-    def audit():
-        """切片 3 用：把候选词原样判成 terms（便于断言"AI 的结论并回了哪条建议"）。"""
-        counted("audit")
-        ans = {"answer": "两个候选里只有一个是真引用。", "confidence": "medium",
-               "terms": [{"term": "向量数据库", "brief": "正文里它在讲存储选型"}],
-               "sources": []}
-        return reply({"choices": [{"message": {"content": json.dumps(ans, ensure_ascii=False)}}],
-                      "usage": {"prompt_tokens": 300, "completion_tokens": 30,
-                                "total_tokens": 330}})
+    @app.route("/plain/chat/completions", methods=["POST"])
+    def plain():
+        """约定中的正常形状：一段纯文本，没有任何结构。"""
+        counted("plain")
+        return reply({"choices": [{"message": {"content": "定域隐变量：测量结果只由本地隐变量决定。"}}],
+                      "usage": {"prompt_tokens": 60, "completion_tokens": 18,
+                                "total_tokens": 78}})
 
-    @app.route("/auditgap/chat/completions", methods=["POST"])
-    def audit_gap():
-        """切片 5 用：复核覆盖空白的答复 —— 只认列出的候选名，绝不发明新主题。"""
-        counted("audit")
-        ans = {"answer": "三个候选里只有一个值得单独立篇。", "confidence": "medium",
-               "terms": [{"term": "缺失术语", "brief": "多篇都在讲它，值得一篇独立词条"}],
-               "sources": []}
-        return reply({"choices": [{"message": {"content": json.dumps(ans, ensure_ascii=False)}}],
-                      "usage": {"prompt_tokens": 200, "completion_tokens": 25,
-                                "total_tokens": 225}})
+    @app.route("/fenced/chat/completions", methods=["POST"])
+    def fenced():
+        """纯文本被包在代码围栏里（模型常这么干）：围栏要剥掉，内容原样留。"""
+        counted("fenced")
+        return reply({"choices": [{"message": {"content": FENCED_ANSWER}}],
+                      "usage": {"total_tokens": 21}})
 
-    @app.route("/auditpair/chat/completions", methods=["POST"])
-    def audit_pair():
-        """切片 5b 用：判「与已有语料矛盾」的答复 —— 只认列出的配对编号，绝不新增配对。"""
-        counted("audit")
-        ans = {"answer": "两处对同一件事的说法确实对立。", "confidence": "high",
-               "terms": [{"term": "与《向量数据库》", "brief": "本篇说按词建表，那篇说按向量存"}],
-               "sources": []}
-        return reply({"choices": [{"message": {"content": json.dumps(ans, ensure_ascii=False)}}],
-                      "usage": {"prompt_tokens": 260, "completion_tokens": 30,
-                                "total_tokens": 290}})
+    @app.route("/blank/chat/completions", methods=["POST"])
+    def blank():
+        """模型回了一段空白：这是失败，必须如实报，绝不拿空串冒充答案。"""
+        counted("blank")
+        return reply({"choices": [{"message": {"content": "   "}}], "usage": {"total_tokens": 1}})
 
-    @app.route("/auditslow/chat/completions", methods=["POST"])
-    def audit_slow():
-        """切片 4 用：慢一点的 audit 答复，给"作业跑中途改配置"留出确定性窗口。
-
-        测试需要"作业还在跑、帽子已经被压低"这一格 —— 不靠 sleep 猜，
-        而是让每次调用本身就慢（0.35s × 篇数远大于断言侧的一次 PUT 往返）。
-        """
-        import time
-        time.sleep(0.35)
-        return audit()
-
-    @app.route("/badjson/chat/completions", methods=["POST"])
-    def badjson():
-        counted("badjson")
-        return reply({"choices": [{"message": {"content": "这是一段散文，不是约定的 JSON。"}}],
-                      "usage": {"total_tokens": 9}})
+    @app.route("/deny/chat/completions", methods=["POST"])
+    def deny():
+        """401 鉴权失败，但**要计数** —— /auth 那个桩不计数，证不了"失败只发一次"。"""
+        counted("deny")
+        return reply({"error": {"message": "invalid api key"}}, 401)
 
     return app
 
@@ -447,11 +432,12 @@ def main() -> int:
             check("B26 成功那次的 total_tokens 记进账本",
                   uj2["month"]["tokens"] >= 10, uj2["month"])
 
-            # /api/ask 预算帽：把 budget 压到已用次数以下
+            # 预算帽：把 budget 压到已用次数以下。轮次 53 之后唯一会出站的入口
+            # 就是 /api/ai/explain（问吧 / 查漏 / 批量都删了），所以帽子就钉在它身上。
             used = c.get("/api/ai/usage").get_json()["month"]["calls"]
             c.put("/api/ai/config", json={"monthly_budget_calls": used})
-            a = c.post("/api/ask", json={"q": "量子"})
-            check("B27 超预算帽 /api/ask → 429 budget_exceeded",
+            a = c.post("/api/ai/explain", json={"path": "baike/sub/A.md", "selection": "合成甲"})
+            check("B27 超预算帽 /api/ai/explain → 429 budget_exceeded",
                   a.status_code == 429 and a.get_json().get("code") == "budget_exceeded",
                   a.get_json())
             check("B28 预算帽不影响只读的 usage/config",
@@ -519,20 +505,13 @@ def main() -> int:
             check("C6 model 取自配置", CAPTURED["body"].get("model") == "mimo-v2.5",
                   CAPTURED["body"].get("model"))
 
-            CAPTURED.clear()
-            a = c.post("/api/ask", json={"q": "什么是贝尔不等式"})
-            check("C7 /api/ask 走通（假 provider）", a.status_code == 200 and a.get_json()["ok"],
-                  a.get_json())
-            sent = json.dumps(CAPTURED["body"], ensure_ascii=False)
-            check("C8 ask 把问题发出去了", "什么是贝尔不等式" in sent, sent[:200])
-            check("C9 ask 不带 max_tokens 截断（答案要完整）",
-                  "max_tokens" not in CAPTURED["body"], CAPTURED["body"])
-            check("C10 RAG 不可用时如实标注无语料，不编上下文",
-                  "未检索到相关语料" in sent, sent[:300])
-            check("C11 绝对路径不出现在出站请求体",
-                  str(root) not in sent, sent[:300])
-            check("C12 ask 的答复带 usage（前端可显示本次 tokens）",
-                  isinstance(a.get_json().get("usage"), dict), a.get_json())
+            # 问吧（/api/ask）与它配套的 /api/ask/status 在轮次 53 整体移除。
+            # 这里留一条"路由真的不在了"的断言：404 而不是 500/降级 —— 也顺手钉住
+            # "砍功能要连路由一起砍"，别留一个能被打到一半的空壳。
+            for gone in (("/api/ask", "post"), ("/api/ask/status", "get")):
+                rr = getattr(c, gone[1])(gone[0], **({"json": {"q": "x"}} if gone[1] == "post" else {}))
+                check(f"{gone[0].upper()} 已不存在 → 404", rr.status_code == 404,
+                      f"status={rr.status_code}")
 
         print(f"\n{passed} passed, {failed} failed")
         if FAILS:

@@ -1,37 +1,30 @@
 # -*- coding: utf-8 -*-
-"""AI 出站层：OpenAI 兼容 chat 客户端 + RAG 检索增强回答 + 配置/测试/用量端点。
+"""AI 出站层：OpenAI 兼容 chat 客户端 + 选词问 AI + 配置/测试/用量端点。
 
 配置的唯一入口是 app/ai_config.py（env > .ai-config.json > 缺省），本模块只消费不回显明文 key。
 只依赖标准库 urllib —— 与 AGENTS「任意 Python 可启动」兼容。
 
-端点：
+端点（轮次 53 起只剩这些 —— 查漏 / 批量 / 问吧 三块按用户要求整体移除）：
   GET/PUT /api/ai/config   读（脱敏）/ 写（校验后落 gitignored JSON）
+  DELETE /api/ai/config    清除本机配置文件
   POST /api/ai/test        1-token 级连通性 ping，失败分类见 _classify_error()
   GET /api/ai/usage        今日/本月调用数、tokens、估算花费、预算余额
-  POST /api/ai/explain     切片 2：选词问 AI（dry=true 只回「将要发什么」，不出站、不计费）
-  GET /api/ai/qa           切片 2：本篇问过的（读派生缓存，不碰语料）
-  POST /api/ask            RAG 问答（沿用旧行为，新增记账与预算帽）
-  GET /api/ask/status      可用性（旧前端在用，保持兼容）
+  POST /api/ai/explain     选词问 AI：只发选中的那几个字，只回一句解释
 
-key 未配置时 /api/ask 返回 not_configured(503)，前端优雅降级；
-RAG 组件缺失时自动跳过检索（纯 chat 仍可用）。
+key 未配置时 explain 返回 not_configured(503)，前端如实指路「设置 → AI 页签」。
 """
 import json
 import threading
 import time
 import urllib.error
 import urllib.request
-from contextlib import closing
-from pathlib import Path
 
 from flask import Blueprint, current_app, jsonify, request
 from werkzeug.exceptions import HTTPException
 
-from app import ai_audit, ai_batch, ai_config, ai_qa
+from app import ai_config, ai_qa
 from app.ai_config import ConfigError
-from app.ai_usage import AUDIT_STATUSES, AiUsageStore
-from app.fts import cjk_clean, open_db, search as fts_search
-from app.store import md_files, parse_frontmatter
+from app.ai_usage import AiUsageStore
 
 ai_bp = Blueprint("ai", __name__)
 
@@ -298,653 +291,24 @@ def _resolve_doc(rel: str) -> dict:
             "exists": p.is_file()}
 
 
-def _read_doc(res: dict) -> dict:
-    """真正读盘（调用方已确认允许读）。"""
-    if not res["exists"]:
-        raise FileNotFoundError(res["rel"])
-    md = res["path"].read_text(encoding="utf-8", errors="replace")
-    if len(md) > 400000:
-        raise ValueError("文档过大（超过 400KB），请先拆分再问")
-    fm, _body = parse_frontmatter(md)
-    return dict(res, md=md, fm=fm or {},
-                title=str((fm or {}).get("title") or res["path"].stem),
-                digest=ai_qa.doc_hash(md))
-
-
-def _known_titles() -> list:
-    """全库标题集合（派生缓存里读，不重扫语料）。
-
-    必须过 `cjk_clean`：索引为了 FTS 分词把标题写成了"向 量 数 据 库"这种带空格的形态
-    （fts.py:54），直接拿来和正文比对会一个都匹配不上 —— 这条是切片 3 实测踩出来的。
-    注意 cjk_clean 会在末尾留下一个空格 —— 归一化不在这里做，
-    统一由消费方 `ai_audit.local_checks` 在使用前 strip（一处加工，两处口径才不会分叉）。
-    """
-    try:
-        with closing(open_db(Path(current_app.config["INDEXES"]))) as con:
-            return [cjk_clean(r[0]) for r in con.execute("SELECT DISTINCT title FROM docs")
-                    if r[0]]
-    except Exception:
-        return []
-
-
-def _dead_links(rel: str) -> list:
-    """本篇未解析的双链原文 —— 用索引算好的结果，不自己再解析一遍正则。
-    索引里没有这一行（新文档还没进索引）时返回空，交给本地判据自己按标题集合判。"""
-    try:
-        with closing(open_db(Path(current_app.config["INDEXES"]))) as con:
-            return [r[0] for r in con.execute(
-                "SELECT raw FROM links WHERE src=? AND resolved=0", (rel,))]
-    except Exception:
-        return []
-
-
-def _dead_links_map() -> dict:
-    """一次查询拿全库的未解析双链：rel -> [原文目标]。
-
-    批量按篇调 `_dead_links` 会开几十次库、每次都撞 watcher 的写锁（实测一批 37 篇
-    能卡到 40s 不收尾），所以整批只查一次，篇内取表。口径与 `_dead_links` 完全一致。
-    """
-    try:
-        with closing(open_db(Path(current_app.config["INDEXES"]))) as con:
-            out = {}
-            for src, raw in con.execute("SELECT src, raw FROM links WHERE resolved=0"):
-                out.setdefault(src, []).append(raw)
-        return out
-    except Exception:
-        return {}
-
-
-def _asset_resolver(doc_path: Path):
-    content = Path(current_app.config["CONTENT"])
-
-    def exists(url: str) -> bool:
-        u = url.strip().split("?")[0].split("#")[0]
-        if not u:
-            return False
-        cands = [(doc_path.parent / u).resolve(), (content / u).resolve(),
-                 (content / "_assets" / Path(u).name).resolve()]
-        return any(c.is_file() for c in cands)
-
-    return exists
-
-
-RAG_QUERY_CHARS = 800      # 送进嵌入模型的本篇文本上限（本地算，不出网，也不无止境）
-RAG_MIN_QUERY_CHARS = 24   # 短到一句完整话都没有的篇（存根、目录页）不值得为它跑一次嵌入
-RAG_CAND_K = 8             # 语义索引一次取回几段：剔掉自己那几段后还够挑三对
-FTS_FETCH_K = 18             # 第一路一次捞几条：合流、去重、剔自己之后还要够挑三对
-
-
-def _conflict_hits(rel: str, terms=None, con=None, limit: int = 3, md: str = "") -> list:
-    """本地取段：配出"这两篇可能在讲同一件事"的对照候选，两条来源合成一份名单。
-
-    这一步零出站，且必须零出站 —— 配对是本地算出来的，AI 只判这两段对不对立
-    （与 should_link 同一套"本地出候选、AI 只收窄"的口径）。
-
-    **第一路 FTS（永远在）**：检索词优先用 `terms`（= 本篇正文里出现的已有词条名，
-    来自 should_link 的同一份候选集）；没有候选时退回本篇标题 —— 也就是"别人提到我"。
-    它的天花板很明确：**只找得到互相点名的两篇**。
-    **第二路向量（可选）**：模型在位时再问一次语义索引，专补"讲同一件事却没提对方术语名"
-    那种对。两条路**共用同一道本地门槛**（`conflict_candidates` 的汉字重叠 + 长度），
-    向量只负责换一种找候选的办法，不许因为"它是模型给的"就降低标准。
-
-    两条来源**先合流、再去重、再剔掉本篇、最后才截断** —— 顺序反了就会让本篇自己
-    占掉一个名额（变异 ⑬ 就是冲这个顺序来的：它只少一行结果，不改任何判定）。
-    """
-    rows = list(_fts_conflict_hits(terms, con, rel))
-    if md:
-        rows += _rag_conflict_hits(md)
-    seen, out = {rel}, []
-    for h in rows:
-        if h["rel"] in seen:
-            continue                      # 两路撞见同一篇只留一条（FTS 那条在前，线索更准）
-        seen.add(h["rel"])
-        out.append(h)
-    out.sort(key=lambda h: (not h["named"], h["rel"]))
-    return out[:limit]
-
-
-def _fts_conflict_hits(terms, con, rel):
-    """第一路：全文索引。只负责"找得到"，去重 / 剔自己 / 截断都在 `_conflict_hits`。"""
-    q = " ".join(str(t) for t in (terms or []) if t).strip() or Path(rel).stem
-    try:
-        rows = fts_search(Path(current_app.config["INDEXES"]), q, limit=FTS_FETCH_K, con=con)
-    except Exception:
-        return []                         # 索引读不到就当没有候选：不猜、不造
-    blocked = ai_config.egress_blocked_domains(current_app.config["CONTENT"])
-    want = {str(t).strip().lower() for t in (terms or []) if str(t).strip()}
-    out, seen = [], set()
-    for r in rows:
-        hrel = str(r.get("path") or "").replace("\\", "/").strip("/")
-        if not hrel or hrel in seen or not hrel.lower().endswith(".md"):
-            continue
-        seen.add(hrel)
-        if hrel.split("/", 1)[0] in blocked:
-            continue
-        title = str(r.get("title") or Path(hrel).stem).strip()
-        named = title.lower() in want
-        out.append({"rel": hrel, "title": title, "text": str(r.get("snippet") or ""),
-                    # 就叫这个名字的那篇最可能是"在讲同一件事"，排在前面
-                    "named": named,
-                    "via": "同名词条" if named else "正文提到同一个词"})
-    return out
-
-
-def _rag_lead(score) -> str:
-    """把向量相似度拼成一句人话；拿不到分数就不硬编一个数。"""
-    try:
-        return "（向量检索，两篇没有互相点名，相似度 %.2f）" % float(score)
-    except (TypeError, ValueError):
-        return "（向量检索，两篇没有互相点名）"
-
-
-def _rag_conflict_hits(md: str) -> list:
-    """第二路：语义索引找"没点名却在讲同一件事"的段；模型不在位就直接交空表。
-
-    守卫与问答侧同一条：`_rag_ready()` 假时**绝不碰 `get_rag()`** ——
-    那会当场加载/下载几十 MB 权重，把一个查漏请求卡成一分多钟（§6 第 5 行同款事故，
-    切片 2 在真实实例上踩过）。
-    """
-    hooks = current_app.config.get("KB_HOOKS") or {}
-    get_rag = hooks.get("get_rag")
-    if not (get_rag and hooks.get("query_rag")) or not _rag_ready():
-        return []
-    secs = [s for s in ai_audit.section_map(md) if s.get("text")]
-    q = " ".join(s["title"] + " " + s["text"] for s in secs)[:RAG_QUERY_CHARS].strip()
-    if len(q) < RAG_MIN_QUERY_CHARS:
-        return []
-    try:
-        emb, rstore = get_rag()
-        if emb is None or rstore is None:
-            return []
-        hits = hooks["query_rag"](rstore, emb, q, k=RAG_CAND_K) or []
-    except Exception:
-        return []                         # 语义索引坏了不影响查漏：降级为只有第一路
-    blocked = ai_config.egress_blocked_domains(current_app.config["CONTENT"])
-    out = []
-    for h in hits:
-        hrel = str(h.get("file") or "").replace("\\", "/").strip("/")
-        if not hrel or not hrel.lower().endswith(".md"):
-            continue                      # 自己那几段必然排最前，由合流处统一剔
-        if hrel.split("/", 1)[0] in blocked:
-            continue
-        out.append({"rel": hrel,
-                    "title": str(h.get("title") or Path(hrel).stem).strip(),
-                    "text": ai_qa.rag_hit_text(h), "named": False,
-                    "via": "语义相近" + _rag_lead(h.get("score"))})
-    return out
-
-
-@ai_bp.post("/api/ai/audit")
-def api_ai_audit():
-    """单篇查漏补缺：本地判据必跑，AI 判断按闸门与 key 情况追加。"""
-    data = request.get_json(force=True, silent=True) or {}
-    want_ai = bool(data.get("ai", True))
-    want_conflict = bool(data.get("conflict", False))
-    try:
-        res = _resolve_doc(str(data.get("path") or ""))
-        if not res["exists"]:
-            return jsonify({"ok": False, "error": "文档不存在"}), 404
-        doc = _read_doc(res)
-    except ValueError as e:
-        return jsonify({"ok": False, "error": str(e)[:200]}), 400
-    except OSError:
-        return jsonify({"ok": False, "error": "文档读取失败"}), 500
-
-    proposals = ai_audit.local_checks(
-        doc["md"], path=doc["rel"], fm=doc["fm"], known_titles=_known_titles(),
-        dead_links=_dead_links(doc["rel"]), asset_exists=_asset_resolver(doc["path"]))
-    if want_conflict:
-        # 勾了「查与库内矛盾」才做本地配对：它要读索引，默认不替用户花这一步。
-        # 行一律 needs_ai —— 配对是本地算的，是不是真矛盾只有 AI 能判。
-        terms = next((p.get("cands") or [] for p in proposals
-                      if p["kind"] == "should_link"), [])
-        proposals.extend(ai_audit.conflict_candidates(
-            doc["md"], path=doc["rel"], hits=_conflict_hits(doc["rel"], terms, md=doc["md"])))
-    # local_count 必须在 AI 之前取：它的口径是"本地判据查出几条"。
-    # 放在后面量就等于把 AI 的行数也算进本地，C3 那条"AI 不许造条目"就永远判不出来了。
-    local_count = len(proposals)
-    ai_enabled, ai_reason, sent = False, "", 0
-
-    if doc["blocked"]:
-        ai_reason = f"域「{doc['domain']}」被分类学标为不出站，只跑了本地判据"
-    elif not ai_available():
-        ai_reason = "未配置 API key（设置 → AI 页签），只跑了本地判据"
-    elif not want_ai:
-        ai_reason = "本次只要求本地判据"
-    else:
-        b = _budget_state()
-        if b["exceeded"]:
-            ai_reason = f"本月已用 {b['used_month']} 次，达到预算帽 {b['budget']}，只跑了本地判据"
-        else:
-            ai_enabled, ai_reason, sent = _audit_with_ai(doc, proposals)
-
-    st = _qa_store()
-    if st is not None:
-        st.audit_upsert(doc["rel"], proposals)
-        # 改了正文重扫：已经不成立的旧条目要清掉，否则面板会一直挂着"上次的问题"
-        st.audit_prune(doc["rel"], [p["id"] for p in proposals])
-        # 回给前端的是**账本里的那一份**（带处置状态）。直接回本地算出来的裸列表会让
-        # 面板自相矛盾：汇总条说"已处置 1 条"，条目本身却被打回未处置的样子。
-        proposals = st.audit_list(doc["rel"])
-    return jsonify({"ok": True, "path": doc["rel"], "title": doc["title"],
-                    "proposals": proposals, "ai_enabled": ai_enabled,
-                    "ai_reason": ai_reason, "sent_chars": sent,
-                    "local_count": local_count})
-
-
-def _audit_with_ai(doc: dict, proposals: list):
-    """把该问的问一遍（最多两条），失败就如实记在 ai_reason 里，不假装查全。"""
-    c = _cfg()
-    asked = 0
-    sent = 0        # 真的发出去多少字 —— 报 0 就是撒谎，哪怕前端这一版不显示它
-    reasons = []
-    cand = next((p for p in proposals if p["kind"] == "should_link"), None)
-    if cand:
-        ctx = ai_qa.build_context(doc["md"], cand["evidence"][:80], "term", [],
-                                  doc["title"], doc["rel"])
-        asked += 1
-        sent += int(ctx["chars"])
-        got = _audit_ask(ctx, ai_audit.ai_prompt("should_link", ctx["text"],
-                                                 cand["evidence"]), c)
-        if got is None:
-            reasons.append("应引未引的 AI 判断没跑成")
-        else:
-            ai_audit.merge_ai(proposals, got, "should_link", doc["rel"])
-    if str(doc["fm"].get("collected") or ""):
-        ctx = ("文档：" + doc["title"] + "（采集于 " + str(doc["fm"]["collected"]) + "）\n\n"
-               "大纲：" + " / ".join(h["title"] for h in ai_audit.outline(doc["md"])))
-        asked += 1
-        ctx = {"text": ctx, "chars": len(ctx.encode("utf-8"))}
-        sent += ctx["chars"]
-        got = _audit_ask(ctx, ai_audit.ai_prompt("possibly_outdated", ctx["text"], ""), c)
-        if got is None:
-            reasons.append("过时风险判断没跑成")
-        else:
-            ai_audit.merge_ai(proposals, got, "possibly_outdated", doc["rel"])
-    conf = [p for p in proposals if p["kind"] == "conflict"]
-    if conf:
-        # 一次问完所有配对（不逐对各问）：AI 只在这几对里挑哪些真矛盾，不许新增配对
-        ctx = ai_audit.conflict_context(conf)
-        asked += 1
-        sent += int(ctx["chars"])
-        got = _audit_ask(ctx, ai_audit.ai_prompt("conflict", ctx["text"],
-                                                "、".join(ctx["targets"])), c)
-        if got is None:
-            reasons.append("与已有语料的矛盾判断没跑成")
-        else:
-            ai_audit.narrow_conflicts(conf, got)
-    return (True if asked else False), ("；".join(reasons) or "AI 判断已并入"), sent
-
-
-def _audit_ask(ctx: dict, prompt: str, c: dict):
-    msgs = [{"role": "system", "content": ai_qa.SYSTEM_PROMPT},
-            {"role": "user", "content": prompt}]
-    try:
-        raw, _usage = _chat(msgs, timeout=int(c["timeout_s"]), kind="audit")
-    except RuntimeError:
-        return None
-    return ai_qa.parse_answer(raw)
-
-
-@ai_bp.get("/api/ai/audit")
-def api_ai_audit_get():
-    rel = request.args.get("path", "").strip()
-    if not rel:
-        return jsonify({"ok": False, "error": "缺少 path"}), 400
-    if ai_audit.is_domain_scope(rel):
-        # 作用域键也允许读，但域名必须是真实存在的一级目录：
-        # 不校验的话 `?path=@domain:<随便什么>` 就成了往派生库里探任意键的口子。
-        dom = rel[len(ai_audit.DOMAIN_PREFIX):].strip().strip("/")
-        if "/" in dom or not (current_app.config["CONTENT"] / dom).is_dir():
-            return jsonify({"ok": False, "error": "作用域键形如 @domain:<一级域名>"}), 400
-    st = _qa_store()
-    if st is None:
-        return jsonify({"ok": True, "available": False, "proposals": []})
-    return jsonify({"ok": True, "available": True, "path": rel,
-                    "proposals": st.audit_list(rel)})
-
-
-@ai_bp.post("/api/ai/audit/status")
-def api_ai_audit_status():
-    """记处置：pending / adopted / dismissed。只改派生库，一个字都不碰语料。"""
-    data = request.get_json(force=True, silent=True) or {}
-    rel = str(data.get("path") or "").strip()
-    pid = str(data.get("id") or "").strip()
-    status = str(data.get("status") or "").strip()
-    if not rel or not pid:
-        return jsonify({"ok": False, "error": "path 与 id 都不能为空"}), 400
-    if status not in AUDIT_STATUSES:
-        return jsonify({"ok": False, "error": "status 只能是 pending / adopted / dismissed",
-                        "allowed": sorted(AUDIT_STATUSES)}), 400
-    if ai_audit.is_domain_scope(rel):
-        dom = rel[len(ai_audit.DOMAIN_PREFIX):].strip().strip("/")
-        if "/" in dom or not (current_app.config["CONTENT"] / dom).is_dir():
-            return jsonify({"ok": False, "error": "作用域键形如 @domain:<一级域名>"}), 400
-    st = _qa_store()
-    if st is None:
-        return jsonify({"ok": False, "error": "账本不可用"}), 503
-    if not st.audit_set_status(rel, pid, status):
-        return jsonify({"ok": False, "error": "没找到这条建议（可能文档刚被重扫过）"}), 404
-    return jsonify({"ok": True, "path": rel, "id": pid, "status": status})
-
-
-# ------------------------------------------------------------ 切片 4：批量查漏补缺
-
-# 本地判据要读正文 + 逐行过正则：两百篇以内一次请求扫得完，再多就该抽样而不是把用户挂住。
-EXACT_SCAN_MAX = 200
-SAMPLE_DOCS = 40
-
-
-def _scope_blocked(domain: str) -> bool:
-    return not ai_config.domain_allows_egress(current_app.config["CONTENT"], domain)
-
-
-def _batch_entries(scope: dict) -> list:
-    """scope → [{"rel","p","size","blocked"}]，**只看目录项，一篇正文都不读**。
-
-    只吃 .md，且 `_` 前缀目录（_inbox/_assets/_trash/_meta）天然不在名单里 ——
-    这条由 `store.md_files` 保证，不在这里再抄一份规则（不变量 2/5）。
-    """
-    content = current_app.config["CONTENT"]
-    paths = scope.get("paths")
-    out = []
-    if isinstance(paths, list) and paths:
-        for rel in paths[:ai_batch.MAX_DOCS]:
-            try:
-                res = _resolve_doc(str(rel))
-            except ValueError:
-                continue                      # 非 .md / 越界 / 空：一条坏路径不拦整批
-            if res["exists"]:
-                out.append({"rel": res["rel"], "p": res["path"], "size": _size_of(res["path"]),
-                            "blocked": res["blocked"]})
-        return sorted(out, key=lambda e: e["rel"])
-    dom = str(scope.get("domain") or "").strip().strip("/")
-    if not dom:
-        raise ValueError("要么给 domain（可再带 sub），要么给 paths 列表")
-    sub = str(scope.get("sub") or "").strip().strip("/")
-    want = ((dom + "/" + sub) if sub else dom).lower()
-    blocked = _scope_blocked(dom)
-    for p, rel in md_files(content):
-        if rel.lower().startswith(want + "/"):
-            out.append({"rel": rel, "p": p, "size": _size_of(p), "blocked": blocked})
-    return sorted(out, key=lambda e: e["rel"])
-
-
-def _size_of(p) -> int:
-    try:
-        return int(p.stat().st_size)
-    except OSError:
-        return 0
-
-
-def _scan_one(entry: dict, known: list, dead_map: dict | None = None) -> dict | None:
-    """读一篇 + 跑本地判据。读不动 / 过大都回 None（不计入样本，而不是算 0 条）。"""
-    try:
-        md = entry["p"].read_text(encoding="utf-8", errors="replace")
-    except OSError:
-        return None
-    if len(md) > ai_batch.MAX_DOC_BYTES:
-        return None
-    fm, _ = parse_frontmatter(md)
-    props = ai_audit.local_checks(md, path=entry["rel"], fm=fm or {}, known_titles=known,
-                                  dead_links=(dead_map or {}).get(entry["rel"], []),
-                                  asset_exists=_asset_resolver(entry["p"]))
-    return {"path": entry["rel"], "bytes": len(md.encode("utf-8")), "count": len(props),
-            # 「要问 AI」= 本地判据里有 needs_ai **且**这一篇允许出站
-            "need_ai": ai_batch.needs_ai(props) and not entry["blocked"]}
-
-
-def _batch_rows(entries: list) -> tuple[list, dict | None]:
-    """小范围精扫；大范围**等距抽样**（读全盘 + 逐行正则可能几十秒，那又是一次挂在
-    fetch 上的长任务 —— 与扫描本身同理，估算也不能让用户白等）。
-
-    步长固定 ⇒ 同一个域连估两次得到的是同一份数，不是每刷新一次换个数。
-    """
-    known = _known_titles()
-    dead_map = _dead_links_map()
-    if len(entries) <= EXACT_SCAN_MAX:
-        rows = [r for r in (_scan_one(e, known, dead_map) for e in entries) if r]
-        return rows, None
-    step = -(-len(entries) // SAMPLE_DOCS)          # ceil
-    picked = entries[::step][:SAMPLE_DOCS]
-    rows = [r for r in (_scan_one(e, known, dead_map) for e in picked) if r]
-    return rows, {"from": len(entries), "measured": len(rows), "step": step,
-                  "method": "等距抽样"}
-
-
-def _batch_estimate_of(entries: list, per_doc_calls: int = 1) -> tuple:
-    rows, sample = _batch_rows(entries)
-    c = _cfg()
-    b = _budget_state()
-    est = ai_batch.estimate(rows, budget_left=b["left"], sample=sample,
-                            price_in_per_1k=c["price_in_per_1k"],
-                            price_out_per_1k=c["price_out_per_1k"],
-                            per_doc_calls=per_doc_calls)
-    return est, rows, b
-
-
-@ai_bp.post("/api/ai/batch/estimate")
-def api_ai_batch_estimate():
-    """开跑前的账单预览：说清要问几次、大概多少 token / 多少钱。
-
-    这一趟**不出站、不计费**。范围超过 `EXACT_SCAN_MAX` 篇时按等距抽样放大 ——
-    本地判据本身可能就是几十秒的长任务，估算不该把用户挂在那儿等它。
-    """
-    data = request.get_json(force=True, silent=True) or {}
-    want_conflict = bool(data.get("conflict", False))
-    try:
-        entries = _batch_entries(data.get("scope") or {})
-    except ValueError as e:
-        return jsonify({"ok": False, "error": str(e)[:200]}), 400
-    if not entries:
-        return jsonify({"ok": False, "error": "这个范围里没有可扫的 Markdown"}), 400
-    # 开了矛盾核对 = 每篇最多多问一次；上限必须按 2 算，不然帽门就是形同虚设
-    est, rows, b = _batch_estimate_of(entries, 2 if want_conflict else 1)
-    if not rows:
-        return jsonify({"ok": False, "error": "范围内没有可读的文档"}), 400
-    top = sorted(rows, key=lambda r: -r["count"])[:8]
-    return jsonify({"ok": True, "estimate": est, "top": top,
-                    "ai_available": ai_available(),
-                    "used_month": b["used_month"], "budget": b["budget"]})
-
-
-@ai_bp.post("/api/ai/batch/start")
-def api_ai_batch_start():
-    """启动批量作业：立刻回进度快照，扫描在 daemon 线程里跑。
-
-    预算帽是硬门 —— 抽样估算是"大概花多少"（给人看的），而**拦钱包看的是上限**：
-    每篇都可能问一次，所以范围篇数一超过剩余额度就不许带 AI 开跑。
-    ai=false 的纯本地批量零调用零出站，不受这条限制。
-    """
-    data = request.get_json(force=True, silent=True) or {}
-    want_ai = bool(data.get("ai", True))
-    want_conflict = bool(data.get("conflict", False))
-    scope = data.get("scope") or {}
-    try:
-        entries = _batch_entries(scope)
-    except ValueError as e:
-        return jsonify({"ok": False, "error": str(e)[:200]}), 400
-    if not entries:
-        return jsonify({"ok": False, "error": "这个范围里没有可扫的 Markdown"}), 400
-
-    pdc = 2 if want_conflict else 1
-    est, _rows, b = _batch_estimate_of(entries, pdc)
-    if want_ai and est["over_budget"]:
-        return jsonify({"ok": False, "code": "over_budget",
-                        "error": f"这一批最坏要问 {est['calls_upper_bound']} 次，"
-                                 f"本月只剩 {b['left']} 次额度；"
-                                 f"缩小范围（按子域扫）、调高预算帽，或只跑本地判据（ai=false）",
-                        "estimate": est}), 429
-    if want_ai and not ai_available():
-        return jsonify({"ok": False, "code": "not_configured",
-                        "error": "未配置 API key，这一批只能跑本地判据（ai=false）",
-                        "estimate": est}), 400
-
-    known = _known_titles()
-    dead_map = _dead_links_map()   # 整批一次查完，别在线程里按篇开库
-    c = _cfg()
-    app_obj = current_app._get_current_object()   # 线程里没有 request context：先抓 app 对象
-    # 引用集合边扫边攒，跑完就地算"覆盖空白"（读一篇顺手记一行，不第二遍读盘）。
-    refs = {}
-    titles = []                       # 域全景（复核覆盖空白时用），per_doc 顺手攒
-    dom = str(scope.get("domain") or "").strip().strip("/")
-    if not dom:
-        only = {e["rel"].split("/", 1)[0] for e in entries}
-        dom = only.pop() if len(only) == 1 else ""
-    blocked = bool(dom) and _scope_blocked(dom)
-    # 「查与库内矛盾」要按篇查 FTS。整批 500 篇各开一次连接 = 撞上 watcher 的写锁
-    # （切片 4 就因为按篇开 index.db 卡过 40s，见台账 §6 第 71 行），
-    # 所以这里懒起一条连接给整批复用，收尾时关掉。
-    fts_box = {}
-
-    def _fts_con():
-        if "c" not in fts_box:
-            fts_box["c"] = open_db(Path(app_obj.config["INDEXES"]))
-        return fts_box["c"]
-
-    def per_doc(job, it):
-        # 每一篇都在 worker 线程里跑，所以整段都要自己把 app context 推进去；
-        # 少这一层，_cfg / _qa_store / _dead_links 会当场 RuntimeError，
-        # 而 BatchRunner 会把异常按篇记进 errors —— 症状是"整批全失败但 HTTP 200"。
-        with app_obj.app_context():
-            try:
-                md = it["p"].read_text(encoding="utf-8", errors="replace")
-            except OSError as e:
-                return 0, 0, f"读取失败：{type(e).__name__}"
-            if len(md) > ai_batch.MAX_DOC_BYTES:
-                return 0, 0, "文档过大（>400KB），这一篇跳过"
-            for t in ai_audit.wikilinks(md):
-                refs.setdefault(t, []).append(it["rel"])
-            fm, _ = parse_frontmatter(md)
-            titles.append(str((fm or {}).get("title") or it["p"].stem))
-            props = ai_audit.local_checks(md, path=it["rel"], fm=fm or {},
-                                          known_titles=known,
-                                          dead_links=dead_map.get(it["rel"], []),
-                                          asset_exists=_asset_resolver(it["p"]))
-            if want_conflict:
-                terms = next((p.get("cands") or [] for p in props
-                              if p["kind"] == "should_link"), [])
-                props.extend(ai_audit.conflict_candidates(
-                    md, path=it["rel"],
-                    hits=_conflict_hits(it["rel"], terms, con=_fts_con(), md=md)))
-            asked = 0
-            if want_ai and not it["blocked"] and ai_batch.needs_ai(props):
-                if _budget_state()["exceeded"]:
-                    job.note_ai_blocked("本月调用数已达预算帽，之后的篇只跑本地判据")
-                else:
-                    cand = next((p for p in props if p["kind"] == "should_link"), None)
-                    if cand:
-                        title = str((fm or {}).get("title") or it["p"].stem)
-                        ctx = ai_qa.build_context(md, cand["evidence"][:80], "term", [],
-                                                  title, it["rel"])
-                        got = _audit_ask(ctx, ai_audit.ai_prompt("should_link", ctx["text"],
-                                                                 cand["evidence"]), c)
-                        if got is None:
-                            return len(props), asked, "AI 判断没跑成（本地结果照常入库）"
-                        ai_audit.merge_ai(props, got, "should_link", it["rel"])
-                        asked += 1
-                    conf = [p for p in props if p["kind"] == "conflict"]
-                    if conf:
-                        # 一篇只问一次：所有配对进同一份上下文，AI 在里面挑哪些真矛盾
-                        ctx = ai_audit.conflict_context(conf)
-                        got = _audit_ask(ctx, ai_audit.ai_prompt("conflict", ctx["text"],
-                                                                 "、".join(ctx["targets"])), c)
-                        if got is None:
-                            return len(props), asked, "矛盾判断没跑成（本地配对照常入库）"
-                        ai_audit.narrow_conflicts(conf, got)
-                        asked += 1
-            st = _qa_store()
-            if st is not None:
-                st.audit_upsert(it["rel"], props)
-                # 与单篇同一套 upsert + prune：批量跑过的篇，处置状态与重扫都不打折
-                st.audit_prune(it["rel"], [p["id"] for p in props])
-            return len(props), asked, ""
-
-    def finalize(job):
-        """整批跑完后的一次收尾：把攒下的引用集合换算成域级待办。
-
-        清单本身全本地（引用集合 − 标题集合），零调用；空白挂在 `@domain:<域>` 这个
-        作用域键下，与按篇的条目同住一张派生表但不串台（真实相对路径不会以 @ 开头）。
-        只在此之上多做**一次**域全景复核：AI 从这批候选里挑出值得补的，
-        挑不动就地写原因 —— 它不许新增候选，也不因为"跑了 AI"就改判据口径。
-        """
-        if not dom:
-            return
-        if fts_box.get("c") is not None:
-            # 这条连接是在 worker 线程里起的，也只能在这个线程里关（sqlite3 默认同线程校验）。
-            # 作业被中途 stop 时 finalize 不跑，交给 GC 收 —— 它只是读索引的派生缓存句柄。
-            try:
-                fts_box["c"].close()
-            except Exception:
-                pass
-            fts_box["c"] = None
-        with app_obj.app_context():
-            scope_key = ai_audit.domain_scope(dom)
-            gaps = ai_audit.coverage_gaps(refs, known, scope_key)
-            if not gaps:
-                job.note_gap_review(0, 0)
-            elif not (want_ai and ai_available()):
-                job.note_gap_review(0, len(gaps), "本次没让 AI 复核，清单是纯本地算的")
-            elif blocked:
-                job.note_gap_review(0, len(gaps),
-                                    f"域「{dom}」不出站，只出本地清单，没做全景复核")
-            elif _budget_state()["exceeded"]:
-                job.note_gap_review(0, len(gaps), "本月调用数已达预算帽，没做全景复核")
-            else:
-                ctx = ai_audit.gap_context(dom, titles, gaps)
-                got = _audit_ask(ctx, ai_audit.ai_prompt("coverage_gap", ctx["text"],
-                                                         "、".join(ctx["targets"])), c)
-                if got is None:
-                    job.note_gap_review(0, len(gaps), "全景复核没跑成，清单照常入库")
-                else:
-                    ai_audit.narrow_gaps(gaps, got)
-                    job.note_gap_review(sum(1 for g in gaps if g.get("ai_terms")), len(gaps))
-            st = _qa_store()
-            if st is not None:
-                st.audit_upsert(scope_key, gaps)
-                st.audit_prune(scope_key, [g["id"] for g in gaps])
-
-    try:
-        job = ai_batch.RUNNER.start(entries, per_doc, scope, finalizer=finalize)
-    except ai_batch.BatchBusy as e:
-        return jsonify({"ok": False, "error": str(e), "estimate": est}), 409
-    return jsonify({"ok": True, "estimate": est, "gaps_scope": ai_audit.domain_scope(dom),
-                    "job": job.snapshot()})
-
-
-@ai_bp.get("/api/ai/batch/status")
-def api_ai_batch_status():
-    """进度轮询。没有作业也回 200（state=idle），前端不必先探一次"有没有在跑"。"""
-    job = ai_batch.RUNNER.current()
-    return jsonify({"ok": True, "job": job.snapshot() if job else {"state": "idle",
-                                                                   "running": False}})
-
-
-@ai_bp.post("/api/ai/batch/stop")
-def api_ai_batch_stop():
-    """请求停止：跑完当前这一篇就走，已入库的建议不回滚（那些结果本来就是有效的）。"""
-    job = ai_batch.RUNNER.current()
-    if job is None or not job.snapshot()["running"]:
-        return jsonify({"ok": True, "stopped": False,
-                        "error": "现在没有在跑的批量作业"})
-    job.request_stop()
-    return jsonify({"ok": True, "stopped": True, "job": job.snapshot()})
-
-
 def _qa_store():
     return _store()
 
 
-def _doc_for_explain(data: dict):
-    """explain 的入参校验：读盘交给 _read_doc，这里只管选区与档位。
+# 一次「解释这个词」最多让模型写多少 token。300 个 token 足够写完 120 字的中文解释，
+# 而**不设这一项就是实测 30 秒的成因之一**：不封顶时模型爱把 answer/confidence/terms
+# 一整套 JSON 吐完（旧版还额外要求它只回 JSON —— 见本文件的 git 历史）。
+ASK_MAX_TOKENS = 300
 
-    正文一律服务端现读：前端只交 path + selection，否则"发什么出去"由浏览器说了算，
-    域级闸门（不变量 9 ①）就拦不住了。
+
+def _doc_for_explain(data: dict):
+    """explain 的入参校验：只认 path + selection，**正文一个字都不读**。
+
+    path 仍然要过域闸门（不变量 9 ①）：它决定"这篇的选区能不能问"，而不是"发不发正文"。
+    闸门必须排在存在性检查之前 —— 否则 404/403 两种状态码就成了对不出站目录的探测器
+    （tests/test_ai_qa.py E5 锁着这条）。
     """
     selection = " ".join(str(data.get("selection") or "").split())
-    mode = str(data.get("mode") or "term").strip()
-    if mode not in ai_qa.MODES:
-        mode = "term"
     if not str(data.get("path") or "").strip() or not selection:
         return None, (jsonify({"ok": False, "error": "path 与 selection 都不能为空"}), 400)
     if len(selection) < 2:
@@ -956,213 +320,67 @@ def _doc_for_explain(data: dict):
     except ValueError as e:
         return None, (jsonify({"ok": False, "error": str(e)[:200]}), 400)
     if res["blocked"]:
-        # 硬门在后端：绕过前端直接打接口也一样 403（不变量 9 ①），
-        # 且**排在存在性检查之前** —— 状态码不能替不出站目录回答"这个路径在不在"。
         return None, (jsonify({"ok": False, "code": "domain_blocked",
                                "error": f"域「{res['domain']}」被分类学标为不出站，"
                                         "AI 无法读取该文档"}), 403)
-    try:
-        doc = _read_doc(res)
-    except FileNotFoundError:
+    if not res["exists"]:
         return None, (jsonify({"ok": False, "error": "文档不存在"}), 404)
-    except (ValueError, OSError) as e:
-        return None, (jsonify({"ok": False, "error": str(e)[:200]}), 400)
-    # 选中超过 80 字 → 语义上就是"问这段"，不是"问这个词"
-    if mode == "term" and len(selection) > 80:
-        mode = "passage"
-    return {"path": doc["rel"], "domain": doc["domain"], "selection": selection,
-            "mode": mode, "md": doc["md"], "title": doc["title"],
-            "digest": doc["digest"]}, None
+    return {"path": res["rel"], "domain": res["domain"], "selection": selection}, None
 
 
 @ai_bp.post("/api/ai/explain")
 def api_ai_explain():
-    """选词问 AI。dry=true 时只回"将要发出去什么"（本地算，不出站、不计费）。"""
+    """选词问 AI：**只把选中的那几个字发出去，只回一句解释**。
+
+    这里刻意不读文档、不拼大纲、不查检索、不接受追问与档位 ——
+    用户 2026-09-29 明确要求（"也不用你结合整段集合整篇文章！就只需要回答我选中的文字的含义"）。
+    保留的只有四件：域闸门、注入加固、答案缓存（同一个词第二次问不再计费）、预算帽。
+    """
     data = request.get_json(force=True, silent=True) or {}
     payload, refused = _doc_for_explain(data)
     if refused:
         return refused
-    dry = bool(data.get("dry"))
-    question = str(data.get("question") or "").strip()[:500]
-    history = data.get("history") if isinstance(data.get("history"), list) else []
     if not ai_available():
         return jsonify({"ok": False, "code": E_NOT_CONFIGURED,
                         "error": "尚未配置 API key（设置 → AI 页签）"}), 503
-
-    hits = _rag_hits(question or payload["selection"], payload["domain"])
-    ctx = ai_qa.build_context(payload["md"], payload["selection"], payload["mode"], hits,
-                              payload["title"], payload["path"])
-    base = {"ok": True, "mode": payload["mode"], "located": ctx["located"],
-            "where": ctx["where"], "sent_chars": ctx["chars"],
-            "rag_hits": len(hits), "title": payload["title"]}
-    if dry:
-        base["preview"] = ctx["text"][:1200]
-        return jsonify(base)
-    if not ctx["located"]:
-        # 定位不到就不假装"我读了上下文"—— 如实说，让用户决定要不要换选区
-        base.update({"ok": False, "code": "not_located",
-                     "error": "在文档里没找到这段选中内容（可能文档刚被改过）"})
-        return jsonify(base), 422
-
+    selection = payload["selection"]
+    c = _cfg()
     st = _qa_store()
-    key = ai_qa.cache_key(payload["path"], payload["digest"], payload["selection"],
-                          payload["mode"], question, history)
-    # 命中与否**只由 key 决定**：key 里含文档 hash、选区、档位、问题与多轮历史，
-    # 所以调用点不需要再写一条「有追问就跳过缓存」的守卫 —— 那样判据就散成两处，
-    # 而且实测是冗余的（把那条守卫短路掉，全套一条都不红）。判据只留 cache_key 一处。
+    key = ai_qa.cache_key(selection, c["model"])
     if st is not None:
         cached = st.qa_get(key)
-        if cached and cached["ok"]:
-            base.update({"answer": cached["answer"], "confidence": cached["confidence"],
-                         "terms": cached["terms"], "sources": cached["sources"],
-                         "usage": cached["usage"], "cached": True, "cached_at": cached["ts"]})
-            return jsonify(base)
-
+        if cached and cached["ok"] and cached["answer"]:
+            return jsonify({"ok": True, "answer": cached["answer"], "selection": selection,
+                            "model": cached["model"] or c["model"], "usage": cached["usage"],
+                            "cached": True, "cached_at": cached["ts"]})
     b = _budget_state()
     if b["exceeded"]:
         return jsonify({"ok": False, "error": "budget_exceeded", "code": "budget_exceeded",
                         "hint": f"本月已用 {b['used_month']} 次，达到预算帽 {b['budget']}"}), 429
-
-    c = _cfg()
-    msgs = ai_qa.build_messages(ctx["text"], payload["selection"], payload["mode"],
-                                question, history)
-    parsed, usage, err = None, {}, ""
-    for attempt in (1, 2):
-        try:
-            raw, usage = _chat(msgs, timeout=int(c["timeout_s"]), kind="select")
-        except RuntimeError as e:
-            parts = str(e).split(":", 2)
-            err = _test_hint(parts[1] if len(parts) > 1 else E_UNREACHABLE)
-            usage = {}
-            break                                  # 网络类失败不重试（重试就是双倍计费）
-        parsed = ai_qa.parse_answer(raw)
-        if parsed:
-            err = ""
-            break
-        err = "模型没有按约定的 JSON 结构回答"
-        msgs.append({"role": "user", "content": ai_qa.SCHEMA_HINT + "（上一次输出无法解析，只输出 JSON）"})
-    if st is not None:
-        st.qa_put(key, path=payload["path"], selection=payload["selection"],
-                  mode=payload["mode"], model=c["model"], prompt_ver=ai_qa.PROMPT_VERSION,
-                  ok=bool(parsed), answer=(parsed or {}).get("answer", ""),
-                  confidence=(parsed or {}).get("confidence", ""),
-                  terms=(parsed or {}).get("terms"), sources=(parsed or {}).get("sources"),
-                  usage=usage, sent_chars=ctx["chars"], error=err)
-    if not parsed:
-        code = "provider_error" if err.startswith(("鉴权", "端点", "请求超时", "服务")) else "bad_schema"
-        base.update({"ok": False, "code": code, "error": err or "回答失败",
-                     "sent_chars": ctx["chars"]})
-        return jsonify(base), 502
-    base.update({"answer": parsed["answer"], "confidence": parsed["confidence"],
-                 "terms": parsed["terms"], "sources": parsed["sources"],
-                 "usage": usage, "cached": False, "model": c["model"]})
-    return jsonify(base)
-
-
-@ai_bp.get("/api/ai/qa")
-def api_ai_qa_list():
-    """本篇问过的（侧栏回看）：读派生缓存，不碰语料。"""
-    rel = request.args.get("path", "").strip()
-    if not rel:
-        return jsonify({"ok": False, "error": "缺少 path"}), 400
-    st = _qa_store()
-    if st is None:
-        return jsonify({"ok": True, "available": False, "items": []})
-    return jsonify({"ok": True, "available": True, "path": rel, "items": st.qa_list_for_doc(rel)})
-
-
-def _rag_ready() -> bool:
-    """向量模型是否已在位。**不构造 embedder**：get_rag() 会去加载/下载权重，
-    把一次"选词问 AI"的预览卡成几十秒（§6 第 5 行 /api/rag/status 同款事故，
-    这条路径是切片 2 的探针在真实实例上第一次跑出来才发现的）。"""
-    ready = (current_app.config.get("KB_HOOKS") or {}).get("rag_model_ready")
-    return bool(ready()) if ready else False
-
-
-def _rag_hits(q: str, domain: str) -> list:
-    """本地语义检索 Top-3，并且**按域过滤掉不出站的文档**：
-    RAG 命中里混进 career/小说 的话，把它们当上下文发出去 = 绕过闸门。"""
-    hooks = current_app.config.get("KB_HOOKS") or {}
-    get_rag = hooks.get("get_rag")
-    if not (get_rag and hooks.get("query_rag")) or not _rag_ready():
-        return []
-    content = Path(current_app.config["CONTENT"])
     try:
-        emb, rstore = get_rag()
-        if emb is None or rstore is None:
-            return []
-        hits = hooks["query_rag"](rstore, emb, q, k=6) or []
-    except Exception:
-        return []
-    blocked = ai_config.egress_blocked_domains(content)
-    out = []
-    for h in hits:
-        f = str(h.get("file") or "")
-        dom = f.split("/", 1)[0] if "/" in f else f
-        if dom in blocked:
-            continue
-        out.append(h)
-    return out[:3]
-
-
-@ai_bp.post("/api/ask")
-def api_ask():
-    """RAG 问答：语义检索 Top-K 语料 → 拼 prompt → LLM 生成 → 带引用返回。"""
-    data = request.get_json(force=True, silent=True) or {}
-    q = str(data.get("q") or "").strip()
-    if not q:
-        return jsonify({"ok": False, "error": "问题不能为空"}), 400
-    if not ai_available():
-        return jsonify({"ok": False, "error": E_NOT_CONFIGURED, "code": E_NOT_CONFIGURED,
-                        "hint": "未配置 KB_AI_API_KEY 环境变量或 .ai-config.json"}), 503
-    b = _budget_state()
-    if b["exceeded"]:
-        return jsonify({"ok": False, "error": "budget_exceeded", "code": "budget_exceeded",
-                        "hint": f"本月已用 {b['used_month']} 次，达到预算帽 "
-                                f"{b['budget']}；可在设置里调整预算"}), 429
-
-    # 复用 routes_rag 的 KB_HOOKS 单例（rag 可选依赖缺失 → hits 留空，纯 chat 兜底）。
-    # 与 _rag_hits 同一个守卫：模型不在位就别碰 get_rag()，否则这个请求会去加载/下载权重。
-    hits = []
-    hooks = current_app.config.get("KB_HOOKS") or {}
-    get_rag = hooks.get("get_rag")
-    if get_rag and hooks.get("query_rag") and _rag_ready():
-        try:
-            emb, rstore = get_rag()
-            if emb is not None and rstore is not None:
-                hits = hooks["query_rag"](rstore, emb, q, k=6) or []
-        except Exception:
-            hits = []
-
-    ctx = "\n\n".join(
-        f"[片段 {i + 1}] 路径: {h.get('file', '')}\n{ai_qa.rag_hit_text(h)[:1200]}"
-        for i, h in enumerate(hits)) if hits else "（未检索到相关语料）"
-    messages = [
-        {"role": "system", "content": SYSTEM_PROMPT},
-        {"role": "user", "content": f"语料片段：\n{ctx}\n\n问题：{q}"},
-    ]
-    c = _cfg()
-    try:
-        answer, usage = _chat(messages, timeout=int(c["timeout_s"]), kind="ask")
+        raw, usage = _chat(ai_qa.build_messages(selection), timeout=int(c["timeout_s"]),
+                           max_tokens=ASK_MAX_TOKENS, kind="select")
     except RuntimeError as e:
         parts = str(e).split(":", 2)
         code = parts[1] if len(parts) > 1 else E_UNREACHABLE
-        detail = parts[2] if len(parts) > 2 else str(e)
-        status = 503 if code == E_NOT_CONFIGURED else 502
-        return jsonify({"ok": False, "error": _test_hint(code), "code": code,
-                        "detail": detail[:200]}), status
+        err = _test_hint(code)
+        if st is not None:
+            st.qa_put(key, selection=selection, model=c["model"],
+                      prompt_ver=ai_qa.PROMPT_VERSION, ok=False, answer="", error=err)
+        return jsonify({"ok": False, "code": code, "error": err,
+                        "detail": (parts[2] if len(parts) > 2 else str(e))[:200]}), 502
+    answer = ai_qa.plain_answer(raw)
+    if st is not None:
+        st.qa_put(key, selection=selection, model=c["model"],
+                  prompt_ver=ai_qa.PROMPT_VERSION, ok=bool(answer), answer=answer,
+                  usage=usage, sent_chars=len(selection),
+                  error="" if answer else "模型回了一段空白")
+    if not answer:
+        return jsonify({"ok": False, "code": "provider_error", "error": "模型没给出内容",
+                        "usage": usage}), 502
+    return jsonify({"ok": True, "answer": answer, "selection": selection,
+                    "model": c["model"], "usage": usage, "cached": False})
 
-    sources = [{"path": h.get("file", ""), "url": h.get("url"),
-                "score": round(h.get("score", 0) or 0, 4)} for h in hits]
-    return jsonify({"ok": True, "answer": answer, "sources": sources,
-                    "model": c["model"], "usage": usage})
-
-
-@ai_bp.get("/api/ask/status")
-def api_ask_status():
-    c = _cfg()
-    return jsonify({"ok": True, "available": bool(c["api_key"]),
-                    "base": c["base_url"], "model": c["model"]})
 
 
 def register(app):

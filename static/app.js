@@ -1165,13 +1165,9 @@ function renderCrumb() {
   if (!DOC.is_html && !isLib) segs.push(
     `<button class="seg-btn" onclick="openEditor()">${icon("edit",13)} 编辑</button>`,
     `<button class="seg-btn danger" onclick="deleteDoc()" title="移入 content/_trash/">${icon("trash",13)} 删除</button>`,
-    `<button class="seg-btn" onclick="jumpToTagEdit()" title="编辑本篇标签（右栏信息·标签页）">${icon("tag-outline",13)} 标签</button>`,
-    /* 查漏（切片 3）。crumb 的按钮全部由这里现拼，模板里那份静态 markup 会被 innerHTML
-       整体换掉 —— 所以新按钮只能加在这儿，加在 workbench.html 里是点了没反应的死钮。
-       另外 app.js 比 pages/ai-ask.js 先执行（defer 按文档顺序），这里**不能**用
-       `window.KBAI ? ...` 决定画不画：那时它还不存在，按钮会永远消失。改成永远画、
-       点的时候再判，缺模块就给人话提示。 */
-    `<button class="seg-btn" id="kb-audit-btn" onclick="window.KBAI?KBAI.audit():toast('查漏组件没加载出来（pages/ai-ask.js）')" title="本地判据先查（元数据 / 结构 / 失效链接），AI 只补该不该引、可不可过时">${icon("scan",13)} 查漏</button>`);
+    `<button class="seg-btn" onclick="jumpToTagEdit()" title="编辑本篇标签（右栏信息·标签页）">${icon("tag-outline",13)} 标签</button>`);
+  /* 「查漏」按钮随切片 3 一起在轮次 53 被移除（用户：只要选词问，其余全砍）。
+     crumb 的按钮全部由这里现拼，模板里那份静态 markup 会被 innerHTML 整体换掉。 */
   if (/\.md$/i.test(DOC.name || "")) segs.push(
     `<button class="seg-btn" onclick="copyDocSource()" title="复制本篇 Markdown 原文到剪贴板">${icon("copy",13)} 复制原文</button>`);
   crumb.innerHTML = `<span class="crumb-tags" id="crumb-tags"></span><span class="spacer"></span>
@@ -2241,133 +2237,9 @@ function openCtxStats(dom, sub) {
 /* ---------- 全库聚合统计（顶栏全局「统计」按钮）----------
    与目录统计共用 .ss-* 视觉；数据来自 /api/globalstats。 */
 let GS_OV = null; // 当前全库统计层实例（重开时 close 旧的）
-/* ---------- 中期功能：AI 问吧（RAG 对话）—— /api/ask 检索增强问答 ----------
-   v3 重构：内容区在上、输入区固定在底部（标准问答布局）；
-   推荐问题作为空态卡片放进内容区（不再堆在输入框上方）；
-   顶部说明文字移除，副标题一句话交代「问吧 = 生成答案，搜索 = 找文档」的区别。 */
-let ASK_OV = null;
-const ASK_SUGGESTIONS = [
-  { icon: "i-file-md", q: "我最近收录了哪些笔记？" },
-  { icon: "i-search-magnifier", q: "我记过哪些关于向量数据库的内容？" },
-  { icon: "i-tag-outline", q: "帮我总结一下面试相关的要点" },
-  { icon: "i-hint-bulb", q: "有哪些值得复习的知识点？" },
-];
-function askTime() { const d = new Date(); return String(d.getHours()).padStart(2,"0") + ":" + String(d.getMinutes()).padStart(2,"0"); }
-function askEsc(s) { return String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c])); }
-function askEmptyState() {
-  return `<div class="ask-empty" id="ask-empty">
-    <div class="ask-empty-h">${icon("hint-bulb", 15)} 直接提问，我读完你的语料再回答</div>
-    <div class="ask-cards">
-      ${ASK_SUGGESTIONS.map(s => `<button class="ask-card" data-q="${askEsc(s.q)}">${icon(s.icon, 13)}<span>${askEsc(s.q)}</span></button>`).join("")}
-    </div>
-  </div>`;
-}
-async function showAsk() {
-  if (ASK_OV) ASK_OV.close("re-open");
-  const ov = KB.overlay.open({
-    html: `<div class="kbm kbm-ask" role="document">
-      <div class="kbm-title ask-head">
-        <span class="ask-logo">${icon("hint-bulb", 16)}</span>
-        <span class="ask-title-txt">问吧</span>
-        <span class="ask-sub">生成答案 · 附引用</span>
-        <span class="spacer" style="flex:1"></span>
-        <button class="iconbtn ask-clear" title="清空对话" aria-label="清空对话">${icon("trash-outline", 13)}</button>
-        <button class="iconbtn ask-close" title="关闭（Esc）" aria-label="关闭">${icon("cancel-x", 14)}</button>
-      </div>
-      <div class="kbm-body ask-body" id="ask-body">${askEmptyState()}</div>
-      <div class="ask-inputrow">
-        <input id="ask-in" placeholder="问一个需要综合多篇文档的问题…" autocomplete="off" aria-label="提问">
-        <button class="iconbtn primary ask-go" id="ask-go" title="发送（Enter）">${icon("move-arrow", 13)} 提问</button>
-      </div>
-      <div class="ask-foot">
-        <span><kbd>Enter</kbd> 发送</span>
-        <span><kbd>Shift</kbd>+<kbd>Enter</kbd> 换行</span>
-        <span class="ask-foot-hint">只想找文档？用顶栏搜索框（<kbd>/</kbd>）</span>
-      </div></div>`,
-  });
-  ASK_OV = ov;
-  ov.root.querySelector(".ask-close").onclick = () => ov.close("btn");
+/* 问吧（/api/ask 检索增强问答）整块在轮次 53 按用户要求移除；顶栏导航钮同批删。 */
 
-  const bodyEl = ov.root.querySelector("#ask-body");
-  const input = ov.root.querySelector("#ask-in");
-  const go = ov.root.querySelector("#ask-go");
-  const esc2 = askEsc;
-  const scrollB = () => { bodyEl.scrollTop = bodyEl.scrollHeight; };
 
-  /* 清空对话 */
-  ov.root.querySelector(".ask-clear").onclick = () => {
-    bodyEl.innerHTML = askEmptyState();
-    input.focus();
-  };
-
-  /* 打字动效 */
-  const showPending = () => {
-    bodyEl.insertAdjacentHTML("beforeend",
-      `<div class="ask-msg ask-ai ask-pending" id="ask-pending"><div class="ask-typing"><i></i><i></i><i></i></div><span class="ask-pending-txt">检索语料并生成中…</span></div>`);
-    scrollB();
-  };
-
-  const addMsg = (cls, html, isAI) => {
-    const id = "ask-m" + Date.now() + Math.random().toString(36).slice(2, 6);
-    bodyEl.insertAdjacentHTML("beforeend",
-      `<div class="ask-msg ${cls}" id="${id}">
-        <div class="ask-msg-text">${html}</div>
-        <div class="ask-msg-meta"><span class="ask-msg-time">${askTime()}</span>${isAI ? `<button class="ask-copy" title="复制回答">${icon("save-write", 11)} 复制</button>` : ""}</div>
-      </div>`);
-    scrollB();
-    return ov.root.querySelector("#" + id);
-  };
-
-  const ask = async () => {
-    const qv = input.value.trim();
-    if (!qv || go.disabled) return;
-    go.disabled = true; input.disabled = true;
-    const empty = ov.root.querySelector("#ask-empty");
-    if (empty) empty.remove();
-    addMsg("ask-me", esc2(qv), false);
-    input.value = "";
-    showPending();
-    try {
-      const r = await fetch("/api/ask", { method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ q: qv }) });
-      const d = await r.json().catch(() => ({}));
-      const pending = ov.root.querySelector("#ask-pending");
-      if (pending) pending.remove();
-      if (!r.ok || !d.ok) {
-        const hint = d.error === "not_configured" ? "AI 服务未配置：需要有效的 KB_AI_API_KEY（当前 key 无效或缺失）。其余功能不受影响。"
-          : (d.error || "HTTP " + r.status);
-        addMsg("ask-err", esc2(hint), false);
-      } else {
-        const srcs = (d.sources || []).map(s =>
-          `<a href="${s.url || docUrl(String(s.path || "").replace(/\.md$/, ""))}" class="ask-src" title="${esc2(s.path)}">${icon("file-md", 10)} ${esc2(String(s.path || "").split("/").slice(-2).join("/"))}</a>`).join("");
-        addMsg("ask-ai", esc2(d.answer).replace(/\n/g, "<br>") + (srcs ? `<div class="ask-srcs"><span class="ask-srcs-cap">来源</span>${srcs}</div>` : ""), true);
-      }
-    } catch (e) {
-      const pending = ov.root.querySelector("#ask-pending");
-      if (pending) pending.remove();
-      addMsg("ask-err", "请求失败：" + esc2(String(e.message || e)), false);
-    } finally {
-      go.disabled = false; input.disabled = false; input.focus();
-      scrollB();
-    }
-  };
-
-  /* 空态推荐卡片（事件委托，清空后重建仍可用） */
-  bodyEl.addEventListener("click", e => {
-    const card = e.target.closest(".ask-card");
-    if (card) { input.value = card.dataset.q; input.focus(); ask(); return; }
-    const cp = e.target.closest(".ask-copy");
-    if (cp) {
-      const txt = cp.closest(".ask-msg").querySelector(".ask-msg-text").innerText;
-      copyText(txt, "已复制到剪贴板");
-    }
-  });
-
-  go.onclick = ask;
-  input.onkeydown = e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); ask(); } };
-  input.focus();
-}
-window.showAsk = showAsk;
 
 async function showGlobalStats() {
   if (GS_OV) GS_OV.close("re-open"); // 重开时走 close，防监听/计数泄漏

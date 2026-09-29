@@ -21,7 +21,7 @@
 护栏（AGENTS 不变量与手册）：
   · 只打 tempfile 里的合成语料，**绝不读写真实 content/**；写类断言全部落在临时根上；
   · 端口现挑，绝不占用户的 5001/5000/5031；
-  · **不联网**：探针跑之前把 KB_AI_API_KEY 从环境里摘掉，让 /api/ask 恒走 503 降级分支
+  · **不联网**：探针跑之前把 KB_AI_API_KEY 从环境里摘掉，让 AI 端点恒走 503 降级分支
     （否则这台机器哪天配了 key，本套就会真的去请求外部 LLM）；
   · 语料一律合成，不读 content/小说（禁区）。
 """
@@ -812,46 +812,8 @@ def probe_prefs(base):
           (r.get("h1_align_applied") or "") in ("left", "start"), r.get("h1_align_applied"))
 
 
-# ---------------------------------------------------------------- 探针 1：问吧
-ASK_JS = PRELUDE + """
-  const btn = q('button[onclick="showAsk()"]');
-  out.btn_present = !!btn;
-  if (btn) btn.click();
-  await sleep(700);
-  out.opened = !!q('#ask-in') && !!q('#ask-go') && !!q('#ask-body');
-  out.cards = document.querySelectorAll('#ask-empty .ask-card').length;
-  const inp = q('#ask-in'), go = q('#ask-go');
-  inp.value = '什么是向量数据库';
-  go.click();
-  // pending 必须**同步**读：ask() 里 showPending() 在 `await fetch` 之前跑完，
-  // 而本机 503 常在 150ms 内就返回 —— 先 sleep 再读会读到"已经撤掉"的那一侧（实测假红）。
-  out.pending_seen = !!q('#ask-pending');
-  out.empty_gone = !q('#ask-empty');
-  out.me = txt('.ask-me');
-  for (let i = 0; i < 70 && q('#ask-pending'); i++) await sleep(200);
-  out.pending_gone = !q('#ask-pending');
-  out.err = txt('.ask-err');
-  out.reenabled = go.disabled === false;
-  return JSON.stringify(out);
-})()"""
-
-
-def probe_ask(base):
-    print("== 1 问吧 showAsk() ==")
-    d = run_expr(base + "/doc/ui-r/notes/alpha.md", ASK_JS)
-    check("问吧：顶栏按钮在位", d.get("btn_present") is True, d)
-    check("问吧：点击后浮层开出 #ask-in/#ask-go/#ask-body", d.get("opened") is True, d)
-    check("问吧：空态先渲染出 4 张推荐卡", d.get("cards") == 4, f"cards={d.get('cards')}")
-    check("问吧：发出问题后进入 pending 态（#ask-pending 出现）", d.get("pending_seen") is True, d)
-    check("问吧：发送后空态被撤下", d.get("empty_gone") is True, d)
-    check("问吧：我说的话回显在气泡里", "什么是向量数据库" in (d.get("me") or ""), d.get("me"))
-    check("问吧：响应落地后 pending 被移除（不残留转圈）", d.get("pending_gone") is True, d)
-    check("问吧：无 key 时走 503 降级、给出 KB_AI_API_KEY 提示而不是空白",
-          "KB_AI_API_KEY" in (d.get("err") or ""), d.get("err"))
-    check("问吧：结束后发送钮重新可用", d.get("reenabled") is True, d)
-
-
-# ---------------------------------------------------------------- 探针 2：双链补全
+# ---------------------------------------------------------------- 探针 1：[[ 双链补全
+# （原「探针 1：问吧」随 /api/ask 在轮次 53 一起删除；探针号不重排，历史可查）
 WIKILINK_JS = PRELUDE + """
   const SAMPLE = '参见 [[排版';
   q('#crumb [onclick="openEditor()"]').click();
@@ -2705,6 +2667,13 @@ def probe_ai_settings(base, tmp):
 AI_TERM_URL = "/doc/baike/term/" + quote("向量数据库.md")
 AI_BLOCKED_URL = "/doc/interview/fe/" + quote("事件循环.md")
 
+# ---- 选词问 AI（轮次 53 极简版）：选中 → 浮钮 → 点开即问 → 三个动作 ----------------
+# 这一支测的是**只有前端能证明**的事：选区到底能不能唤出按钮、卡片上是不是只剩
+# 用户要的那几样（档位/字数/追问/元信息/侧栏都不许回来）、三个动作有没有真的落盘。
+# 后端语义（闸门顺序 / 缓存 / 计费）不在这里重复测 —— tests/test_ai_qa.py 锁着。
+AI_TERM_URL = "/doc/baike/term/" + quote("向量数据库.md")
+AI_BLOCKED_URL = "/doc/interview/fe/" + quote("事件循环.md")
+
 AI_ASK_JS = PRELUDE + r"""
   const T = e => ((e && e.textContent) || '').replace(/\s+/g, ' ').trim();
   const H = () => q('#article .a-body');
@@ -2733,39 +2702,22 @@ AI_ASK_JS = PRELUDE + r"""
   out.chip_text = T(chip());
   out.chip_in_view = !!(chip() && chip().getBoundingClientRect().top > 0);
   if (chip()) chip().click();
-  await sleep(400);
-  const card = q('#kb-ai-card');
-  out.card_open = !!(card && card.hidden === false);
-  // 「本次将发送约 N 字」是异步预览的结果 —— 轮询等它落定，不靠固定 sleep 猜
+  const card = () => q('#kb-ai-card');
+  // 极简版是「点开就问」：没有再点一次「问」这一步，所以等的是答案自己到位
   let w = 0;
-  while (w < 40 && !/本次将发送|预览失败/.test(T(q('#kb-ai-size')))) { await sleep(150); w++; }
-  out.size_wait_ticks = w;
-  out.size_term = T(q('#kb-ai-size'));
-  out.modes = [...document.querySelectorAll('#kb-ai-modes [data-mode]')]
-    .map(b => b.dataset.mode + ':' + (b.classList.contains('on') ? 'on' : '-'));
-  out.answer_before = T(q('#kb-ai-answer'));
-  const full = q('#kb-ai-modes [data-mode="full"]'); if (full) full.click();
-  w = 0;
-  const t0 = T(q('#kb-ai-size'));
-  while (w < 40 && T(q('#kb-ai-size')) === t0) { await sleep(150); w++; }
-  out.size_full = T(q('#kb-ai-size'));
-  const term = q('#kb-ai-modes [data-mode="term"]'); if (term) term.click();
-  w = 0;
-  const t1 = T(q('#kb-ai-size'));
-  while (w < 40 && T(q('#kb-ai-size')) === t1) { await sleep(150); w++; }
-  const go = q('#kb-ai-go'); if (go) go.click();
-  let waited = 0;
-  while (waited < 60 && !/缓存|tokens/.test(T(q('#kb-ai-meta')))) { await sleep(200); waited++; }
+  while (w < 60 && (!card() || card().hidden || /问 AI 中|请求失败/.test(T(q('#kb-ai-answer'))))) {
+    await sleep(150); w++;
+  }
+  out.answer_wait_ticks = w;
+  out.card_open = !!(card() && card().hidden === false);
   out.answer = T(q('#kb-ai-answer'));
-  out.meta = T(q('#kb-ai-meta'));
-  out.rail_visible = !!(q('#kb-ai-rail') && q('#kb-ai-rail').hidden === false);
-  out.rail_items = document.querySelectorAll('.kb-ai-rail-i').length;
-  const qEl = q('#kb-ai-q');
-  if (qEl) { qEl.value = '那它和向量检索谁更准'; qEl.dispatchEvent(new Event('input', {bubbles: true})); }
-  if (go) go.click();
-  waited = 0;
-  while (waited < 60 && T(q('#kb-ai-meta')) === out.meta) { await sleep(200); waited++; }
-  out.meta_follow = T(q('#kb-ai-meta'));
+  // 卡片上该有什么、不该有什么 —— 一次取全，别靠"看起来干净"
+  out.parts = {
+    modes: !!q('#kb-ai-modes'), size: !!q('#kb-ai-size'), warn: !!q('#kb-ai-warn'),
+    meta: !!q('#kb-ai-meta'), askInput: !!q('#kb-ai-q'), go: !!q('#kb-ai-go'),
+    rail: !!q('#kb-ai-rail'),
+    acts: ['kb-ai-note', 'kb-ai-term', 'kb-ai-copy'].map(id => !!q('#' + id))
+  };
   const note = q('#kb-ai-note'); if (note) note.click();
   await sleep(1400);
   out.note_toast = T(q('#toast'));
@@ -2797,11 +2749,8 @@ AI_ASK_JS = PRELUDE + r"""
 # 注意命名：切片 1 的「设置·AI 页签」探针已经占了 AI_SAVE_JS / AI_RELOAD_JS 两个名字，这一支必须另起
 AI_TERM_SAVE_JS = PRELUDE + r"""
   const T = e => ((e && e.textContent) || '').replace(/\s+/g, ' ').trim();
-  window.KBAI.openFor('倒排索引', 'term');
-  await sleep(1500);
-  const go = q('#kb-ai-go'); if (go) go.click();
-  let waited = 0;
-  while (waited < 60 && !/缓存|tokens/.test(T(q('#kb-ai-meta')))) { await sleep(200); waited++; }
+  window.KBAI.openFor('倒排索引');
+  await sleep(1600);
   const tm = q('#kb-ai-term'); if (tm) tm.click();
   await sleep(400);
   const dp = q('#kb-ai-dpath');
@@ -2817,9 +2766,9 @@ AI_BLOCKED_JS = PRELUDE + r"""
   const H = () => q('#article .a-body');
   const pick = (needle) => {
     const host = H(); if (!host) return null;
-    const w = document.createTreeWalker(host, NodeFilter.SHOW_TEXT);
+    const walker = document.createTreeWalker(host, NodeFilter.SHOW_TEXT);
     let n;
-    while ((n = w.nextNode())) { const i = (n.nodeValue || '').indexOf(needle); if (i >= 0) return { node: n, i }; }
+    while ((n = walker.nextNode())) { const i = (n.nodeValue || '').indexOf(needle); if (i >= 0) return { node: n, i }; }
     return null;
   };
   const hit = pick('事件循环');
@@ -2845,516 +2794,84 @@ AI_BLOCKED_JS = PRELUDE + r"""
 AI_NOKEY_JS = PRELUDE + r"""
   const T = e => ((e && e.textContent) || '').replace(/\s+/g, ' ').trim();
   window.KBAI.state.cfg = null;                 // 逼它重读 /api/ai/config
-  window.KBAI.openFor('倒排索引', 'term');
-  await sleep(1500);
-  const go = q('#kb-ai-go'); if (go) go.click();
+  window.KBAI.openFor('倒排索引');
   await sleep(1800);
   out.answer = T(q('#kb-ai-answer'));
-  out.meta = T(q('#kb-ai-meta'));
   return JSON.stringify(out);
 })()"""
 
 
 def probe_ai_ask(base, tmp):
-    print("== 22 选词问 AI：选区→按钮→卡片→档位→问→批注/存术语/复制 + 不出站域 ==")
+    print("== 22 选词问 AI（极简版）：选区→按钮→自动出答案→三个动作 + 不出站域 ==")
     from test_ai_config import start_provider  # 同一个假 provider，不造第二个桩
     srv, pbase = start_provider()
     cfg = tmp / ".ai-config.json"
     cfg.write_text(json.dumps({"api_key": "sk-ui-behavior-K7QF",
-                               "base_url": pbase + "/qa", "allow_local": True,
+                               "base_url": pbase + "/plain", "allow_local": True,
                                "timeout_s": 10}), encoding="utf-8")
     try:
         d = run_expr(base + AI_TERM_URL, AI_ASK_JS)
         check("选词问 AI：正文里能选中，选完小按钮真的出现且不跑出视口",
               d.get("host_present") and d.get("selected") and d.get("chip_visible")
               and "问 AI" in (d.get("chip_text") or "") and d.get("chip_in_view"), d)
-        check("选词问 AI：点按钮开卡片，卡片上写明「本次将发送约 N 字」",
-              d.get("card_open") and "本次将发送" in (d.get("size_term") or "")
-              and re.search(r"\d+", d.get("size_term") or ""), d.get("size_term"))
-        check("选词问 AI：三个档位都在，默认停在「词」",
-              d.get("modes") == ["term:on", "passage:-", "full:-"], d.get("modes"))
-        n_term = int((re.search(r"(\d+)", d.get("size_term") or "") or ["", "0"])[1])
-        n_full = int((re.search(r"(\d+)", d.get("size_full") or "") or ["", "0"])[1])
-        check("选词问 AI：切到「整篇」字数明显变大（最小上下文不是话术，是真的少发）",
-              n_full > n_term > 0, {"term": d.get("size_term"), "full": d.get("size_full")})
-        check("选词问 AI：问出来的答案带来源与计费说明（缓存/新问都讲清）",
-              "倒排索引" in (d.get("answer") or "") or len(d.get("answer") or "") > 10,
-              d.get("answer"))
-        check("选词问 AI：答案下方如实标 tokens / 置信 / 发送字数",
-              all(k in (d.get("meta") or "") for k in ("tokens", "置信", "发送")), d.get("meta"))
-        check("选词问 AI：问过之后侧栏出现「本篇问过的」并列出这条",
-              d.get("rail_visible") and d.get("rail_items", 0) >= 1, d)
-        check("选词问 AI：追问走多轮（第二次元信息仍然完整，不是把首轮顶掉）",
-              all(k in (d.get("meta_follow") or "") for k in ("置信", "发送")),
-              {"first": d.get("meta"), "follow": d.get("meta_follow")})
+        check("选词问 AI：点开卡片**不需要再点任何按钮**就自己问出了答案",
+              d.get("card_open") and "定域隐变量" in (d.get("answer") or "")
+              and d.get("answer_wait_ticks", 99) < 60,
+              {"answer": d.get("answer"), "ticks": d.get("answer_wait_ticks")})
+        parts = d.get("parts") or {}
+        check("选词问 AI：卡片上只剩用户要的那几样（档位/字数/警告/元信息/追问/侧栏都没有）",
+              not any([parts.get("modes"), parts.get("size"), parts.get("warn"),
+                       parts.get("meta"), parts.get("askInput"), parts.get("go"),
+                       parts.get("rail")]), parts)
+        check("选词问 AI：三个动作都在（批注 / 存为术语 / 复制）",
+              parts.get("acts") == [True, True, True], parts.get("acts"))
         check("选词问 AI：「加进本篇批注」给出成功反馈",
               "已写进本篇批注" in (d.get("note_toast") or ""), d.get("note_toast"))
         side = tmp / "content" / "baike" / "term" / "向量数据库.md.notes.md"
         written = side.read_text(encoding="utf-8") if side.is_file() else ""
         check("选词问 AI：批注真的落进 sidecar，且写明是 AI 问答",
-              "AI 问「倒排索引」" in written and "置信" in written, _safe(written[:200]))
+              "AI 问「倒排索引」" in written and "定域隐变量" in written, _safe(written[:200]))
         check("选词问 AI：正文一个字节都没被改（不变量 9 ②）",
               "倒排索引更准" in (tmp / "content" / "baike" / "term" / "向量数据库.md")
               .read_text(encoding="utf-8"))
         check("选词问 AI：「存为术语」给出可编辑草稿（路径 + 正文都能改）",
               d.get("draft_open") and d.get("draft_path", "").endswith(".md")
-              and "一句话定义" in (d.get("draft_head") or ""), d.get("draft_head"))
+              and "倒排索引" in (d.get("draft_head") or ""), d.get("draft_path"))
         check("选词问 AI：复制有反馈（成功或被拒都算反馈，静默才是坏）",
               bool(d.get("copy_toast")), d.get("copy_toast"))
-        check("选词问 AI：取消草稿不会落盘", d.get("draft_after_cancel") is True)
+        check("选词问 AI：取消草稿不会落盘（合成语料里那篇同名词条原样还在）",
+              d.get("draft_after_cancel") is True
+              and "误区" in (tmp / "content" / "baike" / "term" / "倒排索引.md")
+              .read_text(encoding="utf-8"), d.get("draft_after_cancel"))
         check("选词问 AI：在卡片里选字不会再叠一层「问 AI」按钮（否则会无限套）",
               d.get("chip_stays_out_of_card") is True, d.get("chip_stays_out_of_card"))
 
-        d2 = run_expr(base + AI_TERM_URL, AI_TERM_SAVE_JS)
+        d = run_expr(base + AI_TERM_URL, AI_TERM_SAVE_JS)
         check("选词问 AI：确认新建走的是 /api/save（反馈里能看到 frontmatter 处理方式）",
-              "已新建" in (d2.get("toast") or "") and d2.get("draft_hidden") is True, d2)
+              "已新建" in (d.get("toast") or "") and d.get("draft_hidden") is True, d)
         newdoc = tmp / "content" / "baike" / "term" / "倒排索引.md"
         body = newdoc.read_text(encoding="utf-8") if newdoc.is_file() else ""
         check("选词问 AI：术语草稿真的写回文件系统（不变量 1：磁盘才是真相）",
-              newdoc.is_file() and body.startswith("---") and "# 倒排索引" in body
-              and "由 AI 生成" in body, _safe(body[:160]))
+              newdoc.exists() and "AI生成待核" in body and "未人工核对" in body,
+              _safe(body[:160]))
 
-        d3 = run_expr(base + AI_BLOCKED_URL, AI_BLOCKED_JS)
+        d = run_expr(base + AI_BLOCKED_URL, AI_BLOCKED_JS)
         check("选词问 AI：不出站的域（interview 是代码下界）连按钮都不出现",
-              d3.get("selected") and d3.get("chip_hidden") is True, d3)
+              d.get("selected") and d.get("chip_hidden") is True, d)
         check("选词问 AI：绕过前端直接打接口同样 403（前端隐藏不算防护）",
-              d3.get("api_status") == 403 and d3.get("api_code") == "domain_blocked", d3)
+              d.get("api_status") == 403 and d.get("api_code") == "domain_blocked", d)
 
-        cfg.unlink()
-        d4 = run_expr(base + AI_TERM_URL, AI_NOKEY_JS)
+        cfg.unlink()                            # 撤掉 key：这一格测"没配 key 时说什么"
+        d = run_expr(base + AI_TERM_URL, AI_NOKEY_JS)
+        ans = d.get("answer") or ""
         check("选词问 AI：没配 key 时如实说未配置并指路设置，而不是转圈或假答案",
-              "没问出来" in (d4.get("answer") or "")
-              and "尚未配置 API key" in (d4.get("answer") or "")
-              and "设置 → AI 页签" in (d4.get("answer") or ""), d4.get("answer"))
+              "AI 页签" in ans and "问 AI 中" not in ans, ans)
         check("选词问 AI：提示不重复（同一句话里「设置 → AI 页签」只出现一次）",
-              (d4.get("answer") or "").count("设置 → AI 页签") == 1, d4.get("answer"))
+              ans.count("AI 页签") == 1, ans)
     finally:
         srv.shutdown()
         cfg.unlink(missing_ok=True)
 
-
-# ================================================================ 探针 23：单篇查漏补缺（切片 3）
-AI_AUDIT_JS = PRELUDE + r"""
-  const T = e => ((e && e.textContent) || '').replace(/\s+/g, ' ').trim();
-  const btn = q('#kb-audit-btn');
-  out.btn_present = !!btn;
-  if (btn) btn.click();
-  await sleep(1800);
-  const panel = q('#kb-audit-panel');
-  out.panel_open = !!(panel && panel.hidden === false);
-  out.sum0 = T(q('#kb-au-sum'));
-  const items = [...document.querySelectorAll('.kb-au-item')];
-  out.n_items = items.length;
-  out.first_has_evidence = !!(items[0] && T(items[0].querySelector('.kb-au-ev'))
-                              && T(items[0].querySelector('.kb-au-sg')));
-  out.kinds = items.map(i => i.getAttribute('data-id')).slice(0, 3);
-  out.dead_link_shown = items.some(i => (T(i).indexOf('不存在') >= 0));
-  // 忽略一条 → 状态落到 DOM，汇总条上的"已处置"跟着涨
-  if (items[0]) {
-    const d = items[0].querySelector('[data-act="dismiss"]');
-    if (d) d.click();
-  }
-  await sleep(1800);
-  out.after_dismiss = {status: (q('.kb-au-item') || {}).dataset?.status,
-                       sum: T(q('#kb-au-sum')), toast: T(q('#toast'))};
-  // 采纳一条 → 先写 sidecar 批注，再记状态
-  const it2 = [...document.querySelectorAll('.kb-au-item')][1] || q('.kb-au-item');
-  if (it2) {
-    const a = it2.querySelector('[data-act="adopt"]');
-    if (a) a.click();
-  }
-  await sleep(2000);
-  out.after_adopt_sum = T(q('#kb-au-sum'));
-  // 恢复待处理（采纳/忽略之后这个按钮才会出现）
-  const back = document.querySelector('[data-act="pending"]');
-  out.has_pending_btn = !!back;
-  if (back) back.click();
-  await sleep(1600);
-  out.after_pending_sum = T(q('#kb-au-sum'));
-  const x = q('#kb-au-x'); if (x) x.click();
-  await sleep(300);
-  out.closed = !!(q('#kb-audit-panel') && q('#kb-audit-panel').hidden === true);
-  return JSON.stringify(out);
-})()"""
-
-AI_AUDIT_BLOCKED_JS = PRELUDE + r"""
-  const T = e => ((e && e.textContent) || '').replace(/\s+/g, ' ').trim();
-  const btn = q('#kb-audit-btn'); if (btn) btn.click();
-  await sleep(1600);
-  out.panel_open = !!(q('#kb-audit-panel') && q('#kb-audit-panel').hidden === false);
-  out.sum = T(q('#kb-au-sum'));
-  out.items = document.querySelectorAll('.kb-au-item').length;
-  out.ai_muted = [...document.querySelectorAll('.kb-au-ai.muted')].length;
-  out.ai_real = [...document.querySelectorAll('.kb-au-ai:not(.muted)')].length;
-  return JSON.stringify(out);
-})()"""
-
-
-def probe_ai_audit(base, tmp):
-    print("== 23 单篇查漏补缺：本地判据面板 / 忽略 / 采纳写批注 / 恢复 ==")
-    side = tmp / "content" / "ui-r" / "notes" / "alpha.md.notes.md"
-    alpha = tmp / "content" / "ui-r" / "notes" / "alpha.md"
-    before = side.read_text(encoding="utf-8") if side.is_file() else ""
-    body_before = alpha.read_text(encoding="utf-8")
-    d = run_expr(base + "/doc/ui-r/notes/alpha.md", AI_AUDIT_JS)
-    check("查漏：crumb 上有「查漏」按钮，点了真的开面板",
-          d.get("btn_present") and d.get("panel_open") is True, d)
-    check("查漏：汇总条如实写明只跑了本地判据（没配 key 时不假装查全）",
-          "本地判据" in (d.get("sum0") or "") and "只跑了本地判据" in (d.get("sum0") or ""),
-          d.get("sum0"))
-    check("查漏：样本里那条不存在的目标被列出来了", d.get("dead_link_shown") is True, d)
-    check("查漏：每条建议都有证据 + 建议动作两行（不是光一个标题）",
-          d.get("n_items", 0) >= 1 and d.get("first_has_evidence") is True, d)
-    check("查漏：忽略后汇总条出现「已处置」",
-          "已处置" in ((d.get("after_dismiss") or {}).get("sum") or ""), d.get("after_dismiss"))
-    check("查漏：采纳之后已处置数继续累加",
-          "已处置 2" in (d.get("after_adopt_sum") or "")
-          or "已处置" in (d.get("after_adopt_sum") or ""), d.get("after_adopt_sum"))
-    after = side.read_text(encoding="utf-8") if side.is_file() else ""
-    check("查漏：采纳真的写进 sidecar 批注（正文不参与）",
-          after.startswith(before) and "查漏｜" in after, _safe(after[-200:]))
-    check("查漏：跑完一整轮，正文一个字节都没变（不变量 9 ②）",
-          alpha.read_text(encoding="utf-8") == body_before, len(body_before))
-    check("查漏：处置过的条目会浮出「恢复待处理」按钮", d.get("has_pending_btn") is True, d)
-    check("查漏：恢复之后已处置数回落",
-          "已处置 1" in (d.get("after_pending_sum") or "")
-          or "已处置" not in (d.get("after_pending_sum") or ""), d.get("after_pending_sum"))
-    check("查漏：× 能关掉面板", d.get("closed") is True, d.get("closed"))
-
-    d2 = run_expr(base + "/doc/interview/fe/" + quote("事件循环.md"), AI_AUDIT_BLOCKED_JS)
-    check("查漏：不出站的域照样能查本地（面板打开、有本地条目）",
-          d2.get("panel_open") is True and "不出站" in (d2.get("sum") or ""), d2)
-    check("查漏：不出站域的面板里一条 AI 结论都没有（needs_ai 条目只会被标成没跑，"
-          "不会带着假结论出现）", d2.get("ai_real") == 0, d2)
-
-
-# ================================================================ 探针 23b：查与库内矛盾开关
-AI_AUDIT_CONFLICT_JS = PRELUDE + r"""
-  const T = e => ((e && e.textContent) || '').replace(/\s+/g, ' ').trim();
-  const seen = [];
-  const real = window.fetch;
-  const want = s => String(s).replace(/\s+/g, '').indexOf('"conflict":true') >= 0;
-  window.fetch = function (u, o) {
-    if (String(u).indexOf('/api/ai/audit') === 0 && o && o.method === 'POST') {
-      seen.push(String((o && o.body) || ''));
-    }
-    return real.apply(this, arguments);
-  };
-  out.spy = (window.fetch !== real);
-  const b = q('#kb-audit-btn'); if (b) b.click();
-  await sleep(1800);
-  const box = q('#kb-au-conf');
-  out.box_present = !!box;
-  if (box) { box.checked = true; box.dispatchEvent(new Event('change', {bubbles: true})); }
-  for (let i = 0; i < 80 && !seen.some(want); i++) await sleep(200);
-  out.on_seen = seen.some(want);
-  await sleep(1500);
-  const titles = () => [...document.querySelectorAll('#kb-au-list .kb-au-item')]
-    .map(e => T(e.querySelector('.kb-au-h b'))).filter(t => t.indexOf('讲冲突') >= 0);
-  out.rows_on = titles();
-  out.muted_on = [...document.querySelectorAll('#kb-au-list .kb-au-ai.muted')].map(e => T(e));
-  out.ai_all = [...document.querySelectorAll('#kb-au-list .kb-au-ai')].map(e => T(e));
-  // 证据行要写清这对照是哪条来源配的（同名词条 / 正文提到 / 语义相近）——
-  // 用户看到"这两篇打架"时，第一个问题就是"凭什么把这两篇摆一起"。
-  out.ev_lines = [...document.querySelectorAll('#kb-au-list .kb-au-ev')].map(e => T(e));
-  // 头部那一行现在多了一个开关：宽度是固定的 520px 面板，重叠/溢出这种"稳定地错"
-  // 像素基线抓不到（矩阵里根本没有这一屏），只能就地量矩形。
-  const head = document.querySelector('#kb-audit-panel .kb-ai-ch');
-  const lab = q('#kb-au-conf'), rs = q('#kb-au-rescan'), xx = q('#kb-au-x');
-  if (head && lab && rs && xx) {
-    const H = head.getBoundingClientRect(), L = lab.getBoundingClientRect(),
-          R = rs.getBoundingClientRect(), X = xx.getBoundingClientRect();
-    out.head_fit = L.width > 0 && R.width > 0 && X.width > 0
-      && L.right <= R.left + 0.5 && R.right <= X.left + 0.5
-      && L.left >= H.left - 0.5 && X.right <= H.right + 0.5;
-    out.head_rects = [H, L, R, X].map(r => [Math.round(r.left), Math.round(r.right)]);
-  }
-  if (box) { box.checked = false; box.dispatchEvent(new Event('change', {bubbles: true})); }
-  for (let i = 0; i < 80; i++) {
-    await sleep(200);
-    const last = seen[seen.length - 1] || '';
-    if (seen.length >= 2 && last.indexOf('false') >= 0) break;
-  }
-  out.off_body = seen[seen.length - 1] || '';
-  await sleep(1500);
-  out.rows_off = titles();
-  window.fetch = real;
-  return JSON.stringify(out);
-})()"""
-
-
-PAIR_MD = ('---\ntitle: 矛盾靶子\ncollected: 2026-03-01\n---\n\n# 矛盾靶子\n\n'
-           "## 定义\n\n向量数据库 这一条在本库里已经有词条，可这一篇说的是另一套原理；\n"
-           "倒排索引 那条也在讲同一件事，但这一篇只说它慢，没说它错。\n")
-
-
-def probe_ai_conflict(base, tmp):
-    print("== 23b 查与库内矛盾：开关真的改请求体，配对行跟着开关生灭 ==")
-    pairdoc = tmp / "content" / "ui-r" / "conflict" / "pair靶子.md"
-    pairdoc.parent.mkdir(parents=True, exist_ok=True)
-    pairdoc.write_text(PAIR_MD, encoding="utf-8")
-    d = run_expr(base + "/doc/ui-r/conflict/" + quote("pair靶子.md"), AI_AUDIT_CONFLICT_JS)
-    check("矛盾开关：fetch 桩真的在记请求体（否则下面几条全是空气）",
-          d.get("spy") is True, d.get("spy"))
-    check("矛盾开关：面板上有这个开关，勾上之后发出去的请求体真的带 conflict:true",
-          d.get("box_present") is True and d.get("on_seen") is True,
-          {"box": d.get("box_present"), "seen": d.get("on_seen")})
-    check("矛盾开关：勾上之后本地配出对照行（对方就是正文提到的那个已有词条）",
-          len(d.get("rows_on") or []) >= 1 and "向量数据库" in str(d.get("rows_on")),
-          d.get("rows_on"))
-    check("矛盾开关：没配 key 时配对行标的是「要 AI 判断，本次没跑」，不是凭空少一条",
-          any("要 AI 判断" in x for x in (d.get("muted_on") or [])), d.get("muted_on"))
-    check("矛盾开关：面板头部那一行不重叠也不溢出（520px 定宽面板里多塞一个开关，量矩形）",
-          d.get("head_fit") is True, d.get("head_rects"))
-    check("矛盾开关：证据行写明这对照是哪条来源配的（同名词条 / 正文提到 / 语义相近）",
-          any("配对线索" in x for x in (d.get("ev_lines") or [])), d.get("ev_lines"))
-    check("矛盾开关：取消勾选再扫一次，配对行跟着消失（行由本次请求决定，不是越勾越多）",
-          d.get("off_body", "").find("false") >= 0 and not (d.get("rows_off") or []),
-          {"body": _safe(d.get("off_body")), "rows": d.get("rows_off")})
-
-    # 第二趟：配上本进程假 provider，判为矛盾的那一行要带上编号与"两边各说了什么"
-    from test_ai_config import start_provider
-    srv2, pbase2 = start_provider()
-    cfg2 = tmp / ".ai-config.json"
-    cfg2.write_text(json.dumps({"api_key": "sk-ui-conf-P9XM",
-                                "base_url": pbase2 + "/auditpair", "allow_local": True,
-                                "timeout_s": 10}), encoding="utf-8")
-    try:
-        d2 = run_expr(base + "/doc/ui-r/conflict/" + quote("pair靶子.md"), AI_AUDIT_CONFLICT_JS)
-        check("矛盾判定：配了 key 之后判为矛盾的那行写「AI 判为互相矛盾」并带回配对编号与两边说法",
-              any("AI 判为互相矛盾" in x and "向量数据库" in x for x in (d2.get("ai_all") or [])),
-              d2.get("ai_all"))
-        check("矛盾判定：没被判为矛盾的那对也要说话（缺席结论同样是结论，不许只留一行空白）",
-              len(d2.get("rows_on") or []) >= 2
-              and any("没把这对列进" in x for x in (d2.get("ai_all") or [])),
-              {"rows": d2.get("rows_on"), "ai": d2.get("ai_all")})
-    finally:
-        srv2.shutdown()
-        cfg2.unlink(missing_ok=True)
-        pairdoc.unlink(missing_ok=True)
-    check("矛盾判定：临时配置与靶子都收走了，正式语料一字节未变",
-          not cfg2.exists() and not pairdoc.exists(), None)
-
-
-# ================================================================ 探针 24：批量查漏补缺（切片 4）
-AI_BATCH_JS = PRELUDE + r"""
-  const T = e => ((e && e.textContent) || '').replace(/\s+/g, ' ').trim();
-  const seen = [];
-  const real = window.fetch;
-  window.fetch = function (u, o) {
-    seen.push(String(u) + " " + ((o && o.method) || "GET"));
-    return real.apply(this, arguments);
-  };
-  out.spy = (window.fetch !== real);
-  const b = q('#kb-audit-btn'); if (b) b.click();
-  await sleep(1600);
-  const dom = q('#kb-au-domain');
-  out.domain_btn = !!dom;
-  if (dom) dom.click();
-  let est = '';
-  for (let i = 0; i < 80; i++) {
-    await sleep(250);
-    est = T(q('#kb-au-batch'));
-    if (est.indexOf('篇') >= 0) break;
-  }
-  out.est_text = est.slice(0, 240);
-  out.ai_btn_disabled = !!(q('#kb-au-b-ai') && q('#kb-au-b-ai').disabled);
-  out.ai_btn_absent = !q('#kb-au-b-ai');
-  out.local_btn = !!q('#kb-au-b-local');
-  if (q('#kb-au-b-local')) q('#kb-au-b-local').click();
-  let prog = '', done = false;
-  for (let i = 0; i < 160; i++) {
-    await sleep(250);
-    prog = T(q('#kb-au-batch'));
-    if (/done|stopped/.test(prog)) { done = true; break; }
-  }
-  out.prog_text = prog.slice(0, 200);
-  out.done = done;
-  // 这一趟本域有候选空白（语料里那条 [[不存在的目标]]），只跑本地时复核没做 ——
-  // 进度条必须说清"没做、为什么没做"，不能让用户把本地清单当成 AI 认过的。
-  out.gap_line_local = prog.indexOf('覆盖空白 AI 复核没跑') >= 0;
-  // 回扫的证据不能只看汇总条上有没有"本地判据"四个字 —— 那句在不回扫时也一直挂着，
-  // 是条自证判据。真正要判的是"进度轮询停下之后，又发过一次 POST /api/ai/audit"。
-  let lastStatus = -1;
-  seen.forEach((u, i) => { if (u.indexOf('/api/ai/batch/status') === 0) lastStatus = i; });
-  out.rescan_posts = seen.slice(lastStatus + 1)
-    .filter(u => u.indexOf('/api/ai/audit POST') === 0).length;
-  await sleep(1500);
-  out.sum_after = T(q('#kb-au-sum'));
-  out.urls = [...new Set(seen.map(u => u.split(' ')[0]))];
-  window.fetch = real;
-  return JSON.stringify(out);
-})()"""
-
-
-AI_BATCH_AI_JS = PRELUDE + r"""
-  const T = e => ((e && e.textContent) || '').replace(/\s+/g, ' ').trim();
-  // 上一趟（纯本地那一批）没跑完就先等它：同一个库只允许一个作业，抢着点会吃 409
-  let idle = false;
-  for (let i = 0; i < 240 && !idle; i++) {
-    const st = await (await fetch('/api/ai/batch/status')).json();
-    idle = !st.job || !st.job.running;
-    if (!idle) await sleep(250);
-  }
-  out.prev_settled = idle;
-  // 开跑请求体也要记：开关是否真的一路带到批量，看的是 start 发了什么（配对行在
-  // 本篇探针里已经断过，这里不重复要画面）
-  const bodies = [];
-  const real = window.fetch;
-  window.fetch = function (u, o) {
-    if (o && o.method === "POST" && String(u).indexOf("/api/ai/batch/start") === 0) {
-      bodies.push(String(o.body || ""));
-    }
-    return real.apply(this, arguments);
-  };
-  const b = q('#kb-audit-btn'); if (b) b.click();
-  await sleep(1600);
-  // 勾上「查与库内矛盾」再估算：开关必须同时改变估算（每篇上限两次）与开跑的请求体
-  const cf = q('#kb-au-conf');
-  out.conflict_box = !!cf;
-  if (cf) { cf.checked = true; cf.dispatchEvent(new Event('change', {bubbles: true})); }
-  await sleep(2000);
-  const dom = q('#kb-au-domain'); if (dom) dom.click();
-  let est = '';
-  for (let i = 0; i < 80; i++) {
-    await sleep(250);
-    est = T(q('#kb-au-batch'));
-    if (est.indexOf('篇') >= 0) break;
-  }
-  out.est_text = est.slice(0, 240);
-  const ai = q('#kb-au-b-ai');
-  out.ai_btn_enabled = !!(ai && !ai.disabled);
-  if (ai) ai.click();
-  await sleep(1200);
-  out.toast = T(q('#toast'));
-  let prog = '', done = false;
-  for (let i = 0; i < 240; i++) {
-    await sleep(250);
-    prog = T(q('#kb-au-batch'));
-    if (/done|stopped|failed/.test(prog)) { done = true; break; }
-  }
-  out.prog_text = prog.slice(0, 200);
-  out.done = done;
-  // 收尾那一次「域全景复核」的结论要落到用户看得见的两个地方：
-  // 进度条里那一行（跑没跑都报），和域待办条目上的 AI 判定。
-  await sleep(2000);
-  out.gap_line = T(q('#kb-au-batch')).indexOf('覆盖空白 AI 复核') >= 0;
-  out.gap_head = T(q('#kb-au-gaps')).slice(0, 120);
-  out.gap_items = document.querySelectorAll('#kb-au-gaps .kb-au-item').length;
-  out.gap_ai = [...document.querySelectorAll('#kb-au-gaps .kb-au-ai')].map(e => T(e));
-  out.start_bodies = bodies.map(s => s.slice(0, 120));
-  window.fetch = real;
-  return JSON.stringify(out);
-})()"""
-
-
-def probe_ai_batch(base, tmp):
-    print("== 24 批量查漏补缺：估算条 / 只跑本地 / 进度轮询 / 跑完回扫本篇 ==")
-    alpha = tmp / "content" / "ui-r" / "notes" / "alpha.md"
-    body = alpha.read_text(encoding="utf-8")
-    d = run_expr(base + "/doc/ui-r/notes/alpha.md", AI_BATCH_JS)
-    check("批量：fetch 桩真的在记（否则下面那批 URL 断言全是空气）",
-          d.get("spy") is True, d.get("spy"))
-    check("批量：查漏面板上有「扫描整个域」入口，点了真的出估算条",
-          d.get("domain_btn") and "篇" in (d.get("est_text") or ""), _safe(d.get("est_text")))
-    est = d.get("est_text") or ""
-    check("批量：估算条报的是本地扫出来的实数 —— 篇数 / 条数 / 要问几次 / 上限 / 剩余额度",
-          re.search(r"\d+ 篇", est) and "本地判据查出" in est and "还要问 AI" in est
-          and "最多" in est and "本月还剩" in est, _safe(est))
-    check("批量：没配 key 时「按估算开跑」直接不给（比灰着一颗钮更清楚：这条路口现在不存在）",
-          d.get("ai_btn_absent") is True and d.get("ai_btn_disabled") is False, d)
-    check("批量：「只跑本地」不受 key 影响，永远可点", d.get("local_btn") is True, d)
-    check("批量：开跑之后进度条会走完并如实收尾（state=done）",
-          d.get("done") is True and "done" in (d.get("prog_text") or ""),
-          _safe(d.get("prog_text")))
-    check("批量：纯本地那一趟的 AI 调用数是 0",
-          "问 AI 0 次" in (d.get("prog_text") or ""), _safe(d.get("prog_text")))
-    check("批量：本域有空白候选却没让 AI 复核时，进度条就地报名字（不静默少跑一步）",
-          d.get("gap_line_local") is True and "没让 AI 复核" in (d.get("prog_text") or ""),
-          _safe(d.get("prog_text")))
-    urls = d.get("urls") or []
-    check("批量：整趟只打了 batch 三件套 + 本篇查漏 + 域待办读接口，一次 explain 都没有",
-          any("/api/ai/batch/estimate" in u for u in urls)
-          and any("/api/ai/batch/start" in u for u in urls)
-          and any("/api/ai/batch/status" in u for u in urls)
-          and "/api/ai/audit?path=%40domain%3Aui-r" in urls
-          and not any("explain" in u or "/api/ask" in u for u in urls), urls)
-    check("批量：跑完自动回扫本篇（进度一停就真有一次 POST /api/ai/audit，不是停在进度文案上）",
-          d.get("rescan_posts", 0) >= 1 and "本地判据" in (d.get("sum_after") or ""),
-          {"posts": d.get("rescan_posts"), "sum": _safe(d.get("sum_after"))})
-    check("批量：整趟跑完正文一个字节都没变（不变量 9 ② 的浏览器侧证据）",
-          alpha.read_text(encoding="utf-8") == body, len(body))
-
-    # 带 AI 的那一趟：配一个指向本进程假 provider 的临时配置（只动 .ai-config.json，
-    # 不动语料 —— 语料一多起来别的探针的计数就变了），看按钮出来、跑得完。
-    #
-    # 覆盖空白的复核要有候选才有得看：ui-r 域里的固定语料互不引用，
-    # 所以这里**临时**塞一篇只被它自己用到的靶子（引用「缺失术语」这个不存在的词条），
-    # 用完即删 —— 别的探针跑的时候它不存在，语料计数仍然对得上。
-    from test_ai_config import start_provider
-    srv, pbase = start_provider()
-    cfg = tmp / ".ai-config.json"
-    cfg.write_text(json.dumps({"api_key": "sk-ui-batch-K7QF",
-                               "base_url": pbase + "/auditgap", "allow_local": True,
-                               "timeout_s": 10}), encoding="utf-8")
-    target = tmp / "content" / "ui-r" / "batchgap" / "空白靶子.md"
-    target.parent.mkdir(parents=True, exist_ok=True)
-    target.write_text('---\ntitle: 空白靶子\ncollected: 2026-03-01\n---\n\n'
-                      '# 空白靶子\n\n## 定义\n\n这里写了 [[缺失术语]]，'
-                      '但知识库里没有给它建词条。\n', encoding="utf-8")
-    # 第三条腿要一个"确实一条空白都没有"的域：另起一个临时域，两篇互不引用。
-    # 路径必须三级（domain/sub/name）—— `/doc/<domain>/<sub>/<name>` 是本应用唯一的
-    # 文档路由，两段式 URL 直接 404，页面上连查漏按钮都没有（第一次就踩在这儿）。
-    clean = tmp / "content" / "zz-clean" / "sub"
-    clean.mkdir(parents=True, exist_ok=True)
-    for i in (1, 2):
-        (clean / ("clean%d.md" % i)).write_text(
-            '---\ntitle: 无链样本%d\ncollected: 2026-03-01\n---\n\n# 无链样本%d\n\n'
-            "## 定义\n\n这一篇不引用任何别的篇，本域也就没有覆盖空白。\n" % (i, i),
-            encoding="utf-8")
-    try:
-        d2 = run_expr(base + "/doc/ui-r/notes/alpha.md", AI_BATCH_AI_JS)
-        check("批量：配了 key 之后「按估算开跑」才出现，且估算条改口说已配 key",
-              d2.get("ai_btn_enabled") is True and "已配 key" in (d2.get("est_text") or ""),
-              _safe(d2.get("est_text")))
-        check("批量：带 AI 那一趟也能跑到终态（进度条报的是作业自己的 state，不是前端猜的）",
-              d2.get("done") is True and "done" in (d2.get("prog_text") or ""),
-              {"prog": _safe(d2.get("prog_text")), "toast": _safe(d2.get("toast"))})
-        check("批量：跑完的域全景复核在进度条上留了一行（跑了就报挑中几条，不静默）",
-              d2.get("gap_line") is True, d2.get("prog_text"))
-        check("批量：覆盖空白挂在本域待办里，条目上能看到 AI 的复核结论",
-              "本域覆盖空白" in (d2.get("gap_head") or "") and d2.get("gap_items", 0) >= 1
-              and any("AI 复核认为值得补" in x for x in (d2.get("gap_ai") or [])),
-              {"head": _safe(d2.get("gap_head")), "items": d2.get("gap_items"),
-               "ai": d2.get("gap_ai")})
-        check("批量：勾了「查与库内矛盾」之后估算改口 —— 每篇上限按两次报，并点名这个开关",
-              d2.get("conflict_box") is True and "已含" in (d2.get("est_text") or "")
-              and "问2次" in (d2.get("est_text") or "").replace(" ", ""),
-              _safe(d2.get("est_text")))
-        check("批量：勾了开关之后开跑请求体真的带 conflict:true（开关一路带到批量，不是只改估算条）",
-              any('"conflict":true' in (b or "").replace(" ", "")
-                  for b in (d2.get("start_bodies") or [])), d2.get("start_bodies"))
-        # 第三条腿：一个确实没有空白的域（articles 那三篇互不引用）—— 复核跑过了、
-        # 候选是 0 条，这时候硬刷一句"0 条里挑中 0 条"是噪声，不该出现
-        # （与上面那条"有候选却没跑就必须报"成对）。
-        d3 = run_expr(base + "/doc/zz-clean/sub/clean1.md", AI_BATCH_AI_JS)
-        check("批量：本域一条空白都没有时不硬报「0 条候选里挑中 0 条」，待办区也是空的",
-              d3.get("done") is True and d3.get("gap_line") is False
-              and d3.get("gap_items") == 0 and not (d3.get("gap_head") or ""),
-              {"prog": _safe(d3.get("prog_text")), "line": d3.get("gap_line"),
-               "items": d3.get("gap_items"), "est": _safe(d3.get("est_text"))})
-    finally:
-        srv.shutdown()
-        cfg.unlink(missing_ok=True)
-        target.unlink(missing_ok=True)
-        shutil.rmtree(tmp / "content" / "zz-clean", ignore_errors=True)
-    check("批量：临时配置和临时靶子都收走了，语料仍然一字节未变",
-          not cfg.exists() and not target.exists()
-          and not (tmp / "content" / "zz-clean").exists()
-          and alpha.read_text(encoding="utf-8") == body, None)
-
-
-# ================================================================ 探针 21：快捷键清单（唯一数据源）
 KEYS_JS = PRELUDE + r"""
   const T = e => ((e && e.textContent) || '').replace(/\s+/g, ' ').trim();
   const rows = host => [...(host || document).querySelectorAll('.kb-help-row')]
@@ -5016,7 +4533,6 @@ def main() -> int:
         # 第一版把删除放在看板抽屉之前，结果 /tags 的标签云里已经没有「渲染」这个标签
         # （承载它的 alpha/gamma 都被删了），6 条断言集体假红（轮次 24 实测）。
         run_probe("nav", probe_nav, base, tmp)          # 一级导航 + 徽标（只读，且要在删除类探针之前拿基线数）
-        run_probe("ask", probe_ask, base)               # 只读（503 降级分支）
         run_probe("wikilink", probe_wikilink, base)     # 只改编辑器缓冲，不落盘
         run_probe("tag", probe_tag_suggest, base)       # 只读（要右栏渲染出来 → 见 PROBE_WIDTH 注释）
         run_probe("mermaid", probe_mermaid, base, tmp)  # 只读 /raw
@@ -5037,10 +4553,7 @@ def main() -> int:
         run_probe("spark", probe_toc_spark, base)         # 写 reading.db 的事件（派生库，不动语料）
         run_probe("novelpref", probe_novel_prefs, base)  # 只写 localStorage（小说偏好）
         run_probe("aicfg", probe_ai_settings, base, tmp)  # 写临时根的 .ai-config.json（探针收尾自己清掉）
-        run_probe("aiask", probe_ai_ask, base, tmp)   # 选词问 AI：写 sidecar 批注 + 新建术语词条
-        run_probe("aiaudit", probe_ai_audit, base, tmp)  # 查漏面板：忽略 / 采纳写 sidecar / 恢复
-        run_probe("aiconflict", probe_ai_conflict, base, tmp)  # 查与库内矛盾：开关改请求体 + 配对行生灭
-        run_probe("aibatch", probe_ai_batch, base, tmp)  # 批量：估算条 / 只跑本地 / 进度轮询
+        run_probe("aiask", probe_ai_ask, base, tmp)   # 选词问 AI（极简）：自动出答案 + sidecar 批注 + 新建术语
         run_probe("keys", probe_keys, base)             # 只读：快捷键两处同源
         run_probe("novelbar", probe_novel_bar, base, tmp)  # 写：章评落旁挂 + 朗读/滚动/下载
         run_probe("stats", probe_stats, base, tmp)  # 写：/api/track 造当月事件后看统计页

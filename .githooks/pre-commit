@@ -194,18 +194,11 @@ if [ -f "tests/test_e2e_smoke.py" ]; then step e2e_smoke $PY tests/test_e2e_smok
 # 畸形 JSON 四种坏味道 —— 那些分支用真服务商是复现不出来的。 tempfile 迷你语料。
 if [ -f "tests/test_ai_config.py" ]; then step ai_config $PY tests/test_ai_config.py; fi
 
-# 切片 2（选词问 AI）：上下文最小化 / 域级闸门 / 缓存不计费 / 注入加固。
-# 同样打本进程的假 provider —— "dry 预览一次都不出站"与"缓存命中不再计费"这两条
+# 选词问 AI（轮次 53 极简版）：域级闸门 / 缓存不计费 / 注入加固 / 只发选区不发正文。
+# 同样打本进程的假 provider —— "一次问恰好出站一次"与"缓存命中不再计费"这两条
 # 只有对着可计数的桩才证得出来。
 if [ -f "tests/test_ai_qa.py" ]; then step ai_qa $PY tests/test_ai_qa.py; fi
-
-# 切片 3（单篇查漏补缺）：本地判据 + AI 判断的分工。关键是那条**控制组**：
-# 结构完整的样本必须一条建议都不出，否则"判据永远亮红"的废实现也能全绿。
-if [ -f "tests/test_ai_audit.py" ]; then step ai_audit $PY tests/test_ai_audit.py; fi
-
-# 切片 4（批量查漏补缺）：估算必须零出站、长任务必须不挂在一次 fetch 上、
-# 预算帽是硬门。这三条都只有对着"可计数的桩 + 可控时延的假 provider"才证得出来。
-if [ -f "tests/test_ai_batch.py" ]; then step ai_batch $PY tests/test_ai_batch.py; fi
+# 切片 3 / 4（单篇查漏、批量查漏）与问吧在轮次 53 按用户要求整体移除，套件同批删除。
 
 # 已知缺陷回归锚（P4 发现 → 修复轮转绿后接入）：空子域 /browse 500、
 # resolve 前缀分歧致 /api/rmdir · /api/import 500。若被重新引入，提交即被拦下。

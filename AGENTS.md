@@ -16,11 +16,11 @@
 6. frontmatter 只存身世与元数据（title/source/collected/tags/favorite/status），不存阅读统计等高频运行时数据——阅读统计走 app/reading.py（indexes/reading.db 事件制：open/read_minute/finish 只追加，语料零污染），标签治理/重命名一律先 dry-run（scripts/govern_tags.py）。
 7. 嵌入 / 分词 / 切块逻辑变更必须递增 `app/rag.py::RAG_CODE_VERSION`，并用 `tokenizers` 库做逐 token 交叉验证后再提交。**递增之后的重嵌是逐篇续跑的**：每篇跑完就在 `files.embed_ver` 落自己的章（`upsert_file` 一事务），中途被 kill 下次只补没盖章的那些，不再从第 0 篇重来（轮次 51 之前是全库一次性提交，实测一趟 1126 篇 / 22006 块 / 约 38 分钟，中断等于整趟白跑）。版本判据**只活在 `files.embed_ver` 一处** —— `sync_rag` 不再读 `meta.code_version` 决定是否全量（同一规则两份实现是台账 §6 第 87 行点过名的坑，`rag_status` 里那个 `stale` 就是剩余量）。旧库缺这一列时打开即迁移，但**只有** `meta.code_version` 相符**且**向量行数与元数据一致才补章（`stamp_legacy`），来历不明就留 NULL 重嵌。**这条现在有断言在管**：`tests/test_rag.py::test_tokenizer_cross_validated_against_library()` 每次跑都拿参考库逐 id 比对，`test_predicates.py` 另有不依赖模型文件的合成 `tokenizer.json` 断言（轮次 49 第一次真跑就抓到一条真偏差：正文里字面的 `[CLS]` 被拆成三块碎片，而参考实现当它是一个 special token → 新增 `HFTokenizer._split_specials()` 并递增到 v4）。
 8. 阅读器同时支持 `start.bat`（任意 Python）与便携运行时（`.python\`）；`python app\app.py` 直启时项目根会自动补进 sys.path，不要依赖 cwd。
-9. **AI 出站三禁**（唯一允许出网的路径；设计见 `docs/spec-ai-assistant.md`，配置层 `app/ai_config.py`，账本 `app/ai_usage.py`）：
-   ① 出站范围由 `taxonomy.json` 的域级 `"ai": false` 决定，且 `career` / `interview` 是 `app/store.py::AI_NEVER_EGRESS` 这个**代码下界**——JSON 里写 `"ai": true` 也放行不了；判定只走 `ai_config.egress_blocked_domains()`，前端隐藏入口不算防护。**同一道闸门也管检索回来的片段**：FTS 与向量索引的命中在进上下文/配对前都要按对方所属域过滤（`app/routes_ai.py` 的 `_conflict_hits` / `_rag_conflict_hits`）—— 从索引里捞出来的也算出站内容。
+9. **AI 出站三禁**（唯一允许出网的路径；设计见 `docs/spec-ai-assistant.md`，配置层 `app/ai_config.py`，账本 `app/ai_usage.py`）。轮次 53（2026-09-29）按用户要求把这条链路砍到只剩「选词问 AI」：查漏 / 批量 / 问吧 与 `/api/ai/audit*`、`/api/ai/batch/*`、`/api/ask*`、`/api/ai/qa` 全部删除，`app/ai_audit.py`、`app/ai_batch.py` 两个模块同批删除。
+   ① 出站范围由 `taxonomy.json` 的域级 `"ai": false` 决定，且 `career` / `interview` 是 `app/store.py::AI_NEVER_EGRESS` 这个**代码下界**——JSON 里写 `"ai": true` 也放行不了；判定只走 `ai_config.egress_blocked_domains()`，前端隐藏入口不算防护。**闸门必须排在缓存查询与存在性检查之前**：`explain` 的缓存键里刻意不含文档路径（答案只依赖选中的那几个字），所以路径不进键 ⇒ 闸门只能靠"先拦再查"来兜底，否则不出站域能靠命中常见词的缓存读到答案（`tests/test_ai_qa.py` D6 锁着）。旧的"检索回来的片段也要过滤"这一支随检索增强一起退场——现在**根本没有检索参与**。
    ② AI 的建议**永不自动改正文**：采纳只写 sidecar `.notes.md`（或用户显式点「存为术语」新建词条，走既有 `/api/save`）；AI 侧模块（routes_ai / ai_config / ai_usage / ai_qa）不许出现任何写 `content/` 的路径。
    ③ key 不落盘到会被索引或提交的位置：只存仓库根 `.ai-config.json`（gitignored，env 优先级更高），任何响应/日志/账本只出现**尾 4 位**；`base_url` 必须过 `validate_base_url()`（只收 http(s)，本机/内网要显式勾选 `allow_local`）。
-   ④ 批量同理：域闸门在作业里**逐篇生效**（`blocked` 一路带到 per_doc），超预算帽只看最坏上界（每篇都可能问一次，抽样放大的期望值不作数；用户勾了「查与库内矛盾」时上界按**每篇两次**算）；长任务一律 daemon 线程 + 轮询，绝不挂在一个 fetch 上（`app/ai_batch.py`）。
+   ④ **发出去的只有选中的那几个字**：`explain` 不读正文、不拼大纲、不查检索、没有档位与追问；请求必须带 `max_tokens`（`routes_ai.ASK_MAX_TOKENS`）。这条是被实测教育出来的——旧版一次问要发 2313 字并要求模型回四字段 JSON（还不设上限），用户问「派生」两个字等了 30 多秒（本地装配只占 0.25 秒，慢的全在出站）。
 
 ## 常用命令
 
@@ -33,17 +33,15 @@ python tests\test_learn.py                     # 学习系统 smoke（255 断言
 python tests\test_predicates.py                # 判定谓词层 smoke（109 断言 · 合成 tokenizer.json 钉分词 special 字面量 · rag 续跑判据 plan_sync/stamp_legacy 真值表 · P6 存活清单回填）
 python tests\test_properties.py                # 性质测试（15 条 · 每条 240 个随机样本，固定种子）
 python tests\test_invariants.py                # 不变量门禁 I1~I10（87 断言 · 对 AGENTS 1-9）
-python tests\test_e2e_smoke.py                 # 端到端 smoke（235 断言 · 打满 72 条路由）
-python tests\test_ai_config.py                 # AI 出站配置层（80 断言 · 假 provider 起在本进程，零外网；进程内钉 `no_proxy` —— Windows 系统代理写在注册表里，不钉会把 DNS 失败改写成 http_error，见台账 §6 第 101 行）
-python tests\test_ai_qa.py                     # 选词问 AI（80 断言 · 上下文最小化 / 域级 403 / 缓存不计费 / 注入加固）
-python tests\test_ai_audit.py                  # 单篇查漏补缺（86 断言 · 本地判据 10 类 + 干净文档控制组 + AI 只收窄不造条目 + 矛盾候选两条来源：FTS 恒在 / 向量补「没互相点名」的对）
-python tests\test_ai_batch.py                  # 批量查漏补缺（120 断言 · 估算零出站 / 长任务不挂在 fetch 上 / 预算帽看上界 / 域级覆盖空白 + 覆盖空白的 AI 复核只收窄不造条目 + 矛盾核对按每篇两次计）
+python tests\test_e2e_smoke.py                 # 端到端 smoke（212 断言 · 打满 62 条路由；轮次 53 起 AI 面只剩 4 条）
+python tests\test_ai_config.py                 # AI 出站配置层（76 断言 · 假 provider 起在本进程，零外网；进程内钉 `no_proxy` —— Windows 系统代理写在注册表里，不钉会把 DNS 失败改写成 http_error，见台账 §6 第 101 行）
+python tests\test_ai_qa.py                     # 选词问 AI（90 断言 · 只发选区不发正文 / 域级 403 排在缓存之前 / 缓存不计费 / max_tokens 在位 / 已删端点必须 404）
 python tests\test_watch_ci.py                  # Agent 工具自身（38 断言 · watch_ci 的四类"读不到"分开点名 + 代理不通自动直连；打本进程假 GitHub，零外网；GBK/UTF-8 两档都要绿——第一次进钩子就是被 GBK 档抓红的）
 python tests\test_js_props.py                  # 浏览器侧书库解析性质测试（47 断言；缺 node/Chrome 自动 SKIP）
 python tests\test_ui_regress.py                # 视觉回归批处理（P5：22 张截图 vs tests/ui-baselines/ 基线 + 10 条顶栏几何断言）
 python tests\test_ui_regress.py --stability    #   只验"两次截图逐像素相同"（改矩阵/环境后先跑这个）；并把历轮每镜头最大 AE 累计进 tests/ui-baselines/floor.json（跟踪文件，阈值 AE≤2 的实测出处）
 python tests\test_ui_regress.py --update       #   确认改动无误后，用本次截图刷新基线
-python tests\test_ui_behavior.py               # UI 行为回归（521 断言 · 台账 §2 已升 E2E 的控件"点了到底有没有反应"；轮次 33 提速：一台 Chrome 跑完整套（会话档），~200s/趟，作业间自动清存储保隔离；回退一次一档 `set KB_BEHAVIOR_SESSION=0`；缺 node/Chrome 自动 SKIP）
+python tests\test_ui_behavior.py               # UI 行为回归（466 断言 · 台账 §2 已升 E2E 的控件"点了到底有没有反应"；轮次 33 提速：一台 Chrome 跑完整套（会话档），~200s/趟，作业间自动清存储保隔离；回退一次一档 `set KB_BEHAVIOR_SESSION=0`；缺 node/Chrome 自动 SKIP）
 python tests\test_rag.py                       # RAG smoke（含**与 Rust tokenizers 逐 token 交叉验证**，以及**续跑三证**：中断后只重嵌剩余篇 + 旧库迁移相符才盖章；缺库/缺模型才 SKIP，本机跑通才是提交口径）
 python scripts\rag_search.py "查询" --json     # 语义检索 CLI / Agent 入口
 python scripts\govern_tags.py census|similar|merge|rename-sub   # 标签治理（merge/rename-sub 先预览后 --apply；详见 --help）
@@ -110,12 +108,10 @@ app/reading.py      月度阅读统计（reading.db 派生，事件制：open/re
 app/rag.py          语义检索：切块/嵌入/sqlite-vec（派生，RAG_CODE_VERSION 管版本）
 app/ai_config.py    AI 出站配置：env > .ai-config.json > 缺省、key 脱敏、URL 校验、域级黑名单
 app/ai_usage.py     AI 调用账本（indexes/ai.db 派生；每次操作现开连接，不留锁）
-app/ai_qa.py        选词问 AI：上下文装配（选区 ±1 段 + 大纲 + RAG Top-3）、注入加固、严格 JSON 解析、缓存键
-app/ai_batch.py     批量查漏补缺：开跑前估算（本地扫，大范围等距抽样）+ daemon 线程作业 + 进度轮询 + 预算帽硬门（按每篇上限次数算最坏上界）
-app/ai_audit.py     单篇查漏补缺：本地判据（元数据/层级/围栏/空节/截断/失效链接/附件）+ AI 只判「应引未引 / 可能过时 / 与已有语料矛盾」（矛盾候选由 routes_ai 两路取段：FTS + 可选向量）
+app/ai_qa.py        选词问 AI（轮次 53 极简）：提示词与注入加固、答案收口（纯文本 / 剥围栏 / 取 answer 字段）、缓存键（选区 + 模型 + prompt 版本，**不含路径**）
 scripts/            迁移与维护脚本（rag_search.py 是 Agent 检索入口；agent/ 存跨会话常驻工具）
 requirements/       依赖清单（requirements.txt 核心 / -rag.txt 语义检索 / -lock.txt 便携环境重建锁）
-.githooks/          pre-commit：静态层（ruff/台账对账/悬空令牌/RAG 版本）串行 → 13 条纯 Python 套件**并行**（KB_GATE_PARALLEL 默认 4，=1 串行）→ 浏览器三套与 RAG 串行（缺依赖自动 SKIP）
+.githooks/          pre-commit：静态层（ruff/台账对账/悬空令牌/RAG 版本）串行 → 12 条纯 Python 套件**并行**（KB_GATE_PARALLEL 默认 4，=1 串行；动了语料再加一条 frontmatter 闸）→ 浏览器三套与 RAG 串行（缺依赖自动 SKIP）
 .github/workflows/  CI（GitHub Actions；windows runner 作业级 PYTHONIOENCODING=utf-8）
                       跑/SKIP/失败/崩溃四类状态都会打成 annotation（tests/_ci.py），
                       用 `python scripts/agent/watch_ci.py <sha>` 读回，无需登录就能判断"这一步真跑了没"

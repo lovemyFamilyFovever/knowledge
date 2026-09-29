@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
-"""AI 调用账本（切片 1）—— 每次出站调用落一行，/api/ai/usage 读它。
+"""AI 调用账本 —— 每次出站调用落一行，/api/ai/usage 读它；问答缓存共用这一个库文件。
 
 库文件 indexes/ai.db 是**派生缓存**（AGENTS 不变量 3）：删了可重建，绝不 git 跟踪，
-也绝不放进 content/。这里只放账本表；切片 2 的问答缓存将复用同一个库文件。
+也绝不放进 content/。
 
 为什么每次操作现开连接（和 reading.py 的长句柄不一样）：长句柄在 Windows 上会把
 `indexes/ai.db` 锁住，任何"临时实例 + tempfile 根 + 结束就删"的测试都得记得先 close()
@@ -12,6 +12,10 @@
 为什么要账本而不是内存计数：用户要求消耗可追溯（"这次花了多少"必须事后能查），
 而进程重启就什么都没了。单价默认 0（MIMO 价目未知）→ 花费字段如实标 price_configured=false，
 不给假数字。
+
+轮次 53（2026-09-29）：查漏 / 批量 / 问吧 三块按用户要求整体移除，所以这里的
+`ai_audit` 表、`audit_*` 方法与 `AUDIT_STATUSES` 一并删除；`ai_qa` 从 15 列瘦到 10 列
+（没有档位、追问、置信、引用、来源了），并且**不再按文档存**（见 QA_COLUMNS 上方注释）。
 """
 import json
 import sqlite3
@@ -38,50 +42,28 @@ CREATE TABLE IF NOT EXISTS ai_calls (
 );
 CREATE INDEX IF NOT EXISTS idx_ai_calls_day ON ai_calls(day);
 CREATE INDEX IF NOT EXISTS idx_ai_calls_ym ON ai_calls(ym);
--- 切片 2：问答缓存。key 里含文档 hash 与 prompt 版本，所以"文档改了/提示词改版"自动失效，
--- 不需要额外的失效逻辑；删表 = 只是重新计费，语料零影响（派生缓存，不变量 3）。
+-- 问答缓存：一次问 = 一段选中文字 → 一句解释。key 里只有选区 + 模型 + 提示词版本，
+-- 所以"提示词改版"自动失效，不需要额外的失效逻辑；删表 = 只是重新计费，语料零影响。
+-- path **故意不在键里**：答案不依赖文档（服务端根本不读正文），同一个词换一篇再问
+-- 不该再花一次钱 —— 这是轮次 53 用户嫌"问两个字要 30 秒"之后定下来的口径。
 CREATE TABLE IF NOT EXISTS ai_qa (
     key TEXT PRIMARY KEY,
     ts REAL NOT NULL,
-    path TEXT NOT NULL,
     selection TEXT NOT NULL,
-    mode TEXT NOT NULL,
     model TEXT,
-    prompt_ver INTEGER NOT NULL DEFAULT 1,
+    prompt_ver INTEGER NOT NULL DEFAULT 2,
     ok INTEGER NOT NULL DEFAULT 1,
     answer TEXT,
-    confidence TEXT,
-    terms TEXT,
-    sources TEXT,
     usage TEXT,
     sent_chars INTEGER NOT NULL DEFAULT 0,
     error TEXT
 );
-CREATE INDEX IF NOT EXISTS idx_ai_qa_path ON ai_qa(path);
--- 切片 3：单篇查漏补缺的建议与处置状态。主键是 (path, id)，id 由"判据种类 + 证据"哈希而来，
--- 所以同一篇文档重跑不会堆重复条目，而用户点过的「采纳 / 忽略」能跨次运行对上号。
-CREATE TABLE IF NOT EXISTS ai_audit (
-    path TEXT NOT NULL,
-    id TEXT NOT NULL,
-    kind TEXT NOT NULL,
-    title TEXT,
-    evidence TEXT,
-    suggestion TEXT,
-    severity TEXT,
-    needs_ai INTEGER NOT NULL DEFAULT 0,
-    ai_terms TEXT,
-    ai_note TEXT,
-    status TEXT NOT NULL DEFAULT 'pending',
-    ts REAL NOT NULL,
-    PRIMARY KEY(path, id)
-);
-CREATE INDEX IF NOT EXISTS idx_ai_audit_path ON ai_audit(path);
+CREATE INDEX IF NOT EXISTS idx_ai_qa_ts ON ai_qa(ts);
 """
 
-KINDS = {"test", "ask", "select", "audit"}
-# 切片 3：一条建议的处置状态。pending = 还没看；adopted = 用户点了「记进批注」；
-# dismissed = 用户判它不成立（重跑不会被冲掉，见 audit_upsert 的 ON CONFLICT）。
-AUDIT_STATUSES = {"pending", "adopted", "dismissed"}
+QA_COLUMNS = {"key", "ts", "selection", "model", "prompt_ver", "ok",
+              "answer", "usage", "sent_chars", "error"}
+KINDS = {"test", "select"}   # 轮次 53：ask（问吧）与 audit（查漏）两条链路已整体移除
 
 
 class AiUsageStore:
@@ -97,6 +79,13 @@ class AiUsageStore:
         # "连接是否只指向派生缓存"，抽成 self.path 它就读不出来了（第一版就是这么被误报的）。
         con = sqlite3.connect(self.indexes / "ai.db", timeout=SQLITE_BUSY_TIMEOUT_S)
         con.executescript(DDL)  # DDL 含多条语句，须用 executescript
+        # CREATE TABLE IF NOT EXISTS 不会改动**已存在**的表：轮次 53 之前的 ai_qa 还带着
+        # path/mode 这类 NOT NULL 列，新的 INSERT 会直接失败。问答缓存是派生缓存，
+        # 所以这里整表重建，而不是为了一份旧缓存写迁移。
+        cols = {r[1] for r in con.execute("PRAGMA table_info(ai_qa)")}
+        if cols != QA_COLUMNS:
+            con.execute("DROP TABLE IF EXISTS ai_qa")
+            con.executescript(DDL)
         return con
 
     def record(self, kind: str, *, model: str = "", ok: bool = True, error: str = "",
@@ -151,108 +140,33 @@ class AiUsageStore:
         return [{"ts": r[0], "kind": r[1], "model": r[2], "ok": bool(r[3]),
                  "error": r[4], "total_tokens": r[5], "latency_ms": r[6]} for r in rows]
 
-    # ---- 切片 3：单篇查漏补缺的建议与处置状态 ------------------------------------
-    def audit_upsert(self, path: str, proposals: list) -> None:
-        """写入/刷新建议，**保留用户已给的处置状态**（adopted/dismissed 不被重跑冲掉）。"""
-        now = time.time()
-        with closing(self._con()) as con, con:
-            for p in proposals:
-                con.execute(
-                    "INSERT INTO ai_audit(path,id,kind,title,evidence,suggestion,severity,"
-                    "needs_ai,ai_terms,ai_note,status,ts) VALUES(?,?,?,?,?,?,?,?,?,?,?,?) "
-                    "ON CONFLICT(path,id) DO UPDATE SET title=excluded.title,"
-                    "evidence=excluded.evidence, suggestion=excluded.suggestion,"
-                    "severity=excluded.severity, needs_ai=excluded.needs_ai,"
-                    "ai_terms=excluded.ai_terms, ai_note=excluded.ai_note, ts=excluded.ts",
-                    (path, p["id"], p["kind"], p["title"], p["evidence"], p["suggestion"],
-                     p["severity"], 1 if p.get("needs_ai") else 0,
-                     json.dumps(p.get("ai_terms") or [], ensure_ascii=False),
-                     p.get("ai_note", "")[:600], "pending", now))
-
-    def audit_prune(self, path: str, keep_ids: list) -> int:
-        """删掉本篇已经不成立的建议（改了正文重扫，旧条目不该继续挂在面板上）。"""
-        with closing(self._con()) as con, con:
-            cur = con.execute(
-                "DELETE FROM ai_audit WHERE path=? AND id NOT IN (%s)"
-                % ",".join("?" * max(1, len(keep_ids))),
-                (path, *keep_ids)) if keep_ids else con.execute(
-                "DELETE FROM ai_audit WHERE path=?", (path,))
-            return cur.rowcount
-
-    def audit_list(self, path: str) -> list:
-        with closing(self._con()) as con:
-            rows = con.execute(
-                "SELECT id,kind,title,evidence,suggestion,severity,needs_ai,ai_terms,ai_note,"
-                "status,ts FROM ai_audit WHERE path=? ORDER BY "
-                "CASE status WHEN 'pending' THEN 0 ELSE 1 END, "
-                "CASE severity WHEN 'high' THEN 0 WHEN 'medium' THEN 1 ELSE 2 END, ts DESC",
-                (path,)).fetchall()
-        return [{"id": r[0], "kind": r[1], "title": r[2], "evidence": r[3],
-                 "suggestion": r[4], "severity": r[5], "needs_ai": bool(r[6]),
-                 "ai_terms": json.loads(r[7] or "[]"), "ai_note": r[8],
-                 "status": r[9], "ts": r[10]} for r in rows]
-
-    def audit_set_status(self, path: str, pid: str, status: str) -> bool:
-        if status not in AUDIT_STATUSES:
-            raise ValueError(f"invalid status: {status}")
-        with closing(self._con()) as con, con:
-            cur = con.execute("UPDATE ai_audit SET status=? WHERE path=? AND id=?",
-                              (status, path, pid))
-            return cur.rowcount > 0
-
-    def audit_counts(self) -> dict:
-        with closing(self._con()) as con:
-            rows = con.execute(
-                "SELECT path, status, COUNT(*) FROM ai_audit GROUP BY path, status").fetchall()
-        out = {}
-        for path, status, n in rows:
-            d = out.setdefault(path, {"pending": 0, "adopted": 0, "dismissed": 0})
-            d[status] = d.get(status, 0) + n
-        return out
-
     @staticmethod
     def estimate_cost(tokens_in: int, tokens_out: int,
                       price_in_per_1k: float, price_out_per_1k: float) -> float:
         return round(tokens_in / 1000.0 * price_in_per_1k
                      + tokens_out / 1000.0 * price_out_per_1k, 6)
 
-    # ---- 切片 2：问答缓存（同一库文件，删表只是重新计费，语料零影响） -------------
+    # ---- 问答缓存（同一库文件，删表只是重新计费，语料零影响） -----------------------
     def qa_get(self, key: str):
         with closing(self._con()) as con:
             row = con.execute(
-                "SELECT ts,ok,answer,confidence,terms,sources,usage,sent_chars,error,mode,"
-                "selection FROM ai_qa WHERE key=?", (key,)).fetchone()
+                "SELECT ts,ok,answer,usage,model,selection,sent_chars,error "
+                "FROM ai_qa WHERE key=?", (key,)).fetchone()
         if not row:
             return None
-        return {"ts": row[0], "ok": bool(row[1]), "answer": row[2], "confidence": row[3],
-                "terms": json.loads(row[4] or "[]"), "sources": json.loads(row[5] or "[]"),
-                "usage": json.loads(row[6] or "{}"), "sent_chars": row[7], "error": row[8],
-                "mode": row[9], "selection": row[10], "cached": True}
+        return {"ts": row[0], "ok": bool(row[1]), "answer": row[2],
+                "usage": json.loads(row[3] or "{}"), "model": row[4] or "",
+                "selection": row[5], "sent_chars": row[6], "error": row[7], "cached": True}
 
-    def qa_put(self, key: str, *, path: str, selection: str, mode: str, model: str,
-               prompt_ver: int, ok: bool, answer: str = "", confidence: str = "",
-               terms=None, sources=None, usage=None, sent_chars: int = 0,
-               error: str = "") -> None:
+    def qa_put(self, key: str, *, selection: str, model: str, prompt_ver: int, ok: bool,
+               answer: str = "", usage=None, sent_chars: int = 0, error: str = "") -> None:
         with closing(self._con()) as con, con:
             con.execute(
-                "INSERT OR REPLACE INTO ai_qa(key,ts,path,selection,mode,model,prompt_ver,ok,"
-                "answer,confidence,terms,sources,usage,sent_chars,error) "
-                "VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
-                (key, time.time(), path, selection[:400], mode, model, int(prompt_ver),
-                 1 if ok else 0, answer, confidence,
-                 json.dumps(terms or [], ensure_ascii=False),
-                 json.dumps(sources or [], ensure_ascii=False),
-                 json.dumps(usage or {}, ensure_ascii=False), int(sent_chars), error[:200]))
-
-    def qa_list_for_doc(self, path: str, n: int = 50) -> list:
-        """侧栏「本篇问过的」：只回成功的条目（失败的没有回看价值，也不该占位）。"""
-        with closing(self._con()) as con:
-            rows = con.execute(
-                "SELECT ts,selection,mode,answer,confidence,sent_chars FROM ai_qa "
-                "WHERE path=? AND ok=1 ORDER BY ts DESC LIMIT ?",
-                (path, max(1, min(int(n), 200)))).fetchall()
-        return [{"ts": r[0], "selection": r[1], "mode": r[2], "answer": r[3],
-                 "confidence": r[4], "sent_chars": r[5]} for r in rows]
+                "INSERT OR REPLACE INTO ai_qa(key,ts,selection,model,prompt_ver,ok,answer,"
+                "usage,sent_chars,error) VALUES(?,?,?,?,?,?,?,?,?,?)",
+                (key, time.time(), selection[:400], model, int(prompt_ver),
+                 1 if ok else 0, answer, json.dumps(usage or {}, ensure_ascii=False),
+                 int(sent_chars), error[:200]))
 
     def cost_summary(self, month: str, price_in: float, price_out: float) -> dict:
         with closing(self._con()) as con:
