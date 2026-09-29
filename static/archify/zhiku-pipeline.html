@@ -32,6 +32,40 @@
       } catch (_) { }
     })();
   </script>
+  <script>
+    /* [本地定制 · 知库 landing] 问题3+7（2026-09-25）：这台机器开了系统级"减少动效"，
+       archify 有 8 处 matchMedia('(prefers-reduced-motion: reduce)') 判定，一旦命中就
+       把动效按钮 disabled（title 变成"已根据减少动态效果偏好暂停动效"）、播放故事永久灰、
+       动效 CSS 全停 —— 用户看到的"静态按钮一直是灰色、点了没反应"就是这么来的。
+       用户明确选择"本交付件忽略系统偏好"，所以在 archify 的脚本跑起来之前先包一层
+       matchMedia：凡是问 prefers-reduced-motion 的，转成一个恒不匹配的合法查询再返回
+       （其余查询原样转发）。上面那两条 @media 块用同样口径废掉。 */
+    (function () {
+      if (!window.matchMedia) return;
+      var real = window.matchMedia.bind(window);
+      window.matchMedia = function (q) {
+        if (String(q).indexOf('prefers-reduced-motion') === -1) return real(q);
+        var dead = real('(min-width: 100000px)');
+        try {
+          Object.defineProperty(dead, 'matches', {
+            get: function () { return false; }, configurable: true
+          });
+        } catch (_) { }
+        return dead;
+      };
+    })();
+  </script>
+  <script>
+    /* [本地定制 · 知库 landing] 标记"本页正被别的页面用 iframe 嵌着"（知库首页右栏的取景框）。
+       判据用 window.top !== window.self，而不是 ?embed=1：取景框走的是 ?present=1
+       （?embed=1 会把工具组/引导视图/导航胶囊全藏掉，那是裸画布，不是我们要的样子）。
+       首帧前就打标记，所以不会闪。 */
+    (function () {
+      try {
+        if (window.top !== window.self) document.documentElement.setAttribute('data-kb-framed', 'true');
+      } catch (_) { }
+    })();
+  </script>
   <!-- Async font load: a blackholed network must not block first paint.
        The body font stack falls back to system monospace until it lands. -->
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -607,21 +641,595 @@
       height: calc(100dvh - 2rem);
     }
 
-    html[data-present="true"]:not([data-embed="true"]) .header {
+    /* [本地定制 · 知库 landing] 两态统一版式（2026-09-25 第三版）。
+       archify 只在 present 态用"视口钉死 + 满宽"，阅读态走另一套（body padding 6/32、
+       .container max-width 由自适应运行时算、面板按 viewBox 比例定高）。我把 chrome 收进
+       一条横排 dock 后，两态的版心一个 1968 一个 1440、左边距一个 16 一个 280，
+       底行整排按钮横向位置跟着跳（用户原话："退出演示后按钮被挤到上面去了"）。
+       做法：把 archify 那四条 present 版式规则原样搬到"非嵌入态"，两态共用一套；
+       max-width 用 !important 压住自适应运行时写在 html 上的内联自定义属性（13249 行），
+       顺带 body{overflow:hidden} 让溢出恒为 0 —— 自适应宽度极限环（1440×900 实测
+       两态来回跳 1344↔1295、1280×720 四态循环 = 上一轮的"狂闪"）从此没有燃料。
+       副本见 docs/archify/landing-chrome-overrides.css。 */
+    html:not([data-embed="true"]) body {
+      height: 100dvh;
+      min-height: 0;
+      padding: 1rem;
+      overflow: hidden;
+    }
+
+    html:not([data-embed="true"]) .container {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      width: 100%;
+      max-width: none !important;
+      height: calc(100dvh - 2rem);
+      position: relative;
+    }
+
+    html:not([data-embed="true"]) .diagram-container {
+      --archify-nav-reserve: 0px !important;
+      display: flex;
+      flex: 1 1 auto;
+      align-items: center;
+      justify-content: center;
+      min-height: 0;
+      padding: 0.75rem;
+      padding-bottom: calc(0.75rem + var(--archify-nav-reserve));
+    }
+
+    html:not([data-embed="true"]) .diagram-container>svg {
+      flex: 1 1 auto;
+      height: 100%;
+      min-height: 0;
+      width: 100%;
+      min-width: 0;
+    }
+
+    /* [本地定制 · 知库 landing] 被首页取景框嵌入时，把外面那圈灰底和 margin 去掉、
+       让画布尽量撑大（用户 2026-09-25 圈图："外面的灰色背景去掉，就是 margin 也去掉，
+       尽量撑大"）。只作用于 data-kb-framed（见 head 里那段判据），所以单独打开这个
+       html 时仍是"白面板压在浅灰底上"的原始样子，两边互不影响。
+       面板描边与圆角一并去掉，否则撑到边之后框里还套一圈线。 */
+    html[data-kb-framed="true"]:not([data-embed="true"]) body {
+      padding: 0.5rem;
+      background: var(--panel);
+    }
+
+    html[data-kb-framed="true"]:not([data-embed="true"]) .container {
+      height: calc(100dvh - 1rem);
+      /* 用户 09-25 圈整块区域："这个区域你给加个圆角边框" —— 灰底和 margin 已去掉，
+         但整片方角贴在取景框上不好看，所以把描边与圆角从面板移到最外层容器，
+         连底行一起包成一张圆角卡片。 */
+      border: 1px solid var(--panel-border);
+      border-radius: 0.75rem;
+      overflow: hidden;
+    }
+
+    html[data-kb-framed="true"]:not([data-embed="true"]) .diagram-container {
+      border: 0;
+      border-radius: 0;
+    }
+
+    /* 底行按钮别贴着卡片边，留半格；右侧仍按 --kb-nav-w 给导航胶囊留白 */
+    html[data-kb-framed="true"]:not([data-embed="true"]) .kb-dock {
+      padding-left: 0.5rem;
+    }
+
+    /* [本地定制 · 知库 landing] 任务3+4：右上四枚按钮（浅色/经典/静态/导出）与章节条
+       合并成面板下方的同一行 —— 两者已被包进 .kb-dock（章节条留在 .container 原位、
+       工具组从 body 搬进来）。 */
+    html:not([data-embed="true"]) .kb-dock {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      margin-top: 0.75rem;
+    }
+
+    html:not([data-embed="true"]) .kb-dock>.toolbar {
+      /* 必须是 relative 而不是 static：archify 的两个下拉菜单是 .toolbar 的绝对定位
+         后代（.toolbar .preset-menu / .export-menu），工具组原本 position:fixed 自带
+         定位上下文；我把它改成 static 后菜单失去锚点，会去贴 .container ——
+         实测点「经典」菜单落在 left=-110（跑出屏幕左边），并把文档撑到 1164 > 视口 920，
+         浏览器自动滚了 244px = 用户说的"把整个界面顶出去了"。 */
+      position: relative;
+      /* archify 的 .toolbar 还带着 top:1rem / right:1rem —— 那两条只在 fixed 下有意义，
+         换成 relative 后它们变成"往左下各偏移 16px"（实测工具组从 16/856 跑到 0/872，
+         左边贴到屏幕外），必须一起清成 auto。 */
+      top: auto;
+      right: auto;
+      gap: 0.5rem;
+      order: -1;
+      flex: none;
+    }
+
+    /* [本地定制 · 知库 landing] 问题2+5：菜单改成**朝上开**、限高在视口内滚动。
+       往上开不会增加文档滚动高度（绝对定位只向右/向下溢出才算溢出），所以"顶出去"
+       这一条从根上没了。锚点是各自按钮外面的 .preset-wrap / .export-wrap（不是
+       .toolbar），所以「风格」菜单要改成左对齐（它那颗按钮在工具组最左，右对齐会把
+       296px 宽的菜单甩到屏幕外，实测 left=-126），「导出」菜单在右端、保持右对齐。
+       transform-origin 跟着翻，否则展开动画朝反方向弹。 */
+    html:not([data-embed="true"]) .toolbar .preset-menu,
+    html:not([data-embed="true"]) .toolbar .export-menu {
+      top: auto;
+      bottom: calc(100% + 0.375rem);
+      max-height: calc(100dvh - 8rem);
+      overflow-y: auto;
+    }
+
+    html:not([data-embed="true"]) .toolbar .preset-menu {
+      left: 0;
+      right: auto;
+    }
+
+    html:not([data-embed="true"]) .toolbar .export-menu {
+      right: 0;
+    }
+
+    html:not([data-embed="true"]) .toolbar .preset-menu.open {
+      transform-origin: bottom left;
+    }
+
+    html:not([data-embed="true"]) .toolbar .export-menu.open {
+      transform-origin: bottom right;
+    }
+
+    /* [本地定制 · 知库 landing] 任务6：操作条（路径/地图/透镜/查找/缩放）挪到页面
+       右下角，与底部那一行同带；按钮度量同步成 .toolbar button 那一套，
+       否则并排会矮一截。面板给它预留的 --archify-nav-reserve 已在上面统一版式里清零。
+       导航条必须留在 .diagram-container 内：archify 有 4 处
+       container.querySelector('.diagram-nav')（13286/14131/15744/16472），搬出去
+       Archify.view 直接抛 TypeError 并反复重试 = 页面狂闪。所以只能靠定位搬视觉。 */
+    html:not([data-embed="true"]) .diagram-nav {
+      position: fixed;
+      right: 1rem;
+      /* 用户圈图："位置不对，跑到上面大概十来个px了" —— 写死 bottom:1rem 时胶囊中心
+         比底行那一排按钮的中心高了约 10px。改成由末尾脚本算出的 --kb-nav-bottom，
+         让胶囊与底行按钮**垂直同轴**（dock 换行、窗口缩放都自动跟）。 */
+      bottom: var(--kb-nav-bottom, 1rem);
+      left: auto;
+      z-index: 120;
+      padding: 0.15rem 0.25rem;
+      border-radius: 0.75rem;
+    }
+
+    html:not([data-embed="true"]) .diagram-nav button {
+      min-width: 2.75rem;
+      height: auto;
+      min-height: 2.5rem;
+      padding: 0.5rem 0.625rem;
+      border-radius: 0.625rem;
+      font-size: 0.75rem;
+      font-weight: 500;
+      color: var(--toolbar-text);
+    }
+
+    /* [本地定制 · 知库 landing] 任务6 的收尾：胶囊是 fixed 的、脱离文档流，
+       不腾地方就会直接压在章节条上（实测 2000px 视口下胶囊占 1625..1984，
+       把「03 公开面」整张卡盖死）。胶囊宽度要看按钮渲染完才知道，
+       所以由文件末尾那段脚本量出来写进 --kb-nav-w，这里等宽留白 + 1rem 间隙。 */
+    html:not([data-embed="true"]) .kb-dock {
+      padding-right: calc(var(--kb-nav-w, 0px) + 1rem);
+    }
+
+    html:not([data-embed="true"]) .kb-dock>.guided-views {
+      /* !important 是被迫的：archify 自带的
+         html[data-present="true"]:not([data-embed="true"]) .guided-views{flex:none}
+         排在更后面且特异性相同（0,3,1），不压住它这条就不生效，
+         章节条会变成不可收缩的 773px 把底行撑出视口。 */
+      flex: 1 1 auto !important;
+      min-width: 0;
+      margin: 0;
+      /* [本地定制 · 知库 landing] 任务5：去掉章节条的外边框（含蓝图预设的投影），
+         只留四张卡片各自的描边。 */
+      border: 0;
+      box-shadow: none;
+    }
+
+    /* [本地定制 · 知库 landing] 章节卡宽度改成"按内容自适应、可缩到最小宽度"。
+       archify 原样是 li{flex:1 1 0}：三章在剩余空间里等分撑满（实测各 311px，
+       内容其实只要 200px 出头），于是把左边的播放按钮和工具组一起挤开。
+       改成 flex:0 1 auto 后卡片只占内容宽，空间不够时才收缩到 9.5rem 最小宽，
+       再不够就靠 .guided-view-chapters 自己的 overflow-x 滚（用户 2026-09-25 定的口径）。 */
+    html:not([data-embed="true"]) .guided-view-chapters li {
+      flex: 0 1 auto;
+    }
+
+    /* [本地定制 · 知库 landing] 问题6 / Q4 方案乙：引导视图整块改成"底行一颗入口 + 弹窗"。
+       底行原来要塞下 [标题][工具组][引导视图 x/3 + 当前章节标题/说明 + 01/02/03 + 三颗故事按钮]，
+       窄一点就换行、章节卡还会把别的挤开。现在：
+         · 底行只留 .kb-guide-btn（引导视图）；
+         · .guided-views 改成 fixed 弹窗，贴着入口按钮往下开（--kb-guide-bottom 由末尾脚本量）；
+         · 弹窗第一行 = 引导视图 x/3 + 主标题 + 副标题，**一行显示**，主次靠字号；
+         · x/3 右边那条进度横线（.guided-view-progress）删掉；
+         · 第二行 = 01/02/03 圆圈数字；
+         · 播放故事 / 复制此刻 / 显示全部 三颗只在选中某章之后出现（archify 会写
+           data-active-view，没选中时该属性不存在）；
+         · 点弹窗外空白 / 按 Esc 一次性关掉（见末尾那段 JS）。
+       ⚠ 弹窗期间 .guided-views 变成 fixed、脱离底行的流，所以 dock 改成 flex-start
+       左对齐，不再 space-between（否则入口按钮会被推到导航胶囊那条留白里）。 */
+    html:not([data-embed="true"]) .kb-dock {
+      justify-content: flex-start;
+    }
+
+    html:not([data-embed="true"]) .kb-guide-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      min-height: 2.5rem;
+      padding: 0.5rem 0.875rem;
+      border: 1px solid var(--toolbar-border);
+      border-radius: 0.625rem;
+      background: var(--toolbar-bg);
+      color: var(--toolbar-text);
+      font: inherit;
+      font-size: 0.75rem;
+      font-weight: 500;
+      cursor: pointer;
+    }
+
+    html:not([data-embed="true"]) .kb-guide-btn[aria-expanded="true"] {
+      border-color: var(--frontend-stroke);
+      color: var(--frontend-stroke);
+    }
+
+    html:not([data-embed="true"]) .kb-guide-count {
+      color: var(--text-muted);
+      font-size: 0.68rem;
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* 静置：整个引导视图不占版面（archify 自己会在没有视图时加 hidden，这条兜底） */
+    html:not([data-embed="true"]) .guided-views {
+      display: none;
+    }
+
+    /* 那条进度横线：用户原话"这条线留着干锤子？" */
+    html:not([data-embed="true"]) .guided-view-progress {
+      display: none;
+    }
+
+    html:not([data-embed="true"])[data-kb-guide="open"] .guided-views {
+      display: block !important;
+      position: fixed;
+      left: 1rem;
+      /* 问题6 追加（用户圈图"！！宽度太宽"）：原来 left+right 双向拉满整屏，
+         里面只有两三行字、右边一大片空白。改成按内容收宽，上限 46rem，
+         并且不超过"视口 - 左右留白 - 导航胶囊留白"。 */
+      width: max-content;
+      max-width: min(46rem, calc(100vw - 2rem - var(--kb-nav-w, 0px)));
+      /* 入口在底行 → 弹窗往上开（实测往下开时 top=910px，整块掉到视口外） */
+      top: auto;
+      bottom: var(--kb-guide-top, 5rem);
+      z-index: 130;
+      margin: 0;
+      padding: 1rem;
+      border: 1px solid var(--panel-border);
+      border-radius: 1rem;
+      background: var(--panel);
+      box-shadow: 0 14px 34px rgba(15, 23, 42, 0.14);
+    }
+
+    /* 第一行：meta | 主标题 | 副标题 同排；轨迹与节点字幕另占整行（第二层） */
+    html:not([data-embed="true"])[data-kb-guide="open"] .guided-view-copy {
+      display: grid;
+      grid-template-columns: auto auto minmax(0, 1fr);
+      align-items: baseline;
+      gap: 0.35rem 0.75rem;
+    }
+
+    html:not([data-embed="true"]) .guided-view-meta {
+      display: inline-flex;
+      align-items: baseline;
+      gap: 0.35rem;
+    }
+
+    html:not([data-embed="true"]) #guided-view-label {
+      font-size: 0.875rem;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    html:not([data-embed="true"]) #guided-view-note {
+      color: var(--text-muted);
+      font-size: 0.75rem;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    html:not([data-embed="true"]) .guided-view-trail,
+    html:not([data-embed="true"]) .guided-story-caption {
+      grid-column: 1 / -1;
+    }
+
+    /* 第二行：01/02/03 —— 2026-09-25 用户看图后改口径，三个切章按钮已从弹窗搬到 .kb-dock
+       常驻（见 DOM 里那条注释），所以这里不再给弹窗内的它加间距；改成给 dock 里它让出
+       一条竖分隔，视觉上与「引导视图」入口成组。 */
+    /* 01/02/03 在底行里就是一个普通 flex 组，别再画分隔框：
+       之前加的 border-left 在 dock 换行时只剩半截，用户原话"只显示一半算啥"。 */
+    html:not([data-embed="true"]) .kb-dock>.guided-view-index {
+      min-width: 0;
+    }
+
+    /* 问题8 附带：导航胶囊里那两枚 mask 图标（查找 / 指南）只有 0.72rem≈11.5px，
+       用户圈图"这俩 svg 图标太小"。整组一起抬到 1rem，免得只有两枚变大不协调。 */
+    html:not([data-embed="true"]) .diagram-nav-icon {
+      width: 1rem;
+      height: 1rem;
+    }
+
+    /* 上一/下一枚 ← → 在弹窗里会各占一行变成两条游离的箭头（截图实测），
+       弹窗里不需要它们：键盘 [ ] 仍然能切引导视图。 */
+    html:not([data-embed="true"])[data-kb-guide="open"] .guided-views>#guided-view-prev,
+    html:not([data-embed="true"])[data-kb-guide="open"] .guided-views>#guided-view-next {
+      display: none;
+    }
+
+    /* 三颗故事按钮：没选中章节前不出现。
+       ⚠ 选择器必须带上中间的 .guided-views：archify 有条
+       .guided-views[data-active-view="all"] .guided-view-actions{display:block}
+       特异性 (0,3,0)，而加载时 data-active-view 默认就是 "all"，
+       我原来只写 html:not(...) .guided-view-actions (0,2,1) 会被它顶掉。 */
+    html:not([data-embed="true"]) .guided-views .guided-view-actions {
+      display: none;
+    }
+
+    html:not([data-embed="true"])[data-kb-chosen="true"] .guided-views .guided-view-actions {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-top: 0.75rem;
+    }
+
+    /* [本地定制 · 知库 landing] 问题8：正文里所有"点按钮弹出来的面板 + 菜单"字号放大。
+       ⚠ 别改回 zoom：这些面板的位置是 archify 的 JS 按 CSS 像素写的（护照 11241 行
+       chip.style.top=...、雷达 applyPlacement），zoom 会把元素自身尺寸和 JS 写的偏移
+       按不同比例放大，实测就是用户圈图的三条：面板初始化后自己往下跳、边框只露一半、
+       光标显示能拖其实拖不动。rem 只跟根字号挂钩，所以只能逐条覆盖 font-size。
+       下面这份清单由脚本从 <style> 里扫出来（全仓 92 处 <0.75rem + 面板内 0.75~1.0rem
+       一起分档），排除嵌入态、伪元素与预设徽章，改 archify 字号时重跑生成脚本即可。 */
+    html:not([data-embed="true"]) :is(
+      .diagram-guide kbd,
+      .diagram-guide-action small,
+      .diagram-guide-eyebrow,
+      .diagram-guide-feedback,
+      .diagram-guide-index,
+      .diagram-guide-shortcuts,
+      .diagram-nav-detail,
+      .guided-view-chapter-count,
+      .guided-view-chapter-delta,
+      .guided-view-chapter-index,
+      .guided-view-handoff,
+      .node-finder[data-context^="route-"] .node-finder-result em,
+      .overview-map-copy small,
+      .overview-map-expand,
+      .overview-map-feedback,
+      .overview-map-hint,
+      .preset-menu-heading span:last-child,
+      .relationship-lens-direction,
+      .relationship-lens-eyebrow,
+      .relationship-lens-group-title,
+      .route-probe-eyebrow,
+      .route-probe-status,
+      .semantic-lens-eyebrow,
+      .semantic-passport-evidence-status,
+      .semantic-passport-meta span, .semantic-passport-meta code,
+      .semantic-passport-reach-label,
+      .semantic-passport-repository,
+      .semantic-passport-source code,
+      .semantic-passport-source small,
+      .share-chapter-copy small,
+      .share-chapter-count,
+      .share-chapter-route,
+      .share-chapter-state) {
+      font-size: 0.7rem;
+    }
+
+    html:not([data-embed="true"]) :is(
+      .diagram-guide-stats,
+      .diagram-nav button,
+      .diagram-nav-percent,
+      .export-item-copy small,
+      .export-menu-header kbd,
+      .export-menu-header span,
+      .export-menu-heading,
+      .guided-story-caption small,
+      .guided-story-caption-index,
+      .guided-view-beat-link,
+      .guided-view-meta,
+      .guided-view-trail .guided-view-stop,
+      .node-finder kbd,
+      .node-finder-result small,
+      .node-finder-status,
+      .preset-menu-heading,
+      .relationship-lens-row small,
+      .relationship-lens-summary,
+      .route-journey-controls button,
+      .route-probe-node, .route-probe button.route-probe-node,
+      .route-probe-placeholder,
+      .semantic-lens-actions button,
+      .semantic-lens-instruction,
+      .semantic-lens-kind em,
+      .semantic-lens-status,
+      .semantic-passport-reach-status,
+      .semantic-passport-source strong,
+      .share-chapter-route,
+      .toolbar .export-menu .hint) {
+      font-size: 0.78rem;
+    }
+
+    html:not([data-embed="true"]) :is(
+      .focus-chip button,
+      .guided-view-all,
+      .guided-view-chapter-title,
+      .guided-view-copy small,
+      .guided-view-play,
+      .node-finder-result em,
+      .overview-map-copy strong,
+      .preset-option-copy small,
+      .relationship-lens-empty,
+      .semantic-lens-kind strong,
+      .semantic-passport-detail,
+      .semantic-passport-reach-actions strong,
+      /* Route Probe answers a reader question over the compiled semantic graph: choose two stable nodes and reveal the shortest authored directed route. The receipt and signal live entirely in the viewer layer. */ .route-probe,
+      /* Semantic Radar is a deliberately simplified, viewer-only overview. It uses authored node bounds and the live camera viewport rather than cloning the canonical SVG, so IDs, filters, animation, and export state stay singular and deterministic. */ .overview-map) {
+      font-size: 0.85rem;
+    }
+
+    html:not([data-embed="true"]) :is(
+      .diagram-guide-action strong,
+      .focus-chip,
+      .guided-story-caption strong,
+      .node-finder-empty,
+      .node-finder-head strong,
+      .relationship-lens-row strong,
+      .route-probe-arrow,
+      .share-chapter-copy strong) {
+      font-size: 0.9rem;
+    }
+
+    html:not([data-embed="true"]) :is(
+      .export-item-copy strong,
+      .export-menu-header strong,
+      .guided-view-copy strong,
+      .guided-views button,
+      .node-finder-input,
+      .node-finder-result strong,
+      .overview-map[data-compact="true"] .overview-map-close,
+      .preset-option-copy strong,
+      .route-probe-title) {
+      font-size: 0.95rem;
+    }
+
+    html:not([data-embed="true"]) :is(
+      .diagram-guide-title,
+      .node-finder-search>span,
+      .relationship-lens-title,
+      .semantic-lens-title) {
+      font-size: 1rem;
+    }
+
+    html:not([data-embed="true"]) :is(
+      .overview-map-close) {
+      font-size: 1.08rem;
+    }
+
+    html:not([data-embed="true"]) :is(
+      .diagram-guide-close,
+      .node-finder-close,
+      .relationship-lens-actions #btn-focus-clear,
+      .semantic-lens-close) {
+      font-size: 1.15rem;
+    }
+
+    html:not([data-embed="true"]) .overview-map {
+      top: auto !important;
+      bottom: calc(var(--kb-dock-h, 53px) + 1.5rem) !important;
+    }
+    html:not([data-embed="true"]) .overview-map {
+      top: auto !important;
+      bottom: calc(var(--kb-dock-h, 53px) + 1.5rem) !important;
+    }
+
+    /* [本地定制 · 知库 landing] 标题 +「结论」按钮挪到正文大卡片的**左上角**
+       （2026-09-25 用户改口径，此前是"底行最左"）。DOM 上 .header 已搬进
+       .diagram-container，这里用绝对定位贴在面板左上；面板是 position:relative，
+       且它的 padding 就是 0.75rem，所以 top/left 与面板内边距对齐，不压边框。
+       ⚠ .header 可以搬进面板：archify 取它是 shell.querySelector('.header')
+       （shell = .container，13113 行），后代查询，换层不影响。 */
+    html:not([data-embed="true"]) .diagram-container>.header {
+      position: absolute;
+      top: 0.75rem;
+      left: 1rem;
+      z-index: 5;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
       flex: none;
       min-width: 0;
       margin: 0;
-      padding-right: 23rem;
+      padding: 0;
     }
 
-    html[data-present="true"]:not([data-embed="true"]) .header-row {
-      margin-bottom: 0.25rem;
+    html:not([data-embed="true"]) .diagram-container>.header h1 {
+      font-size: 0.8rem;
+      white-space: nowrap;
     }
 
-    html[data-present="true"]:not([data-embed="true"]) .subtitle {
+    html:not([data-embed="true"]) .subtitle {
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
+    }
+
+    /* [本地定制 · 知库 landing] 方案②（2026-09-25）：三张结论卡片（唯一事实源 / 纯派生
+       缓存 / 公开边界）不再常驻版面 —— 改成标题右侧一枚「结论」按钮，悬浮或键盘聚焦时
+       以浮层展开，指针移进浮层仍然保持展开（.kb-cards-pop:hover 那条）。
+       用 :has() 而非兄弟选择器：触发点是面板左上角的 .kb-info-btn、浮层在 .container 之外。
+       ⚠ 浮层必须搬出 .container，并且**同时带 cards 类**：archify 的自适应阅读宽度会
+       outerHeight(cards)（13283 行），浮层一开一合就把高度喂给宽度算法 → 容器变窄 →
+       按钮跑位 → :hover 丢失 → 又变宽 → 循环 = 页面狂闪。而 archify 取 cards 用的是
+       shell.querySelector('.cards')（只查 .container 后代），搬到容器外它就取不到、
+       高度恒 0；知库首页的 harvestCards 用的是文档级 '.cards > *'，带上 cards 类才能
+       继续把三张卡搬进左栏。一次改动同时满足两边，且不用动 landing.html。
+       浮层底边让开"底行顶到视口底的距离"--kb-dock-gap，右侧让开 fixed 导航胶囊
+       --kb-nav-w 再加 4rem 余量。两个变量由末尾脚本实测写入。 */
+    html:not([data-embed="true"]) .kb-cards-pop {
+      display: none;
+    }
+
+    html:not([data-embed="true"]) .kb-info-btn {
+      display: inline-flex;
+      align-items: center;
+      min-height: 2rem;
+      padding: 0.25rem 0.625rem;
+      border: 1px solid var(--toolbar-border);
+      border-radius: 0.625rem;
+      background: var(--toolbar-bg);
+      color: var(--toolbar-text);
+      font: inherit;
+      font-size: 0.75rem;
+      font-weight: 500;
+      cursor: pointer;
+    }
+
+    html:not([data-embed="true"]) .kb-info-btn:hover,
+    html:not([data-embed="true"]) .kb-info-btn:focus-visible {
+      border-color: var(--frontend-stroke);
+      color: var(--frontend-stroke);
+    }
+
+    html:not([data-embed="true"]):has(.kb-info-btn:hover) .kb-cards-pop,
+    html:not([data-embed="true"]):has(.kb-info-btn:focus-visible) .kb-cards-pop,
+    html:not([data-embed="true"]) .kb-cards-pop:hover {
+      /* !important 是被迫的：浮层现在也带 cards 类，archify 自己的
+         html[data-present="true"]:not([data-embed="true"]) .cards{display:none}
+         特异性同为 (0,3,1) 且排在后面，不压住它演示态就永远展不开。 */
+      display: grid !important;
+      position: fixed;
+      left: 1rem;
+      /* 问题1（Q1 采纳）：贴着「结论」按钮**往下**展开，不再钉屏幕底部。
+         按钮位置由末尾脚本量进 --kb-info-bottom（= 按钮下沿 + 0.5rem 间隙），
+         因为标题在面板左上角、面板内边距会随模式/换行变，写死像素迟早错位。 */
+      top: var(--kb-info-bottom, 4.5rem);
+      bottom: auto;
+      right: calc(var(--kb-nav-w, 0px) + 4rem);
+      z-index: 130;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 1rem;
+      max-height: min(58vh, 26rem);
+      overflow: auto;
+      margin: 0;
+      padding: 1rem;
+      background: var(--panel);
+      border: 1px solid var(--panel-border);
+      border-radius: 1rem;
+      box-shadow: 0 14px 34px rgba(15, 23, 42, 0.14);
     }
 
     html[data-present="true"]:not([data-embed="true"]) .guided-views {
@@ -652,13 +1260,8 @@
     }
 
     html[data-present="true"]:not([data-embed="true"]) #btn-present {
-      /* [本地定制 · 知库 landing] 取景框本身就是舞台态，这颗开关无意义且危险：
-         点它 = setActive(false) → 摘掉 data-present → 退回阅读版式，而外层 iframe
-         按 present 版式定高，整块布局会崩。重新 deliver 会覆盖本注释，副本见
-         docs/archify/landing-chrome-overrides.css。零闪动：首帧就没有这颗按钮，
-         不需要父页注样式、也不需要 MutationObserver 兜底（两种都试过，都会把
-         "改一帧"的跳变请回来）。按 Escape 退出后本规则失效，按钮自己回来。 */
-      display: none;
+      border-color: var(--frontend-stroke);
+      color: var(--frontend-stroke);
     }
 
     /* The reader owns only the outer scale. Wide diagrams keep one authored
@@ -704,7 +1307,6 @@
       display: flex;
       align-items: center;
       gap: 1rem;
-      margin-bottom: 0.5rem;
     }
 
     .pulse-dot {
@@ -5201,7 +5803,7 @@
       }
     }
 
-    @media (prefers-reduced-motion: reduce) {
+    @media (prefers-reduced-motion: reduce) and (min-width: 100000px) { /* [本地定制] 原查询见 docs/archify/landing-chrome-overrides.css：这台机器开了"减少动效"，用户要求本交付件忽略它 */
       .guided-story-caption {
         animation: none !important;
       }
@@ -6724,7 +7326,7 @@
       }
     }
 
-    @media (prefers-reduced-motion: reduce) {
+    @media (prefers-reduced-motion: reduce) and (min-width: 100000px) { /* [本地定制] 原查询见 docs/archify/landing-chrome-overrides.css：这台机器开了"减少动效"，用户要求本交付件忽略它 */
       html[data-preset="signal-flow"] .diagram-container::before {
         animation: none !important;
       }
@@ -6822,158 +7424,26 @@
   <!-- Toolbar: theme, live visual style, trace motion, presentation stage, and export.
        Motion appears only for trace-enabled artifacts and has no shortcut;
        Keyboard: T toggles theme, S cycles style, F toggles the stage, E opens export. -->
-  <div class="toolbar" role="toolbar" aria-label="图表操作">
-    <button id="btn-theme" type="button" title="切换主题（T）" aria-label="切换颜色主题" aria-pressed="false">
-      <span id="theme-icon" class="toolbar-icon" aria-hidden="true"></span>
-      <span id="theme-label">深色</span>
-    </button>
-    <div class="preset-wrap">
-      <button id="btn-preset" type="button" title="选择视觉风格（S 循环切换）" aria-label="选择视觉风格" aria-haspopup="menu"
-        aria-expanded="false" aria-controls="preset-menu" aria-keyshortcuts="S">
-        <span class="preset-control-mark" aria-hidden="true"></span>
-        <span id="preset-label">风格</span>
-        <span class="toolbar-icon toolbar-chevron" aria-hidden="true"></span>
-      </button>
-      <div class="preset-menu" id="preset-menu" role="menu" aria-label="视觉风格">
-        <div class="preset-menu-heading" role="presentation"><span>视觉表达</span><span>S 循环切换</span></div>
-        <button class="preset-option" data-preset-value="classic" type="button" role="menuitemradio"
-          aria-checked="false" tabindex="-1">
-          <span class="preset-option-swatch classic" aria-hidden="true"></span>
-          <span class="preset-option-copy"><strong>经典</strong><small>稳定的技术默认风格</small></span>
-          <span class="preset-option-check" aria-hidden="true"></span>
-        </button>
-        <button class="preset-option" data-preset-value="signal-flow" type="button" role="menuitemradio"
-          aria-checked="false" tabindex="-1">
-          <span class="preset-option-swatch signal-flow" aria-hidden="true"></span>
-          <span class="preset-option-copy"><strong>信号流</strong><small>突出动态流向</small></span>
-          <span class="preset-option-check" aria-hidden="true"></span>
-        </button>
-        <button class="preset-option" data-preset-value="blueprint" type="button" role="menuitemradio"
-          aria-checked="false" tabindex="-1">
-          <span class="preset-option-swatch blueprint" aria-hidden="true"></span>
-          <span class="preset-option-copy"><strong>蓝图</strong><small>工程评审</small></span>
-          <span class="preset-option-check" aria-hidden="true"></span>
-        </button>
-        <button class="preset-option" data-preset-value="editorial" type="button" role="menuitemradio"
-          aria-checked="false" tabindex="-1">
-          <span class="preset-option-swatch editorial" aria-hidden="true"></span>
-          <span class="preset-option-copy"><strong>编辑风格</strong><small>适合发布与上线说明</small></span>
-          <span class="preset-option-check" aria-hidden="true"></span>
-        </button>
-      </div>
-    </div>
-    <button id="btn-motion" type="button" hidden title="暂停动效" aria-label="暂停动效" aria-pressed="true">
-      <span class="motion-control-dot" aria-hidden="true"></span>
-      <span id="motion-label">动态</span>
-    </button>
-    <button id="btn-present" type="button" title="演示模式（F）" aria-label="进入演示模式" aria-pressed="false">
-      <span id="present-icon" class="toolbar-icon" aria-hidden="true"></span>
-      <span id="present-label">演示</span>
-    </button>
-    <div class="export-wrap">
-      <button id="btn-export" type="button" title="导出图表（E）" aria-label="导出图表" aria-haspopup="menu" aria-expanded="false"
-        aria-controls="export-menu">
-        导出 <span class="toolbar-icon toolbar-chevron" aria-hidden="true"></span>
-      </button>
-      <div class="export-menu" id="export-menu" role="menu" aria-label="导出">
-        <div class="export-menu-header" role="presentation">
-          <div><strong>导出图表</strong><span>便携、整洁的输出</span></div>
-          <kbd>E</kbd>
-        </div>
-        <div class="export-menu-section" role="group" aria-label="分享">
-          <span class="export-menu-heading" aria-hidden="true">分享</span>
-          <button data-format="share-card" type="button" role="menuitem" tabindex="-1"><span
-              class="export-item-copy"><strong>分享卡片</strong><small class="hint">1200&times;630
-                PNG</small></span></button>
-          <button data-action="route-share-card" type="button" role="menuitem" tabindex="-1" hidden disabled><span
-              class="export-item-copy"><strong>路径分享卡片</strong><small class="hint">1200&times;630
-                PNG</small></span></button>
-          <button data-action="reach-share-card" type="button" role="menuitem" tabindex="-1" hidden disabled><span
-              class="export-item-copy"><strong>可达范围分享卡片</strong><small class="hint">1200&times;630
-                PNG</small></span></button>
-          <button data-action="copy-share-card" type="button" role="menuitem" tabindex="-1"><span
-              class="export-item-copy"><strong>复制分享卡片</strong><small class="hint">复制 PNG 到剪贴板</small></span></button>
-          <button data-action="copy" type="button" role="menuitem" tabindex="-1"><span
-              class="export-item-copy"><strong>复制图表</strong><small class="hint">复制 PNG 到剪贴板</small></span></button>
-        </div>
-        <div class="export-menu-section" role="group" aria-label="位图">
-          <span class="export-menu-heading" aria-hidden="true">图像</span>
-          <button data-format="png" type="button" role="menuitem" tabindex="-1"><span
-              class="export-item-copy"><strong>PNG</strong><small class="hint">无损图像</small></span></button>
-          <button data-format="jpeg" type="button" role="menuitem" tabindex="-1"><span
-              class="export-item-copy"><strong>JPEG</strong><small class="hint">紧凑图像</small></span></button>
-          <button data-format="webp" type="button" role="menuitem" tabindex="-1"><span
-              class="export-item-copy"><strong>WebP</strong><small class="hint">现代图像格式</small></span></button>
-        </div>
-        <div class="export-menu-section" role="group" aria-label="矢量与动效">
-          <span class="export-menu-heading" aria-hidden="true">矢量与动效</span>
-          <button data-format="svg" type="button" role="menuitem" tabindex="-1"><span
-              class="export-item-copy"><strong>SVG</strong><small class="hint">可编辑矢量图</small></span></button>
-          <button data-format="webm" type="button" role="menuitem" tabindex="-1"><span
-              class="export-item-copy"><strong>WebM</strong><small class="hint">6 秒动效</small></span></button>
-        </div>
-      </div>
-    </div>
-  </div>
+
 
   <div class="container">
     <!-- Header -->
-    <div class="header">
-      <div class="header-row" data-preset-badge-signal-flow="信号流" data-preset-badge-blueprint="蓝图 / 修订 01"
-        data-preset-badge-editorial="编辑风格 / 现场笔记">
-        <div class="pulse-dot"></div>
-        <h1>知库 · 单机知识管线</h1>
-      </div>
-    </div>
 
     <script id="archify-guided-views-data"
       type="application/json">[{"id":"write-path","label":"写入路径","focus":["author","inbox","corpus"],"note":"新语料只能从 _inbox 进，归档后落 content/。"},{"id":"derive","label":"派生索引","focus":["corpus","store","fts","rag","app"],"note":"索引是可删缓存，任何时候能从语料重建。"},{"id":"publish","label":"公开面","focus":["corpus","publish","site"],"note":"白名单同步，盗版书库与私人项目永不外发。"}]</script>
 
     <script id="archify-i18n-data"
       type="application/json">{"locale":"zh-CN","messages":{"viewer.kind.frontend":"前端","viewer.kind.backend":"后端","viewer.kind.database":"数据库","viewer.kind.cloud":"云服务","viewer.kind.security":"安全","viewer.kind.messagebus":"消息总线","viewer.kind.external":"外部系统","viewer.kind.neutral":"中性","viewer.kind.node":"节点","viewer.kind.start":"开始","viewer.kind.active":"活动","viewer.kind.waiting":"等待","viewer.kind.decision":"决策","viewer.kind.success":"成功","viewer.kind.failure":"失败","viewer.toolbar.actions":"图表操作","viewer.theme.toggle.title":"切换主题（T）","viewer.theme.toggle":"切换颜色主题","viewer.theme.dark":"深色","viewer.theme.light":"浅色","viewer.preset.choose.title":"选择视觉风格（S 循环切换）","viewer.preset.choose":"选择视觉风格","viewer.preset.style":"风格","viewer.preset.menu":"视觉风格","viewer.preset.identity":"视觉表达","viewer.preset.cycles":"S 循环切换","viewer.preset.classic":"经典","viewer.preset.classic.short":"经典","viewer.preset.classic.hint":"稳定的技术默认风格","viewer.preset.flow":"信号流","viewer.preset.flow.short":"流动","viewer.preset.flow.hint":"突出动态流向","viewer.preset.blueprint":"蓝图","viewer.preset.blueprint.hint":"工程评审","viewer.preset.editorial":"编辑风格","viewer.preset.editorial.hint":"适合发布与上线说明","viewer.preset.badge.signalFlow":"信号流","viewer.preset.badge.blueprint":"蓝图 / 修订 01","viewer.preset.badge.editorial":"编辑风格 / 现场笔记","viewer.preset.badge.editorialPlate":"ARCHIFY / 图版 04","viewer.preset.current":"当前视觉风格：{style}。选择视觉风格","viewer.motion.live":"动态","viewer.motion.still":"静态","viewer.motion.pause":"暂停动效","viewer.motion.resume":"恢复动效","viewer.motion.reduced":"已根据减少动态效果偏好暂停动效","viewer.motion.hidden":"页面不可见时已暂停动效","viewer.motion.yielding":"暂停动效；当前让位于{owner}","viewer.motion.yielding.title":"动态预览已启用 · 正在让位于{owner}","viewer.owner.story":"引导故事","viewer.owner.chapter":"当前章节","viewer.owner.chapterPreview":"章节差异预览","viewer.owner.handoff":"章节交接","viewer.owner.route":"路径探测","viewer.owner.lens":"语义透镜","viewer.owner.relationship":"关系预览","viewer.owner.intent":"意图追踪","viewer.owner.focus":"语义聚焦","viewer.owner.legend":"图例预览","viewer.owner.reader":"读者交互","viewer.present.enter":"进入演示模式","viewer.present.enter.title":"演示模式（F）","viewer.present.exit":"退出演示模式","viewer.present.exit.title":"退出演示模式（F 或 Escape）","viewer.present.present":"演示","viewer.present.exit.label":"退出","viewer.export.button":"导出","viewer.export.button.title":"导出图表（E）","viewer.export.diagram":"导出图表","viewer.export.menu":"导出","viewer.export.subtitle":"便携、整洁的输出","viewer.export.share":"分享","viewer.export.shareCard":"分享卡片","viewer.export.routeShareCard":"路径分享卡片","viewer.export.reachShareCard":"可达范围分享卡片","viewer.export.copyShareCard":"复制分享卡片","viewer.export.copyDiagram":"复制图表","viewer.export.clipboardPng":"复制 PNG 到剪贴板","viewer.export.raster":"位图","viewer.export.image":"图像","viewer.export.lossless":"无损图像","viewer.export.compact":"紧凑图像","viewer.export.modern":"现代图像格式","viewer.export.vectorMotion":"矢量与动效","viewer.export.vectorMotion.heading":"矢量与动效","viewer.export.editable":"可编辑矢量图","viewer.export.motion6s":"6 秒动效","viewer.export.unsupported":"当前浏览器不支持","viewer.export.clipboardUnsupported":"当前浏览器不支持写入图片剪贴板","viewer.export.clipboardUnsupported.period":"当前浏览器不支持写入图片剪贴板。","viewer.export.clipboardUnsupported.short":"此浏览器不支持写入图片剪贴板。","viewer.export.motionUnavailable":"当前浏览器无法录制动效","viewer.export.webmUnavailable":"当前浏览器不支持 WebM","viewer.export.failed":"导出失败：{message}","viewer.export.unknownVariant":"未知的分享卡片类型：{variant}","viewer.export.routeRequired":"请先追踪路径，再导出路径分享卡片","viewer.export.reachRequired":"请先追踪编写可达范围，再导出可达范围分享卡片","viewer.export.unknown":"未知错误","viewer.export.routeFailed":"路径分享卡片导出失败：{message}","viewer.export.reachFailed":"可达范围分享卡片导出失败：{message}","viewer.export.copyFailed":"复制失败：{message}","viewer.export.copiedPng":"已将 PNG 复制到剪贴板","viewer.export.copiedShare":"已复制分享卡片","viewer.export.downloadedShare":"已下载分享卡片","viewer.export.downloadedRoute":"已下载路径分享卡片","viewer.export.downloadedReach":"已下载可达范围分享卡片","viewer.export.downloadedWebm":"已下载 WebM","viewer.export.recording":"正在录制 6 秒动效…","viewer.export.card.routeSummary.one":"路径：{source} → {target} · {count} 个有向跳转","viewer.export.card.routeSummary.other":"路径：{source} → {target} · {count} 个有向跳转","viewer.export.card.reachSummary":"从{origin}开始的编写{direction} · {nodes} · {links} · 最深 {hops}","viewer.export.card.node.one":"{count} 个节点","viewer.export.card.node.other":"{count} 个节点","viewer.export.card.link.one":"{count} 条连接","viewer.export.card.link.other":"{count} 条连接","viewer.export.card.hop.one":"{count} 跳","viewer.export.card.hop.other":"{count} 跳","viewer.export.card.routeBadge":"ARCHIFY · 路径 · {hops}","viewer.export.card.reachBadge":"ARCHIFY · {direction}可达范围","viewer.export.card.defaultBadge":"ARCHIFY · {preset} · {theme}","viewer.export.direction.upstream":"上游","viewer.export.direction.downstream":"下游","viewer.export.error.canvasUnavailable":"无法为{label}使用画布","viewer.export.error.contextUnavailable":"无法为{label}创建二维画布上下文","viewer.export.error.toBlobUnavailable":"{label}无法使用 canvas.toBlob","viewer.export.error.toBlobNull":"{label}的 canvas.toBlob 未返回数据","viewer.export.error.variantsCombined":"无法同时组合多种分享卡片类型","viewer.export.error.viewerState":"分享卡片导出无法移除临时 Viewer 状态","viewer.export.error.routeState":"路径卡片导出无法安全保留已解析路径","viewer.export.error.reachState":"可达范围卡片导出无法安全保留编写的可达范围","viewer.export.error.webmRequirements":"WebM 动效导出需要追踪动画及浏览器 MediaRecorder 支持","viewer.export.error.mediaRecorder":"MediaRecorder 录制失败","viewer.export.error.emptyWebm":"MediaRecorder 生成了空的 WebM","viewer.export.error.webmBackground":"无法为 WebM 导出加载 SVG 背景","viewer.guided.region":"图表引导视图","viewer.guided.previous":"上一个引导视图","viewer.guided.previous.title":"上一个引导视图（[）","viewer.guided.next":"下一个引导视图","viewer.guided.next.title":"下一个引导视图（]）","viewer.guided.views":"引导视图","viewer.guided.explore":"探索此系统","viewer.guided.intro":"沿精选路径逐步查看，而不改变源图表。","viewer.guided.trail":"故事轨迹","viewer.guided.beat":"节点","viewer.guided.nextBeat":"下一步","viewer.guided.play":"播放引导故事","viewer.guided.play.title":"播放引导故事（P）","viewer.guided.pause":"暂停引导故事","viewer.guided.pause.title":"暂停引导故事（P）","viewer.guided.replay":"重播引导故事","viewer.guided.replay.title":"重播引导故事（P）","viewer.guided.playStory":"播放故事","viewer.guided.pauseStory":"暂停","viewer.guided.replayStory":"重播故事","viewer.guided.motionUnavailable":"静态模式下无法播放故事","viewer.guided.enableMotion":"切换为动态模式以播放引导故事","viewer.guided.selectBeatLink":"选择故事节点以复制其精确链接","viewer.guided.copyMoment":"复制此刻","viewer.guided.momentCopied":"已复制时刻链接","viewer.guided.momentCopyFailed":"无法复制故事时刻链接","viewer.guided.copied":"已复制","viewer.guided.copyFailed":"复制失败","viewer.guided.showAll":"显示全部","viewer.guided.showAll.aria":"显示完整图表","viewer.guided.chapters":"故事章节","viewer.guided.storyTrail":"{label}的故事轨迹：{count} 个节点","viewer.guided.chapter.open":"打开第 {index}/{total} 章：{label}，{count} 个停靠点","viewer.guided.chapter.current":"当前第 {index}/{total} 章：{label}，{count} 个停靠点","viewer.guided.chapter.selectedNodes":"已选择 {count} 个节点","viewer.guided.chapter.stops":"{count} 个停靠点","viewer.guided.chapter.stop.one":"{count} 个停靠点","viewer.guided.chapter.stop.other":"{count} 个停靠点","viewer.guided.chapter.current.title":"{label} — 当前章节，{count} 个停靠点","viewer.guided.chapter.delta.expanded":"{stay} 个保留，{enter} 个进入，{leave} 个离开","viewer.guided.chapter.delta.aria":"打开第 {index}/{total} 章：{label}。章节聚焦差异：{delta}","viewer.guided.chapter.delta.title":"{label} — 章节聚焦 {delta}","viewer.guided.handoff":"{from} → {to} · 经由{label}","viewer.guided.share.chapter":"章节 {index} / {total}","viewer.guided.share.initial":"章节 01 / 01","viewer.guided.share.default":"引导章节","viewer.guided.state.ready":"就绪","viewer.guided.state.playing":"播放中","viewer.guided.state.settled":"已完成","viewer.guided.state.paused":"已暂停","viewer.guided.state.pinned":"已固定","viewer.guided.state.still":"静态","viewer.guided.share.step":"步骤 {index} / {total} · {label}","viewer.guided.share.staticMoment":"{step} · 静态时刻","viewer.guided.share.complete":"{count} 个步骤已完成 · {note}","viewer.guided.share.settled":"路径已稳定，可供阅读。","viewer.guided.share.staticPath":"{count} 个步骤 · 静态路径","viewer.guided.share.ready":"{count} 个步骤 · 就绪","viewer.guided.share.aria":"{state}，第 {index}/{total} 章：{label}。{beat}。{route}","viewer.guided.beat.start":"节点 {index} / {total} · {label} · 起点","viewer.guided.beat.forward":"节点 {index} / {total} · {from} → {to}","viewer.guided.beat.reverse":"节点 {index} / {total} · {from} → {to} · 反向编写连接","viewer.guided.beat.multiple":"节点 {index} / {total} · {from} ⇄ {to} · {count} 条编写连接","viewer.guided.beat.group":"节点 {index} / {total} · {from} · {to} · 分组 · 无直接连接","viewer.guided.beat.aria.prefix":"故事节点 {index}/{total}：{label}。","viewer.guided.beat.aria.start":"起点。","viewer.guided.beat.aria.forward":"从{from}经一条正向编写关系到达。","viewer.guided.beat.aria.reverse":"从{from}出发；编写关系实际由{to}指向{from}。","viewer.guided.beat.aria.multiple":"从{from}经 {count} 条编写关系到达；不使用任意动效。","viewer.guided.beat.aria.group":"与{from}分组展示，没有直接编写关系。","viewer.guided.caption.start":"起点","viewer.guided.caption.grouped":"分组过渡 · 无直接编写连接","viewer.guided.caption.more":" +另外 {count} 条","viewer.guided.caption.reverse":"反向编写关系","viewer.guided.caption.relationships":"{count} 条编写关系","viewer.guided.caption.relationship":"编写关系","viewer.guided.caption.direction":"编写方向：{from} → {to}","viewer.guided.caption.starting":"编写起点","viewer.guided.beatLink":"复制当前故事时刻链接：第 {index}/{total} 个节点：{label}","viewer.guided.noStory":"此图表没有编写引导故事。","viewer.guide.eyebrow":"图表指南","viewer.guide.close":"关闭图表指南","viewer.guide.inspecting":"正在检查已编译语义","viewer.guide.actions":"图表探索操作","viewer.guide.find":"查找任意节点","viewer.guide.find.hint":"搜索标签、职责、类型和稳定 ID。","viewer.guide.route":"追踪路径","viewer.guide.route.aria":"追踪有向路径","viewer.guide.route.hint":"查看两个语义节点如何按编写方向连接。","viewer.guide.map":"查看完整系统","viewer.guide.map.hint":"打开带实时视口和稳定节点的语义雷达。","viewer.guide.lens":"比较语义类型","viewer.guide.lens.hint":"统计角色、显示流量并比较直接编写的连接。","viewer.guide.story":"播放引导故事","viewer.guide.story.hint":"浏览已编写的章节和真实关系。","viewer.guide.present":"进入演示模式","viewer.guide.present.hint":"让实时图表占满视口，同时不改变导出。","viewer.guide.shortcuts":"其他键盘快捷键","viewer.guide.shortcut.export":"导出","viewer.guide.shortcut.theme":"主题","viewer.guide.shortcut.style":"风格","viewer.guide.shortcut.reset":"重置","viewer.guide.shortcut.zoomIn":"放大","viewer.guide.shortcut.zoomOut":"缩小","viewer.guide.shortcut.close":"关闭","viewer.guide.facts":"{nodes} · {relationships} · {views}","viewer.guide.fact.node.one":"{count} 个语义节点","viewer.guide.fact.node.other":"{count} 个语义节点","viewer.guide.fact.relationship.one":"{count} 条关系","viewer.guide.fact.relationship.other":"{count} 条关系","viewer.guide.fact.view.one":"{count} 个引导视图","viewer.guide.fact.view.other":"{count} 个引导视图","viewer.guide.story.available.one":"浏览 {count} 个已编写章节及其真实关系。","viewer.guide.story.available.other":"浏览 {count} 个已编写章节及其真实关系。","viewer.guide.story.unavailable":"此图表没有编写引导故事。","viewer.guide.open":"打开图表指南","viewer.guide.noStory":"此图表没有编写引导故事。","viewer.finder.title":"查找节点","viewer.finder.close":"关闭节点查找器","viewer.finder.placeholder":"搜索标签或 ID","viewer.finder.search":"搜索图表节点","viewer.finder.results":"图表节点","viewer.finder.empty":"没有匹配的节点","viewer.finder.result.focus":"聚焦{label}","viewer.finder.result.routeStart":"选择{label}作为路径起点","viewer.finder.result.routeTarget":"选择{label}作为路径终点，{links}","viewer.finder.status.empty":"没有匹配的节点","viewer.finder.status.count.one":"{count} 个匹配节点","viewer.finder.status.count.other":"{count} 个匹配节点","viewer.finder.noun.nodes":"个节点","viewer.finder.link.one":"{count} 条连接","viewer.finder.link.other":"{count} 条连接","viewer.finder.result.focus.one":"聚焦{label}，{count} 条相关连接","viewer.finder.result.focus.other":"聚焦{label}，{count} 条相关连接","viewer.finder.status.filtered":"{visible}/{available} {noun}","viewer.finder.status.all":"{available} {noun}","viewer.passport.eyebrow":"语义护照","viewer.passport.metadata":"节点元数据","viewer.passport.evidence":"已验证的源代码证据","viewer.passport.verified":"已验证来源","viewer.passport.reach":"编写可达范围","viewer.passport.reach.trace":"追踪编写的可达性","viewer.passport.upstream":"上游","viewer.passport.downstream":"下游","viewer.passport.upstream.trace":"追踪上游编写可达性","viewer.passport.downstream.trace":"追踪下游编写可达性","viewer.passport.close":"关闭语义护照","viewer.passport.copy":"复制链接","viewer.passport.copy.focus":"复制聚焦节点的链接","viewer.passport.relations":"关系","viewer.passport.relations.show":"显示关联关系","viewer.passport.relations.hide":"隐藏关联关系","viewer.passport.relations.list":"关联关系","viewer.passport.copyRelation":"复制关系","viewer.passport.copyNode":"复制节点","viewer.passport.copyPinned":"复制固定关系的链接","viewer.passport.copySource":"复制来源节点的链接","viewer.passport.copy.focused.success":"已复制聚焦节点链接","viewer.passport.copy.pinned.success":"已复制固定关系链接","viewer.passport.copy.focused.failed":"无法复制聚焦节点链接","viewer.passport.copy.pinned.failed":"无法复制固定关系链接","viewer.passport.relationship.none":"没有关联关系","viewer.passport.relationship.count.one":"{count} 条关系","viewer.passport.relationship.count.other":"{count} 条关系","viewer.passport.relationship.show.one":"显示 {count} 条关联关系","viewer.passport.relationship.show.other":"显示 {count} 条关联关系","viewer.passport.relationship.summary":"{out} 条出向 · {in} 条入向{loops}","viewer.passport.relationship.loops":" · {count} 条自环","viewer.passport.relationship.explorer":"直接关系浏览器","viewer.passport.relationship.help":"使用方向键浏览关系。按 Enter 或空格键固定详情；按 Escape 清除。","viewer.passport.relationship.loopsBack":"回环","viewer.passport.relationship.connectsTo":"连接到","viewer.passport.relationship.connectsFrom":"连接自","viewer.passport.relationship.pinned":"已固定关系 · {from} → {to} · {label}","viewer.passport.relationship.inspect":"检查第 {index}/{total} 条关系：{from} 到 {to}，{label}。按 Enter 查看详情。","viewer.passport.relationship.group.out":"出向","viewer.passport.relationship.group.in":"入向","viewer.passport.relationship.group.loop":"自环","viewer.passport.relationship.row":"{group}：{relationship}，{neighbor}","viewer.passport.relationship.direction.out":"出 →","viewer.passport.relationship.direction.in":"← 入","viewer.passport.relationship.direction.loop":"自环","viewer.passport.sourceCount.one":"{count} 个已验证来源引用","viewer.passport.sourceCount.other":"{count} 个已验证来源引用","viewer.passport.sourceMarker":"来源","viewer.passport.beacon.one":"{count} 个已验证来源；聚焦此节点以检查","viewer.passport.beacon.other":"{count} 个已验证来源；聚焦此节点以检查","viewer.passport.repository.open":"打开已验证的仓库修订版本 {revision}","viewer.passport.source.open":"打开修订版本 {revision} 中已验证的来源 {path}","viewer.passport.source.openLink":"打开 ↗","viewer.passport.reach.upstream.one":"追踪 {count} 个上游编写节点","viewer.passport.reach.upstream.other":"追踪 {count} 个上游编写节点","viewer.passport.reach.downstream.one":"追踪 {count} 个下游编写节点","viewer.passport.reach.downstream.other":"追踪 {count} 个下游编写节点","viewer.passport.reach.noUpstream":"没有上游编写节点","viewer.passport.reach.noDownstream":"没有下游编写节点","viewer.passport.reach.status":"{direction} · {nodes} 个节点 · {links} 条连接 · 最深 {hops} 跳","viewer.route.eyebrow":"路径探测","viewer.route.start":"选择起点节点","viewer.route.start.find":"查找起点","viewer.route.start.find.aria":"查找路径起点","viewer.route.copy":"复制链接","viewer.route.copy.aria":"复制已追踪路径的链接","viewer.route.clear":"清除","viewer.route.clear.aria":"清除路径探测","viewer.route.traced":"已追踪路径","viewer.route.pickTwo":"在图表中选择两个语义节点","viewer.route.pickOne":"在图表中选择一个语义节点","viewer.route.controls":"路径旅程控制","viewer.route.previous":"上一个路径位置","viewer.route.play":"播放路径旅程","viewer.route.pause":"暂停路径旅程","viewer.route.replay":"重播路径旅程","viewer.route.next":"下一个路径位置","viewer.route.journey":"旅程","viewer.route.pause.label":"暂停","viewer.route.replay.label":"重播","viewer.route.overview":"总览","viewer.route.overview.aria":"显示完整路径总览","viewer.route.instructions":"先选择来源，再选择目标；方向很重要。","viewer.route.destination":"选择从{label}出发的目标","viewer.route.destination.find":"查找目标","viewer.route.destination.find.aria":"查找可达的路径目标","viewer.route.differentDestination":"选择其他目标","viewer.route.distinct":"一条路径需要两个不同的语义节点。","viewer.route.unreachable":"没有通往{label}的有向路径","viewer.route.unreachable.detail":"从{source}无法到达{target}。请选择高亮的目标。","viewer.route.start.instructions":"选择来源。下一步只会显示有向可达的目标。","viewer.route.copy.success":"已复制路径链接","viewer.route.copy.failed":"无法复制路径链接","viewer.route.position":"路径位置 {index}/{total}：{label}","viewer.route.step":"第 {index}/{total} 步 · {phase} · {label}","viewer.route.motionRequired":"自动旅程需要动态模式","viewer.route.trigger.clear":"清除已追踪路径","viewer.route.overview.status":"{nodes} · {hops} · 最短编写路径","viewer.route.overview.node.one":"{count} 个节点","viewer.route.overview.node.other":"{count} 个节点","viewer.route.overview.hop.one":"{count} 个有向跳转","viewer.route.overview.hop.other":"{count} 个有向跳转","viewer.route.phase.playing":"播放中","viewer.route.phase.complete":"已完成","viewer.route.phase.inspecting":"检查中","viewer.route.destination.count.one":"有 {count} 个有向目标可用。请选择高亮节点。","viewer.route.destination.count.other":"有 {count} 个有向目标可用。请选择高亮节点。","viewer.route.noOutgoing":"此处没有可用的出向路径。请清除后选择其他来源。","viewer.route.result.title":"{source} 到 {target}","viewer.route.finder.source.title":"选择路径起点","viewer.route.finder.source.placeholder":"搜索路径来源","viewer.route.finder.source.empty":"没有匹配的路径来源","viewer.route.finder.source.results":"可作为路径起点的节点","viewer.route.finder.source.noun":"个路径来源","viewer.route.finder.source.badge":"起点","viewer.route.finder.target.title":"从{label}出发的目标","viewer.route.finder.target.placeholder":"搜索可达目标","viewer.route.finder.target.empty":"没有匹配的可达目标","viewer.route.finder.target.results":"可达路径目标","viewer.route.finder.target.noun":"个可达目标","viewer.route.hop.one":"{count} 跳","viewer.route.hop.other":"{count} 跳","viewer.lens.eyebrow":"语义透镜","viewer.lens.title":"比较系统角色","viewer.lens.close":"关闭语义透镜","viewer.lens.instruction":"最多选择两种语义类型。选择一种可显示其真实流量；选择两种只比较直接编写的关系。","viewer.lens.kinds":"语义类型","viewer.lens.choose":"选择一种类型以检查其节点和相连关系。","viewer.lens.copy":"复制语义透镜链接","viewer.lens.clear":"清除语义透镜","viewer.lens.open":"打开语义透镜","viewer.lens.openActive":"打开当前语义透镜","viewer.lens.legend":"语义图例","viewer.lens.legend.inspect.one":"检查{label}，{count} 个节点","viewer.lens.legend.inspect.other":"检查{label}，{count} 个节点","viewer.lens.kind.count.one":"{label}，{count} 个节点","viewer.lens.kind.count.other":"{label}，{count} 个节点","viewer.lens.compare.one":"{first} → {second}：{forward} · {second} → {first}：{reverse} · 共 {count} 条直接关系","viewer.lens.compare.other":"{first} → {second}：{forward} · {second} → {first}：{reverse} · 共 {count} 条直接关系","viewer.lens.single":"{nodes} · {relationships} · 已连接节点保持可见","viewer.lens.node.one":"{count} 个{label}节点","viewer.lens.node.other":"{count} 个{label}节点","viewer.lens.relationship.one":"{count} 条相连关系","viewer.lens.relationship.other":"{count} 条相连关系","viewer.radar.title":"语义雷达","viewer.radar.building":"正在构建总览","viewer.radar.openFull":"打开完整语义雷达","viewer.radar.open":"打开雷达","viewer.radar.close":"关闭语义雷达","viewer.radar.surface":"图表总览。点击节点进行聚焦，或使用方向键平移。","viewer.radar.click":"点击节点","viewer.radar.drag":"拖动平移","viewer.radar.space":"语义雷达需要更多地图可见空间。","viewer.radar.nodes":"语义图表雷达节点","viewer.radar.focus":"从语义雷达聚焦{label}","viewer.radar.status":"{count} 个节点 · {viewport}","viewer.radar.fullMap":"{count} 个节点 · 完整地图","viewer.radar.compacted":"已收紧雷达，避免遮挡语义护照或地图控件。","viewer.radar.cancelWaiting":"取消等待更多地图空间的语义雷达","viewer.radar.needsSpace":"语义雷达需要更多可见地图空间","viewer.radar.viewport.full":"完整地图","viewer.radar.viewport.width":"宽度 {percent}%","viewer.radar.viewport.scale":"视口 {percent}%","viewer.nav.controls":"图表视图控制","viewer.nav.route":"追踪有向路径","viewer.nav.route.title":"追踪路径（R）","viewer.nav.route.short":"路径","viewer.nav.radar":"打开语义雷达","viewer.nav.radar.title":"语义雷达（M）","viewer.nav.radar.short":"地图","viewer.nav.lens":"打开语义透镜","viewer.nav.lens.title":"语义透镜（L）","viewer.nav.lens.short":"透镜","viewer.nav.find":"查找节点","viewer.nav.find.title":"查找节点（/）","viewer.nav.guide":"打开图表指南","viewer.nav.guide.title":"图表指南（?）","viewer.nav.zoomOut":"缩小","viewer.nav.zoomOut.title":"缩小（-）","viewer.nav.reset":"重置图表视图","viewer.nav.reset.title":"重置视图（0）","viewer.nav.read":"阅读","viewer.nav.zoomIn":"放大","viewer.nav.zoomIn.title":"放大（+）","viewer.nav.camera":"{hint}。重置图表视图","viewer.nav.camera.title":"{semantic}{hint} · 重置视图（0）","viewer.nav.camera.semantic":"语义相机已启用 · ","viewer.nav.level.map":"概览","viewer.nav.level.read":"阅读","viewer.nav.level.full":"完整","viewer.nav.level.auto":"自动","viewer.nav.detail.map":"放大以显示关系标签和节点上下文","viewer.nav.detail.read":"再次放大以显示标签和注释","viewer.nav.detail.full":"完整图表详情","viewer.intent.summary":"{label}。{out} 条出向，{in} 条入向{loops}。共 {total} 条连接。按 Enter 查看详情。","viewer.intent.loops":"，{count} 条自环","viewer.common.copied":"已复制","viewer.common.copyFailed":"复制失败","viewer.common.copyLink":"复制链接","viewer.common.clear":"清除","viewer.common.close":"关闭"}}</script>
-    <div class="guided-views no-print" id="guided-views" hidden aria-label="图表引导视图">
-      <button id="guided-view-prev" type="button" aria-label="上一个引导视图" title="上一个引导视图（[）">&#8592;</button>
-      <div class="guided-view-copy">
-        <div class="guided-view-meta">
-          <span>引导视图</span>
-          <span id="guided-view-count"></span>
-          <span class="guided-view-progress" aria-hidden="true"><span id="guided-view-progress-bar"></span></span>
-          <span class="guided-view-handoff" id="guided-view-handoff" hidden aria-hidden="true"></span>
-        </div>
-        <strong id="guided-view-label">探索此系统</strong>
-        <small id="guided-view-note" aria-live="polite" aria-atomic="true">沿精选路径逐步查看，而不改变源图表。</small>
-        <div class="guided-view-trail" id="guided-view-trail" hidden role="group" aria-label="故事轨迹"></div>
-        <div class="guided-story-caption" id="guided-story-caption" hidden aria-live="polite" aria-atomic="true">
-          <span class="guided-story-caption-index" id="guided-story-caption-index">节点</span>
-          <strong id="guided-story-caption-route"></strong>
-          <small id="guided-story-caption-detail"></small>
-          <span class="guided-story-caption-next" id="guided-story-caption-next" hidden aria-hidden="true">
-            <small>下一步</small>
-            <strong id="guided-story-caption-next-label"></strong>
-          </span>
-        </div>
-      </div>
-      <button id="guided-view-next" type="button" aria-label="下一个引导视图" title="下一个引导视图（]）">&#8594;</button>
-      <div class="guided-view-actions">
-        <button class="guided-view-play" id="guided-view-play" type="button" aria-label="播放引导故事" aria-pressed="false"
-          title="播放引导故事（P）">
-          <span id="guided-view-play-icon" aria-hidden="true">&#9654;</span>
-          <span id="guided-view-play-label">播放故事</span>
-        </button>
-        <button class="guided-view-beat-link" id="guided-view-beat-link" type="button" aria-label="选择故事节点以复制其精确链接"
-          title="选择故事节点以复制其精确链接" disabled>
-          <span aria-hidden="true">&#35;</span>
-          <span id="guided-view-beat-link-label">复制此刻</span>
-        </button>
-        <button class="guided-view-all" id="guided-view-all" type="button" aria-label="显示完整图表">显示全部</button>
-      </div>
-      <nav class="guided-view-index" id="guided-view-index" aria-label="故事章节">
-        <ol class="guided-view-chapters" id="guided-view-chapters"></ol>
-      </nav>
-    </div>
 
     <!-- Main Diagram -->
     <div class="diagram-container" data-detail-level="read" data-preset-badge-editorial-plate="ARCHIFY / 图版 04">
+        <div class="header">
+          <div class="header-row" data-preset-badge-signal-flow="信号流" data-preset-badge-blueprint="蓝图 / 修订 01"
+            data-preset-badge-editorial="编辑风格 / 现场笔记">
+            <h1>知库 · 单机知识管线</h1>
+          </div>
+          <button class="kb-info-btn" type="button" title="悬浮展开三张结论卡片">结论</button>
+        </div>
       <svg viewBox="0 0 1162 626" role="img" lang="zh-CN"
         aria-labelledby="archify-diagram-title archify-diagram-description" data-animation="trace" data-preset="classic"
         data-quality-profile="showcase">
@@ -7531,64 +8001,178 @@
         <div class="overview-map-hint" aria-hidden="true"><span>点击节点</span><span>拖动平移</span></div>
       </div>
       <p class="overview-map-feedback no-print" id="overview-map-feedback" role="status" aria-live="polite" hidden>
-        语义雷达需要更多地图可见空间。</p>
-      <div class="diagram-nav no-print" role="toolbar" aria-label="图表视图控制">
-        <button id="btn-route-probe" type="button" aria-label="追踪有向路径" aria-pressed="false" aria-controls="route-probe"
-          title="追踪路径（R）">路径</button>
-        <button id="btn-overview-map" type="button" aria-label="打开语义雷达" aria-expanded="false"
-          aria-controls="overview-map" title="语义雷达（M）">地图</button>
-        <button id="btn-semantic-lens" type="button" aria-label="打开语义透镜" aria-haspopup="dialog" aria-expanded="false"
-          aria-pressed="false" aria-controls="semantic-lens" title="语义透镜（L）">透镜</button>
-        <button id="btn-node-finder" type="button" aria-label="查找节点" aria-haspopup="dialog" aria-expanded="false"
-          aria-controls="node-finder" title="查找节点（/）" data-node-finder-trigger><span class="diagram-nav-icon find"
-            aria-hidden="true"></span></button>
-        <button id="btn-diagram-guide" type="button" aria-label="打开图表指南" aria-haspopup="dialog" aria-expanded="false"
-          aria-controls="diagram-guide" title="图表指南（?）"><span class="diagram-nav-icon guide"
-            aria-hidden="true"></span></button>
-        <button data-view="out" type="button" aria-label="缩小" title="缩小（-）"><span class="diagram-nav-icon minus"
-            aria-hidden="true"></span></button>
-        <button data-view="reset" type="button" aria-label="重置图表视图" title="重置视图（0）"><span class="diagram-nav-detail"
-            data-view-detail hidden>阅读</span><span class="diagram-nav-percent" data-view-percent>100%</span></button>
-        <button data-view="in" type="button" aria-label="放大" title="放大（+）"><span class="diagram-nav-icon plus"
-            aria-hidden="true"></span></button>
+        语义雷达需要更多地图可见空间。</p>        <div class="diagram-nav no-print" role="toolbar" aria-label="图表视图控制">
+          <button id="btn-route-probe" type="button" aria-label="追踪有向路径" aria-pressed="false" aria-controls="route-probe"
+            title="追踪路径（R）">路径</button>
+          <button id="btn-overview-map" type="button" aria-label="打开语义雷达" aria-expanded="false"
+            aria-controls="overview-map" title="语义雷达（M）">地图</button>
+          <button id="btn-semantic-lens" type="button" aria-label="打开语义透镜" aria-haspopup="dialog" aria-expanded="false"
+            aria-pressed="false" aria-controls="semantic-lens" title="语义透镜（L）">透镜</button>
+          <button id="btn-node-finder" type="button" aria-label="查找节点" aria-haspopup="dialog" aria-expanded="false"
+            aria-controls="node-finder" title="查找节点（/）" data-node-finder-trigger><span class="diagram-nav-icon find"
+              aria-hidden="true"></span></button>
+          <button id="btn-diagram-guide" type="button" aria-label="打开图表指南" aria-haspopup="dialog" aria-expanded="false"
+            aria-controls="diagram-guide" title="图表指南（?）"><span class="diagram-nav-icon guide"
+              aria-hidden="true"></span></button>
+          <button data-view="out" type="button" aria-label="缩小" title="缩小（-）"><span class="diagram-nav-icon minus"
+              aria-hidden="true"></span></button>
+          <button data-view="reset" type="button" aria-label="重置图表视图" title="重置视图（0）"><span class="diagram-nav-detail"
+              data-view-detail hidden>阅读</span><span class="diagram-nav-percent" data-view-percent>100%</span></button>
+          <button data-view="in" type="button" aria-label="放大" title="放大（+）"><span class="diagram-nav-icon plus"
+              aria-hidden="true"></span></button>
+        </div>
+    </div>
+
+    <div class="kb-dock">
+    <div class="guided-views no-print" id="guided-views" hidden aria-label="图表引导视图">
+      <button id="guided-view-prev" type="button" aria-label="上一个引导视图" title="上一个引导视图（[）">&#8592;</button>
+      <div class="guided-view-copy">
+        <div class="guided-view-meta">
+          <span>引导视图</span>
+          <span id="guided-view-count"></span>
+          <span class="guided-view-progress" aria-hidden="true"><span id="guided-view-progress-bar"></span></span>
+          <span class="guided-view-handoff" id="guided-view-handoff" hidden aria-hidden="true"></span>
+        </div>
+        <strong id="guided-view-label">探索此系统</strong>
+        <small id="guided-view-note" aria-live="polite" aria-atomic="true">沿精选路径逐步查看，而不改变源图表。</small>
+        <div class="guided-view-trail" id="guided-view-trail" hidden role="group" aria-label="故事轨迹"></div>
+        <div class="guided-story-caption" id="guided-story-caption" hidden aria-live="polite" aria-atomic="true">
+          <span class="guided-story-caption-index" id="guided-story-caption-index">节点</span>
+          <strong id="guided-story-caption-route"></strong>
+          <small id="guided-story-caption-detail"></small>
+          <span class="guided-story-caption-next" id="guided-story-caption-next" hidden aria-hidden="true">
+            <small>下一步</small>
+            <strong id="guided-story-caption-next-label"></strong>
+          </span>
+        </div>
       </div>
+      <button id="guided-view-next" type="button" aria-label="下一个引导视图" title="下一个引导视图（]）">&#8594;</button>
+      <div class="guided-view-actions">
+        <button class="guided-view-play" id="guided-view-play" type="button" aria-label="播放引导故事" aria-pressed="false"
+          title="播放引导故事（P）">
+          <span id="guided-view-play-icon" aria-hidden="true">&#9654;</span>
+          <span id="guided-view-play-label">播放故事</span>
+        </button>
+        <button class="guided-view-beat-link" id="guided-view-beat-link" type="button" aria-label="选择故事节点以复制其精确链接"
+          title="选择故事节点以复制其精确链接" disabled>
+          <span aria-hidden="true">&#35;</span>
+          <span id="guided-view-beat-link-label">复制此刻</span>
+        </button>
+        <button class="guided-view-all" id="guided-view-all" type="button" aria-label="显示完整图表">显示全部</button>
+      </div>
+    </div>
+        <div class="toolbar" role="toolbar" aria-label="图表操作">
+          <button id="btn-theme" type="button" title="切换主题（T）" aria-label="切换颜色主题" aria-pressed="false">
+            <span id="theme-icon" class="toolbar-icon" aria-hidden="true"></span>
+            <span id="theme-label">深色</span>
+          </button>
+          <div class="preset-wrap">
+            <button id="btn-preset" type="button" title="选择视觉风格（S 循环切换）" aria-label="选择视觉风格" aria-haspopup="menu"
+              aria-expanded="false" aria-controls="preset-menu" aria-keyshortcuts="S">
+              <span class="preset-control-mark" aria-hidden="true"></span>
+              <span id="preset-label">风格</span>
+              <span class="toolbar-icon toolbar-chevron" aria-hidden="true"></span>
+            </button>
+            <div class="preset-menu" id="preset-menu" role="menu" aria-label="视觉风格">
+              <div class="preset-menu-heading" role="presentation"><span>视觉表达</span><span>S 循环切换</span></div>
+              <button class="preset-option" data-preset-value="classic" type="button" role="menuitemradio"
+                aria-checked="false" tabindex="-1">
+                <span class="preset-option-swatch classic" aria-hidden="true"></span>
+                <span class="preset-option-copy"><strong>经典</strong><small>稳定的技术默认风格</small></span>
+                <span class="preset-option-check" aria-hidden="true"></span>
+              </button>
+              <button class="preset-option" data-preset-value="signal-flow" type="button" role="menuitemradio"
+                aria-checked="false" tabindex="-1">
+                <span class="preset-option-swatch signal-flow" aria-hidden="true"></span>
+                <span class="preset-option-copy"><strong>信号流</strong><small>突出动态流向</small></span>
+                <span class="preset-option-check" aria-hidden="true"></span>
+              </button>
+              <button class="preset-option" data-preset-value="blueprint" type="button" role="menuitemradio"
+                aria-checked="false" tabindex="-1">
+                <span class="preset-option-swatch blueprint" aria-hidden="true"></span>
+                <span class="preset-option-copy"><strong>蓝图</strong><small>工程评审</small></span>
+                <span class="preset-option-check" aria-hidden="true"></span>
+              </button>
+              <button class="preset-option" data-preset-value="editorial" type="button" role="menuitemradio"
+                aria-checked="false" tabindex="-1">
+                <span class="preset-option-swatch editorial" aria-hidden="true"></span>
+                <span class="preset-option-copy"><strong>编辑风格</strong><small>适合发布与上线说明</small></span>
+                <span class="preset-option-check" aria-hidden="true"></span>
+              </button>
+            </div>
+          </div>
+          <button id="btn-motion" type="button" hidden title="暂停动效" aria-label="暂停动效" aria-pressed="true">
+            <span class="motion-control-dot" aria-hidden="true"></span>
+            <span id="motion-label">动态</span>
+          </button>
+          <button id="btn-present" type="button" title="演示模式（F）" aria-label="进入演示模式" aria-pressed="false">
+            <span id="present-icon" class="toolbar-icon" aria-hidden="true"></span>
+            <span id="present-label">演示</span>
+          </button>
+          <div class="export-wrap">
+            <button id="btn-export" type="button" title="导出图表（E）" aria-label="导出图表" aria-haspopup="menu" aria-expanded="false"
+              aria-controls="export-menu">
+              导出 <span class="toolbar-icon toolbar-chevron" aria-hidden="true"></span>
+            </button>
+            <div class="export-menu" id="export-menu" role="menu" aria-label="导出">
+              <div class="export-menu-header" role="presentation">
+                <div><strong>导出图表</strong><span>便携、整洁的输出</span></div>
+                <kbd>E</kbd>
+              </div>
+              <div class="export-menu-section" role="group" aria-label="分享">
+                <span class="export-menu-heading" aria-hidden="true">分享</span>
+                <button data-format="share-card" type="button" role="menuitem" tabindex="-1"><span
+                    class="export-item-copy"><strong>分享卡片</strong><small class="hint">1200&times;630
+                      PNG</small></span></button>
+                <button data-action="route-share-card" type="button" role="menuitem" tabindex="-1" hidden disabled><span
+                    class="export-item-copy"><strong>路径分享卡片</strong><small class="hint">1200&times;630
+                      PNG</small></span></button>
+                <button data-action="reach-share-card" type="button" role="menuitem" tabindex="-1" hidden disabled><span
+                    class="export-item-copy"><strong>可达范围分享卡片</strong><small class="hint">1200&times;630
+                      PNG</small></span></button>
+                <button data-action="copy-share-card" type="button" role="menuitem" tabindex="-1"><span
+                    class="export-item-copy"><strong>复制分享卡片</strong><small class="hint">复制 PNG 到剪贴板</small></span></button>
+                <button data-action="copy" type="button" role="menuitem" tabindex="-1"><span
+                    class="export-item-copy"><strong>复制图表</strong><small class="hint">复制 PNG 到剪贴板</small></span></button>
+              </div>
+              <div class="export-menu-section" role="group" aria-label="位图">
+                <span class="export-menu-heading" aria-hidden="true">图像</span>
+                <button data-format="png" type="button" role="menuitem" tabindex="-1"><span
+                    class="export-item-copy"><strong>PNG</strong><small class="hint">无损图像</small></span></button>
+                <button data-format="jpeg" type="button" role="menuitem" tabindex="-1"><span
+                    class="export-item-copy"><strong>JPEG</strong><small class="hint">紧凑图像</small></span></button>
+                <button data-format="webp" type="button" role="menuitem" tabindex="-1"><span
+                    class="export-item-copy"><strong>WebP</strong><small class="hint">现代图像格式</small></span></button>
+              </div>
+              <div class="export-menu-section" role="group" aria-label="矢量与动效">
+                <span class="export-menu-heading" aria-hidden="true">矢量与动效</span>
+                <button data-format="svg" type="button" role="menuitem" tabindex="-1"><span
+                    class="export-item-copy"><strong>SVG</strong><small class="hint">可编辑矢量图</small></span></button>
+                <button data-format="webm" type="button" role="menuitem" tabindex="-1"><span
+                    class="export-item-copy"><strong>WebM</strong><small class="hint">6 秒动效</small></span></button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <!-- [本地定制 · 知库 landing] 问题6 / Q4 方案乙：底行只留这一颗入口，
+             点开后 .guided-views 整体以弹窗呈现（见 CSS 的 [data-kb-guide="open"] 段）。 -->
+        <button class="kb-guide-btn" type="button" aria-expanded="false" aria-controls="guided-views"
+          title="展开引导视图">引导视图 <span class="kb-guide-count" id="kb-guide-count"></span></button>
+        <!-- [本地定制 · 知库 landing] 01/02/03 三个切章按钮从弹窗里搬到这一行
+             （用户 2026-09-25 看图后改口径）：弹窗只留"引导视图 x/3 + 当前章节标题/说明
+             + 本章轨迹 + 三颗故事按钮"，切章的三个圆圈按钮常驻底行，
+             点谁都不用先展开弹窗。archify 取它是 getElementById('guided-view-index')
+             （文档级查询），换父节点安全。 -->
+        <nav class="guided-view-index" id="guided-view-index" aria-label="故事章节">
+          <ol class="guided-view-chapters" id="guided-view-chapters"></ol>
+        </nav>
     </div>
 
     <!-- Info Cards -->
-    <div class="cards">
-      <div class="card">
-        <div class="card-header">
-          <div class="card-dot cyan"></div>
-          <h3>唯一事实源</h3>
-        </div>
-        <ul>
-          <li>&bull; content/ 下 md/html 不可再生</li>
-          <li>&bull; 新语料一律走 _inbox；编辑直接写回文件系统</li>
-        </ul>
-      </div>
-
-      <div class="card">
-        <div class="card-header">
-          <div class="card-dot emerald"></div>
-          <h3>纯派生缓存</h3>
-        </div>
-        <ul>
-          <li>&bull; index.db / rag.db 可随时删除重建</li>
-          <li>&bull; 切块或嵌入逻辑变更递增 RAG_CODE_VERSION</li>
-        </ul>
-      </div>
-
-      <div class="card">
-        <div class="card-header">
-          <div class="card-dot rose"></div>
-          <h3>公开边界</h3>
-        </div>
-        <ul>
-          <li>&bull; 发布走白名单同步，非默认全量</li>
-          <li>&bull; 小说（盗版书库）/ 漫画 / projects 永不外发</li>
-        </ul>
-      </div>
-    </div>
+    <!-- [本地定制] 三张结论卡片已整体搬到 </body> 前的 .kb-cards-pop.cards，这里不再留壳：
+         archify 的 shell.querySelector('.cards') 只查 .container 后代，搬到容器外就取不到
+         （outerHeight 恒 0）；而知库首页 harvestCards 用文档级 '.cards > *' 仍能拿到三张卡
+         搬进左栏 —— 一个改动同时满足两边。 -->
 
   </div>
 
@@ -16994,6 +17578,215 @@
       }
     });
   </script>
+  <script>
+    /* [本地定制 · 知库 landing] 把运行时才知道的几何量写进 CSS 自定义属性：
+       --kb-nav-w        fixed 导航胶囊宽度 → .kb-dock 右侧留白（不然胶囊压住章节条）
+       --kb-dock-h       底行高度（窄屏会换行、高度翻倍）
+       --kb-dock-gap     底行顶到视口底的距离
+       --kb-info-bottom  「结论」按钮下沿 → 结论浮层贴着它往下展开（问题1 / Q1）
+       --kb-guide-top    「引导视图」入口在**底行**，弹窗往上开 → 按钮顶边到视口底的距离 + 8px
+       这些都随换行/滚动/按钮数变化，所以 ResizeObserver + scroll 都要跟；
+       只在数值真的变了才写样式，避免每帧触发一次无谓重排。 */
+    (function () {
+      function watch() {
+        var root = document.documentElement.style;
+        var targets = [
+          ['--kb-nav-w', '.diagram-nav', 'w'],
+          ['--kb-dock-h', '.kb-dock', 'h'],
+          ['--kb-dock-gap', '.kb-dock', 'gap'],
+          ['--kb-info-bottom', '.kb-info-btn', 'bottom'],
+          ['--kb-info-bottom', '.kb-info-btn', 'bottom'],
+          ['--kb-guide-top', '.kb-guide-btn', 'above']
+        ];
+        var last = '';
+        function val(kind, r) {
+          if (!r) return 0;
+          if (kind === 'w') return r.width > 0 ? Math.round(r.width) : 0;
+          if (kind === 'h') return r.height > 0 ? Math.round(r.height) : 0;
+          if (kind === 'gap') return r.top > 0 ? Math.round(innerHeight - r.top) : 0;
+          // 'above'：入口在底行，弹窗要**往上开** —— 返回"按钮顶边到视口底的距离 + 8px 间隙"
+          if (kind === 'above') return Math.round(innerHeight - r.top + 8);
+          return Math.round(r.bottom + 8);
+        }
+        function sync() {
+          var out = [], key = [];
+          for (var i = 0; i < targets.length; i++) {
+            var el = document.querySelector(targets[i][1]);
+            var v = val(targets[i][2], el ? el.getBoundingClientRect() : null);
+            out.push([targets[i][0], v]);
+            key.push(v);
+          }
+          // 导航胶囊与底行按钮垂直同轴：胶囊底边到视口底的距离
+          //   = 视口高 - 底行中心 - 胶囊半高。（第一版把符号写反，实测中心差 46px）
+          var navEl = document.querySelector('.diagram-nav');
+          var dockEl = document.querySelector('.kb-dock');
+          if (navEl && dockEl) {
+            var dr = dockEl.getBoundingClientRect(), nr = navEl.getBoundingClientRect();
+            var nb = Math.round(innerHeight - (dr.top + dr.height / 2) - nr.height / 2);
+            if (nb > 0) { out.push(['--kb-nav-bottom', nb]); key.push(nb); }
+          }
+          var k = key.join('/');
+          if (k === last) return;
+          last = k;
+          for (var j = 0; j < out.length; j++) root.setProperty(out[j][0], out[j][1] + 'px');
+        }
+        if (window.ResizeObserver) {
+          var ro = new ResizeObserver(sync);
+          for (var t = 0; t < targets.length; t++) {
+            var e = document.querySelector(targets[t][1]);
+            if (e) ro.observe(e);
+          }
+        }
+        window.addEventListener('resize', sync);
+        window.addEventListener('scroll', sync, { passive: true });
+        sync();
+      }
+      if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', watch);
+      else watch();
+    })();
+  </script>
+  <script>
+    /* [本地定制 · 知库 landing] 问题6 / Q4 方案乙的交互层：
+       · 点「引导视图」→ html[data-kb-guide="open"]，CSS 就把 .guided-views 摆成弹窗；
+       · 点弹窗与入口以外的任何地方 → 关闭；
+       · Esc 关闭，并且**吃掉这次按键**：archify 自己把 Esc 绑在"退出演示"上，
+         弹窗开着时按 Esc 应该只关弹窗，不该顺手把演示也退出（捕获阶段先拦）。
+       状态只挂在一个属性上，弹窗本体仍是 archify 的 .guided-views，
+       所以章节切换、播放、复制链接全部照原逻辑走，我们不碰它的内部状态。 */
+    (function () {
+      function init() {
+        var btn = document.querySelector('.kb-guide-btn');
+        var gv = document.querySelector('.guided-views');
+        var count = document.getElementById('kb-guide-count');
+        var src = document.getElementById('guided-view-count');
+        if (!btn || !gv) return;
+        function open(v) {
+          if (v) document.documentElement.setAttribute('data-kb-guide', 'open');
+          else document.documentElement.removeAttribute('data-kb-guide');
+          btn.setAttribute('aria-expanded', v ? 'true' : 'false');
+        }
+        function isOpen() { return document.documentElement.getAttribute('data-kb-guide') === 'open'; }
+        btn.addEventListener('click', function (e) {
+          e.stopPropagation();
+          open(!isOpen());
+        });
+        /* 选中某章（01/02/03）才把播放故事 / 复制此刻 / 显示全部 三颗放出来。
+           不能用 archify 的 data-active-view 当门：它在加载时就指向首章了。 */
+        // 01/02/03 已搬到 dock（见 DOM 注释），所以监听挂在 document 上按目标判断，
+        // 不能再挂 gv 上 —— 挂 gv 上永远收不到，三颗故事按钮就再也不会出现。
+        document.addEventListener('click', function (e) {
+          if (e.target.closest && e.target.closest('.guided-view-chapter')) {
+            document.documentElement.setAttribute('data-kb-chosen', 'true');
+          }
+        });
+        document.addEventListener('click', function (e) {
+          if (!isOpen()) return;
+          // dock 里的 01/02/03 也算"弹窗相关"：它们只是换了位置的同一组切章按钮，
+          // 点它们不该把弹窗关掉（实测会被当空白处、弹窗当场自己关闭）。
+          var idx = document.getElementById('guided-view-index');
+          if (gv.contains(e.target) || btn.contains(e.target) || (idx && idx.contains(e.target))) return;
+          open(false);
+        });
+        document.addEventListener('keydown', function (e) {
+          if (e.key !== 'Escape' || !isOpen()) return;
+          e.stopPropagation();
+          e.preventDefault();
+          open(false);
+        }, true);
+        if (count && src) {
+          var mirror = function () { count.textContent = src.textContent || ''; };
+          mirror();
+          if (window.MutationObserver) new MutationObserver(mirror).observe(src, { childList: true, characterData: true, subtree: true });
+        }
+      }
+      if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
+      else init();
+    })();
+  </script>
+  <script>
+    /* [本地定制 · 知库 landing] 给语义护照加拖拽。
+       用户两条圈图："语义护照跑下面去了，还不能移动" / "鼠标显示了移动的样式，但是却无法移动"。
+       原因：护照的位置是 archify 的 JS 按被选中节点算出来直接写 inline top（11241 行），
+       落在画布上就压住图；而那个"能拖"的光标来自画布的 .is-pannable，archify 的平移逻辑
+       又明确把 .focus-chip 排除在外（14447 行），所以光标说能拖、实际拖不动。
+       这里把它的标题条做成真正的拖拽把手：按住可在正文面板内摆放，光标同时改成
+       grab / grabbing，让 affordance 名副其实；再点别的节点时 archify 会重新定位（预期行为）。
+       位移一律用 offsetLeft/offsetTop + 指针增量算，避免 absolute 的包含块（padding box）
+       与 getBoundingClientRect（border box）两套坐标混用带来的偏差。 */
+    (function () {
+      function init() {
+        var chip = document.getElementById('focus-chip');
+        var head = chip && chip.querySelector('.relationship-lens-head');
+        var panel = document.querySelector('.diagram-container');
+        if (!chip || !head || !panel) return;
+        var drag = null;
+        head.style.cursor = 'grab';
+        head.addEventListener('pointerdown', function (e) {
+          if (e.button !== 0 || (e.target.closest && e.target.closest('button, a'))) return;
+          drag = { x: e.clientX, y: e.clientY, left: chip.offsetLeft, top: chip.offsetTop };
+          try { head.setPointerCapture(e.pointerId); } catch (_) { }
+          head.style.cursor = 'grabbing';
+          e.preventDefault(); e.stopPropagation();
+        });
+        head.addEventListener('pointermove', function (e) {
+          if (!drag) return;
+          var maxL = Math.max(4, panel.clientWidth - chip.offsetWidth - 4);
+          var maxT = Math.max(4, panel.clientHeight - chip.offsetHeight - 4);
+          var clamp = function (v, hi) { return Math.max(4, Math.min(v, hi)); };
+          chip.style.left = Math.round(clamp(drag.left + e.clientX - drag.x, maxL)) + 'px';
+          chip.style.top = Math.round(clamp(drag.top + e.clientY - drag.y, maxT)) + 'px';
+          e.preventDefault(); e.stopPropagation();
+        });
+        function end(e) {
+          if (!drag) return;
+          drag = null;
+          head.style.cursor = 'grab';
+          try { head.releasePointerCapture(e.pointerId); } catch (_) { }
+        }
+        head.addEventListener('pointerup', end);
+        head.addEventListener('pointercancel', end);
+      }
+      if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
+      else init();
+    })();
+  </script>
+  <!-- [本地定制 · 知库 landing] 方案②：三张结论卡片改为悬浮浮层（标题右侧「结论」按钮）。
+       必须在 .container 之外：archify 的自适应阅读宽度会量 .cards 的高度，
+       一被量到就会随悬浮开合来回改宽度 = 页面闪动。 -->
+  <div class="kb-cards-pop cards" role="dialog" aria-label="结论卡片">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-dot cyan"></div>
+            <h3>唯一事实源</h3>
+          </div>
+          <ul>
+            <li>&bull; content/ 下 md/html 不可再生</li>
+            <li>&bull; 新语料一律走 _inbox；编辑直接写回文件系统</li>
+          </ul>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <div class="card-dot emerald"></div>
+            <h3>纯派生缓存</h3>
+          </div>
+          <ul>
+            <li>&bull; index.db / rag.db 可随时删除重建</li>
+            <li>&bull; 切块或嵌入逻辑变更递增 RAG_CODE_VERSION</li>
+          </ul>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <div class="card-dot rose"></div>
+            <h3>公开边界</h3>
+          </div>
+          <ul>
+            <li>&bull; 发布走白名单同步，非默认全量</li>
+            <li>&bull; 小说（盗版书库）/ 漫画 / projects 永不外发</li>
+          </ul>
+        </div>
+  </div>
 </body>
 
 </html>
