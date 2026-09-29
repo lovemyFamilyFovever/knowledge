@@ -82,7 +82,6 @@ from app.routes_stats import register as register_stats
 from app.routes_rag import register as register_rag
 from app.routes_learn import register as register_learn
 from app.routes_search import register as register_search
-from app.routes_ai import register as register_ai
 
 
 # ---------------- app factory ----------------
@@ -270,7 +269,6 @@ def create_app(root: Path | None = None) -> Flask:
     for _register in (register_pages, register_doc, register_edit, register_files,
                       register_stats, register_rag, register_learn, register_search):
         _register(app, _hooks)
-    register_ai(app)  # AI 问答蓝图：无 hooks 依赖，单独挂载
 
     return app
 

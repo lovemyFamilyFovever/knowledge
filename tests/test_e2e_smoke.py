@@ -398,59 +398,23 @@ def main() -> int:
         check("GET /api/rag 组件不可用时 503（不炸 500）", r.status_code == 503, f"status={r.status_code}")
         check("GET /api/rag 503 不泄露绝对路径", not leaks(r.get_data(as_text=True), root))
 
-        # 轮次 53：问吧（/api/ask*）、查漏（/api/ai/audit*）、批量（/api/ai/batch*）
-        # 与侧栏回看（/api/ai/qa）按用户要求整体移除。这里只留一条"路由确实不在了"的断言：
-        # 404 而不是 500 —— 砍功能要连路由一起砍，不许留能被打到一半的空壳。
-        for gone in ("/api/ask/status", "/api/ai/qa?path=ai/llm-and-agents/A.md"):
-            rr = c.get(gone)
-            check(f"GET {gone.split('?')[0]} 已不存在 → 404", rr.status_code == 404,
+        # 轮次 54：整条 AI 出站链路按用户要求下线（他改用手动复制去网页端问）。
+        # 这里不再逐个测语义 —— 只钉一件事：**这些路由必须 404，而不是 500 或半死不活**。
+        # 留一条"已删除"的证据，比留一堆指向不存在功能的断言诚实。
+        for gone, meth in (("/api/ai/config", "get"), ("/api/ai/config", "put"),
+                           ("/api/ai/config", "delete"), ("/api/ai/test", "post"),
+                           ("/api/ai/usage", "get"), ("/api/ai/explain", "post"),
+                           ("/api/ai/qa", "get"), ("/api/ai/audit", "post"),
+                           ("/api/ai/batch/estimate", "post"), ("/api/ask", "post"),
+                           ("/api/ask/status", "get")):
+            rr = (c.post(gone, json={}) if meth == "post"
+                  else c.put(gone, json={}) if meth == "put"
+                  else c.delete(gone) if meth == "delete" else c.get(gone))
+            check(f"{meth.upper()} {gone} 已下线 → 404", rr.status_code == 404,
                   f"status={rr.status_code}")
-        for gone in ("/api/ask", "/api/ai/audit", "/api/ai/batch/estimate"):
-            rr = c.post(gone, json={})
-            check(f"POST {gone} 已不存在 → 404", rr.status_code == 404,
-                  f"status={rr.status_code}")
+        check("AI 端点全下线后，临时根里压根没有 .ai-config.json",
+              not (root / ".ai-config.json").exists())
 
-        # ---- AI 出站配置（切片 1）：五个新端点各打一遍，语义留给 test_ai_config.py
-        r = c.get("/api/ai/config")
-        gj = jget(r)
-        check("GET /api/ai/config 200 且只回脱敏视图（没有 api_key 这个键）",
-              r.status_code == 200 and "api_key" not in gj, str(gj)[:160])
-        check("GET /api/ai/config 不泄露绝对路径",
-              not leaks(r.get_data(as_text=True), root))
-        check("GET /api/ai/config 把出站黑名单一起给出（前端据此藏入口）",
-              {"career", "interview"} <= set(gj.get("egress_blocked_domains") or []),
-              gj.get("egress_blocked_domains"))
-        # 这里**故意不放合法 key**：一放进去，本套末尾那条 explain「503 不联网」
-        # 就会变成真去请求外部 LLM。合法路径由 tests/test_ai_config.py 拿假 provider 覆盖。
-        r = c.put("/api/ai/config", json={"base_url": "file:///etc/passwd"})
-        check("PUT /api/ai/config 非法端点 → 400", r.status_code == 400, str(jget(r))[:160])
-        check("PUT /api/ai/config 400 不泄露绝对路径",
-              not leaks(r.get_data(as_text=True), root))
-        r = c.post("/api/ai/test")
-        check("POST /api/ai/test 未配置 key → 503 not_configured",
-              r.status_code == 503 and jget(r).get("code") == "not_configured", str(jget(r))[:160])
-        r = c.get("/api/ai/usage")
-        check("GET /api/ai/usage 200 且给出预算态", r.status_code == 200
-              and "budget" in jget(r), str(jget(r))[:160])
-        r = c.delete("/api/ai/config")
-        check("DELETE /api/ai/config 200（没文件也如实回 removed=false，不 500）",
-              r.status_code == 200 and jget(r).get("removed") is False, str(jget(r))[:160])
-        # 切片 2：选词问 AI 的两个新端点。**域级闸门排在 key 检查之前** ——
-        # 这里全程没有 key，career 域仍然必须 403（而不是"没配 key 所以 503"）。
-        r = c.post("/api/ai/explain", json={"path": "career/B.md", "selection": "简历要与岗位关键词"})
-        check("POST /api/ai/explain 求职域 → 403 domain_blocked（无 key 也一样拦）",
-              r.status_code == 403 and jget(r).get("code") == "domain_blocked",
-              str(jget(r))[:160])
-        check("POST /api/ai/explain 403 不回正文内容",
-              "岗位关键词" not in r.get_data(as_text=True))
-        r = c.post("/api/ai/explain", json={"path": "ai/llm-and-agents/A.md", "selection": ""})
-        check("POST /api/ai/explain 空选区 → 400 且不泄露绝对路径",
-              r.status_code == 400 and not leaks(r.get_data(as_text=True), root),
-              f"status={r.status_code}")
-        r = c.post("/api/ai/explain", json={"path": "../../app/app.py", "selection": "贝尔不等式"})
-        check("POST /api/ai/explain 路径穿越 → 4xx 且不泄露绝对路径",
-              400 <= r.status_code < 500 and not leaks(r.get_data(as_text=True), root),
-              f"status={r.status_code}")
         # ---- learn 只读（先 sync 才有卡）----
         r = c.post("/api/learn/sync", json={"force": True})
         check("POST /api/learn/sync ok", r.status_code == 200 and jget(r).get("ok") is True, str(jget(r))[:160])
@@ -713,12 +677,6 @@ def main() -> int:
             txt = r.get_data(as_text=True)
             check(f"GET {path} 不 5xx 且不泄露路径",
                   r.status_code < 500 and not leaks(txt, root), f"status={r.status_code}")
-
-        # 合法但没名额：explain 无 key → 503（**绝不允许真去联网**）
-        r = c.post("/api/ai/explain", json={"path": "ai/llm-and-agents/A.md",
-                                            "selection": "贝尔不等式"})
-        check("POST /api/ai/explain 未配置 key → 503 not_configured",
-              r.status_code == 503 and jget(r).get("code") == "not_configured", str(jget(r))[:160])
 
         # ================================================ E. 不变量旁证
         print("\n[E] 不变量旁证")

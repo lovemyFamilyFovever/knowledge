@@ -120,8 +120,6 @@ def test_i1() -> None:
         check("I1 app/ 的 sqlite 连接全部落在 indexes/（无独立数据库）", bad == [], bad)
         check("I1 RagStore 的 db_path 由 indexes/ 拼出（唯一间接层可核）",
               'indexes / "rag.db"' in (ROOT / "app" / "rag.py").read_text(encoding="utf-8"))
-        check("I1 AiUsageStore 的库路径同样由 indexes/ 拼出（AI 账本也是派生缓存）",
-              'self.indexes / "ai.db"' in (ROOT / "app" / "ai_usage.py").read_text(encoding="utf-8"))
 
 
 # ---------------------------------------------------------------- I2
@@ -223,7 +221,6 @@ AUDIT_ALLOWED = {
     ("app/store.py", "move"): 1,                       # rename_domain/rename_sub：content/ 内迁移，非删除
     # 不变量 9 ③：清除 AI 配置只允许删「仓库根那一个 gitignored JSON」——
     # 路径是 config_path(root) 拼出来的常量文件名，既不在 content/ 也不接受任何入参。
-    ("app/ai_config.py", "unlink"): 1,                 # clear_config：删 .ai-config.json（含 key，用户点「清除文件」）
     ("scripts/backup_reading.py", "unlink"): 1,        # 轮转删旧备份（backups/reading/ 下，非语料）
     ("scripts/clean_inbox_clones.py", "rmtree"): 1,    # _inbox/repos 副本，原件目录存在才删
     ("scripts/file_inbox_batch1.py", "unlink"): 1,     # 入库成功后删桌面源文件（content/ 外）
@@ -238,12 +235,6 @@ AUDIT_ALLOWED = {
     ("tests/test_reader.py", "unlink"): 2,             # 临时语料：模拟外部删除 + 探针清理
     # 切片 1（AI 配置层）：删的是 tempfile 临时根里的 taxonomy.json，
     # 用来验"分类学缺失时代码下界照样拦"；删除目标是自造文件，与真实语料无关。
-    ("tests/test_ai_config.py", "unlink"): 1,
-    # 切片 2（选词问 AI）：两处 unlink 删的都是临时实例根下的 .ai-config.json
-    # （探针自己写进去的假配置，跑完必须收掉，否则会污染同根后续探针）。
-    # 只剩选词问那一条 AI 探针：撤 key 时 unlink 一次、finally 里再收一次。
-    # （轮次 53 前是 6 处 —— 查漏 / 矛盾 / 批量三条 AI 探针各自收临时 .ai-config.json 与靶子，随功能一起删了）
-    ("tests/test_ui_behavior.py", "unlink"): 2,
     ("tests/test_known_defects.py", "os_rmdir"): 1,    # 摘 junction 链（不穿透删目标，是 rmtree 前的安全前置）
     ("tests/test_known_defects.py", "rmtree"): 1,      # 临时目录（tempfile.mkdtemp）自清理
     # P3-B JS 性质测试：删的是 tempfile.mkdtemp 起的临时 KB_ROOT（内含自建的 content/ 与
@@ -567,156 +558,9 @@ def test_i9() -> None:
         check("I9 正常文件整链放行", cfm.lint_file(good) == [], cfm.lint_file(good))
 
 
-# ---------------------------------------------------------------- I10
-# AGENTS 不变量 9「AI 出站三禁」。本文件的编号比 AGENTS 多一档（I9 是发布侧 YAML 闸），
-# 所以这条对的是**不变量 9**，别被序号骗了。
-# 三禁各自怎么钉：
-#   ① 域级出站闸门：黑名单来自 taxonomy.json 的 "ai": false，而 career/interview 是
-#      **代码下界** —— 就算有人在 JSON 里写 "ai": true 把它解开，也必须照样拦。
-#   ② AI 永不改正文：跑遍 AI 端点后 content/ 逐字节不变（判据落在**位置**上，
-#      因为"写自己那份 gitignored 配置文件"是合法的，静态 grep 分不清这两件事）。
-#   ③ key 不落索引、不进响应：.ai-config.json 不被 git 跟踪、JSON 压根不是语料类型；
-#      响应只回尾 4 位。并配一个控制组，防"搜索词本来就搜不到"的假绿。
-def test_i10() -> None:
-    group("I10（AGENTS 不变量 9）AI 出站三禁：域级闸门 / 不改正文 / key 不上盘不上响应")
-    from app import ai_config
-
-    saved_env = {k: os.environ.pop(k, None) for k in
-                 ("KB_AI_API_KEY", "KB_AI_BASE_URL", "KB_AI_MODEL")}
-    try:
-        # ---- ① 分类学权威 + 代码下界
-        with tempfile.TemporaryDirectory() as td:
-            root = Path(td)
-            c = seed(root)
-            tax = {"domains": {"ai": {"label": "AI", "hue": 262},
-                               # 诱饵：JSON 明确写 ai:true 想放行，下界必须压过它
-                               "career": {"label": "职业", "hue": 42, "ai": True},
-                               "小说": {"label": "网文", "hue": 300, "ai": False}}}
-            (c / "_meta").mkdir(parents=True, exist_ok=True)   # seed() 不建 _meta，这里补
-            (c / "_meta").mkdir(parents=True, exist_ok=True)
-            (c / "_meta" / "taxonomy.json").write_text(
-                json.dumps(tax, ensure_ascii=False), encoding="utf-8")
-            blocked = ai_config.egress_blocked_domains(c)
-            check("I10 ① JSON 的 ai:false 生效（小说域不进 AI）", "小说" in blocked, blocked)
-            check("I10 ① 求职两域是代码下界，JSON 反过来写 ai:true 也放行不了",
-                  {"career", "interview"} <= blocked, blocked)
-            check("I10 ① 未标记的域照常放行（闸门不是把总闸）",
-                  ai_config.domain_allows_egress(c, "ai") is True, blocked)
-            check("I10 ① 空域名按不允许处理（宁可拒）",
-                  ai_config.domain_allows_egress(c, "") is False)
-
-        # ---- ② AI 面永不改正文
-        # 静态 grep 会被"合法写自己配置文件"误伤（ai_config.save_config 确实 write_text），
-        # 所以判据落在**位置**上：跑遍 AI 的五个端点（含保存/清除），content/ 下每个文件
-        # 的字节必须一个都不变、也不许冒出新文件 —— 这才是"建议只落 sidecar、永不改正文"。
-        with tempfile.TemporaryDirectory() as td:
-            root = Path(td)
-            c = seed(root)
-            app = create_app(root)
-            # 摘掉 RAG 钩子：一旦被真去初始化 RagStore，它那条长连接会把
-            # indexes/rag.db 锁住，Windows 上临时根就删不掉（实测 PermissionError）。
-            # 本条断言要证的是"AI 不写语料"，与向量库无关。
-            app.config["KB_HOOKS"]["get_rag"] = None
-            app.config["KB_HOOKS"]["query_rag"] = None
-            cl = app.test_client()
-
-            def tree_state():
-                return {str(p.relative_to(c)): p.read_bytes() for p in sorted(c.rglob("*"))
-                        if p.is_file()}
-
-            before = tree_state()
-            cl.get("/api/ai/config")
-            cl.put("/api/ai/config", json={"base_url": "https://example.invalid/v1",
-                                           "api_key": "sk-CANARY-abcdefghijklmnop",
-                                           "model": "m"})
-            cl.put("/api/ai/config", json={"base_url": "http://192.168.0.1/v1"})  # 内网：该拒
-            cl.post("/api/ai/test", json={"base_url": "http://127.0.0.1:9/v1",
-                                          "allow_local": False})
-            cl.post("/api/ai/explain", json={"path": "ai/topic/A.md", "selection": "可见正文"})
-            cl.post("/api/ai/explain", json={"path": "career/B.md", "selection": "职业"})
-            # 轮次 53：问吧 / 查漏 / 批量 / 侧栏回看四个端点按用户要求整体移除。
-            # 这里仍然逐个打一遍 —— 断的是"路由确实不在了"（404），
-            # 而不是"从这份清单上悄悄删掉就完事了"。
-            for gone, meth in (("/api/ask", "post"), ("/api/ask/status", "get"),
-                               ("/api/ai/qa?path=ai/topic/A.md", "get"),
-                               ("/api/ai/audit", "post"), ("/api/ai/batch/estimate", "post"),
-                               ("/api/ai/batch/start", "post"), ("/api/ai/batch/stop", "post")):
-                rr = (cl.post(gone, json={}) if meth == "post" else cl.get(gone))
-                check(f"I10 ② {gone.split('?')[0]} 已下线 → 404", rr.status_code == 404,
-                      f"status={rr.status_code}")
-            cl.get("/api/ai/usage")
-            cl.delete("/api/ai/config")
-            after = tree_state()
-            check("I10 ② 跑遍 AI 端点后 content/ 逐字节不变（AI 不改正文）",
-                  before == after,
-                  {"only_in_before": sorted(set(before) - set(after)),
-                   "only_in_after": sorted(set(after) - set(before)),
-                   "changed": [k for k in before if k in after and before[k] != after[k]]})
-            check("I10 ② 配置落点在仓库根，不在 content/ 下（所以派生索引天然看不到它）",
-                  ai_config.config_path(root).parent == root
-                  and ai_config.config_path(root).parent != c,
-                  str(ai_config.config_path(root)))
-            src_ai = (ROOT / "app" / "routes_ai.py").read_text(encoding="utf-8")
-            check("I10 ② routes_ai 不引用语料写入函数（写 sidecar 只能由用户点动作触发）",
-                  not any(t in src_ai for t in
-                          ("dump_frontmatter", "api_save", "notes_path", "read_notes")),
-                  [t for t in ("dump_frontmatter", "api_save", "notes_path", "read_notes")
-                   if t in src_ai])
-
-        # ---- ③ key：不跟踪、不进索引、不进响应
-        r = subprocess.run(["git", "-C", str(ROOT), "check-ignore", "-q", ".ai-config.json"],
-                           capture_output=True, text=True)
-        check("I10 ③ .ai-config.json 被 .gitignore 覆盖", r.returncode == 0,
-              f"rc={r.returncode}")
-        tracked = subprocess.run(["git", "-C", str(ROOT), "ls-files", "--", ".ai-config.json"],
-                                 capture_output=True, text=True)
-        check("I10 ③ 该文件未被 git 跟踪（本机存在与否都不影响这条）",
-              tracked.stdout.strip() == "", tracked.stdout[:120])
-
-        with tempfile.TemporaryDirectory() as td:
-            root = Path(td)
-            c = seed(root)
-            (root / ai_config.CONFIG_FILENAME).write_text(json.dumps(
-                {"api_key": "sk-CANARY-abcdefghijklmnop", "base_url": "https://example.invalid/v1",
-                 "model": "m", "timeout_s": 5, "monthly_budget_calls": 0}), encoding="utf-8")
-            cl = create_app(root).test_client()
-            body = cl.get("/api/ai/config").get_data(as_text=True)
-            check("I10 ③ 配置响应里查不到明文 key", "CANARY" not in body, body[:200])
-            check("I10 ③ 配置响应只给尾 4 位", "mnop" in body and "****" in body, body[:200])
-            usage = cl.get("/api/ai/usage").get_data(as_text=True)
-            check("I10 ③ 用量响应里也没有明文 key", "CANARY" not in usage, usage[:200])
-            # 防的是"以后有人把配置搬进语料树"。搬进 content/ 也进不了索引 —— 但理由要写对：
-            # 语料遍历器只收 .md（md_files），JSON 压根不是语料类型。别把这条当成"索引会
-            # 替我挡 key"：同样的内容写成 .md 就会被索引、被 /api/search 命中（实测如此），
-            # 真正的防线是"key 只往仓库根那一个 JSON 里写"。
-            (c / "ai" / "topic" / ai_config.CONFIG_FILENAME).write_text(json.dumps(
-                {"api_key": "sk-CANARY-abcdefghijklmnop"}), encoding="utf-8")
-            fts.build_index(c, root / "indexes")
-            hits = fts.search(root / "indexes", "abcdefghijklmnop")
-            check("I10 ③ 即使配置文件被搬进 content/，FTS 索引里也搜不到它",
-                  hits == [], hits)
-            rels = [rel for _, rel in store.md_files(c)]
-            check("I10 ③ 语料遍历器压根不收 .json（所以上一条不是运气好）",
-                  not any(ai_config.CONFIG_FILENAME in n for n in rels), rels[:10])
-            # 控制组（缺了它上面那条就是"这个搜索词本来就搜不到"的假绿）：
-            # **同一个词**写进 .md 必须真的被索引命中 —— 这才证明防线是"key 只往仓库根那一个
-            # JSON 里写"，而不是"索引会替我挡"。
-            (c / "ai" / "topic" / "对照笔记.md").write_text(
-                '---\ntitle: "对照笔记"\n---\n\n 泄漏对照 sk-CANARY-abcdefghijklmnop 结尾。\n',
-                encoding="utf-8")
-            fts.build_index(c, root / "indexes")
-            ctrl = fts.search(root / "indexes", "abcdefghijklmnop")
-            check("I10 ③ 控制组：同一个词写进 .md 确实会被索引命中（上一条不是假绿）",
-                  ctrl != [], ctrl[:2])
-    finally:
-        for k, v in saved_env.items():
-            if v is not None:
-                os.environ[k] = v
-
-
 def main() -> int:
     for fn in (test_i1, test_i2, test_i3, test_i4, test_i5, test_i6, test_i7, test_i8,
-               test_i9, test_i10):
+               test_i9):
         fn()
     print(f"\n{passed} passed, {failed} failed, {skipped} skipped")
     return 1 if failed else 0

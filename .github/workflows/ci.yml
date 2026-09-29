@@ -68,15 +68,8 @@ jobs:
         run: python tests/test_invariants.py
       - name: E2E endpoint smoke (62 routes, tempfile corpus)
         run: python tests/test_e2e_smoke.py
-      # 切片 1（2026-09-27）：AI 出站配置层。出站点是本进程 werkzeug 起的假 provider，
-      # 所以这套在 CI 上也是真跑（不需要 key、不联网、不占用户的 5001/5031 段端口）。
-      - name: AI config-layer smoke (fake in-process provider; no network)
-        run: python tests/test_ai_config.py
-      # 选词问 AI（轮次 53 极简版）。同一个假 provider，可计数 —— 一次问恰好出站一次、
-      # 缓存命中不再计费、域级 403 早于任何请求，这三条都得靠"数得出来的没发生"来证。
-      - name: AI select-and-ask smoke (gate / cache / injection; no network)
-        run: python tests/test_ai_qa.py
-      # 切片 3 / 4（单篇查漏、批量查漏）与问吧在轮次 53 按用户要求整体移除，步骤同批删除。
+      # 轮次 54：AI 出站链路（配置层 / 选词问 / 查漏 / 批量 / 问吧）整体下线，
+      # 对应的两个 CI 步骤与两套测试同批删除。项目自此**没有任何出站请求**（见 AGENTS 不变量）。
       - name: Known-defects regression (empty-sub 500 / resolve-prefix 500)
         run: python tests/test_known_defects.py
       # Agent 工具自身（2026-09-29）：watch_ci 的"读不到"分三类点名 + 代理不通自动直连。

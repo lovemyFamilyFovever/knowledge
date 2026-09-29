@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% block title %}知库 · {{ sub_label }}{% endblock %}
-{% block head %}<link rel="stylesheet" href="/static/pages/workbench.css?v={{ av('pages/workbench.css') }}"><link rel="stylesheet" href="/static/pages/tagedit.css?v={{ av('pages/tagedit.css') }}"><link rel="stylesheet" href="/static/pages/novel.css?v={{ av('pages/novel.css') }}"><link rel="stylesheet" href="/static/pages/aiask.css?v={{ av('pages/aiask.css') }}">{% endblock %}
+{% block head %}<link rel="stylesheet" href="/static/pages/workbench.css?v={{ av('pages/workbench.css') }}"><link rel="stylesheet" href="/static/pages/tagedit.css?v={{ av('pages/tagedit.css') }}"><link rel="stylesheet" href="/static/pages/novel.css?v={{ av('pages/novel.css') }}">{% endblock %}
 {% block body %}
 <main>
   <section class="panel wb-panel" id="p-left" data-reveal data-reveal-y="14">
@@ -126,5 +126,4 @@
 <script src="/static/pages/workbench.js?v={{ av('pages/workbench.js') }}" defer></script>
 <script src="/static/pages/tag-suggest.js?v={{ av('pages/tag-suggest.js') }}" defer></script>
 <script src="/static/pages/wikilink-suggest.js?v={{ av('pages/wikilink-suggest.js') }}" defer></script>
-<script src="/static/pages/ai-ask.js?v={{ av('pages/ai-ask.js') }}" defer></script>
 {% endblock %}

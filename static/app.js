@@ -135,7 +135,7 @@ function tab(id, el) {
 /* ---------- 正文渲染 ---------- */
 let DOC = null;
 /* 把当前文档发布到 window：顶层 `let` 不会挂到 window 上，而跨脚本消费者读的就是
-   window.DOC（pages/wikilink-suggest.js 排除本篇、pages/ai-ask.js 判当前域）。
+   window.DOC（pages/wikilink-suggest.js 排除本篇）。
    这个缺口是切片 2 的探针抓出来的 —— 在那之前 `if (window.DOC && ...)` 恒为假，
    「双链补全排除当前文档」从来没生效过。换文档一律走 setDoc()，别再裸赋值。 */
 function setDoc(v) { DOC = v; window.DOC = v; return v; }
@@ -1436,9 +1436,7 @@ async function openDoc(domain, sub, name) {
   const artEl2 = $("#article"); if (artEl2) artEl2.style.display = "";
   ED_OPEN = false;
   renderArticle();
-  /* 选词问 AI（切片 2）：正文渲染完再通知，KBAI 要拿 .a-body 判选区落在哪、
-     并按新文档的 rel 去读「本篇问过的」。 */
-  if (window.KBAI) KBAI.onDoc();
+  /* 「选词问 AI」整条链路在轮次 54 按用户要求下线（正文渲染完不再通知任何组件）。 */
   renderCrumb();
   renderInfo();
   renderNotes();

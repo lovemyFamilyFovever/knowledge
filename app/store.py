@@ -38,11 +38,6 @@ DOMAIN_LABELS = {
     "baike": "百科", "articles": "文章", "interview": "面试", "projects": "项目",
     "handbook": "手册", "career": "职业", "ai-assets": "AI 资产",
 }
-# 不变量 9「AI 出站三禁」① 的代码地板：即使 taxonomy.json 丢了、损坏了、或有人删了
-# "ai": false 标记，这两个域也**永不**出站。消费点是 app/ai_config.egress_blocked_domains()
-# （它把本集合与 JSON 派生的 ai_hidden 取并集）。分类学仍是权威 —— JSON 可以往黑名里加域，
-# 但"求职材料不发外部 API"是用户 2026-09-27 拍板的安全下界，不属于可配置项。
-AI_NEVER_EGRESS = frozenset({"career", "interview"})
 GRAPH_HUES = {"baike": 158, "articles": 200, "interview": 340, "projects": 22,
               "handbook": 96, "career": 42, "ai-assets": 262}
 SUB_LABELS = {
@@ -126,12 +121,6 @@ def load_taxonomy(content: Path) -> dict:
                                   for k, v in doms.items()}},
         "search_hidden": {k for k, v in doms.items()
                           if isinstance(v, dict) and v.get("search") is False},
-        # "ai": false = 该域正文永不外发 AI（不变量 9）。与 search_hidden 同一口径：
-        # 开关写在 JSON 里。本集合**只反映 JSON**，代码安全下界（AI_NEVER_EGRESS）由
-        # app/ai_config.egress_blocked_domains() 统一并进来 —— 分两处并就没人能证明
-        # 哪一层在起作用（变异测试实测：两层各并一次时，拆掉任一层断言都不红）。
-        "ai_hidden": {k for k, v in doms.items()
-                      if isinstance(v, dict) and v.get("ai") is False},
         "subs": {**SUB_LABELS, **{k: str(v) for k, v in (data.get("subs") or {}).items()}},
         "sources": {**SOURCE_LABELS, **{k: str(v) for k, v in (data.get("sources") or {}).items()}},
         "status": {**STATUS_LABELS, **{k: str(v) for k, v in (data.get("status") or {}).items()}},
