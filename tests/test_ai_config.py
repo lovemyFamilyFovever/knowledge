@@ -31,6 +31,17 @@ from werkzeug.serving import make_server  # noqa: E402
 from app import ai_config  # noqa: E402
 from app.app import create_app  # noqa: E402
 
+# **出站分类判据必须与"这台机器此刻有没有开代理"无关**（轮次 52 实录）。
+# B13 的判据是「域名解析不了 → unreachable」，靠的是 DNS 失败这条形状。但 Windows 的系统代理
+# 写在**注册表（Internet 设置）**里，不在环境变量里 —— `os.environ` 搜不到，
+# `urllib.request.getproxies()` 却照样拿得到。用户今晚打开代理之后，`.invalid` 那次请求
+# 改由代理解析，回了一个 HTTP 错误码 → B13 读成 `http_error`：同一份代码、同一条断言，
+# 结论只取决于机器上有没有开着代理。
+# 所以本套在自己进程里钉死 no_proxy（`urllib` 认这个，实测 `proxy_bypass()` 由 False 变 True）。
+# 这只影响**测试进程**：用户真实出站照旧走他的系统代理，那是另一件事（已记台账 §6 第 101 行）。
+os.environ["no_proxy"] = "*"
+os.environ["NO_PROXY"] = "*"
+
 CANARY = "sk-CANARY-0123456789abcdef"
 PASSKEY = "sk-PASS-abcdefghijklmnop"
 
@@ -240,6 +251,11 @@ def main() -> int:
     try:
         # ============================================== A. 纯函数层：脱敏 / 优先级 / 校验
         print("\n[A] ai_config 纯函数")
+        # 前提自证：上面那两行 no_proxy 真起作用了（不然 B13 测的是"这台机器有没有开代理"）。
+        import urllib.request as _ur
+        check("A0 前提：环境代理已被本进程钉死（公网主机也按直连判）",
+              _ur.proxy_bypass("kb-ai-no-such-host.invalid") is True,
+              "getproxies=%s" % (_ur.getproxies(),))
         check("A1 mask_key 只露尾 4 位", ai_config.mask_key(CANARY) == "******cdef",
               ai_config.mask_key(CANARY))
         check("A2 mask_key 短 key 全打点", ai_config.mask_key("abc") == "***")

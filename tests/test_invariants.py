@@ -229,6 +229,11 @@ AUDIT_ALLOWED = {
     ("scripts/file_inbox_batch1.py", "unlink"): 1,     # 入库成功后删桌面源文件（content/ 外）
     ("scripts/publish_site.py", "unlink"): 1,          # prune 站仓（dest）里已不在白名单的文件；有"缺 quartz.config 即中止"的守卫
     ("scripts/remap_taxonomy.py", "move"): 1,          # taxonomy 重映射搬目录
+    # 轮次 52（watch_ci 的第 ④ 类读不到）：删的是本脚本自己 tempfile.mkstemp 出来的
+    # curl 响应头临时文件（路径由 mkstemp 生成、不接受任何入参、不在 content/ 下）。
+    # 之所以单独走 unlink 而不是 NamedTemporaryFile(delete=True)：Windows 上那个句柄
+    # 不能被 curl 子进程二次打开，必须显式收掉。
+    ("scripts/agent/watch_ci.py", "os_unlink"): 1,
     ("tests/test_learn.py", "unlink"): 2,              # 临时语料 / 派生库自清理
     ("tests/test_reader.py", "unlink"): 2,             # 临时语料：模拟外部删除 + 探针清理
     # 切片 1（AI 配置层）：删的是 tempfile 临时根里的 taxonomy.json，

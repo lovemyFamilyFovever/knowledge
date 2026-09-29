@@ -12,8 +12,10 @@ HTTP 0 读不到 run 列表 就退了。真因是它把代理 127.0.0.1:10810 �
      代理那一趟根本到不了 API，直连那三趟（列表 / jobs / annotations）到了 —— 计数恰为 3
      （既不靠文案自证，也顺带证明降级没把每个端点请求两遍）；
   2. **显式直连时不得出现「已改直连」** —— 否则第 1 条的标记是句恒真的废话；
-  3. **限流 / 两边都够不着 / 真没有 run** 三种读不到走**不同退出码 + 不同文案**，
-     且彼此的关键词互不出现在对方的输出里（分类互斥，这才叫分开点名）；
+  3. **限流 / 两边都够不着 / 真没有 run / 200 但正文不是 JSON** 四种读不到走**不同退出码 + 不同文案**，
+     且彼此的关键词互不出现在对方的输出里（分类互斥，这才叫分开点名）。
+     第 4 类是 2026-09-29 推上去之后第一次实跑撞到的：走 CONNECT 代理时 `-D -`
+     会把隧道应答一起吐进 stdout，正文里混着响应头 → 解析不出 JSON → 旧版 `d.get(...)` 直接崩栈；
   4. 降级之后**报告仍然完整**（run 号、job conclusion、annotation 一条都不能少），
      免得「能读到」退化成「只读到第一屏」；
   5. **钩子那侧的控制台是 GBK，不是我这台终端的 UTF-8**（轮次 50 实录：本套第一次进 pre-commit
@@ -103,6 +105,13 @@ class Handler(BaseHTTPRequestHandler):
         if m == "ratelimited":
             self._send(403, None, headers={"x-ratelimit-reset": str(STATE["reset"])},
                        raw=b'{"message":"API rate limit exceeded for IP"}')
+            return
+        if m == "html":
+            # 2026-09-29 真机形状：走 CONNECT 代理时 curl 的 `-D -` 会把隧道应答
+            # "HTTP/1.1 200 Connection established" 一起吐进 stdout，头部/正文的切分点
+            # 落在错位置 → 正文里混着响应头，JSON 解析失败。旧版此时 st 仍是 200，
+            # 于是 `d.get("workflow_runs")` 直接 AttributeError 崩栈（退出码 1、零句人话）。
+            self._send(200, None, raw=b"HTTP/1.1 200 OK\r\nContent-Type: application/json\r\n\r\n<html>proxy ate it</html>")
             return
         # 按子串匹配 —— KB_CI_API 里带着 /repos/o/r 前缀，路径不是从根开始的
         if "/annotations" in p:
@@ -194,11 +203,24 @@ def main():
     check("E3 此路不谎报限流", "限流" not in out, out[:250])
     check("E4 此路不谎报「没有 run」（读不到不等于没有）", "没有" not in out, out[:250])
 
-    print("== F：形态断言（不靠跑出来、但会被忘掉的那三条）==")
+    print("== I：HTTP 200 但正文不是 JSON（真机第一次 push 就撞上的形状）==")
+    STATE.update(mode="html", hits=[])
+    rc, out = run_script(api_ok, "")
+    check("I1 200+坏正文走专属退出码 6（既不是崩栈也不是通用读不到）", rc == 6,
+          "rc=%s %s" % (rc, out[:250]))
+    check("I2 文案含「不是 JSON」", "不是 JSON" in out, out[:250])
+    check("I3 不许崩栈 —— 输出里没有 Traceback", "Traceback" not in out, out[:250])
+    check("I4 此路不谎报限流", "限流" not in out, out[:250])
+    check("I5 此路不谎报「没有 run」", "没有" not in out, out[:250])
+    check("I6 此路不谎报「够不着」（连接其实是通的）", "够不着" not in out, out[:250])
+
+    print("== F：形态断言（不靠跑出来、但会被忘掉的那几条）==")
     src = SCRIPT.read_text(encoding="utf-8")
     check("F1 代理地址可由 KB_CI_PROXY 覆盖（不许再写死）", "KB_CI_PROXY" in src)
     check("F2 API 地址可由 KB_CI_API 覆盖（本套的零外网前提）", "KB_CI_API" in src)
     check("F3 每次 curl 都带 --max-time（读不到要限时退，不能挂住）", src.count("--max-time") >= 1)
+    check("F4 响应头单独取（-D 指到文件），不许与正文共用一条 stdout",
+          '"-D", "-"' not in src and "-D" in src, "还在用 -D -（隧道应答会混进正文）")
 
     print("== G：控制组 —— 假 API 自己得是可信的 ==")
     STATE.update(mode="ok", hits=[])

@@ -34,11 +34,11 @@ python tests\test_predicates.py                # 判定谓词层 smoke（109 断
 python tests\test_properties.py                # 性质测试（15 条 · 每条 240 个随机样本，固定种子）
 python tests\test_invariants.py                # 不变量门禁 I1~I10（87 断言 · 对 AGENTS 1-9）
 python tests\test_e2e_smoke.py                 # 端到端 smoke（235 断言 · 打满 72 条路由）
-python tests\test_ai_config.py                 # AI 出站配置层（79 断言 · 假 provider 起在本进程，零外网）
+python tests\test_ai_config.py                 # AI 出站配置层（80 断言 · 假 provider 起在本进程，零外网；进程内钉 `no_proxy` —— Windows 系统代理写在注册表里，不钉会把 DNS 失败改写成 http_error，见台账 §6 第 101 行）
 python tests\test_ai_qa.py                     # 选词问 AI（80 断言 · 上下文最小化 / 域级 403 / 缓存不计费 / 注入加固）
 python tests\test_ai_audit.py                  # 单篇查漏补缺（86 断言 · 本地判据 10 类 + 干净文档控制组 + AI 只收窄不造条目 + 矛盾候选两条来源：FTS 恒在 / 向量补「没互相点名」的对）
 python tests\test_ai_batch.py                  # 批量查漏补缺（120 断言 · 估算零出站 / 长任务不挂在 fetch 上 / 预算帽看上界 / 域级覆盖空白 + 覆盖空白的 AI 复核只收窄不造条目 + 矛盾核对按每篇两次计）
-python tests\test_watch_ci.py                  # Agent 工具自身（31 断言 · watch_ci 的三类"读不到"分开点名 + 代理不通自动直连；打本进程假 GitHub，零外网；GBK/UTF-8 两档都要绿——第一次进钩子就是被 GBK 档抓红的）
+python tests\test_watch_ci.py                  # Agent 工具自身（38 断言 · watch_ci 的四类"读不到"分开点名 + 代理不通自动直连；打本进程假 GitHub，零外网；GBK/UTF-8 两档都要绿——第一次进钩子就是被 GBK 档抓红的）
 python tests\test_js_props.py                  # 浏览器侧书库解析性质测试（47 断言；缺 node/Chrome 自动 SKIP）
 python tests\test_ui_regress.py                # 视觉回归批处理（P5：22 张截图 vs tests/ui-baselines/ 基线 + 10 条顶栏几何断言）
 python tests\test_ui_regress.py --stability    #   只验"两次截图逐像素相同"（改矩阵/环境后先跑这个）；并把历轮每镜头最大 AE 累计进 tests/ui-baselines/floor.json（跟踪文件，阈值 AE≤2 的实测出处）
@@ -77,7 +77,7 @@ Agent 的**常驻工具脚本**统一收在 `scripts/agent/`（2026-09-18 从旧
 | `scripts/agent/evalcdp.mjs` | CDP 执行任意 JS 并回显返回值 + console 报错：`node scripts/agent/evalcdp.mjs <url> "<js表达式>"`，查"改了没生效"类问题利器 |
 | `scripts/agent/geom.mjs` | **多视口几何探针**：`node scripts/agent/geom.mjs <url> <w1,w2,...> <expr@文件>`，一个 Chrome 逐档 `setDeviceMetricsOverride` 求值（支持 async 表达式，`awaitPromise`）、每档回一行 JSON。两个用途：① 顶栏压字这类"像素基线永远绿"的重叠问题（台账 §6 第 28/29 行）；② 当行为测试的驱动器 —— **evalcdp 的视口只有 ~764px 宽**，右栏在那一档没布局、`focus()` 也无效，凡是依赖侧栏/浮层定位的前端行为断言都用本脚本钉一个桌面宽度。**表达式必须一次求值取全部矩形**——每个字段各自 `getBoundingClientRect()` 会在过渡中读出三套数 |
 | `scripts/agent/verifyall.mjs` | 双阶段全状态断言模板（同页两阶段 evaluate，如 pretty/md 视图切换），按需改表达式复用 |
-| `scripts/agent/watch_ci.py` | 盯 GitHub Actions 到结论：`python scripts/agent/watch_ci.py <sha 前缀> [等待秒=420]`。回 run 状态 + 逐步 conclusion + **annotations**（`::notice::STARTED` / `::warning::SKIPPED`，见 `tests/_ci.py`）—— 匿名 API 读不到日志正文，只有这三样能证明**这一步真跑了没**。匿名配额 60 次/小时按出口 IP 算，别裸轮询。**三类"读不到"分开报、绝不混成一句**：够不着 API=退出 4 / 403 限流=退出 3（带配额恢复时刻）/ API 正常但列表里没这个 sha=退出 5；**代理 `127.0.0.1:10810` 不通时自动改直连重试一次**（2026-09-29 实测：代理客户端没起来而直连 1.16 秒通），判据 `tests/test_watch_ci.py`（假 GitHub 起在本进程，`KB_CI_API`/`KB_CI_PROXY` 是指针） |
+| `scripts/agent/watch_ci.py` | 盯 GitHub Actions 到结论：`python scripts/agent/watch_ci.py <sha 前缀> [等待秒=420]`。回 run 状态 + 逐步 conclusion + **annotations**（`::notice::STARTED` / `::warning::SKIPPED`，见 `tests/_ci.py`）—— 匿名 API 读不到日志正文，只有这三样能证明**这一步真跑了没**。匿名配额 60 次/小时按出口 IP 算，别裸轮询。**四类"读不到"分开报、绝不混成一句**：够不着 API=退出 4 / 403 限流=退出 3（带配额恢复时刻）/ API 正常但列表里没这个 sha=退出 5 / HTTP 200 但正文不是 JSON=退出 6（CONNECT 代理的隧道应答会混进正文，旧写法把响应头指到 `-` 时解析失败、直接崩栈 —— 2026-09-29 推完第一次实跑撞的就是它）；**代理 `127.0.0.1:10810` 不通时自动改直连重试一次**（2026-09-29 实测：代理客户端没起来而直连 1.16 秒通），判据 `tests/test_watch_ci.py`（38 条，假 GitHub 起在本进程，`KB_CI_API`/`KB_CI_PROXY` 是指针） |
 | `scripts/agent/scan_fm.py` | frontmatter 污染扫描：`python scripts/agent/scan_fm.py [扫描根]`，正文前 400 字符内又出现完整 fm 块 = 污染（baike 提质时沉淀） |
 | `scripts/agent/scan_dup.py` | 抓取残留副本扫描：`python scripts/agent/scan_dup.py [扫描根]`，`xxx-<数字>.md` 与 `xxx.md` 同名共存即残留 |
 
