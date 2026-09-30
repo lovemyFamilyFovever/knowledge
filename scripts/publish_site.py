@@ -11,6 +11,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import shutil
 import sys
 from pathlib import Path
@@ -133,6 +134,11 @@ def main() -> int:
         (dest / "index.md").write_text("\n".join(body) + "\n", encoding="utf-8")
         print("已生成落地页 index.md")
 
+    # 域色相导出：主仓的左树域头 / 首页域卡色点是 taxonomy.json 的 hue 渲染的。
+    # 不变量 5 禁止模板与 CSS 再抄一份域名单，所以这里把 hue 作为**数据**导出，
+    # 由站仓插件在运行时读取并贴到对应节点上——权威仍然只有 taxonomy.json 一处。
+    export_hues(dest)
+
     # 事后复查：目标仓内绝不允许出现排除目录
     for p in dest.rglob("*"):
         rel = p.relative_to(dest)
@@ -140,6 +146,33 @@ def main() -> int:
             raise RuntimeError(f"发布后泄漏复检失败: {rel}")
     print("同步完成，排除项复检通过。")
     return 0
+
+
+def export_hues(dest: Path) -> None:
+    """把 content/_meta/taxonomy.json 里带 hue 的域导出成站仓静态资产。
+
+    只导 hue 数字，不导 label/状态——站侧要的是色点，不是第二份分类学。
+    没有 hue 的域（如小说域）直接不出现。
+    """
+    tax = ROOT / "content" / "_meta" / "taxonomy.json"
+    if not tax.exists():
+        print(f"未找到 {tax}，跳过色相导出", file=sys.stderr)
+        return
+    try:
+        data = json.loads(tax.read_text(encoding="utf-8"))
+    except Exception as e:  # 分类学坏了就别把错的色相带上站
+        print(f"taxonomy.json 解析失败，跳过色相导出：{e}", file=sys.stderr)
+        return
+    domains = data.get("domains") or {}
+    hues = {
+        name: meta["hue"]
+        for name, meta in domains.items()
+        if isinstance(meta, dict) and isinstance(meta.get("hue"), (int, float))
+    }
+    out = dest.parent / "quartz" / "static" / "zhiku-taxonomy.json"
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(json.dumps(hues, ensure_ascii=False, sort_keys=True), encoding="utf-8")
+    print(f"色相导出: {out}（{len(hues)} 个域）")
 
 
 if __name__ == "__main__":
