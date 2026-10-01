@@ -139,10 +139,12 @@ requirements/       依赖清单（requirements.txt 核心 / -rag.txt 语义检�
 - 禁止在 `content/` 根目录散放文件；一切新语料走 `_inbox`。
 - 不要移除或绕过「写回文件系统」的任何一条路径（api_save / api_note / api_favorite / api_move / api_delete）。
 - 不要在没有跑测试的情况下宣称"完成"。
-- **不要去读书库正文，也不要写任何以真实书库为输入的脚本**。**2026-09-30 书库已离开本仓库**：
-  `content/小说/`（366MB epub/txt）与 `content/漫画/` 整体移到 `E:\GitHub\library-archive/`，
-  由用户的另一个项目负责阅读；本仓库的 `content/` 下不再有这两棵树。
-  **但这条边界不因此作废**：git 历史里那些文件永远取得回来（`git show <旧提交>:content/小说/...`），
+- **不要去读书库正文，也不要写任何以真实书库为输入的脚本**。**书库已从本仓库彻底退场**：
+  `content/小说/`（366MB epub/txt）与 `content/漫画/` 先于 2026-09-30 移出到 `E:\GitHub\library-archive/`，
+  次日（2026-10-01）按用户要求**连归档目录一起删除**（用户本地另有备份，清单留档在
+  `.qa/library-archive-manifest.json`：128 个文件 / 365.6MB）。用户另开了项目负责阅读，本仓库不再显示也不再接收这两棵树。
+  **但这条边界不因此作废**：git 历史里那些文件仍然永远取得回来（`git show <旧提交>:content/小说/...`，
+  `.git` 至今约 318MB、其中 265MB 是书库包），
   所以"不读正文、不拿真书库跑脚本"照旧生效。书库**处理逻辑**留在仓库里
   （`static/kb-novel.js` 等，配套测试用合成样本），并留存成 `docs/note-library-reader.md`。
   这条边界是用户 2026-09-24 明确定的（里面有成人向书籍）：所有测试与自动化的样本一律**合成**
