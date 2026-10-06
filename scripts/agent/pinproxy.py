@@ -47,6 +47,12 @@ def handle(conn, addr):
             return
         upstream = socket.create_connection((pin, int(port or 443)), timeout=20)
         conn.sendall(b"HTTP/1.1 200 Connection Established\r\n\r\n")
+        # Critical: the 20s handshake timeout must not linger on the tunnel, or an
+        # idle git auth/negotiation pause >20s makes pipe() raise and we cut TLS
+        # mid-session (symptom: git "SSL_read: unexpected eof", while a quick curl
+        # on the same IP returns 200 -- the data flow masked it on a bulk push).
+        conn.settimeout(None)
+        upstream.settimeout(None)
         print("TUNNEL %s -> %s" % (target, pin), flush=True)
         t = threading.Thread(target=pipe, args=(upstream, conn), daemon=True)
         t.start()
