@@ -1,0 +1,5790 @@
+{
+ "_note": "2026-10-07 历史重置前从旧 724 提交抽出的每文件首次/末次提交日期（git log --reverse 遍历 content/ 下 .md/.html，已排除 projects/小说/漫画 与两个 PII 文件）。用途：语料 frontmatter 无 created/updated 键，公开面的日期由此回填。",
+ "count": 1446,
+ "dates": {
+  "content/ai/agent-in-action/AI Agent开发实战 - 第一部分：理论基础与核心架构.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/ai/agent-in-action/AI Agent开发实战 - 第三部分：高级主题与未来展望.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/ai/agent-in-action/AI Agent开发实战 - 第二部分：框架生态与开发实战.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/ai/agent-in-action/single-file/2026年AI Agent开发实战长文 (HTML).html": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/ai/agent-in-action/single-file/2026年AI Agent开发实战长文 (HTML).md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/ai/agent-in-action/single-file/AI Agent开发实战 - README.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/ai/agent-in-action/single-file/AI Agent开发实战 - 单文件完整版 (HTML).html": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/ai/agent-in-action/single-file/AI Agent开发实战 - 单文件完整版 (HTML).md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/ai/agent-in-action/single-file/AI Agent开发实战 - 单文件完整版 (Markdown).md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/ai/agent-in-action/single-file/AI Agent开发实战 - 完整版.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/ai/agent-in-action/single-file/AI Agent开发实战 - 目录.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/ai/data-science/A B测试与实验设计.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/ai/data-science/MLOps实践.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/ai/data-science/RNN LSTM GRU.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/ai/data-science/卷积神经网络(CNN).md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/ai/data-science/可解释AI(XAI).md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/ai/data-science/因果推断.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/ai/data-science/大数据技术栈.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/ai/data-science/推荐系统.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/ai/data-science/数据分析与可视化.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/ai/data-science/数据分析与可视化实战.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/ai/data-science/数据增强技术.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/ai/data-science/时间序列分析.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/ai/data-science/模型压缩与部署.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/ai/data-science/深度学习基础.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/ai/data-science/特征工程进阶.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/ai/data-science/生成对抗网络(GAN).md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/ai/data-science/自监督学习.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/ai/general/break-prison.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/ai/general/claude.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/ai/general/index.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/ai/general/program-prompt.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/ai/general/prompt.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/ai/general/study.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/ai/llm-and-agents/AI Agent 开发最佳实践.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/ai/llm-and-agents/AI Agent 概述与核心架构.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/ai/llm-and-agents/AI 应用详解.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/ai/llm-and-agents/Agent 与数据库交互.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/ai/llm-and-agents/Agent 安全与对齐.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/ai/llm-and-agents/Agent 架构模式详解.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/ai/llm-and-agents/Agent 编排框架对比.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/ai/llm-and-agents/Agent 规划与推理.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/ai/llm-and-agents/Agent 记忆系统.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/ai/llm-and-agents/Agent 评估与基准.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/ai/llm-and-agents/AutoGPT 与自主 Agent.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/ai/llm-and-agents/BERT模型详解.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/ai/llm-and-agents/Code Agent.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/ai/llm-and-agents/Computer Use Agent.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/ai/llm-and-agents/CrewAI 多 Agent 框架.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/ai/llm-and-agents/Diffusion扩散模型.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/ai/llm-and-agents/Embedding 技术详解.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/ai/llm-and-agents/Function Calling 与 Tool Use.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/ai/llm-and-agents/GPT系列模型演进.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/ai/llm-and-agents/LLM 微调技术.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/ai/llm-and-agents/LLM 推理优化.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/ai/llm-and-agents/LangChain 框架全解析.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/ai/llm-and-agents/LlamaIndex 框架指南.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/ai/llm-and-agents/MCP（Model Context Protocol）.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/ai/llm-and-agents/MoE 混合专家模型.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/ai/llm-and-agents/NeRF与3D生成.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/ai/llm-and-agents/Prompt Engineering 高级技巧.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/ai/llm-and-agents/Prompt 工程与 Agent 详解.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/ai/llm-and-agents/RAG 与检索技术详解.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/ai/llm-and-agents/RAG 检索增强生成.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/ai/llm-and-agents/Research Agent.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/ai/llm-and-agents/Scaling Law.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/ai/llm-and-agents/Tokenizer 技术.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/ai/llm-and-agents/Transformer架构深度解析.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/ai/llm-and-agents/Web Agent.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/ai/llm-and-agents/Workflow Agent.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/ai/llm-and-agents/向量数据库技术.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/ai/llm-and-agents/图神经网络.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/ai/llm-and-agents/多 Agent 协作系统.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/ai/llm-and-agents/多模态 Agent.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/ai/llm-and-agents/多模态大模型.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/ai/llm-and-agents/大模型基础术语详解.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/ai/llm-and-agents/大模型预训练技术.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/ai/llm-and-agents/大语言模型架构演进.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/ai/llm-and-agents/小模型与端侧 Agent.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/ai/llm-and-agents/强化学习基础.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/ai/llm-and-agents/微调与训练技术详解.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/ai/llm-and-agents/机器学习基础.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/ai/llm-and-agents/深度强化学习.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/ai/llm-and-agents/知识图谱与 LLM 结合.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/ai/llm-and-agents/联邦学习.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/ai/llm-and-agents/语音AI技术.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/ai/llm-and-agents/长上下文技术.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/ai/ml/2026年AI技术全景图.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/ai/ml/AI是否会取代人类辩论.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/ai/ml/LLM应用开发完全指南.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/ai/ml/MLOps机器学习工程化.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/ai/ml/Prompt Engineering高级指南.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/ai/ml/RAG系统工程化实践.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/ai/ml/《AI时代生存指南》第一章.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/ai/ml/《AI时代生存指南》第三章.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/ai/ml/《AI时代生存指南》第二章.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/ai/ml/强化学习从入门到实践.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/ai/ml/深度学习从零到精通.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/ai/ml/自然语言处理NLP完全指南.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/ai/ml/计算机视觉入门到实战.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/backend/blazor.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/backend/csharp.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/backend/general/Web框架对比.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/backend/general/缓存策略.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/backend/general/认证与安全实践.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/backend/index.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-06"
+  },
+  "content/backend/middleware/ESB 与服务网格（Service Mesh）.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/backend/middleware/GraphQL实践.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/backend/middleware/Kafka深入.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/backend/middleware/RabbitMQ vs Kafka vs Pulsar.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/backend/middleware/gRPC深入.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/backend/middleware/任务调度（Task Scheduling）.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/backend/middleware/消息队列（Message Queue）.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/career/AI时代的100个副业创意.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/career/insights/《丝绸之路全史》.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/career/insights/《认知心理学深度解析》.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/career/insights/构建个人知识管理系统.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/career/insights/科幻小说第一章.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/career/insights/科幻小说第三章.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/career/insights/科幻小说第二章.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/career/insights/程序员健康管理指南.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/career/insights/程序员的投资理财指南.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/career/insights/费曼学习法完全指南.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/career/insights/高效阅读技术书籍指南.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-12"
+  },
+  "content/career/journal/config.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-23"
+  },
+  "content/career/journal/note.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-23"
+  },
+  "content/career/journal/plugins/addPicPlugin.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-23"
+  },
+  "content/career/resume/项目经历 - 简历素材.html": {
+   "first": "2026-09-05",
+   "last": "2026-09-18"
+  },
+  "content/career/resume/项目经历 - 简历素材.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-23"
+  },
+  "content/career/resume/项目经理 - 项目经历.html": {
+   "first": "2026-09-05",
+   "last": "2026-09-18"
+  },
+  "content/career/resume/项目经理 - 项目经历.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-23"
+  },
+  "content/career/个人品牌建设指南.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-12"
+  },
+  "content/career/开源项目运营完全指南.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/career/技术人产品思维指南.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/career/技术人创业指南.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/career/技术人职业转型完全指南.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/career/技术人英语提升指南.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/career/技术写作方法论.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/career/技术面试音频训练.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/career/技术领导力指南.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/career/程序员职业发展.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/career/自由职业开发者生存指南.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/career/远程工作完全指南.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/cookbook/fragment/improveMemory.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/cookbook/fragment/index.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/cookbook/fragment/lazyMan.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/cookbook/fragment/learnCodeTenYears.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/cookbook/fragment/programWrite.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/cookbook/fragment/programmingThinking.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/cookbook/fragment/self-discipline.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/cookbook/fragment/softwareThinking.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/cookbook/fragment/studyTips.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/cookbook/index.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/cookbook/skill/index.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/cookbook/skill/write.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/cs-fundamentals/algorithms/动态规划.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/cs-fundamentals/algorithms/图算法大全.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/cs-fundamentals/algorithms/基础数据结构.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/cs-fundamentals/algorithms/复杂度分析.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/cs-fundamentals/algorithms/字符串算法.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/cs-fundamentals/algorithms/排序与搜索.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/cs-fundamentals/algorithms/算法思想.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/cs-fundamentals/algorithms/高级数据结构.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/cs-fundamentals/blockchain/区块链基础.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/cs-fundamentals/database/ElasticSearch搜索.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/cs-fundamentals/database/MongoDB实践.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/cs-fundamentals/database/MySQL从入门到架构师.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/cs-fundamentals/database/MySQL深入.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/cs-fundamentals/database/NoSQL 数据库术语.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/cs-fundamentals/database/PostgreSQL高级特性.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/cs-fundamentals/database/Redis深入.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/cs-fundamentals/database/Redis深度解析与实战指南.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/cs-fundamentals/database/SQL 基础术语.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/cs-fundamentals/database/事务与并发控制术语.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/cs-fundamentals/database/搜索引擎技术详解.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/cs-fundamentals/database/数据库内核原理深度解析.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/cs-fundamentals/database/数据库设计术语.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/cs-fundamentals/database/索引与查询优化术语.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/cs-fundamentals/distributed/一致性算法.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/cs-fundamentals/distributed/分布式ID与缓存术语百科.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/cs-fundamentals/distributed/分布式事务.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/cs-fundamentals/distributed/分布式基础术语百科.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/cs-fundamentals/distributed/分布式存储术语百科.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/cs-fundamentals/distributed/分布式缓存.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/cs-fundamentals/distributed/微服务治理术语百科.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/cs-fundamentals/distributed/服务网格.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/cs-fundamentals/general/信息论基础.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/cs-fundamentals/general/布尔逻辑与逻辑门.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/cs-fundamentals/general/数制与编码.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/cs-fundamentals/general/离散数学基础.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/cs-fundamentals/general/计算理论.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/cs-fundamentals/hardware/CPU与处理器架构.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/cs-fundamentals/hardware/主板与总线.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/cs-fundamentals/hardware/内存与存储系统.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/cs-fundamentals/hardware/显卡与GPU.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/cs-fundamentals/hardware/输入输出与外设.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/cs-fundamentals/iot/物联网与嵌入式基础.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/cs-fundamentals/network/DNS深入解析.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/cs-fundamentals/network/HTTP协议.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/cs-fundamentals/network/TCP-IP.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/cs-fundamentals/network/TCP深入.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/cs-fundamentals/network/http-headers-analysis.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/cs-fundamentals/network/index.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/cs-fundamentals/network/jwt.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/cs-fundamentals/network/应用层协议.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/cs-fundamentals/network/网络基础.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/cs-fundamentals/network/网络安全协议.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/cs-fundamentals/os/Linux 命令速查手册.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/cs-fundamentals/os/Shell 脚本详解.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/cs-fundamentals/os/Shell脚本编程.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/cs-fundamentals/os/容器运行时.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/cs-fundamentals/os/操作系统基础术语.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/cs-fundamentals/os/操作系统核心.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/cs-fundamentals/os/进程管理详解.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/cs-fundamentals/programming-languages/Flutter跨平台开发实战.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/cs-fundamentals/programming-languages/Go语言核心.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/cs-fundamentals/programming-languages/Go语言系统编程指南.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/cs-fundamentals/programming-languages/Python全栈开发教程.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/cs-fundamentals/programming-languages/Python高级特性.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/cs-fundamentals/programming-languages/Python高级编程完全指南.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/cs-fundamentals/programming-languages/React Native移动应用开发.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/cs-fundamentals/programming-languages/Rust Web开发实战.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/cs-fundamentals/programming-languages/Rust系统编程入门到精通.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/cs-fundamentals/programming-languages/Rust编程基础.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/cs-fundamentals/programming-languages/TypeScript深入.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/cs-fundamentals/programming-languages/TypeScript高级编程指南.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/cs-fundamentals/programming-languages/函数式编程完全指南.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/cs-fundamentals/programming-languages/函数式编程（Functional Programming）概念.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/cs-fundamentals/programming-languages/密码学与区块链技术指南.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/cs-fundamentals/programming-languages/并发编程模式与实践.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/cs-fundamentals/programming-languages/并发编程（Concurrent Programming）概念.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/cs-fundamentals/programming-languages/技术面试通关宝典.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/cs-fundamentals/programming-languages/程序员的数学基础.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/cs-fundamentals/programming-languages/算法面试100题精讲.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/cs-fundamentals/programming-languages/编程概念音频课-数据结构.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/cs-fundamentals/programming-languages/编程概念音频课-设计模式.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/cs-fundamentals/programming-languages/编程语言通用概念.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/cs-fundamentals/programming-languages/编译原理与解释器实现.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/cs-fundamentals/programming-languages/计算机科学完整知识图谱.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/cs-fundamentals/programming-languages/软件测试完全指南.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/cs-fundamentals/programming-languages/面向对象编程（OOP）概念.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/cs-fundamentals/security/Web安全攻防.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/cs-fundamentals/security/供应链安全.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/cs-fundamentals/security/加密技术篇.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-06"
+  },
+  "content/cs-fundamentals/security/哈希算法篇.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/cs-fundamentals/security/密码学基础篇.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/cs-fundamentals/security/密码学实用指南.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/cs-fundamentals/security/网络安全篇.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/cs-fundamentals/security/认证与授权篇.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/cs-fundamentals/security/零信任安全架构.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/engineering/architecture/API设计.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/engineering/architecture/DDD领域驱动设计.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/engineering/architecture/SaaS产品技术架构.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/engineering/architecture/事件驱动架构.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/engineering/architecture/云原生与多云架构实战指南.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/engineering/architecture/分布式系统设计完全指南.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/engineering/architecture/可观测性工程实战.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/engineering/architecture/微服务架构.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/engineering/architecture/微服务架构设计与实践.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/engineering/architecture/性能优化.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/engineering/architecture/推荐系统设计与实现.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/engineering/architecture/数据工程完全指南.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/engineering/architecture/数据库选型指南.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/engineering/architecture/架构模式.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/engineering/architecture/系统设计.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/engineering/architecture/系统设计面试20题详解.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/engineering/architecture/系统设计面试完全指南.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/engineering/architecture/系统设计面试指南.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/engineering/architecture/设计原则.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/engineering/architecture/领域驱动设计DDD完全指南.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/engineering/architecture/高并发系统设计.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/engineering/design-patterns/创建型模式（Creational Patterns）.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/engineering/design-patterns/结构型模式（Structural Patterns）.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/engineering/design-patterns/行为型模式（Behavioral Patterns）.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/engineering/developer-skills/开发者效率工具大全.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/engineering/developer-skills/敏捷项目管理实战.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/engineering/devops/API设计最佳实践.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/engineering/devops/Docker容器化完全指南.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/engineering/devops/Kubernetes云原生实战指南.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/engineering/devops/Kubernetes深入.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/engineering/devops/Linux系统管理高级指南.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/engineering/devops/Web安全攻防实战指南.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/engineering/devops/云服务详解.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/engineering/devops/基础设施即代码详解.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/engineering/devops/容器与编排技术详解.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/engineering/devops/操作系统内核原理.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/engineering/devops/监控与日志详解.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/engineering/devops/网络安全与渗透测试.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/engineering/software-engineering/01-开发流程.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/engineering/software-engineering/02-版本控制.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/engineering/software-engineering/03-代码质量.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/engineering/software-engineering/04-CI CD.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/engineering/software-engineering/05-项目管理.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/engineering/testing/01 - 测试基础.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/engineering/testing/02 - 测试工具.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/engineering/testing/03 - 性能测试.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/engineering/testing/性能测试.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/engineering/testing/测试驱动开发.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/engineering/testing/混沌工程.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/engineering/tools/git/index.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/engineering/tools/包管理器与构建工具.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/engineering/tools/容器化与Docker.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/engineering/tools/版本控制与Git深入.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/engineering/tools/调试与性能分析.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/frontend/css/BFC.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/frontend/css/Grid.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/frontend/css/background.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/frontend/css/index.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/frontend/css/normalStyle.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/frontend/css/selector.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/frontend/debugging/index.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/frontend/frameworks/GraphQL从入门到精通.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/frontend/frameworks/Next.js全栈开发实战.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/frontend/frameworks/WebAssembly完全指南.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/frontend/frameworks/Web性能优化完全指南.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/frontend/frameworks/现代前端工程化完全指南.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/frontend/general/HTML & CSS 核心概念.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/frontend/general/JavaScript 基础核心概念.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/frontend/general/React深入.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/frontend/general/Vue3核心.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/frontend/general/前端工程化.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/frontend/general/前端工程化核心概念.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/frontend/general/前端框架核心概念.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/frontend/html/bugs.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/frontend/html/index.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/frontend/index.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/frontend/javascript/33-concepts.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/frontend/javascript/Array.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/frontend/javascript/IIFE.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/frontend/javascript/MindMap/array.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/frontend/javascript/MindMap/codeStyle.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/frontend/javascript/MindMap/date.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/frontend/javascript/MindMap/javaScript.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/frontend/javascript/MindMap/regex.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/frontend/javascript/MindMap/string.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/frontend/javascript/Object.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/frontend/javascript/SortingAlgorithm.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/frontend/javascript/String.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/frontend/javascript/browser-dimensions.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/frontend/javascript/call-apply-bind.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/frontend/javascript/debounce-throttle.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/frontend/javascript/deep-shallow-copy.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/frontend/javascript/export.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/frontend/javascript/img-lazyload.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/frontend/javascript/index.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/frontend/javascript/instanceof-static-super.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/frontend/javascript/prototype.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/frontend/javascript/while-loop.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/frontend/learning-path.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/frontend/mobile/移动开发概览.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/frontend/optimization/frontend-7000.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/frontend/optimization/index.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/frontend/optimization/performance-optimization.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/frontend/pinia/index.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/frontend/pinia/pinia-vs-component-props.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/frontend/pinia/use.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/frontend/typescript/bugs.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/frontend/typescript/index.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/frontend/vue2/ComponentCommunication.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/frontend/vue2/Details/AST.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/frontend/vue2/Details/ArrayMutating.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/frontend/vue2/Details/MethodHijacking.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/frontend/vue2/Details/VNode.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/frontend/vue2/Details/cache.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/frontend/vue2/Details/constant.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/frontend/vue2/Details/genStaticKeys.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/frontend/vue2/Details/isPromise.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/frontend/vue2/Details/isValidArrayIndex.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/frontend/vue2/Details/looseEqual.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/frontend/vue2/Details/once.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/frontend/vue2/Details/render.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/frontend/vue2/Details/toArray.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/frontend/vue2/Details/toRawType.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/frontend/vue2/Object-defineProperty.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/frontend/vue2/index.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/frontend/vue2/leak-filling.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/frontend/vue2/sourcecode.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/frontend/vue2/vue2-reactive-principle.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/frontend/vue2/vue2-study-path-ds.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/frontend/vue2/vue2-study-path-gpt.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/frontend/vue3/Component-Communication-demo.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/frontend/vue3/Component-Communication.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/frontend/vue3/index.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/frontend/vue3/leak-filling.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/frontend/vue3/setup.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/frontend/vue3/vue-router.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/interview/ai-agent/AI Agent 技术面试题库 - 扩展部分1：深度学习与模型训练.html": {
+   "first": "2026-09-05",
+   "last": "2026-09-18"
+  },
+  "content/interview/ai-agent/AI Agent 技术面试题库 - 扩展部分1：深度学习与模型训练.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-18"
+  },
+  "content/interview/ai-agent/AI Agent 技术面试题库 - 扩展部分2：NLP基础与文本处理.html": {
+   "first": "2026-09-05",
+   "last": "2026-09-18"
+  },
+  "content/interview/ai-agent/AI Agent 技术面试题库 - 扩展部分2：NLP基础与文本处理.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-18"
+  },
+  "content/interview/ai-agent/AI Agent 技术面试题库 - 扩展部分3：强化学习与RLHF.html": {
+   "first": "2026-09-05",
+   "last": "2026-09-18"
+  },
+  "content/interview/ai-agent/AI Agent 技术面试题库 - 扩展部分3：强化学习与RLHF.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-18"
+  },
+  "content/interview/ai-agent/AI Agent 技术面试题库 - 扩展部分4：分布式训练与推理优化.html": {
+   "first": "2026-09-05",
+   "last": "2026-09-18"
+  },
+  "content/interview/ai-agent/AI Agent 技术面试题库 - 扩展部分4：分布式训练与推理优化.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-18"
+  },
+  "content/interview/ai-agent/AI Agent 技术面试题库 - 扩展部分5：计算机视觉与多模态.html": {
+   "first": "2026-09-05",
+   "last": "2026-09-18"
+  },
+  "content/interview/ai-agent/AI Agent 技术面试题库 - 扩展部分5：计算机视觉与多模态.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-18"
+  },
+  "content/interview/ai-agent/AI Agent 技术面试题库 - 扩展部分6：AI基础设施与MLOps.html": {
+   "first": "2026-09-05",
+   "last": "2026-09-18"
+  },
+  "content/interview/ai-agent/AI Agent 技术面试题库 - 扩展部分6：AI基础设施与MLOps.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-18"
+  },
+  "content/interview/ai-agent/AI Agent 技术面试题库 - 扩展部分7：大模型应用开发实战.html": {
+   "first": "2026-09-05",
+   "last": "2026-09-18"
+  },
+  "content/interview/ai-agent/AI Agent 技术面试题库 - 扩展部分7：大模型应用开发实战.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-18"
+  },
+  "content/interview/ai-agent/AI Agent 技术面试题库（140题）.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-18"
+  },
+  "content/interview/ai-agent/AI Agent 技术面试题库（60题+详细解答）.html": {
+   "first": "2026-09-05",
+   "last": "2026-09-18"
+  },
+  "content/interview/ai-agent/AI Agent 技术面试题库（60题+详细解答）.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-18"
+  },
+  "content/interview/ai-agent/AI Agent开发面试模拟对话脚本.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/interview/ai-agent/AI Agent开发面试题库 - 详细答案解析.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-18"
+  },
+  "content/interview/ai-agent/AI Agent开发面试题库.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-18"
+  },
+  "content/interview/ai-agent/AI Agent架构设计题答题模板.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-05"
+  },
+  "content/interview/ai-agent/Interview Pro - 专业程序员面试题库.html": {
+   "first": "2026-09-05",
+   "last": "2026-09-18"
+  },
+  "content/interview/ai-agent/Interview Pro - 专业程序员面试题库.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-18"
+  },
+  "content/interview/ai-agent/Interview Pro - 程序员面试题库.html": {
+   "first": "2026-09-05",
+   "last": "2026-09-18"
+  },
+  "content/interview/ai-agent/Interview Pro - 程序员面试题库.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-18"
+  },
+  "content/interview/ai-agent/程序员面试题库 - Interview Pro.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-13"
+  },
+  "content/interview/ai-agent/程序员面试题库 - 项目总结.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-13"
+  },
+  "content/interview/ai/AI技术应用面试题库 - 40道精选题目.html": {
+   "first": "2026-09-05",
+   "last": "2026-09-18"
+  },
+  "content/interview/ai/AI技术应用面试题库 - 40道精选题目.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-18"
+  },
+  "content/interview/architecture/系统架构设计面试题库 - 60道精选题目.html": {
+   "first": "2026-09-05",
+   "last": "2026-09-18"
+  },
+  "content/interview/architecture/系统架构设计面试题库 - 60道精选题目.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-18"
+  },
+  "content/interview/behavioral/行为面试题库 - 40道精选题目.html": {
+   "first": "2026-09-05",
+   "last": "2026-09-18"
+  },
+  "content/interview/behavioral/行为面试题库 - 40道精选题目.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-18"
+  },
+  "content/interview/business/DS.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-08"
+  },
+  "content/interview/business/GLM.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-08"
+  },
+  "content/interview/business/Mimo.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-08"
+  },
+  "content/interview/business/MiniMax.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-08"
+  },
+  "content/interview/business/qwen.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-08"
+  },
+  "content/interview/career/职业发展面试题库 - 30道精选题目.html": {
+   "first": "2026-09-05",
+   "last": "2026-09-18"
+  },
+  "content/interview/career/职业发展面试题库 - 30道精选题目.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-18"
+  },
+  "content/interview/css-html/CSS与HTML面试题库 - 60道精选题目-372.html": {
+   "first": "2026-09-05",
+   "last": "2026-09-12"
+  },
+  "content/interview/css-html/CSS与HTML面试题库 - 60道精选题目-372.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-12"
+  },
+  "content/interview/css-html/CSS与HTML面试题库 - 60道精选题目.html": {
+   "first": "2026-09-05",
+   "last": "2026-09-18"
+  },
+  "content/interview/css-html/CSS与HTML面试题库 - 60道精选题目.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-18"
+  },
+  "content/interview/engineering/工程化与工具链面试题库 - 45道精选题目-378.html": {
+   "first": "2026-09-05",
+   "last": "2026-09-12"
+  },
+  "content/interview/engineering/工程化与工具链面试题库 - 45道精选题目-378.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-12"
+  },
+  "content/interview/engineering/工程化与工具链面试题库 - 45道精选题目.html": {
+   "first": "2026-09-05",
+   "last": "2026-09-18"
+  },
+  "content/interview/engineering/工程化与工具链面试题库 - 45道精选题目.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-18"
+  },
+  "content/interview/frameworks/React与Vue框架面试题库 - 80道精选题目.html": {
+   "first": "2026-09-05",
+   "last": "2026-09-18"
+  },
+  "content/interview/frameworks/React与Vue框架面试题库 - 80道精选题目.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-18"
+  },
+  "content/interview/index.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-06"
+  },
+  "content/interview/industry/行业洞察面试题库 - 28道精选题目.html": {
+   "first": "2026-09-05",
+   "last": "2026-09-18"
+  },
+  "content/interview/industry/行业洞察面试题库 - 28道精选题目.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-18"
+  },
+  "content/interview/javascript/JavaScript核心概念面试题库 - 100道精选题目.html": {
+   "first": "2026-09-05",
+   "last": "2026-09-18"
+  },
+  "content/interview/javascript/JavaScript核心概念面试题库 - 100道精选题目.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-18"
+  },
+  "content/interview/management/团队管理面试题库 - 50道精选题目.html": {
+   "first": "2026-09-05",
+   "last": "2026-09-18"
+  },
+  "content/interview/management/团队管理面试题库 - 50道精选题目.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-18"
+  },
+  "content/interview/node-fullstack/Node.js与全栈面试题库 - 50道精选题目-376.html": {
+   "first": "2026-09-05",
+   "last": "2026-09-12"
+  },
+  "content/interview/node-fullstack/Node.js与全栈面试题库 - 50道精选题目-376.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-12"
+  },
+  "content/interview/node-fullstack/Node.js与全栈面试题库 - 50道精选题目.html": {
+   "first": "2026-09-05",
+   "last": "2026-09-18"
+  },
+  "content/interview/node-fullstack/Node.js与全栈面试题库 - 50道精选题目.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-18"
+  },
+  "content/interview/performance/性能优化面试题库 - 70道精选题目-374.html": {
+   "first": "2026-09-05",
+   "last": "2026-09-12"
+  },
+  "content/interview/performance/性能优化面试题库 - 70道精选题目-374.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-12"
+  },
+  "content/interview/performance/性能优化面试题库 - 70道精选题目.html": {
+   "first": "2026-09-05",
+   "last": "2026-09-18"
+  },
+  "content/interview/performance/性能优化面试题库 - 70道精选题目.md": {
+   "first": "2026-09-05",
+   "last": "2026-09-18"
+  },
+  "content/cookbook/fragments/GitHub仓库抓取脚本-想法.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-06"
+  },
+  "content/cookbook/fragments/agent-token-report.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-06"
+  },
+  "content/cookbook/pitfalls/feishu-precommit-hook失败记录.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-06"
+  },
+  "content/cookbook/skill/Obsidian知识图谱速查.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-06"
+  },
+  "content/_trash/20260906-053256/cookbook/fragments/agent-token-report.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-06"
+  },
+  "content/interview/algorithms/技术面试通关宝典.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-06"
+  },
+  "content/interview/algorithms/技术面试音频训练.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-06"
+  },
+  "content/interview/algorithms/算法面试100题精讲.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-06"
+  },
+  "content/interview/algorithms/系统设计面试20题详解.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-06"
+  },
+  "content/interview/algorithms/系统设计面试完全指南.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-06"
+  },
+  "content/interview/algorithms/系统设计面试指南.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-06"
+  },
+  "content/ai-assets/说明.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-06"
+  },
+  "content/articles/ai/break-prison.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-15"
+  },
+  "content/articles/ai/claude.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-06"
+  },
+  "content/articles/ai/index.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-07"
+  },
+  "content/articles/ai/program-prompt.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-14"
+  },
+  "content/articles/ai/prompt.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-14"
+  },
+  "content/articles/ai/study.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-08"
+  },
+  "content/articles/backend/blazor.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-14"
+  },
+  "content/articles/backend/csharp.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-14"
+  },
+  "content/articles/css/BFC.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-06"
+  },
+  "content/articles/css/Grid.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-06"
+  },
+  "content/articles/css/background.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-06"
+  },
+  "content/articles/css/index.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-21"
+  },
+  "content/articles/css/normalStyle.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-06"
+  },
+  "content/articles/css/selector.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-06"
+  },
+  "content/articles/debugging/index.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-06"
+  },
+  "content/articles/git/index.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-06"
+  },
+  "content/articles/html/bugs.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-14"
+  },
+  "content/articles/html/index.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-06"
+  },
+  "content/articles/index.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-07"
+  },
+  "content/articles/javascript/33-concepts.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-14"
+  },
+  "content/articles/javascript/Array.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-06"
+  },
+  "content/articles/javascript/IIFE.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-06"
+  },
+  "content/articles/javascript/MindMap/array.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-21"
+  },
+  "content/articles/javascript/MindMap/codeStyle.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-21"
+  },
+  "content/articles/javascript/MindMap/date.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-21"
+  },
+  "content/articles/javascript/MindMap/javaScript.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-21"
+  },
+  "content/articles/javascript/MindMap/regex.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-21"
+  },
+  "content/articles/javascript/MindMap/string.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-21"
+  },
+  "content/articles/javascript/Object.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-06"
+  },
+  "content/articles/javascript/SortingAlgorithm.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-21"
+  },
+  "content/articles/javascript/String.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-06"
+  },
+  "content/articles/javascript/browser-dimensions.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-06"
+  },
+  "content/articles/javascript/call-apply-bind.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-06"
+  },
+  "content/articles/javascript/debounce-throttle.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-06"
+  },
+  "content/articles/javascript/deep-shallow-copy.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-06"
+  },
+  "content/articles/javascript/export.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-06"
+  },
+  "content/articles/javascript/img-lazyload.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-06"
+  },
+  "content/articles/javascript/index.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-06"
+  },
+  "content/articles/javascript/instanceof-static-super.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-12"
+  },
+  "content/articles/javascript/prototype.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-06"
+  },
+  "content/articles/javascript/while-loop.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-06"
+  },
+  "content/articles/learning-path.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-06"
+  },
+  "content/articles/network/TCP-IP.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-06"
+  },
+  "content/articles/network/http-headers-analysis.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-06"
+  },
+  "content/articles/network/index.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-21"
+  },
+  "content/articles/network/jwt.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-21"
+  },
+  "content/articles/optimization/frontend-7000.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-06"
+  },
+  "content/articles/optimization/index.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-06"
+  },
+  "content/articles/optimization/performance-optimization.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-06"
+  },
+  "content/articles/pinia/index.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-06"
+  },
+  "content/articles/pinia/pinia-vs-component-props.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-12"
+  },
+  "content/articles/pinia/use.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-06"
+  },
+  "content/articles/tutorials/AI Agent开发实战 - 第一部分：理论基础与核心架构.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-21"
+  },
+  "content/articles/tutorials/AI Agent开发实战 - 第三部分：高级主题与未来展望.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-21"
+  },
+  "content/articles/tutorials/AI Agent开发实战 - 第二部分：框架生态与开发实战.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-21"
+  },
+  "content/articles/tutorials/single-file/2026年AI Agent开发实战长文 (HTML).html": {
+   "first": "2026-09-06",
+   "last": "2026-09-18"
+  },
+  "content/articles/tutorials/single-file/2026年AI Agent开发实战长文 (HTML).md": {
+   "first": "2026-09-06",
+   "last": "2026-09-21"
+  },
+  "content/articles/tutorials/single-file/AI Agent开发实战 - README.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-21"
+  },
+  "content/articles/tutorials/single-file/AI Agent开发实战 - 单文件完整版 (HTML).html": {
+   "first": "2026-09-06",
+   "last": "2026-09-18"
+  },
+  "content/articles/tutorials/single-file/AI Agent开发实战 - 单文件完整版 (HTML).md": {
+   "first": "2026-09-06",
+   "last": "2026-09-21"
+  },
+  "content/articles/tutorials/single-file/AI Agent开发实战 - 单文件完整版 (Markdown).md": {
+   "first": "2026-09-06",
+   "last": "2026-09-21"
+  },
+  "content/articles/tutorials/single-file/AI Agent开发实战 - 完整版.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-06"
+  },
+  "content/articles/tutorials/single-file/AI Agent开发实战 - 目录.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-21"
+  },
+  "content/articles/typescript/bugs.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-06"
+  },
+  "content/articles/typescript/index.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-06"
+  },
+  "content/articles/vue2/ComponentCommunication.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-06"
+  },
+  "content/articles/vue2/Details/AST.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-06"
+  },
+  "content/articles/vue2/Details/ArrayMutating.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-06"
+  },
+  "content/articles/vue2/Details/MethodHijacking.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-06"
+  },
+  "content/articles/vue2/Details/VNode.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-06"
+  },
+  "content/articles/vue2/Details/cache.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-06"
+  },
+  "content/articles/vue2/Details/constant.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-06"
+  },
+  "content/articles/vue2/Details/genStaticKeys.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-06"
+  },
+  "content/articles/vue2/Details/isPromise.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-06"
+  },
+  "content/articles/vue2/Details/isValidArrayIndex.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-06"
+  },
+  "content/articles/vue2/Details/looseEqual.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-06"
+  },
+  "content/articles/vue2/Details/once.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-06"
+  },
+  "content/articles/vue2/Details/render.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-06"
+  },
+  "content/articles/vue2/Details/toArray.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-06"
+  },
+  "content/articles/vue2/Details/toRawType.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-06"
+  },
+  "content/articles/vue2/Object-defineProperty.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-06"
+  },
+  "content/articles/vue2/index.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-06"
+  },
+  "content/articles/vue2/leak-filling.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-06"
+  },
+  "content/articles/vue2/sourcecode.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-06"
+  },
+  "content/articles/vue2/vue2-reactive-principle.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-06"
+  },
+  "content/articles/vue2/vue2-study-path-ds.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-06"
+  },
+  "content/articles/vue2/vue2-study-path-gpt.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-06"
+  },
+  "content/articles/vue3/Component-Communication-demo.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-06"
+  },
+  "content/articles/vue3/Component-Communication.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-06"
+  },
+  "content/articles/vue3/index.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-06"
+  },
+  "content/articles/vue3/leak-filling.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-06"
+  },
+  "content/articles/vue3/setup.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-06"
+  },
+  "content/articles/vue3/vue-router.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-06"
+  },
+  "content/baike/ai-and-llm/AI Agent 开发最佳实践.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-19"
+  },
+  "content/baike/ai-and-llm/AI Agent 概述与核心架构.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-19"
+  },
+  "content/baike/ai-and-llm/AI 应用详解.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-19"
+  },
+  "content/baike/ai-and-llm/Agent 与数据库交互.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-12"
+  },
+  "content/baike/ai-and-llm/Agent 安全与对齐.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-23"
+  },
+  "content/baike/ai-and-llm/Agent 架构模式详解.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-23"
+  },
+  "content/baike/ai-and-llm/Agent 编排框架对比.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-19"
+  },
+  "content/baike/ai-and-llm/Agent 规划与推理.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-19"
+  },
+  "content/baike/ai-and-llm/Agent 记忆系统.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-19"
+  },
+  "content/baike/ai-and-llm/Agent 评估与基准.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-19"
+  },
+  "content/baike/ai-and-llm/AutoGPT 与自主 Agent.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-19"
+  },
+  "content/baike/ai-and-llm/BERT模型详解.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-19"
+  },
+  "content/baike/ai-and-llm/Code Agent.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-19"
+  },
+  "content/baike/ai-and-llm/Computer Use Agent.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-19"
+  },
+  "content/baike/ai-and-llm/CrewAI 多 Agent 框架.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-19"
+  },
+  "content/baike/ai-and-llm/Diffusion扩散模型.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-19"
+  },
+  "content/baike/ai-and-llm/Embedding 技术详解.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-19"
+  },
+  "content/baike/ai-and-llm/Function Calling 与 Tool Use.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-19"
+  },
+  "content/baike/ai-and-llm/GPT系列模型演进.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-19"
+  },
+  "content/baike/ai-and-llm/LLM 微调技术.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-19"
+  },
+  "content/baike/ai-and-llm/LLM 推理优化.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-19"
+  },
+  "content/baike/ai-and-llm/LangChain 框架全解析.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-19"
+  },
+  "content/baike/ai-and-llm/LlamaIndex 框架指南.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-19"
+  },
+  "content/baike/ai-and-llm/MCP（Model Context Protocol）.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-19"
+  },
+  "content/baike/ai-and-llm/MoE 混合专家模型.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-19"
+  },
+  "content/baike/ai-and-llm/NeRF与3D生成.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-19"
+  },
+  "content/baike/ai-and-llm/Prompt Engineering 高级技巧.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-19"
+  },
+  "content/baike/ai-and-llm/Prompt 工程与 Agent 详解.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-19"
+  },
+  "content/baike/ai-and-llm/RAG 与检索技术详解.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-19"
+  },
+  "content/baike/ai-and-llm/RAG 检索增强生成.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-19"
+  },
+  "content/baike/ai-and-llm/Research Agent.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-19"
+  },
+  "content/baike/ai-and-llm/Scaling Law.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-19"
+  },
+  "content/baike/ai-and-llm/Tokenizer 技术.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-19"
+  },
+  "content/baike/ai-and-llm/Transformer架构深度解析.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-19"
+  },
+  "content/baike/ai-and-llm/Web Agent.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-19"
+  },
+  "content/baike/ai-and-llm/Workflow Agent.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-19"
+  },
+  "content/baike/ai-and-llm/向量数据库技术.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-19"
+  },
+  "content/baike/ai-and-llm/图神经网络.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-19"
+  },
+  "content/baike/ai-and-llm/多 Agent 协作系统.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-19"
+  },
+  "content/baike/ai-and-llm/多模态 Agent.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-19"
+  },
+  "content/baike/ai-and-llm/多模态大模型.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-19"
+  },
+  "content/baike/ai-and-llm/大模型基础术语详解.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-19"
+  },
+  "content/baike/ai-and-llm/大模型预训练技术.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-19"
+  },
+  "content/baike/ai-and-llm/大语言模型架构演进.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-19"
+  },
+  "content/baike/ai-and-llm/小模型与端侧 Agent.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-19"
+  },
+  "content/baike/ai-and-llm/强化学习基础.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-19"
+  },
+  "content/baike/ai-and-llm/微调与训练技术详解.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-19"
+  },
+  "content/baike/ai-and-llm/机器学习基础.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-19"
+  },
+  "content/baike/ai-and-llm/深度强化学习.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-19"
+  },
+  "content/baike/ai-and-llm/知识图谱与 LLM 结合.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-19"
+  },
+  "content/baike/ai-and-llm/联邦学习.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-19"
+  },
+  "content/baike/ai-and-llm/语音AI技术.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-19"
+  },
+  "content/baike/ai-and-llm/长上下文技术.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-19"
+  },
+  "content/baike/algorithms/动态规划.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-19"
+  },
+  "content/baike/algorithms/图算法大全.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-19"
+  },
+  "content/baike/algorithms/基础数据结构.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-19"
+  },
+  "content/baike/algorithms/复杂度分析.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-19"
+  },
+  "content/baike/algorithms/字符串算法.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-19"
+  },
+  "content/baike/algorithms/排序与搜索.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-19"
+  },
+  "content/baike/algorithms/算法思想.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-19"
+  },
+  "content/baike/algorithms/高级数据结构.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-19"
+  },
+  "content/baike/architecture/API设计.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-19"
+  },
+  "content/baike/architecture/DDD领域驱动设计.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-19"
+  },
+  "content/baike/architecture/SaaS产品技术架构.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-19"
+  },
+  "content/baike/architecture/事件驱动架构.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-19"
+  },
+  "content/baike/architecture/云原生与多云架构实战指南.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-19"
+  },
+  "content/baike/architecture/分布式系统设计完全指南.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-19"
+  },
+  "content/baike/architecture/可观测性工程实战.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-19"
+  },
+  "content/baike/architecture/微服务架构.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-19"
+  },
+  "content/baike/architecture/微服务架构设计与实践.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-19"
+  },
+  "content/baike/architecture/性能优化.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-19"
+  },
+  "content/baike/architecture/推荐系统设计与实现.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-20"
+  },
+  "content/baike/architecture/数据工程完全指南.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-20"
+  },
+  "content/baike/architecture/数据库选型指南.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-19"
+  },
+  "content/baike/architecture/架构模式.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-20"
+  },
+  "content/baike/architecture/系统设计.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-19"
+  },
+  "content/baike/architecture/设计原则.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-20"
+  },
+  "content/baike/architecture/领域驱动设计DDD完全指南.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-20"
+  },
+  "content/baike/architecture/高并发系统设计.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-19"
+  },
+  "content/baike/blockchain/区块链基础.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-19"
+  },
+  "content/baike/cs-basics/信息论基础.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-19"
+  },
+  "content/baike/cs-basics/布尔逻辑与逻辑门.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-19"
+  },
+  "content/baike/cs-basics/数制与编码.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-19"
+  },
+  "content/baike/cs-basics/离散数学基础.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-19"
+  },
+  "content/baike/cs-basics/计算理论.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-19"
+  },
+  "content/baike/data-science/A B测试与实验设计.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-19"
+  },
+  "content/baike/data-science/MLOps实践.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-19"
+  },
+  "content/baike/data-science/RNN LSTM GRU.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-19"
+  },
+  "content/baike/data-science/卷积神经网络(CNN).md": {
+   "first": "2026-09-06",
+   "last": "2026-09-19"
+  },
+  "content/baike/data-science/可解释AI(XAI).md": {
+   "first": "2026-09-06",
+   "last": "2026-09-19"
+  },
+  "content/baike/data-science/因果推断.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-19"
+  },
+  "content/baike/data-science/大数据技术栈.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-19"
+  },
+  "content/baike/data-science/推荐系统.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-19"
+  },
+  "content/baike/data-science/数据分析与可视化.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-19"
+  },
+  "content/baike/data-science/数据分析与可视化实战.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-19"
+  },
+  "content/baike/data-science/数据增强技术.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-19"
+  },
+  "content/baike/data-science/时间序列分析.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-19"
+  },
+  "content/baike/data-science/模型压缩与部署.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-19"
+  },
+  "content/baike/data-science/深度学习基础.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-19"
+  },
+  "content/baike/data-science/特征工程进阶.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-19"
+  },
+  "content/baike/data-science/生成对抗网络(GAN).md": {
+   "first": "2026-09-06",
+   "last": "2026-09-19"
+  },
+  "content/baike/data-science/自监督学习.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-19"
+  },
+  "content/baike/database/ElasticSearch搜索.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-19"
+  },
+  "content/baike/database/MongoDB实践.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-19"
+  },
+  "content/baike/database/MySQL从入门到架构师.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-19"
+  },
+  "content/baike/database/MySQL深入.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-19"
+  },
+  "content/baike/database/NoSQL 数据库术语.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-19"
+  },
+  "content/baike/database/PostgreSQL高级特性.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-19"
+  },
+  "content/baike/database/Redis深入.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-19"
+  },
+  "content/baike/database/Redis深度解析与实战指南.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-19"
+  },
+  "content/baike/database/SQL 基础术语.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-20"
+  },
+  "content/baike/database/事务与并发控制术语.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-20"
+  },
+  "content/baike/database/搜索引擎技术详解.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-20"
+  },
+  "content/baike/database/数据库内核原理深度解析.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-20"
+  },
+  "content/baike/database/数据库设计术语.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-20"
+  },
+  "content/baike/database/索引与查询优化术语.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-20"
+  },
+  "content/baike/design-patterns/创建型模式（Creational Patterns）.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-19"
+  },
+  "content/baike/design-patterns/结构型模式（Structural Patterns）.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-19"
+  },
+  "content/baike/design-patterns/行为型模式（Behavioral Patterns）.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-19"
+  },
+  "content/baike/developer-skills/开发者效率工具大全.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-19"
+  },
+  "content/baike/developer-skills/敏捷项目管理实战.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-19"
+  },
+  "content/baike/devops/API设计最佳实践.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-19"
+  },
+  "content/baike/devops/Docker容器化完全指南.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-19"
+  },
+  "content/baike/devops/Kubernetes云原生实战指南.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-20"
+  },
+  "content/baike/devops/Kubernetes深入.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-19"
+  },
+  "content/baike/devops/Linux系统管理高级指南.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-20"
+  },
+  "content/baike/devops/Web安全攻防实战指南.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-20"
+  },
+  "content/baike/devops/云服务详解.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-19"
+  },
+  "content/baike/devops/基础设施即代码详解.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-19"
+  },
+  "content/baike/devops/容器与编排技术详解.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-19"
+  },
+  "content/baike/devops/操作系统内核原理.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-20"
+  },
+  "content/baike/devops/监控与日志详解.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-19"
+  },
+  "content/baike/devops/网络安全与渗透测试.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-20"
+  },
+  "content/baike/distributed/一致性算法.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-19"
+  },
+  "content/baike/distributed/分布式ID与缓存术语百科.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-19"
+  },
+  "content/baike/distributed/分布式事务.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-19"
+  },
+  "content/baike/distributed/分布式基础术语百科.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-19"
+  },
+  "content/baike/distributed/分布式存储术语百科.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-19"
+  },
+  "content/baike/distributed/分布式缓存.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-19"
+  },
+  "content/baike/distributed/微服务治理术语百科.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-19"
+  },
+  "content/baike/distributed/服务网格.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-19"
+  },
+  "content/baike/frontend-concepts/HTML & CSS 核心概念.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-20"
+  },
+  "content/baike/frontend-concepts/JavaScript 基础核心概念.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-20"
+  },
+  "content/baike/frontend-concepts/React深入.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-19"
+  },
+  "content/baike/frontend-concepts/Vue3核心.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-19"
+  },
+  "content/baike/frontend-concepts/前端工程化.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-19"
+  },
+  "content/baike/frontend-concepts/前端工程化核心概念.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-20"
+  },
+  "content/baike/frontend-concepts/前端框架核心概念.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-20"
+  },
+  "content/baike/frontend-frameworks/GraphQL从入门到精通.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-20"
+  },
+  "content/baike/frontend-frameworks/Next.js全栈开发实战.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-20"
+  },
+  "content/baike/frontend-frameworks/WebAssembly完全指南.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-20"
+  },
+  "content/baike/frontend-frameworks/Web性能优化完全指南.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-19"
+  },
+  "content/baike/frontend-frameworks/现代前端工程化完全指南.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-20"
+  },
+  "content/baike/hardware/CPU与处理器架构.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-19"
+  },
+  "content/baike/hardware/主板与总线.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-19"
+  },
+  "content/baike/hardware/内存与存储系统.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-19"
+  },
+  "content/baike/hardware/显卡与GPU.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-19"
+  },
+  "content/baike/hardware/输入输出与外设.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-19"
+  },
+  "content/baike/iot/物联网与嵌入式基础.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-19"
+  },
+  "content/baike/machine-learning/2026年AI技术全景图.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-19"
+  },
+  "content/baike/machine-learning/AI是否会取代人类辩论.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-19"
+  },
+  "content/baike/machine-learning/LLM应用开发完全指南.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-19"
+  },
+  "content/baike/machine-learning/MLOps机器学习工程化.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-19"
+  },
+  "content/baike/machine-learning/Prompt Engineering高级指南.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-19"
+  },
+  "content/baike/machine-learning/RAG系统工程化实践.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-19"
+  },
+  "content/baike/machine-learning/《AI时代生存指南》第一章.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-19"
+  },
+  "content/baike/machine-learning/《AI时代生存指南》第三章.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-19"
+  },
+  "content/baike/machine-learning/《AI时代生存指南》第二章.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-19"
+  },
+  "content/baike/machine-learning/强化学习从入门到实践.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-19"
+  },
+  "content/baike/machine-learning/深度学习从零到精通.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-19"
+  },
+  "content/baike/machine-learning/自然语言处理NLP完全指南.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-19"
+  },
+  "content/baike/machine-learning/计算机视觉入门到实战.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-20"
+  },
+  "content/baike/middleware/ESB 与服务网格（Service Mesh）.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-19"
+  },
+  "content/baike/middleware/GraphQL实践.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-19"
+  },
+  "content/baike/middleware/Kafka深入.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-19"
+  },
+  "content/baike/middleware/RabbitMQ vs Kafka vs Pulsar.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-19"
+  },
+  "content/baike/middleware/gRPC深入.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-19"
+  },
+  "content/baike/middleware/任务调度（Task Scheduling）.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-20"
+  },
+  "content/baike/middleware/消息队列（Message Queue）.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-19"
+  },
+  "content/baike/mobile/移动开发概览.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-19"
+  },
+  "content/baike/network/DNS深入解析.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-19"
+  },
+  "content/baike/network/HTTP协议.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-19"
+  },
+  "content/baike/network/TCP深入.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-19"
+  },
+  "content/baike/network/应用层协议.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-19"
+  },
+  "content/baike/network/网络基础.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-19"
+  },
+  "content/baike/network/网络安全协议.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-20"
+  },
+  "content/baike/os/Linux 命令速查手册.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-19"
+  },
+  "content/baike/os/Shell 脚本详解.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-19"
+  },
+  "content/baike/os/Shell脚本编程.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-19"
+  },
+  "content/baike/os/容器运行时.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-19"
+  },
+  "content/baike/os/操作系统基础术语.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-19"
+  },
+  "content/baike/os/操作系统核心.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-19"
+  },
+  "content/baike/os/进程管理详解.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-20"
+  },
+  "content/baike/programming-languages/Flutter跨平台开发实战.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-20"
+  },
+  "content/baike/programming-languages/Go语言核心.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-19"
+  },
+  "content/baike/programming-languages/Go语言系统编程指南.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-20"
+  },
+  "content/baike/programming-languages/Python全栈开发教程.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-20"
+  },
+  "content/baike/programming-languages/Python高级特性.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-19"
+  },
+  "content/baike/programming-languages/Python高级编程完全指南.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-20"
+  },
+  "content/baike/programming-languages/React Native移动应用开发.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-20"
+  },
+  "content/baike/programming-languages/Rust Web开发实战.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-20"
+  },
+  "content/baike/programming-languages/Rust系统编程入门到精通.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-20"
+  },
+  "content/baike/programming-languages/Rust编程基础.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-19"
+  },
+  "content/baike/programming-languages/TypeScript深入.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-19"
+  },
+  "content/baike/programming-languages/TypeScript高级编程指南.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-20"
+  },
+  "content/baike/programming-languages/函数式编程完全指南.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-20"
+  },
+  "content/baike/programming-languages/函数式编程（Functional Programming）概念.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-20"
+  },
+  "content/baike/programming-languages/密码学与区块链技术指南.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-20"
+  },
+  "content/baike/programming-languages/并发编程模式与实践.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-20"
+  },
+  "content/baike/programming-languages/并发编程（Concurrent Programming）概念.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-20"
+  },
+  "content/baike/programming-languages/程序员的数学基础.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-20"
+  },
+  "content/baike/programming-languages/编程概念音频课-数据结构.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-20"
+  },
+  "content/baike/programming-languages/编程概念音频课-设计模式.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-20"
+  },
+  "content/baike/programming-languages/编程语言通用概念.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-20"
+  },
+  "content/baike/programming-languages/编译原理与解释器实现.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-20"
+  },
+  "content/baike/programming-languages/计算机科学完整知识图谱.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-20"
+  },
+  "content/baike/programming-languages/软件测试完全指南.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-19"
+  },
+  "content/baike/programming-languages/面向对象编程（OOP）概念.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-20"
+  },
+  "content/baike/security/Web安全攻防.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-19"
+  },
+  "content/baike/security/供应链安全.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-19"
+  },
+  "content/baike/security/加密技术篇.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-20"
+  },
+  "content/baike/security/哈希算法篇.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-20"
+  },
+  "content/baike/security/密码学基础篇.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-20"
+  },
+  "content/baike/security/密码学实用指南.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-19"
+  },
+  "content/baike/security/网络安全篇.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-20"
+  },
+  "content/baike/security/认证与授权篇.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-20"
+  },
+  "content/baike/security/零信任安全架构.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-19"
+  },
+  "content/baike/software-engineering/01-开发流程.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-20"
+  },
+  "content/baike/software-engineering/02-版本控制.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-20"
+  },
+  "content/baike/software-engineering/03-代码质量.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-19"
+  },
+  "content/baike/software-engineering/04-CI CD.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-19"
+  },
+  "content/baike/software-engineering/05-项目管理.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-20"
+  },
+  "content/baike/testing/01 - 测试基础.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-20"
+  },
+  "content/baike/testing/02 - 测试工具.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-20"
+  },
+  "content/baike/testing/03 - 性能测试.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-20"
+  },
+  "content/baike/testing/性能测试.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-19"
+  },
+  "content/baike/testing/测试驱动开发.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-19"
+  },
+  "content/baike/testing/混沌工程.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-19"
+  },
+  "content/baike/tools/包管理器与构建工具.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-19"
+  },
+  "content/baike/tools/容器化与Docker.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-19"
+  },
+  "content/baike/tools/版本控制与Git深入.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-19"
+  },
+  "content/baike/tools/调试与性能分析.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-19"
+  },
+  "content/baike/web-backend/Web框架对比.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-19"
+  },
+  "content/baike/web-backend/缓存策略.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-19"
+  },
+  "content/baike/web-backend/认证与安全实践.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-19"
+  },
+  "content/handbook/fragments/GitHub仓库抓取脚本-想法.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-06"
+  },
+  "content/handbook/fragments/improveMemory.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-06"
+  },
+  "content/handbook/fragments/index.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-18"
+  },
+  "content/handbook/fragments/lazyMan.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-23"
+  },
+  "content/handbook/fragments/learnCodeTenYears.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-06"
+  },
+  "content/handbook/fragments/programWrite.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-06"
+  },
+  "content/handbook/fragments/programmingThinking.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-06"
+  },
+  "content/handbook/fragments/self-discipline.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-06"
+  },
+  "content/handbook/fragments/softwareThinking.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-06"
+  },
+  "content/handbook/fragments/studyTips.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-06"
+  },
+  "content/handbook/index.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-23"
+  },
+  "content/handbook/pitfalls/feishu-precommit-hook失败记录.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-23"
+  },
+  "content/handbook/skills/Obsidian知识图谱速查.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-23"
+  },
+  "content/handbook/skills/index.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-23"
+  },
+  "content/handbook/skills/write.md": {
+   "first": "2026-09-06",
+   "last": "2026-09-06"
+  },
+  "content/articles/improveMemory.md": {
+   "first": "2026-09-11",
+   "last": "2026-09-12"
+  },
+  "content/baike/cs-basics/finite-state-machine.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-12"
+  },
+  "content/baike/distributed/mapreduce.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-12"
+  },
+  "content/baike/graphics-multimedia/ray-tracing.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-12"
+  },
+  "content/baike/graphics-multimedia/rendering-pipeline.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-12"
+  },
+  "content/baike/graphics-multimedia/video-codec.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-12"
+  },
+  "content/baike/hci/accessibility.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-12"
+  },
+  "content/baike/hci/human-computer-interaction.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-12"
+  },
+  "content/baike/hci/usability.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-12"
+  },
+  "content/baike/network/osi-model.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-12"
+  },
+  "content/baike/network/udp.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-12"
+  },
+  "content/baike/os/deadlock.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-12"
+  },
+  "content/baike/os/thread.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-12"
+  },
+  "content/baike/cs-basics/有限状态机.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-19"
+  },
+  "content/baike/distributed/MapReduce.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-19"
+  },
+  "content/baike/graphics-multimedia/光线追踪.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-19"
+  },
+  "content/baike/graphics-multimedia/图形渲染管线.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-19"
+  },
+  "content/baike/graphics-multimedia/视频编解码器.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-19"
+  },
+  "content/baike/hci/人机交互.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-19"
+  },
+  "content/baike/hci/可用性.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-19"
+  },
+  "content/baike/hci/无障碍访问.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-19"
+  },
+  "content/baike/network/OSI 参考模型.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-19"
+  },
+  "content/baike/network/用户数据报协议.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-19"
+  },
+  "content/baike/os/死锁.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-19"
+  },
+  "content/baike/os/线程.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-19"
+  },
+  "content/baike/cs-basics/图灵机.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-19"
+  },
+  "content/baike/distributed/CAP 定理.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-19"
+  },
+  "content/baike/graphics-multimedia/光栅化.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-19"
+  },
+  "content/baike/graphics-multimedia/图像压缩.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-19"
+  },
+  "content/baike/graphics-multimedia/着色器.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-19"
+  },
+  "content/baike/hardware/指令集架构.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-19"
+  },
+  "content/baike/hci/交互设计.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-19"
+  },
+  "content/baike/hci/信息架构.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-19"
+  },
+  "content/baike/hci/用户体验.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-19"
+  },
+  "content/baike/machine-learning/反向传播.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-19"
+  },
+  "content/baike/os/虚拟内存.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-19"
+  },
+  "content/baike/programming-languages/垃圾回收.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-19"
+  },
+  "content/baike/cs-basics/P 与 NP.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-19"
+  },
+  "content/baike/database/B+树.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-19"
+  },
+  "content/baike/distributed/负载均衡.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-19"
+  },
+  "content/baike/graphics-multimedia/流媒体.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-19"
+  },
+  "content/baike/hardware/指令流水线.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-19"
+  },
+  "content/baike/machine-learning/梯度下降.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-19"
+  },
+  "content/baike/machine-learning/过拟合与正则化.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-19"
+  },
+  "content/baike/network/IP 协议.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-19"
+  },
+  "content/baike/network/WebSocket.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-19"
+  },
+  "content/baike/os/文件系统.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-19"
+  },
+  "content/baike/programming-languages/类型系统.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-19"
+  },
+  "content/baike/programming-languages/闭包.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-19"
+  },
+  "content/baike/database/LSM 树.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-19"
+  },
+  "content/baike/distributed/幂等性.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-19"
+  },
+  "content/baike/graphics-multimedia/纹理映射.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-19"
+  },
+  "content/baike/hardware/CPU 缓存.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-19"
+  },
+  "content/baike/hardware/冯·诺依曼结构.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-19"
+  },
+  "content/baike/hci/费茨定律.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-19"
+  },
+  "content/baike/machine-learning/K均值聚类.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-19"
+  },
+  "content/baike/machine-learning/决策树.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-19"
+  },
+  "content/baike/machine-learning/支持向量机.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-19"
+  },
+  "content/baike/network/内容分发网络.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-19"
+  },
+  "content/baike/os/进程间通信.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-19"
+  },
+  "content/baike/security/数字签名.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-19"
+  },
+  "content/baike/ai-and-llm/注意力机制.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-19"
+  },
+  "content/baike/algorithms/二叉搜索树.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-19"
+  },
+  "content/baike/algorithms/哈希表.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-19"
+  },
+  "content/baike/database/多版本并发控制.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-19"
+  },
+  "content/baike/database/数据库范式.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-19"
+  },
+  "content/baike/distributed/分布式锁.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-19"
+  },
+  "content/baike/hardware/分支预测.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-19"
+  },
+  "content/baike/machine-learning/逻辑回归.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-19"
+  },
+  "content/baike/machine-learning/随机森林.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-19"
+  },
+  "content/baike/os/系统调用.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-19"
+  },
+  "content/baike/programming-languages/抽象语法树.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-19"
+  },
+  "content/baike/security/公钥基础设施.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-19"
+  },
+  "content/baike/algorithms/堆与优先队列.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-19"
+  },
+  "content/baike/algorithms/红黑树.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-19"
+  },
+  "content/baike/distributed/最终一致性.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-19"
+  },
+  "content/baike/distributed/服务发现.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-19"
+  },
+  "content/baike/machine-learning/梯度提升树.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-19"
+  },
+  "content/baike/machine-learning/激活函数.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-19"
+  },
+  "content/baike/network/HTTPS 与 TLS.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-19"
+  },
+  "content/baike/network/拥塞控制.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-19"
+  },
+  "content/baike/os/中断.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-19"
+  },
+  "content/baike/os/用户态与内核态.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-19"
+  },
+  "content/baike/programming-languages/协程.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-19"
+  },
+  "content/baike/programming-languages/泛型.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-19"
+  },
+  "content/baike/algorithms/AVL 树.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-19"
+  },
+  "content/baike/algorithms/并查集.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-19"
+  },
+  "content/baike/cs-basics/形式语言与文法.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-19"
+  },
+  "content/baike/distributed/熔断与降级.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-19"
+  },
+  "content/baike/distributed/限流.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-19"
+  },
+  "content/baike/hardware/直接内存访问.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-19"
+  },
+  "content/baike/machine-learning/K近邻算法.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-19"
+  },
+  "content/baike/machine-learning/朴素贝叶斯.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-19"
+  },
+  "content/baike/middleware/死信队列.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-19"
+  },
+  "content/baike/network/网络地址转换.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-19"
+  },
+  "content/baike/os/进程调度.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-19"
+  },
+  "content/baike/security/OAuth 与 JWT.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-19"
+  },
+  "content/baike/algorithms/前缀树.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-19"
+  },
+  "content/baike/algorithms/拓扑排序.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-19"
+  },
+  "content/baike/database/分库分表.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-19"
+  },
+  "content/baike/distributed/BASE 理论.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-19"
+  },
+  "content/baike/hardware/RAID 磁盘阵列.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-19"
+  },
+  "content/baike/machine-learning/批归一化.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-19"
+  },
+  "content/baike/machine-learning/损失函数.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-19"
+  },
+  "content/baike/network/三次握手与四次挥手.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-19"
+  },
+  "content/baike/os/信号量与互斥锁.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-19"
+  },
+  "content/baike/programming-languages/词法分析.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-19"
+  },
+  "content/baike/programming-languages/语法分析.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-19"
+  },
+  "content/baike/security/分布式拒绝服务攻击.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-19"
+  },
+  "content/baike/algorithms/图(数据结构).md": {
+   "first": "2026-09-12",
+   "last": "2026-09-19"
+  },
+  "content/baike/algorithms/最短路径算法.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-19"
+  },
+  "content/baike/database/读写分离.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-19"
+  },
+  "content/baike/distributed/一致性哈希.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-19"
+  },
+  "content/baike/hardware/超标量与乱序执行.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-19"
+  },
+  "content/baike/hci/认知负荷.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-19"
+  },
+  "content/baike/machine-learning/交叉验证.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-19"
+  },
+  "content/baike/network/地址解析协议.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-19"
+  },
+  "content/baike/network/滑动窗口.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-19"
+  },
+  "content/baike/os/页面置换算法.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-19"
+  },
+  "content/baike/programming-languages/中间表示.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-19"
+  },
+  "content/baike/security/对称加密与非对称加密.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-19"
+  },
+  "content/baike/ai-and-llm/词向量.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-19"
+  },
+  "content/baike/algorithms/最小生成树.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-19"
+  },
+  "content/baike/database/事务隔离级别.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-19"
+  },
+  "content/baike/devops/蓝绿部署与灰度发布.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-19"
+  },
+  "content/baike/hardware/缓存一致性.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-19"
+  },
+  "content/baike/hci/心智模型.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-19"
+  },
+  "content/baike/machine-learning/Dropout.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-19"
+  },
+  "content/baike/network/QUIC.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-19"
+  },
+  "content/baike/os/上下文切换.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-19"
+  },
+  "content/baike/programming-languages/编译优化.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-19"
+  },
+  "content/baike/security/防火墙.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-19"
+  },
+  "content/baike/software-engineering/重构.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-19"
+  },
+  "content/baike/algorithms/分治算法.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-19"
+  },
+  "content/baike/algorithms/贪心算法.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-19"
+  },
+  "content/baike/cs-basics/量子计算.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-19"
+  },
+  "content/baike/frontend-concepts/响应式设计.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-19"
+  },
+  "content/baike/graphics-multimedia/抗锯齿.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-19"
+  },
+  "content/baike/machine-learning/迁移学习.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-19"
+  },
+  "content/baike/middleware/消息顺序性.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-19"
+  },
+  "content/baike/network/动态主机配置协议.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-19"
+  },
+  "content/baike/os/银行家算法.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-19"
+  },
+  "content/baike/programming-languages/静态链接与动态链接.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-19"
+  },
+  "content/baike/security/SQL注入与XSS.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-19"
+  },
+  "content/baike/software-engineering/技术债务.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-19"
+  },
+  "content/baike/algorithms/回溯算法.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-19"
+  },
+  "content/baike/database/数据库连接池.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-19"
+  },
+  "content/baike/distributed/Saga 与 TCC.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-19"
+  },
+  "content/baike/graphics-multimedia/颜色空间.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-19"
+  },
+  "content/baike/hci/可用性测试.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-19"
+  },
+  "content/baike/machine-learning/梯度消失与梯度爆炸.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-19"
+  },
+  "content/baike/machine-learning/集成学习.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-19"
+  },
+  "content/baike/network/路由协议.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-19"
+  },
+  "content/baike/os/实时操作系统.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-19"
+  },
+  "content/baike/programming-languages/即时编译.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-19"
+  },
+  "content/baike/security/数字证书.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-19"
+  },
+  "content/baike/software-engineering/代码评审.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-19"
+  },
+  "content/baike/algorithms/位运算.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-19"
+  },
+  "content/baike/algorithms/递归.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-19"
+  },
+  "content/baike/blockchain/智能合约.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-19"
+  },
+  "content/baike/data-science/数据仓库.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-19"
+  },
+  "content/baike/distributed/分布式 ID.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-19"
+  },
+  "content/baike/graphics-multimedia/全局光照.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-19"
+  },
+  "content/baike/iot/MQTT.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-19"
+  },
+  "content/baike/machine-learning/特征缩放.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-19"
+  },
+  "content/baike/middleware/消息投递语义.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-19"
+  },
+  "content/baike/security/端到端加密.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-19"
+  },
+  "content/baike/security/缓冲区溢出.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-19"
+  },
+  "content/baike/software-engineering/需求工程.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-19"
+  },
+  "content/baike/algorithms/KMP 算法.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-19"
+  },
+  "content/baike/algorithms/二分查找.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-19"
+  },
+  "content/baike/cs-basics/正则表达式.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-19"
+  },
+  "content/baike/data-science/数据湖.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-19"
+  },
+  "content/baike/database/存储过程与触发器.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-19"
+  },
+  "content/baike/distributed/异地多活.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-19"
+  },
+  "content/baike/machine-learning/主成分分析.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-19"
+  },
+  "content/baike/network/组播与广播.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-19"
+  },
+  "content/baike/programming-languages/内存管理.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-19"
+  },
+  "content/baike/security/中间人攻击.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-19"
+  },
+  "content/baike/software-engineering/UML.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-19"
+  },
+  "content/baike/testing/单元测试.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-19"
+  },
+  "content/baike/ai-and-llm/词袋模型.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-19"
+  },
+  "content/baike/algorithms/堆排序.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-19"
+  },
+  "content/baike/data-science/ETL.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-19"
+  },
+  "content/baike/distributed/心跳检测.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-19"
+  },
+  "content/baike/graphics-multimedia/骨骼动画.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-19"
+  },
+  "content/baike/hardware/内存屏障.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-19"
+  },
+  "content/baike/machine-learning/混淆矩阵.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-19"
+  },
+  "content/baike/network/HTTP 状态码.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-19"
+  },
+  "content/baike/security/访问控制.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-19"
+  },
+  "content/baike/security/零知识证明.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-19"
+  },
+  "content/baike/software-engineering/结对编程.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-19"
+  },
+  "content/baike/testing/集成测试.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-19"
+  },
+  "content/articles/git/git使用技巧.md": {
+   "first": "2026-09-12",
+   "last": "2026-09-12"
+  },
+  "content/ai-assets/claude.md": {
+   "first": "2026-09-14",
+   "last": "2026-09-15"
+  },
+  "content/ai-assets/index.md": {
+   "first": "2026-09-14",
+   "last": "2026-09-14"
+  },
+  "content/ai-assets/测试.md": {
+   "first": "2026-09-15",
+   "last": "2026-09-18"
+  },
+  "content/ai-assets/提示词/严格风格.md": {
+   "first": "2026-09-18",
+   "last": "2026-09-18"
+  },
+  "content/baike/frontend-frameworks/CSS渲染性能.md": {
+   "first": "2026-09-19",
+   "last": "2026-09-19"
+  },
+  "content/baike/frontend-frameworks/Core Web Vitals.md": {
+   "first": "2026-09-19",
+   "last": "2026-09-19"
+  },
+  "content/baike/frontend-frameworks/JS执行性能.md": {
+   "first": "2026-09-19",
+   "last": "2026-09-19"
+  },
+  "content/baike/frontend-frameworks/Web性能优化.md": {
+   "first": "2026-09-19",
+   "last": "2026-09-19"
+  },
+  "content/baike/frontend-frameworks/图片优化.md": {
+   "first": "2026-09-19",
+   "last": "2026-09-19"
+  },
+  "content/baike/frontend-frameworks/字体优化.md": {
+   "first": "2026-09-19",
+   "last": "2026-09-19"
+  },
+  "content/baike/frontend-frameworks/资源加载优化.md": {
+   "first": "2026-09-19",
+   "last": "2026-09-19"
+  },
+  "content/baike/testing/E2E 测试.md": {
+   "first": "2026-09-19",
+   "last": "2026-09-19"
+  },
+  "content/baike/testing/Playwright 与 Cypress.md": {
+   "first": "2026-09-19",
+   "last": "2026-09-19"
+  },
+  "content/baike/software-engineering/Clean Code 原则.md": {
+   "first": "2026-09-19",
+   "last": "2026-09-19"
+  },
+  "content/baike/software-engineering/代码异味.md": {
+   "first": "2026-09-19",
+   "last": "2026-09-19"
+  },
+  "content/baike/software-engineering/圈复杂度.md": {
+   "first": "2026-09-19",
+   "last": "2026-09-19"
+  },
+  "content/baike/algorithms/主定理.md": {
+   "first": "2026-09-19",
+   "last": "2026-09-19"
+  },
+  "content/baike/algorithms/均摊分析.md": {
+   "first": "2026-09-19",
+   "last": "2026-09-19"
+  },
+  "content/baike/algorithms/时空权衡.md": {
+   "first": "2026-09-19",
+   "last": "2026-09-19"
+  },
+  "content/baike/algorithms/时间复杂度.md": {
+   "first": "2026-09-19",
+   "last": "2026-09-19"
+  },
+  "content/baike/algorithms/空间复杂度.md": {
+   "first": "2026-09-19",
+   "last": "2026-09-19"
+  },
+  "content/baike/algorithms/排序算法.md": {
+   "first": "2026-09-19",
+   "last": "2026-09-19"
+  },
+  "content/baike/algorithms/查找算法.md": {
+   "first": "2026-09-19",
+   "last": "2026-09-19"
+  },
+  "content/baike/algorithms/前缀和与差分.md": {
+   "first": "2026-09-19",
+   "last": "2026-09-19"
+  },
+  "content/baike/algorithms/双指针与滑动窗口.md": {
+   "first": "2026-09-19",
+   "last": "2026-09-19"
+  },
+  "content/baike/architecture/API 分页与版本控制.md": {
+   "first": "2026-09-19",
+   "last": "2026-09-19"
+  },
+  "content/baike/architecture/OpenAPI 规范.md": {
+   "first": "2026-09-19",
+   "last": "2026-09-19"
+  },
+  "content/baike/architecture/RESTful API 设计.md": {
+   "first": "2026-09-19",
+   "last": "2026-09-19"
+  },
+  "content/baike/architecture/数据分片与热点处理.md": {
+   "first": "2026-09-19",
+   "last": "2026-09-19"
+  },
+  "content/baike/architecture/异步处理与线程池.md": {
+   "first": "2026-09-19",
+   "last": "2026-09-19"
+  },
+  "content/baike/distributed/Gossip 协议.md": {
+   "first": "2026-09-19",
+   "last": "2026-09-19"
+  },
+  "content/baike/distributed/数据复制与 Quorum.md": {
+   "first": "2026-09-19",
+   "last": "2026-09-19"
+  },
+  "content/baike/software-engineering/CI 与 CD.md": {
+   "first": "2026-09-19",
+   "last": "2026-09-19"
+  },
+  "content/baike/software-engineering/构建流水线与 CI-CD 工具.md": {
+   "first": "2026-09-19",
+   "last": "2026-09-19"
+  },
+  "content/baike/architecture/分布式配置管理.md": {
+   "first": "2026-09-19",
+   "last": "2026-09-19"
+  },
+  "content/baike/architecture/微服务拆分与选型.md": {
+   "first": "2026-09-19",
+   "last": "2026-09-19"
+  },
+  "content/baike/architecture/服务通信与 API 网关.md": {
+   "first": "2026-09-19",
+   "last": "2026-09-19"
+  },
+  "content/baike/machine-learning/AI 与人类独特性的哲学概念.md": {
+   "first": "2026-09-19",
+   "last": "2026-09-19"
+  },
+  "content/baike/machine-learning/AI 取代就业的正反论据.md": {
+   "first": "2026-09-19",
+   "last": "2026-09-19"
+  },
+  "content/baike/machine-learning/AI 就业影响的实证数据.md": {
+   "first": "2026-09-19",
+   "last": "2026-09-19"
+  },
+  "content/baike/design-patterns/单例模式.md": {
+   "first": "2026-09-19",
+   "last": "2026-09-19"
+  },
+  "content/baike/design-patterns/原型模式.md": {
+   "first": "2026-09-19",
+   "last": "2026-09-19"
+  },
+  "content/baike/design-patterns/对象池模式.md": {
+   "first": "2026-09-19",
+   "last": "2026-09-19"
+  },
+  "content/baike/design-patterns/工厂模式（工厂方法与抽象工厂）.md": {
+   "first": "2026-09-19",
+   "last": "2026-09-19"
+  },
+  "content/baike/design-patterns/建造者模式.md": {
+   "first": "2026-09-19",
+   "last": "2026-09-19"
+  },
+  "content/baike/data-science/Python 数据分析工具链.md": {
+   "first": "2026-09-19",
+   "last": "2026-09-19"
+  },
+  "content/baike/data-science/探索性数据分析.md": {
+   "first": "2026-09-19",
+   "last": "2026-09-19"
+  },
+  "content/baike/data-science/数据清洗实战.md": {
+   "first": "2026-09-19",
+   "last": "2026-09-19"
+  },
+  "content/baike/architecture/SaaS 多租户架构与数据隔离.md": {
+   "first": "2026-09-19",
+   "last": "2026-09-19"
+  },
+  "content/baike/architecture/SaaS 计费系统设计.md": {
+   "first": "2026-09-19",
+   "last": "2026-09-19"
+  },
+  "content/baike/distributed/缓存三大问题.md": {
+   "first": "2026-09-19",
+   "last": "2026-09-19"
+  },
+  "content/baike/distributed/缓存双写一致性.md": {
+   "first": "2026-09-19",
+   "last": "2026-09-19"
+  },
+  "content/baike/architecture/云原生十二要素.md": {
+   "first": "2026-09-19",
+   "last": "2026-09-19"
+  },
+  "content/baike/distributed/API网关.md": {
+   "first": "2026-09-19",
+   "last": "2026-09-19"
+  },
+  "content/baike/distributed/灰度发布.md": {
+   "first": "2026-09-19",
+   "last": "2026-09-19"
+  },
+  "content/baike/distributed/配置中心.md": {
+   "first": "2026-09-19",
+   "last": "2026-09-19"
+  },
+  "content/baike/design-patterns/MVC 与 MVVM.md": {
+   "first": "2026-09-19",
+   "last": "2026-09-19"
+  },
+  "content/baike/design-patterns/享元模式.md": {
+   "first": "2026-09-19",
+   "last": "2026-09-19"
+  },
+  "content/baike/design-patterns/代理模式.md": {
+   "first": "2026-09-19",
+   "last": "2026-09-19"
+  },
+  "content/baike/design-patterns/外观模式.md": {
+   "first": "2026-09-19",
+   "last": "2026-09-19"
+  },
+  "content/baike/design-patterns/桥接模式.md": {
+   "first": "2026-09-19",
+   "last": "2026-09-19"
+  },
+  "content/baike/design-patterns/组合模式.md": {
+   "first": "2026-09-19",
+   "last": "2026-09-19"
+  },
+  "content/baike/design-patterns/装饰器模式.md": {
+   "first": "2026-09-19",
+   "last": "2026-09-19"
+  },
+  "content/baike/design-patterns/适配器模式.md": {
+   "first": "2026-09-19",
+   "last": "2026-09-19"
+  },
+  "content/baike/database/InnoDB 存储引擎结构.md": {
+   "first": "2026-09-19",
+   "last": "2026-09-19"
+  },
+  "content/baike/database/MySQL 索引类型与优化.md": {
+   "first": "2026-09-19",
+   "last": "2026-09-19"
+  },
+  "content/baike/database/MySQL 锁机制.md": {
+   "first": "2026-09-19",
+   "last": "2026-09-19"
+  },
+  "content/baike/network/Cookie与Session.md": {
+   "first": "2026-09-19",
+   "last": "2026-09-19"
+  },
+  "content/baike/network/HTTP头部与内容协商.md": {
+   "first": "2026-09-19",
+   "last": "2026-09-19"
+  },
+  "content/baike/network/HTTP请求方法.md": {
+   "first": "2026-09-19",
+   "last": "2026-09-19"
+  },
+  "content/baike/network/TCP粘包与拆包.md": {
+   "first": "2026-09-19",
+   "last": "2026-09-19"
+  },
+  "content/baike/network/TIME_WAIT与连接回收.md": {
+   "first": "2026-09-19",
+   "last": "2026-09-19"
+  },
+  "content/baike/machine-learning/MLflow 与 W&B 实验跟踪.md": {
+   "first": "2026-09-19",
+   "last": "2026-09-19"
+  },
+  "content/baike/design-patterns/中介者模式.md": {
+   "first": "2026-09-19",
+   "last": "2026-09-19"
+  },
+  "content/baike/design-patterns/命令模式.md": {
+   "first": "2026-09-19",
+   "last": "2026-09-20"
+  },
+  "content/baike/design-patterns/模板方法模式.md": {
+   "first": "2026-09-19",
+   "last": "2026-09-19"
+  },
+  "content/baike/design-patterns/状态模式.md": {
+   "first": "2026-09-19",
+   "last": "2026-09-19"
+  },
+  "content/baike/design-patterns/策略模式.md": {
+   "first": "2026-09-19",
+   "last": "2026-09-19"
+  },
+  "content/baike/design-patterns/观察者模式.md": {
+   "first": "2026-09-19",
+   "last": "2026-09-19"
+  },
+  "content/baike/design-patterns/责任链模式.md": {
+   "first": "2026-09-19",
+   "last": "2026-09-19"
+  },
+  "content/baike/database/列族数据库（HBase 与 Cassandra）.md": {
+   "first": "2026-09-19",
+   "last": "2026-09-19"
+  },
+  "content/baike/database/图数据库 Neo4j.md": {
+   "first": "2026-09-19",
+   "last": "2026-09-19"
+  },
+  "content/baike/database/时序数据库 InfluxDB.md": {
+   "first": "2026-09-19",
+   "last": "2026-09-19"
+  },
+  "content/baike/network/SSH与远程登录.md": {
+   "first": "2026-09-19",
+   "last": "2026-09-19"
+  },
+  "content/baike/network/文件传输协议.md": {
+   "first": "2026-09-19",
+   "last": "2026-09-19"
+  },
+  "content/baike/network/邮件协议族.md": {
+   "first": "2026-09-19",
+   "last": "2026-09-19"
+  },
+  "content/baike/machine-learning/自动提示优化 APE 与 OPRO.md": {
+   "first": "2026-09-19",
+   "last": "2026-09-19"
+  },
+  "content/baike/machine-learning/Modular RAG 与 Agentic RAG.md": {
+   "first": "2026-09-19",
+   "last": "2026-09-19"
+  },
+  "content/baike/developer-skills/Git高级用法.md": {
+   "first": "2026-09-19",
+   "last": "2026-09-19"
+  },
+  "content/baike/developer-skills/命令行效率工具.md": {
+   "first": "2026-09-19",
+   "last": "2026-09-19"
+  },
+  "content/baike/developer-skills/终端与Shell工作流.md": {
+   "first": "2026-09-19",
+   "last": "2026-09-19"
+  },
+  "content/baike/developer-skills/编辑器与IDE选型.md": {
+   "first": "2026-09-19",
+   "last": "2026-09-19"
+  },
+  "content/baike/developer-skills/Scrum框架.md": {
+   "first": "2026-09-19",
+   "last": "2026-09-19"
+  },
+  "content/baike/developer-skills/敏捷宣言与原则.md": {
+   "first": "2026-09-19",
+   "last": "2026-09-19"
+  },
+  "content/baike/developer-skills/用户故事与敏捷估算.md": {
+   "first": "2026-09-19",
+   "last": "2026-09-19"
+  },
+  "content/baike/developer-skills/看板方法.md": {
+   "first": "2026-09-19",
+   "last": "2026-09-19"
+  },
+  "content/baike/developer-skills/规模化敏捷框架.md": {
+   "first": "2026-09-19",
+   "last": "2026-09-19"
+  },
+  "content/baike/developer-skills/迭代与回顾.md": {
+   "first": "2026-09-19",
+   "last": "2026-09-19"
+  },
+  "content/baike/developer-skills/需求梳理与优先级.md": {
+   "first": "2026-09-19",
+   "last": "2026-09-19"
+  },
+  "content/baike/devops/API 错误处理规范.md": {
+   "first": "2026-09-19",
+   "last": "2026-09-19"
+  },
+  "content/baike/network/Socket与端口.md": {
+   "first": "2026-09-19",
+   "last": "2026-09-19"
+  },
+  "content/baike/network/网络分段与编址.md": {
+   "first": "2026-09-19",
+   "last": "2026-09-19"
+  },
+  "content/baike/network/网络诊断与性能.md": {
+   "first": "2026-09-19",
+   "last": "2026-09-19"
+  },
+  "content/baike/database/Redis 分布式锁.md": {
+   "first": "2026-09-19",
+   "last": "2026-09-19"
+  },
+  "content/baike/database/Redis 持久化与内存管理.md": {
+   "first": "2026-09-19",
+   "last": "2026-09-19"
+  },
+  "content/baike/database/Redis 数据结构与底层实现.md": {
+   "first": "2026-09-19",
+   "last": "2026-09-19"
+  },
+  "content/baike/database/Redis 高可用架构（主从·哨兵·集群）.md": {
+   "first": "2026-09-19",
+   "last": "2026-09-19"
+  },
+  "content/baike/machine-learning/值迭代与策略迭代.md": {
+   "first": "2026-09-19",
+   "last": "2026-09-19"
+  },
+  "content/baike/architecture/Prometheus 指标与告警.md": {
+   "first": "2026-09-19",
+   "last": "2026-09-19"
+  },
+  "content/baike/architecture/分布式链路追踪.md": {
+   "first": "2026-09-19",
+   "last": "2026-09-19"
+  },
+  "content/baike/architecture/日志管道与结构化采集.md": {
+   "first": "2026-09-19",
+   "last": "2026-09-19"
+  },
+  "content/baike/machine-learning/命名实体识别与序列标注.md": {
+   "first": "2026-09-19",
+   "last": "2026-09-19"
+  },
+  "content/baike/machine-learning/序列到序列与神经机器翻译.md": {
+   "first": "2026-09-19",
+   "last": "2026-09-19"
+  },
+  "content/baike/machine-learning/文本分类与主题模型.md": {
+   "first": "2026-09-19",
+   "last": "2026-09-19"
+  },
+  "content/baike/machine-learning/文本预处理与中文分词.md": {
+   "first": "2026-09-19",
+   "last": "2026-09-19"
+  },
+  "content/baike/devops/Docker 镜像构建与分发.md": {
+   "first": "2026-09-19",
+   "last": "2026-09-19"
+  },
+  "content/baike/devops/容器网络与数据持久化.md": {
+   "first": "2026-09-19",
+   "last": "2026-09-19"
+  },
+  "content/baike/devops/容器运行时安全.md": {
+   "first": "2026-09-19",
+   "last": "2026-09-19"
+  },
+  "content/baike/machine-learning/图像分割（语义·实例·全景）.md": {
+   "first": "2026-09-20",
+   "last": "2026-09-20"
+  },
+  "content/baike/machine-learning/图像基础与经典视觉算法.md": {
+   "first": "2026-09-20",
+   "last": "2026-09-20"
+  },
+  "content/baike/machine-learning/目标检测（YOLO 与 R-CNN 家族）.md": {
+   "first": "2026-09-20",
+   "last": "2026-09-20"
+  },
+  "content/baike/devops/Kubernetes 工作负载（StatefulSet 与 DaemonSet）.md": {
+   "first": "2026-09-20",
+   "last": "2026-09-20"
+  },
+  "content/baike/devops/Kubernetes 网络（Service 与 Ingress）.md": {
+   "first": "2026-09-20",
+   "last": "2026-09-20"
+  },
+  "content/baike/architecture/协同过滤与矩阵分解.md": {
+   "first": "2026-09-20",
+   "last": "2026-09-20"
+  },
+  "content/baike/architecture/基于内容推荐与混合策略.md": {
+   "first": "2026-09-20",
+   "last": "2026-09-20"
+  },
+  "content/baike/architecture/多路召回与双塔模型.md": {
+   "first": "2026-09-20",
+   "last": "2026-09-20"
+  },
+  "content/baike/architecture/深度推荐模型.md": {
+   "first": "2026-09-20",
+   "last": "2026-09-20"
+  },
+  "content/baike/network/DDoS攻击与防护.md": {
+   "first": "2026-09-20",
+   "last": "2026-09-20"
+  },
+  "content/baike/network/VPN与隧道加密.md": {
+   "first": "2026-09-20",
+   "last": "2026-09-20"
+  },
+  "content/baike/network/代理与正向反向代理.md": {
+   "first": "2026-09-20",
+   "last": "2026-09-20"
+  },
+  "content/baike/network/防火墙与WAF.md": {
+   "first": "2026-09-20",
+   "last": "2026-09-20"
+  },
+  "content/baike/database/SQL 查询与连接.md": {
+   "first": "2026-09-20",
+   "last": "2026-09-20"
+  },
+  "content/baike/database/SQL 语言分类（DDL·DML·DQL·DCL·TCL）.md": {
+   "first": "2026-09-20",
+   "last": "2026-09-20"
+  },
+  "content/baike/devops/Linux 性能分析工具.md": {
+   "first": "2026-09-20",
+   "last": "2026-09-20"
+  },
+  "content/baike/devops/Linux 文件系统选型.md": {
+   "first": "2026-09-20",
+   "last": "2026-09-20"
+  },
+  "content/baike/devops/Linux 网络管理.md": {
+   "first": "2026-09-20",
+   "last": "2026-09-20"
+  },
+  "content/baike/database/Redo Log 与 Undo Log.md": {
+   "first": "2026-09-20",
+   "last": "2026-09-20"
+  },
+  "content/baike/database/乐观锁与悲观锁.md": {
+   "first": "2026-09-20",
+   "last": "2026-09-20"
+  },
+  "content/baike/database/事务与 ACID.md": {
+   "first": "2026-09-20",
+   "last": "2026-09-20"
+  },
+  "content/baike/database/并发读异常（脏读·不可重复读·幻读）.md": {
+   "first": "2026-09-20",
+   "last": "2026-09-20"
+  },
+  "content/baike/architecture/流处理与批处理.md": {
+   "first": "2026-09-20",
+   "last": "2026-09-20"
+  },
+  "content/baike/architecture/湖仓一体与开放表格式.md": {
+   "first": "2026-09-20",
+   "last": "2026-09-20"
+  },
+  "content/baike/architecture/六边形与洋葱架构.md": {
+   "first": "2026-09-20",
+   "last": "2026-09-20"
+  },
+  "content/baike/database/数据库键（主键·外键·候选键·超键）.md": {
+   "first": "2026-09-20",
+   "last": "2026-09-20"
+  },
+  "content/baike/database/数据建模（ER 图与数据字典）.md": {
+   "first": "2026-09-20",
+   "last": "2026-09-20"
+  },
+  "content/baike/database/表级数据组织（分区表与冷热分离）.md": {
+   "first": "2026-09-20",
+   "last": "2026-09-20"
+  },
+  "content/baike/devops/内核内存管理.md": {
+   "first": "2026-09-20",
+   "last": "2026-09-20"
+  },
+  "content/baike/devops/容器隔离与内核安全.md": {
+   "first": "2026-09-20",
+   "last": "2026-09-20"
+  },
+  "content/baike/devops/文件系统与IO模型.md": {
+   "first": "2026-09-20",
+   "last": "2026-09-20"
+  },
+  "content/baike/devops/系统调用与中断.md": {
+   "first": "2026-09-20",
+   "last": "2026-09-20"
+  },
+  "content/baike/devops/线程与同步.md": {
+   "first": "2026-09-20",
+   "last": "2026-09-20"
+  },
+  "content/baike/devops/进程与调度.md": {
+   "first": "2026-09-20",
+   "last": "2026-09-20"
+  },
+  "content/baike/database/中文分词技术.md": {
+   "first": "2026-09-20",
+   "last": "2026-09-20"
+  },
+  "content/baike/database/倒排索引.md": {
+   "first": "2026-09-20",
+   "last": "2026-09-20"
+  },
+  "content/baike/database/搜索引擎爬虫设计.md": {
+   "first": "2026-09-20",
+   "last": "2026-09-20"
+  },
+  "content/baike/database/查询解析与相关性排序.md": {
+   "first": "2026-09-20",
+   "last": "2026-09-20"
+  },
+  "content/baike/database/数据库恢复与 ARIES.md": {
+   "first": "2026-09-20",
+   "last": "2026-09-20"
+  },
+  "content/baike/database/查询优化器与执行计划.md": {
+   "first": "2026-09-20",
+   "last": "2026-09-20"
+  },
+  "content/baike/devops/CSRF与SSRF.md": {
+   "first": "2026-09-20",
+   "last": "2026-09-20"
+  },
+  "content/baike/devops/XSS 与内容安全.md": {
+   "first": "2026-09-20",
+   "last": "2026-09-20"
+  },
+  "content/baike/devops/文件上传与反序列化.md": {
+   "first": "2026-09-20",
+   "last": "2026-09-20"
+  },
+  "content/baike/devops/注入类漏洞.md": {
+   "first": "2026-09-20",
+   "last": "2026-09-20"
+  },
+  "content/baike/middleware/Crontab 与任务编排（DAG）.md": {
+   "first": "2026-09-20",
+   "last": "2026-09-20"
+  },
+  "content/baike/middleware/分布式任务调度平台（XXL-JOB·Elastic-JOB·SchedulerX）.md": {
+   "first": "2026-09-20",
+   "last": "2026-09-20"
+  },
+  "content/baike/middleware/延迟队列与优先级队列.md": {
+   "first": "2026-09-20",
+   "last": "2026-09-20"
+  },
+  "content/baike/architecture/DRY、KISS 与 YAGNI.md": {
+   "first": "2026-09-20",
+   "last": "2026-09-20"
+  },
+  "content/baike/architecture/IoC 与依赖注入.md": {
+   "first": "2026-09-20",
+   "last": "2026-09-20"
+  },
+  "content/baike/architecture/SOLID 五大原则.md": {
+   "first": "2026-09-20",
+   "last": "2026-09-20"
+  },
+  "content/baike/architecture/复用与解耦原则.md": {
+   "first": "2026-09-20",
+   "last": "2026-09-20"
+  },
+  "content/baike/devops/渗透测试流程与工具.md": {
+   "first": "2026-09-20",
+   "last": "2026-09-20"
+  },
+  "content/baike/devops/网络协议层攻击与防护.md": {
+   "first": "2026-09-20",
+   "last": "2026-09-20"
+  },
+  "content/baike/architecture/事件风暴与上下文映射.md": {
+   "first": "2026-09-20",
+   "last": "2026-09-20"
+  },
+  "content/baike/frontend-concepts/CSS 变量与动画.md": {
+   "first": "2026-09-20",
+   "last": "2026-09-20"
+  },
+  "content/baike/frontend-concepts/CSS 布局（Flexbox 与 Grid）.md": {
+   "first": "2026-09-20",
+   "last": "2026-09-20"
+  },
+  "content/baike/frontend-concepts/CSS 盒模型与 BFC 与层叠上下文.md": {
+   "first": "2026-09-20",
+   "last": "2026-09-20"
+  },
+  "content/baike/frontend-concepts/CSS 选择器与伪类伪元素.md": {
+   "first": "2026-09-20",
+   "last": "2026-09-20"
+  },
+  "content/baike/frontend-concepts/HTML 语义化.md": {
+   "first": "2026-09-20",
+   "last": "2026-09-20"
+  },
+  "content/baike/frontend-concepts/JavaScript 作用域与 this.md": {
+   "first": "2026-09-20",
+   "last": "2026-09-20"
+  },
+  "content/baike/frontend-concepts/JavaScript 原型链与继承.md": {
+   "first": "2026-09-20",
+   "last": "2026-09-20"
+  },
+  "content/baike/frontend-concepts/JavaScript 异步编程（事件循环·Promise·async·await·Generator）.md": {
+   "first": "2026-09-20",
+   "last": "2026-09-20"
+  },
+  "content/baike/frontend-concepts/JavaScript 弱引用（WeakMap 与 WeakRef）.md": {
+   "first": "2026-09-20",
+   "last": "2026-09-20"
+  },
+  "content/baike/frontend-concepts/JavaScript 模块化（CommonJS·ES Modules·AMD）.md": {
+   "first": "2026-09-20",
+   "last": "2026-09-20"
+  },
+  "content/baike/frontend-concepts/JavaScript 现代语法糖（解构·展开·可选链·空值合并）.md": {
+   "first": "2026-09-20",
+   "last": "2026-09-20"
+  },
+  "content/baike/programming-languages/Dart语言精要.md": {
+   "first": "2026-09-20",
+   "last": "2026-09-20"
+  },
+  "content/baike/programming-languages/Flutter Widget体系.md": {
+   "first": "2026-09-20",
+   "last": "2026-09-20"
+  },
+  "content/baike/programming-languages/Flutter布局系统.md": {
+   "first": "2026-09-20",
+   "last": "2026-09-20"
+  },
+  "content/baike/programming-languages/Flutter状态管理.md": {
+   "first": "2026-09-20",
+   "last": "2026-09-20"
+  },
+  "content/baike/programming-languages/Flutter路由与导航.md": {
+   "first": "2026-09-20",
+   "last": "2026-09-20"
+  },
+  "content/baike/programming-languages/Go unsafe与底层.md": {
+   "first": "2026-09-20",
+   "last": "2026-09-20"
+  },
+  "content/baike/programming-languages/Go并发与内存模型.md": {
+   "first": "2026-09-20",
+   "last": "2026-09-20"
+  },
+  "content/baike/programming-languages/Go接口与反射.md": {
+   "first": "2026-09-20",
+   "last": "2026-09-20"
+  },
+  "content/baike/frontend-concepts/CSS 预处理与模块化（Sass·Less·CSS Modules）.md": {
+   "first": "2026-09-20",
+   "last": "2026-09-20"
+  },
+  "content/baike/frontend-concepts/JavaScript 构建工具（Webpack 与 Vite）.md": {
+   "first": "2026-09-20",
+   "last": "2026-09-20"
+  },
+  "content/baike/frontend-concepts/PWA 渐进式 Web 应用.md": {
+   "first": "2026-09-20",
+   "last": "2026-09-20"
+  },
+  "content/baike/frontend-concepts/代码规范与转换工具链（Babel · ESLint · PostCSS）.md": {
+   "first": "2026-09-20",
+   "last": "2026-09-20"
+  },
+  "content/baike/frontend-concepts/前端构建优化策略.md": {
+   "first": "2026-09-20",
+   "last": "2026-09-20"
+  },
+  "content/baike/frontend-concepts/前端状态管理.md": {
+   "first": "2026-09-20",
+   "last": "2026-09-20"
+  },
+  "content/baike/frontend-concepts/前端路由.md": {
+   "first": "2026-09-20",
+   "last": "2026-09-20"
+  },
+  "content/baike/frontend-concepts/组件化与微前端.md": {
+   "first": "2026-09-20",
+   "last": "2026-09-20"
+  },
+  "content/baike/frontend-concepts/虚拟 DOM 与 Diff 算法.md": {
+   "first": "2026-09-20",
+   "last": "2026-09-20"
+  },
+  "content/baike/programming-languages/Python 元类编程.md": {
+   "first": "2026-09-20",
+   "last": "2026-09-20"
+  },
+  "content/baike/programming-languages/Python 描述符与上下文管理器.md": {
+   "first": "2026-09-20",
+   "last": "2026-09-20"
+  },
+  "content/baike/programming-languages/Python 高级装饰器.md": {
+   "first": "2026-09-20",
+   "last": "2026-09-20"
+  },
+  "content/baike/frontend-frameworks/GraphQL Schema 与 Resolver 设计.md": {
+   "first": "2026-09-20",
+   "last": "2026-09-20"
+  },
+  "content/baike/frontend-frameworks/GraphQL 实时订阅与文件上传.md": {
+   "first": "2026-09-20",
+   "last": "2026-09-20"
+  },
+  "content/baike/frontend-frameworks/N+1 问题与 DataLoader.md": {
+   "first": "2026-09-20",
+   "last": "2026-09-20"
+  },
+  "content/baike/programming-languages/Rust Trait与泛型.md": {
+   "first": "2026-09-20",
+   "last": "2026-09-20"
+  },
+  "content/baike/programming-languages/Rust 并发与异步.md": {
+   "first": "2026-09-20",
+   "last": "2026-09-20"
+  },
+  "content/baike/programming-languages/Rust 智能指针.md": {
+   "first": "2026-09-20",
+   "last": "2026-09-20"
+  },
+  "content/baike/programming-languages/Rust 错误处理.md": {
+   "first": "2026-09-20",
+   "last": "2026-09-20"
+  },
+  "content/baike/programming-languages/TypeScript 模块与声明文件.md": {
+   "first": "2026-09-20",
+   "last": "2026-09-20"
+  },
+  "content/baike/programming-languages/TypeScript 装饰器与编译器API.md": {
+   "first": "2026-09-20",
+   "last": "2026-09-20"
+  },
+  "content/baike/programming-languages/TypeScript 高级类型与类型体操.md": {
+   "first": "2026-09-20",
+   "last": "2026-09-20"
+  },
+  "content/baike/frontend-frameworks/Next.js App Router 与渲染策略.md": {
+   "first": "2026-09-20",
+   "last": "2026-09-20"
+  },
+  "content/baike/frontend-frameworks/Next.js 中间件与 i18n.md": {
+   "first": "2026-09-20",
+   "last": "2026-09-20"
+  },
+  "content/baike/frontend-frameworks/Next.js 缓存与再验证.md": {
+   "first": "2026-09-20",
+   "last": "2026-09-20"
+  },
+  "content/baike/frontend-frameworks/React Server Components 与数据获取.md": {
+   "first": "2026-09-20",
+   "last": "2026-09-20"
+  },
+  "content/baike/programming-languages/Functor 与 Monad.md": {
+   "first": "2026-09-20",
+   "last": "2026-09-20"
+  },
+  "content/baike/programming-languages/函数式并发与多语言实践.md": {
+   "first": "2026-09-20",
+   "last": "2026-09-20"
+  },
+  "content/baike/programming-languages/函数式编程基础.md": {
+   "first": "2026-09-20",
+   "last": "2026-09-20"
+  },
+  "content/baike/programming-languages/函数式错误处理与不可变数据结构.md": {
+   "first": "2026-09-20",
+   "last": "2026-09-20"
+  },
+  "content/baike/programming-languages/区块链与比特币.md": {
+   "first": "2026-09-20",
+   "last": "2026-09-20"
+  },
+  "content/baike/programming-languages/密码学基础.md": {
+   "first": "2026-09-20",
+   "last": "2026-09-20"
+  },
+  "content/baike/programming-languages/同步原语与无锁并发.md": {
+   "first": "2026-09-20",
+   "last": "2026-09-20"
+  },
+  "content/baike/programming-languages/并发与并行及线程模型.md": {
+   "first": "2026-09-20",
+   "last": "2026-09-20"
+  },
+  "content/baike/programming-languages/消息传递并发：CSP 与 Actor.md": {
+   "first": "2026-09-20",
+   "last": "2026-09-20"
+  },
+  "content/baike/frontend-frameworks/WASI 与非浏览器运行时.md": {
+   "first": "2026-09-20",
+   "last": "2026-09-20"
+  },
+  "content/baike/frontend-frameworks/Wasm 与 JavaScript 互操作.md": {
+   "first": "2026-09-20",
+   "last": "2026-09-20"
+  },
+  "content/baike/frontend-frameworks/Wasm 线性内存与模块结构.md": {
+   "first": "2026-09-20",
+   "last": "2026-09-20"
+  },
+  "content/baike/frontend-frameworks/组件库开发与设计系统.md": {
+   "first": "2026-09-20",
+   "last": "2026-09-20"
+  },
+  "content/baike/programming-languages/离散数学与组合.md": {
+   "first": "2026-09-20",
+   "last": "2026-09-20"
+  },
+  "content/baike/programming-languages/线性代数.md": {
+   "first": "2026-09-20",
+   "last": "2026-09-20"
+  },
+  "content/baike/security/国密算法（SM2 · SM3 · SM4）.md": {
+   "first": "2026-09-20",
+   "last": "2026-09-20"
+  },
+  "content/baike/security/密钥交换与混合加密与数字信封.md": {
+   "first": "2026-09-20",
+   "last": "2026-09-20"
+  },
+  "content/baike/security/常见对称加密算法（AES · DES · 3DES）.md": {
+   "first": "2026-09-20",
+   "last": "2026-09-20"
+  },
+  "content/baike/security/常见非对称加密算法（RSA · ECC · ElGamal）.md": {
+   "first": "2026-09-20",
+   "last": "2026-09-20"
+  },
+  "content/baike/programming-languages/数组与链表.md": {
+   "first": "2026-09-20",
+   "last": "2026-09-20"
+  },
+  "content/baike/programming-languages/栈与队列.md": {
+   "first": "2026-09-20",
+   "last": "2026-09-20"
+  },
+  "content/baike/security/HMAC 与校验和.md": {
+   "first": "2026-09-20",
+   "last": "2026-09-20"
+  },
+  "content/baike/security/加盐哈希与口令存储.md": {
+   "first": "2026-09-20",
+   "last": "2026-09-20"
+  },
+  "content/baike/security/密码学哈希函数（MD5 · SHA-1 · SHA-256 · SHA-512）.md": {
+   "first": "2026-09-20",
+   "last": "2026-09-20"
+  },
+  "content/baike/security/布隆过滤器.md": {
+   "first": "2026-09-20",
+   "last": "2026-09-20"
+  },
+  "content/baike/security/密钥与密钥对（公钥·私钥）.md": {
+   "first": "2026-09-20",
+   "last": "2026-09-20"
+  },
+  "content/baike/security/密钥管理与轮换.md": {
+   "first": "2026-09-20",
+   "last": "2026-09-20"
+  },
+  "content/baike/programming-languages/作用域与命名.md": {
+   "first": "2026-09-20",
+   "last": "2026-09-20"
+  },
+  "content/baike/programming-languages/变量与数据类型.md": {
+   "first": "2026-09-20",
+   "last": "2026-09-20"
+  },
+  "content/baike/programming-languages/控制流与函数.md": {
+   "first": "2026-09-20",
+   "last": "2026-09-20"
+  },
+  "content/baike/programming-languages/代码生成与LLVM.md": {
+   "first": "2026-09-20",
+   "last": "2026-09-20"
+  },
+  "content/baike/programming-languages/语义分析.md": {
+   "first": "2026-09-20",
+   "last": "2026-09-20"
+  },
+  "content/baike/security/跨域资源共享（CORS）.md": {
+   "first": "2026-09-20",
+   "last": "2026-09-20"
+  },
+  "content/baike/security/API Key 与 Basic 与 Bearer 认证方式.md": {
+   "first": "2026-09-20",
+   "last": "2026-09-20"
+  },
+  "content/baike/security/MFA 多因素认证.md": {
+   "first": "2026-09-20",
+   "last": "2026-09-20"
+  },
+  "content/baike/security/SSO 与 OIDC 单点登录.md": {
+   "first": "2026-09-20",
+   "last": "2026-09-20"
+  },
+  "content/baike/programming-languages/多态与抽象.md": {
+   "first": "2026-09-20",
+   "last": "2026-09-20"
+  },
+  "content/baike/programming-languages/封装与继承.md": {
+   "first": "2026-09-20",
+   "last": "2026-09-20"
+  },
+  "content/baike/programming-languages/类与对象.md": {
+   "first": "2026-09-20",
+   "last": "2026-09-20"
+  },
+  "content/baike/programming-languages/React Native 导航与状态管理.md": {
+   "first": "2026-09-20",
+   "last": "2026-09-20"
+  },
+  "content/baike/programming-languages/React Native 新架构与原生桥接.md": {
+   "first": "2026-09-20",
+   "last": "2026-09-20"
+  },
+  "content/baike/programming-languages/React Native 组件与布局.md": {
+   "first": "2026-09-20",
+   "last": "2026-09-20"
+  },
+  "content/baike/programming-languages/React Native 网络与数据缓存.md": {
+   "first": "2026-09-20",
+   "last": "2026-09-20"
+  },
+  "content/baike/programming-languages/Axum 路由与中间件.md": {
+   "first": "2026-09-20",
+   "last": "2026-09-20"
+  },
+  "content/baike/programming-languages/Rust Web 数据库集成.md": {
+   "first": "2026-09-20",
+   "last": "2026-09-20"
+  },
+  "content/baike/programming-languages/Rust Web 认证与授权.md": {
+   "first": "2026-09-20",
+   "last": "2026-09-20"
+  },
+  "content/baike/programming-languages/serde 序列化与反序列化.md": {
+   "first": "2026-09-20",
+   "last": "2026-09-20"
+  },
+  "content/baike/programming-languages/tokio 异步运行时实战.md": {
+   "first": "2026-09-20",
+   "last": "2026-09-20"
+  },
+  "content/baike/programming-languages/声明式风格与惰性求值.md": {
+   "first": "2026-09-20",
+   "last": "2026-09-20"
+  },
+  "content/baike/programming-languages/异步结果与事件循环.md": {
+   "first": "2026-09-20",
+   "last": "2026-09-20"
+  },
+  "content/baike/programming-languages/线程池.md": {
+   "first": "2026-09-20",
+   "last": "2026-09-20"
+  },
+  "content/baike/software-engineering/瀑布模型.md": {
+   "first": "2026-09-20",
+   "last": "2026-09-20"
+  },
+  "content/baike/software-engineering/OKR与KPI.md": {
+   "first": "2026-09-20",
+   "last": "2026-09-20"
+  },
+  "content/baike/software-engineering/干系人管理与RACI.md": {
+   "first": "2026-09-20",
+   "last": "2026-09-20"
+  },
+  "content/baike/software-engineering/燃尽图与燃起图.md": {
+   "first": "2026-09-20",
+   "last": "2026-09-20"
+  },
+  "content/baike/software-engineering/缺陷生命周期与风险管理.md": {
+   "first": "2026-09-20",
+   "last": "2026-09-20"
+  },
+  "content/baike/software-engineering/里程碑与发布计划.md": {
+   "first": "2026-09-20",
+   "last": "2026-09-20"
+  },
+  "content/baike/testing/BDD 与契约测试.md": {
+   "first": "2026-09-20",
+   "last": "2026-09-20"
+  },
+  "content/baike/testing/冒烟测试与回归测试.md": {
+   "first": "2026-09-20",
+   "last": "2026-09-20"
+  },
+  "content/baike/testing/断言与测试替身.md": {
+   "first": "2026-09-20",
+   "last": "2026-09-20"
+  },
+  "content/baike/testing/测试金字塔与覆盖率.md": {
+   "first": "2026-09-20",
+   "last": "2026-09-20"
+  },
+  "content/baike/testing/验收测试与探索性测试.md": {
+   "first": "2026-09-20",
+   "last": "2026-09-20"
+  },
+  "content/baike/testing/Postman 与接口测试.md": {
+   "first": "2026-09-20",
+   "last": "2026-09-20"
+  },
+  "content/baike/testing/单元测试框架.md": {
+   "first": "2026-09-20",
+   "last": "2026-09-20"
+  },
+  "content/baike/testing/测试数据与环境管理.md": {
+   "first": "2026-09-20",
+   "last": "2026-09-20"
+  },
+  "content/baike/testing/性能报告与瓶颈分析.md": {
+   "first": "2026-09-20",
+   "last": "2026-09-20"
+  },
+  "content/baike/testing/性能测试指标.md": {
+   "first": "2026-09-20",
+   "last": "2026-09-20"
+  },
+  "content/baike/testing/性能测试类型与策略.md": {
+   "first": "2026-09-20",
+   "last": "2026-09-20"
+  },
+  "content/baike/testing/负载测试工具（JMeter·K6·Locust）.md": {
+   "first": "2026-09-20",
+   "last": "2026-09-20"
+  },
+  "content/baike/developer-skills/Conventional Commits 约定式提交.md": {
+   "first": "2026-09-21",
+   "last": "2026-09-21"
+  },
+  "content/baike/developer-skills/Monorepo 单一仓库.md": {
+   "first": "2026-09-21",
+   "last": "2026-09-21"
+  },
+  "content/baike/frontend-concepts/Object.defineProperty 与 Vue 响应式.md": {
+   "first": "2026-09-21",
+   "last": "2026-09-21"
+  },
+  "content/baike/frontend-concepts/浏览器单线程与多线程模型.md": {
+   "first": "2026-09-21",
+   "last": "2026-09-21"
+  },
+  "content/interview/bigtech/01.阿里篇/1.1.1 如何实现一个高效的单向链表逆序输出？.md": {
+   "first": "2026-09-23",
+   "last": "2026-09-23"
+  },
+  "content/interview/bigtech/01.阿里篇/1.1.2 已知sqrt(2)约等于1.414，要求不用数学库，求sqrt(2)精确到小数点后10位.md": {
+   "first": "2026-09-23",
+   "last": "2026-09-23"
+  },
+  "content/interview/bigtech/01.阿里篇/1.1.3 给定一个二叉搜索树(BST)，找到树中第 K 小的节点.md": {
+   "first": "2026-09-23",
+   "last": "2026-09-23"
+  },
+  "content/interview/bigtech/01.阿里篇/1.1.4 LRU缓存机制.md": {
+   "first": "2026-09-23",
+   "last": "2026-09-23"
+  },
+  "content/interview/bigtech/01.阿里篇/1.1.5 关于epoll和select的区别，以下哪些说法是正确的.md": {
+   "first": "2026-09-23",
+   "last": "2026-09-23"
+  },
+  "content/interview/bigtech/01.阿里篇/1.1.6 从innodb的索引结构分析，为什么索引的 key 长度不能太长.md": {
+   "first": "2026-09-23",
+   "last": "2026-09-23"
+  },
+  "content/interview/bigtech/01.阿里篇/1.1.7 MySQL的数据如何恢复到任意时间点？.md": {
+   "first": "2026-09-23",
+   "last": "2026-09-23"
+  },
+  "content/interview/bigtech/01.阿里篇/1.1.8 NFS与SMB的区别？.md": {
+   "first": "2026-09-23",
+   "last": "2026-09-23"
+  },
+  "content/interview/bigtech/01.阿里篇/1.1.9 输入 ping IP 后敲回车，发包前会发生什么？.md": {
+   "first": "2026-09-23",
+   "last": "2026-09-23"
+  },
+  "content/interview/bigtech/01.阿里篇/1.2.0 请解释下为什么鹿晗发布恋情的时候，微博系统会崩溃，如何解决？.md": {
+   "first": "2026-09-23",
+   "last": "2026-09-23"
+  },
+  "content/interview/bigtech/01.阿里篇/1.2.1 现有一批邮件需要发送给订阅顾客，且有一个集群（集群的节点数不定，会动态扩容缩容）来负责具体的邮件发送任务，如何让系统尽快地完成发送？.md": {
+   "first": "2026-09-23",
+   "last": "2026-09-23"
+  },
+  "content/interview/bigtech/01.阿里篇/1.2.2 有一批气象观测站，现需要获取这些站点的观测数据，并存储到 Hive 中。但是气象局只提供了 api 查询，每次只能查询单个观测点。那么如果能够方便快速地获取到所有的观测点的数据？.md": {
+   "first": "2026-09-23",
+   "last": "2026-09-23"
+  },
+  "content/interview/bigtech/01.阿里篇/1.2.3 如何实现两金额数据相加（最多小数点两位）.md": {
+   "first": "2026-09-23",
+   "last": "2026-09-23"
+  },
+  "content/interview/bigtech/01.阿里篇/1.2.4 关于并行计算的一些基础开放问题.md": {
+   "first": "2026-09-23",
+   "last": "2026-09-23"
+  },
+  "content/interview/bigtech/01.阿里篇/1.2.5 请计算XILINX公司VU9P芯片的算力相当于多少TOPS，给出计算过程与公式.md": {
+   "first": "2026-09-23",
+   "last": "2026-09-23"
+  },
+  "content/interview/bigtech/01.阿里篇/1.2.6 一颗现代处理器，每秒大概可以执行多少条简单的MOV指令，有哪些主要的影响因素.md": {
+   "first": "2026-09-23",
+   "last": "2026-09-23"
+  },
+  "content/interview/bigtech/01.阿里篇/1.2.7 请分析 MaxCompute 产品与分布式技术的关系、当前大数据计算平台类产品的市场现状和发展趋势.md": {
+   "first": "2026-09-23",
+   "last": "2026-09-23"
+  },
+  "content/interview/bigtech/01.阿里篇/1.2.8 对大数据平台中的元数据管理是怎么理解的，元数据收集管理体系是怎么样的，会对大数据应用有什么样的影响.md": {
+   "first": "2026-09-23",
+   "last": "2026-09-23"
+  },
+  "content/interview/bigtech/01.阿里篇/1.2.9 你理解常见如阿里，和友商大数据平台的技术体系差异以及发展趋势和技术瓶颈，在存储和计算两个方面进行概述.md": {
+   "first": "2026-09-23",
+   "last": "2026-09-23"
+  },
+  "content/interview/bigtech/01.阿里篇/1.3.0 在云计算大数据处理场景中，每天运行着成千上万的任务，每个任务都要进行 IO 读写.md": {
+   "first": "2026-09-23",
+   "last": "2026-09-23"
+  },
+  "content/interview/bigtech/01.阿里篇/1.3.1 最大频率栈.md": {
+   "first": "2026-09-23",
+   "last": "2026-09-23"
+  },
+  "content/interview/bigtech/01.阿里篇/1.3.2 给定一个链表，删除链表的倒数第N个节点，并且返回链表的头结点.md": {
+   "first": "2026-09-23",
+   "last": "2026-09-23"
+  },
+  "content/interview/bigtech/01.阿里篇/1.3.3 如果让你设计一个通用的、支持各种数据库秒级备份和恢复的系统，你会如何设计.md": {
+   "first": "2026-09-23",
+   "last": "2026-09-23"
+  },
+  "content/interview/bigtech/01.阿里篇/1.3.4 如果让你来设计一个支持数据库、NOSQL 和大数据之间数据实时流动的数据流及处理的系统，你会考虑哪些问题？如何设计？.md": {
+   "first": "2026-09-23",
+   "last": "2026-09-23"
+  },
+  "content/interview/bigtech/01.阿里篇/1.3.5 给定一个整数数组和一个整数，返回两个数组的索引，这两个索引指向的数字的加和等于指定的整数。需要最优的算法，分析算法的空间和时间复杂度.md": {
+   "first": "2026-09-23",
+   "last": "2026-09-23"
+  },
+  "content/interview/bigtech/01.阿里篇/1.3.6 假如给你一个新产品，你将从哪些方面来保障它的质量？.md": {
+   "first": "2026-09-23",
+   "last": "2026-09-23"
+  },
+  "content/interview/bigtech/01.阿里篇/1.3.7 请评估一下程序的执行结果？.md": {
+   "first": "2026-09-23",
+   "last": "2026-09-23"
+  },
+  "content/interview/bigtech/09.MySQL篇/9.1.0 主键 超键 候选键 外键.md": {
+   "first": "2026-09-23",
+   "last": "2026-09-23"
+  },
+  "content/interview/bigtech/09.MySQL篇/9.1.1 数据库事务的四个特性及含义.md": {
+   "first": "2026-09-23",
+   "last": "2026-09-23"
+  },
+  "content/interview/bigtech/09.MySQL篇/9.1.2 视图的作用，视图可以更改么？.md": {
+   "first": "2026-09-23",
+   "last": "2026-09-23"
+  },
+  "content/interview/bigtech/09.MySQL篇/9.1.3 drop,delete与truncate的区别.md": {
+   "first": "2026-09-23",
+   "last": "2026-09-23"
+  },
+  "content/interview/bigtech/09.MySQL篇/9.1.4 索引的工作原理及其种类.md": {
+   "first": "2026-09-23",
+   "last": "2026-09-23"
+  },
+  "content/interview/bigtech/09.MySQL篇/9.1.5 连接的种类.md": {
+   "first": "2026-09-23",
+   "last": "2026-09-23"
+  },
+  "content/interview/bigtech/09.MySQL篇/9.1.6 数据库范式.md": {
+   "first": "2026-09-23",
+   "last": "2026-09-23"
+  },
+  "content/interview/bigtech/09.MySQL篇/9.1.7 数据库优化的思路.md": {
+   "first": "2026-09-23",
+   "last": "2026-09-23"
+  },
+  "content/interview/bigtech/09.MySQL篇/9.1.8 存储过程与触发器的区别.md": {
+   "first": "2026-09-23",
+   "last": "2026-09-23"
+  },
+  "content/interview/bigtech/10.Redis篇/10.1.0 使用Redis有哪些好处？.md": {
+   "first": "2026-09-23",
+   "last": "2026-09-23"
+  },
+  "content/interview/bigtech/10.Redis篇/10.1.1 redis相比memcached有哪些优势？.md": {
+   "first": "2026-09-23",
+   "last": "2026-09-23"
+  },
+  "content/interview/bigtech/10.Redis篇/10.1.2 redis常见性能问题和解决方案.md": {
+   "first": "2026-09-23",
+   "last": "2026-09-23"
+  },
+  "content/interview/bigtech/10.Redis篇/10.1.3 MySQL里有2000w数据，redis中只存20w的数据，如何保证redis中的数据都是热点数据.md": {
+   "first": "2026-09-23",
+   "last": "2026-09-23"
+  },
+  "content/interview/bigtech/10.Redis篇/10.1.3 zookeeper的四种类型的znode.md": {
+   "first": "2026-09-23",
+   "last": "2026-09-23"
+  },
+  "content/interview/bigtech/10.Redis篇/10.1.4 Memcache与Redis的区别都有哪些？.md": {
+   "first": "2026-09-23",
+   "last": "2026-09-23"
+  },
+  "content/interview/bigtech/10.Redis篇/10.1.5 Redis 常见的性能问题都有哪些？如何解决？.md": {
+   "first": "2026-09-23",
+   "last": "2026-09-23"
+  },
+  "content/interview/bigtech/10.Redis篇/10.1.6 redis最适合的场景.md": {
+   "first": "2026-09-23",
+   "last": "2026-09-23"
+  },
+  "content/interview/bigtech/10.Redis篇/10.1.7 Redis的同步机制了解么？.md": {
+   "first": "2026-09-23",
+   "last": "2026-09-23"
+  },
+  "content/interview/bigtech/10.Redis篇/10.1.8 是否使用过Redis集群，集群的原理是什么？.md": {
+   "first": "2026-09-23",
+   "last": "2026-09-23"
+  },
+  "content/interview/bigtech/11.MongoDB篇/11.1.0 什么是MongoDB？.md": {
+   "first": "2026-09-23",
+   "last": "2026-09-23"
+  },
+  "content/interview/bigtech/11.MongoDB篇/11.1.1 MongoDB是由哪种语言写的？.md": {
+   "first": "2026-09-23",
+   "last": "2026-09-23"
+  },
+  "content/interview/bigtech/11.MongoDB篇/11.1.2 MongoDB的优势有哪些？.md": {
+   "first": "2026-09-23",
+   "last": "2026-09-23"
+  },
+  "content/interview/bigtech/11.MongoDB篇/11.1.3 什么是数据库？.md": {
+   "first": "2026-09-23",
+   "last": "2026-09-23"
+  },
+  "content/interview/bigtech/11.MongoDB篇/11.1.4 什么是集合？.md": {
+   "first": "2026-09-23",
+   "last": "2026-09-23"
+  },
+  "content/interview/bigtech/11.MongoDB篇/11.1.5 什么是文档？.md": {
+   "first": "2026-09-23",
+   "last": "2026-09-23"
+  },
+  "content/interview/bigtech/11.MongoDB篇/11.1.6 MongoDB和关系型数据库术语对比图.md": {
+   "first": "2026-09-23",
+   "last": "2026-09-23"
+  },
+  "content/interview/bigtech/11.MongoDB篇/11.1.7 什么是“mongod”？.md": {
+   "first": "2026-09-23",
+   "last": "2026-09-23"
+  },
+  "content/interview/bigtech/11.MongoDB篇/11.1.8 “mongod”参数有什么？.md": {
+   "first": "2026-09-23",
+   "last": "2026-09-23"
+  },
+  "content/interview/bigtech/11.MongoDB篇/11.1.9 什么是“mongo”？.md": {
+   "first": "2026-09-23",
+   "last": "2026-09-23"
+  },
+  "content/interview/bigtech/11.MongoDB篇/11.2.0 MongoDB哪个命令可以切换数据库？.md": {
+   "first": "2026-09-23",
+   "last": "2026-09-23"
+  },
+  "content/interview/bigtech/11.MongoDB篇/11.2.1 什么是非关系型数据库？.md": {
+   "first": "2026-09-23",
+   "last": "2026-09-23"
+  },
+  "content/interview/bigtech/11.MongoDB篇/11.2.2 非关系型数据库有哪些类型？.md": {
+   "first": "2026-09-23",
+   "last": "2026-09-23"
+  },
+  "content/interview/bigtech/11.MongoDB篇/11.2.3 为什么用MOngoDB？.md": {
+   "first": "2026-09-23",
+   "last": "2026-09-23"
+  },
+  "content/interview/bigtech/11.MongoDB篇/11.2.4 在哪些场景使用MongoDB？.md": {
+   "first": "2026-09-23",
+   "last": "2026-09-23"
+  },
+  "content/interview/bigtech/11.MongoDB篇/11.2.5 MongoDB中的命名空间是什么意思.md": {
+   "first": "2026-09-23",
+   "last": "2026-09-23"
+  },
+  "content/interview/bigtech/11.MongoDB篇/11.2.6 哪些语言支持MongoDB.md": {
+   "first": "2026-09-23",
+   "last": "2026-09-23"
+  },
+  "content/interview/bigtech/11.MongoDB篇/11.2.7 在MongoDB中如何创建一个新的数据库？.md": {
+   "first": "2026-09-23",
+   "last": "2026-09-23"
+  },
+  "content/interview/bigtech/11.MongoDB篇/11.2.8 在MongoDB中如何查看数据库列表？.md": {
+   "first": "2026-09-23",
+   "last": "2026-09-23"
+  },
+  "content/interview/bigtech/11.MongoDB篇/11.2.9 MongoDB中的分片是什么意思？.md": {
+   "first": "2026-09-23",
+   "last": "2026-09-23"
+  },
+  "content/interview/bigtech/11.MongoDB篇/11.3.0 如何查看使用MongoDB的连接？.md": {
+   "first": "2026-09-23",
+   "last": "2026-09-23"
+  },
+  "content/interview/bigtech/11.MongoDB篇/11.3.1 什么是复制？.md": {
+   "first": "2026-09-23",
+   "last": "2026-09-23"
+  },
+  "content/interview/bigtech/11.MongoDB篇/11.3.2 在MongoDB中如何在集合中插入一个文档？.md": {
+   "first": "2026-09-23",
+   "last": "2026-09-23"
+  },
+  "content/interview/bigtech/11.MongoDB篇/11.3.3 在MongoDB中如何除去一个数据库？.md": {
+   "first": "2026-09-23",
+   "last": "2026-09-23"
+  },
+  "content/interview/bigtech/11.MongoDB篇/11.3.4 在MongoDB中如何创建一个集合？.md": {
+   "first": "2026-09-23",
+   "last": "2026-09-23"
+  },
+  "content/interview/bigtech/11.MongoDB篇/11.3.5 在MongoDB中如何查看一个已经创建的集合？.md": {
+   "first": "2026-09-23",
+   "last": "2026-09-23"
+  },
+  "content/interview/bigtech/11.MongoDB篇/11.3.6 在MongoDB中如何删除一个集合？.md": {
+   "first": "2026-09-23",
+   "last": "2026-09-23"
+  },
+  "content/interview/bigtech/11.MongoDB篇/11.3.7 为什么要在MongoDB中使用分析器？.md": {
+   "first": "2026-09-23",
+   "last": "2026-09-23"
+  },
+  "content/interview/bigtech/11.MongoDB篇/11.3.8 MongoDB支持主键外键关系吗？.md": {
+   "first": "2026-09-23",
+   "last": "2026-09-23"
+  },
+  "content/interview/bigtech/11.MongoDB篇/11.3.9 MongoDB支持哪些数据类型？.md": {
+   "first": "2026-09-23",
+   "last": "2026-09-23"
+  },
+  "content/interview/bigtech/11.MongoDB篇/11.4.0 为什么要在MongoDB中用Code数据类型？.md": {
+   "first": "2026-09-23",
+   "last": "2026-09-23"
+  },
+  "content/interview/bigtech/11.MongoDB篇/11.4.1 为什么要在MongoDB中用Regular Expression数据类型？.md": {
+   "first": "2026-09-23",
+   "last": "2026-09-23"
+  },
+  "content/interview/bigtech/11.MongoDB篇/11.4.2 为什么在MongoDB中使用Object ID数据类型？.md": {
+   "first": "2026-09-23",
+   "last": "2026-09-23"
+  },
+  "content/interview/bigtech/11.MongoDB篇/11.4.3 如何在集合中插入一个文档？.md": {
+   "first": "2026-09-23",
+   "last": "2026-09-23"
+  },
+  "content/interview/bigtech/11.MongoDB篇/11.4.4 “ObjectID”有哪些部分组成？.md": {
+   "first": "2026-09-23",
+   "last": "2026-09-23"
+  },
+  "content/interview/bigtech/11.MongoDB篇/11.4.5 在MongoDb中什么是索引？.md": {
+   "first": "2026-09-23",
+   "last": "2026-09-23"
+  },
+  "content/interview/bigtech/11.MongoDB篇/11.4.6 如何添加索引？.md": {
+   "first": "2026-09-23",
+   "last": "2026-09-23"
+  },
+  "content/interview/bigtech/11.MongoDB篇/11.4.7 MongoDB有哪些可替代产品？.md": {
+   "first": "2026-09-23",
+   "last": "2026-09-23"
+  },
+  "content/interview/bigtech/11.MongoDB篇/11.4.8 如何查询集合中的文档？.md": {
+   "first": "2026-09-23",
+   "last": "2026-09-23"
+  },
+  "content/interview/bigtech/11.MongoDB篇/11.4.9 用什么方法可以格式化输出结果？.md": {
+   "first": "2026-09-23",
+   "last": "2026-09-23"
+  },
+  "content/interview/bigtech/11.MongoDB篇/11.5.0 如何使用AND或OR条件循环查询集合中的文档？.md": {
+   "first": "2026-09-23",
+   "last": "2026-09-23"
+  },
+  "content/interview/bigtech/11.MongoDB篇/11.5.1 在MongoDB中如何更新数据？.md": {
+   "first": "2026-09-23",
+   "last": "2026-09-23"
+  },
+  "content/interview/bigtech/11.MongoDB篇/11.5.2 如何删除文档？.md": {
+   "first": "2026-09-23",
+   "last": "2026-09-23"
+  },
+  "content/interview/bigtech/11.MongoDB篇/11.5.3 在MongoDB中如何排序？.md": {
+   "first": "2026-09-23",
+   "last": "2026-09-23"
+  },
+  "content/interview/bigtech/11.MongoDB篇/11.5.4 什么是聚合？.md": {
+   "first": "2026-09-23",
+   "last": "2026-09-23"
+  },
+  "content/interview/bigtech/11.MongoDB篇/11.5.5 在MongoDB中什么是副本集？.md": {
+   "first": "2026-09-23",
+   "last": "2026-09-23"
+  },
+  "content/interview/bigtech/11.MongoDB篇/11.5.6 Mongodb存储特性与内部原理.md": {
+   "first": "2026-09-23",
+   "last": "2026-09-23"
+  },
+  "content/interview/bigtech/12.Zookeeper篇/12.1.0 zookeeper是什么？.md": {
+   "first": "2026-09-23",
+   "last": "2026-09-23"
+  },
+  "content/interview/bigtech/12.Zookeeper篇/12.1.1 zookeeper提供了什么？.md": {
+   "first": "2026-09-23",
+   "last": "2026-09-23"
+  },
+  "content/interview/bigtech/12.Zookeeper篇/12.1.2 zookeeper文件系统.md": {
+   "first": "2026-09-23",
+   "last": "2026-09-23"
+  },
+  "content/interview/bigtech/12.Zookeeper篇/12.1.3 zookeeper的四种类型的znode.md": {
+   "first": "2026-09-23",
+   "last": "2026-09-23"
+  },
+  "content/interview/bigtech/12.Zookeeper篇/12.1.4 zookeeper通知机制.md": {
+   "first": "2026-09-23",
+   "last": "2026-09-23"
+  },
+  "content/interview/bigtech/12.Zookeeper篇/12.1.5 zookeeper有哪些应用场景？.md": {
+   "first": "2026-09-23",
+   "last": "2026-09-23"
+  },
+  "content/interview/bigtech/12.Zookeeper篇/12.1.6 zk的命名服务.md": {
+   "first": "2026-09-23",
+   "last": "2026-09-23"
+  },
+  "content/interview/bigtech/12.Zookeeper篇/12.1.7 zk的配置管理服务.md": {
+   "first": "2026-09-23",
+   "last": "2026-09-23"
+  },
+  "content/interview/bigtech/12.Zookeeper篇/12.1.8 zk的集群管理.md": {
+   "first": "2026-09-23",
+   "last": "2026-09-23"
+  },
+  "content/interview/bigtech/12.Zookeeper篇/12.1.9 zk的分布式锁.md": {
+   "first": "2026-09-23",
+   "last": "2026-09-23"
+  },
+  "content/interview/bigtech/12.Zookeeper篇/12.2.0 zk队列管理.md": {
+   "first": "2026-09-23",
+   "last": "2026-09-23"
+  },
+  "content/interview/bigtech/12.Zookeeper篇/12.2.1 zk数据复制.md": {
+   "first": "2026-09-23",
+   "last": "2026-09-23"
+  },
+  "content/interview/bigtech/12.Zookeeper篇/12.2.2 zk中zab的工作原理.md": {
+   "first": "2026-09-23",
+   "last": "2026-09-23"
+  },
+  "content/interview/bigtech/12.Zookeeper篇/12.2.3 zk是如何保证事物的顺序一致性.md": {
+   "first": "2026-09-23",
+   "last": "2026-09-23"
+  },
+  "content/interview/bigtech/12.Zookeeper篇/12.2.4 zk集群下server工作状态.md": {
+   "first": "2026-09-23",
+   "last": "2026-09-23"
+  },
+  "content/interview/bigtech/12.Zookeeper篇/12.2.5 zk是如何选举Leader的？.md": {
+   "first": "2026-09-23",
+   "last": "2026-09-23"
+  },
+  "content/interview/bigtech/12.Zookeeper篇/12.2.6 zk同步流程.md": {
+   "first": "2026-09-23",
+   "last": "2026-09-23"
+  },
+  "content/interview/bigtech/12.Zookeeper篇/12.2.7 分布式通知和协调.md": {
+   "first": "2026-09-23",
+   "last": "2026-09-23"
+  },
+  "content/interview/bigtech/12.Zookeeper篇/12.2.8 zk的session机制.md": {
+   "first": "2026-09-23",
+   "last": "2026-09-23"
+  },
+  "content/interview/bigtech/README.md": {
+   "first": "2026-09-23",
+   "last": "2026-09-23"
+  },
+  "content/interview/bigtech/10.Redis篇/Redis 面试题 9 道精讲.md": {
+   "first": "2026-09-23",
+   "last": "2026-09-23"
+  },
+  "content/interview/bigtech/09.MySQL篇/MySQL 面试题 9 道精讲.md": {
+   "first": "2026-09-23",
+   "last": "2026-09-23"
+  },
+  "content/interview/bigtech/12.Zookeeper篇/Zookeeper 面试 10 题 · 基础与应用.md": {
+   "first": "2026-09-23",
+   "last": "2026-09-23"
+  },
+  "content/interview/bigtech/12.Zookeeper篇/Zookeeper 面试 9 题 · 分布式原理.md": {
+   "first": "2026-09-23",
+   "last": "2026-09-23"
+  },
+  "content/interview/bigtech/11.MongoDB篇/MongoDB 面试 13 题 · 文档增删改查.md": {
+   "first": "2026-09-23",
+   "last": "2026-09-23"
+  },
+  "content/interview/bigtech/11.MongoDB篇/MongoDB 面试 15 题 · 类型索引与集群.md": {
+   "first": "2026-09-23",
+   "last": "2026-09-23"
+  },
+  "content/interview/bigtech/11.MongoDB篇/MongoDB 面试 19 题 · 基础概念.md": {
+   "first": "2026-09-23",
+   "last": "2026-09-23"
+  },
+  "content/interview/bigtech/01.阿里篇/阿里面试 4 题 · 系统设计与质量保障.md": {
+   "first": "2026-09-23",
+   "last": "2026-09-23"
+  },
+  "content/interview/bigtech/01.阿里篇/阿里面试 5 题 · 操作系统网络与硬件.md": {
+   "first": "2026-09-23",
+   "last": "2026-09-23"
+  },
+  "content/interview/bigtech/01.阿里篇/阿里面试 9 题 · 数据库存储与大数据.md": {
+   "first": "2026-09-23",
+   "last": "2026-09-23"
+  },
+  "content/interview/bigtech/01.阿里篇/阿里面试 9 题 · 算法与代码.md": {
+   "first": "2026-09-23",
+   "last": "2026-09-23"
+  },
+  "content/career/AI-conversation/DS.md": {
+   "first": "2026-09-23",
+   "last": "2026-09-23"
+  },
+  "content/career/AI-conversation/GLM.md": {
+   "first": "2026-09-23",
+   "last": "2026-09-23"
+  },
+  "content/career/AI-conversation/GitHub仓库抓取脚本-想法.md": {
+   "first": "2026-09-23",
+   "last": "2026-09-23"
+  },
+  "content/career/AI-conversation/Mimo.md": {
+   "first": "2026-09-23",
+   "last": "2026-09-23"
+  },
+  "content/career/AI-conversation/MiniMax.md": {
+   "first": "2026-09-23",
+   "last": "2026-09-23"
+  },
+  "content/career/AI-conversation/qwen.md": {
+   "first": "2026-09-23",
+   "last": "2026-09-23"
+  },
+  "content/career/journal/improveMemory.md": {
+   "first": "2026-09-23",
+   "last": "2026-09-23"
+  },
+  "content/career/journal/learnCodeTenYears.md": {
+   "first": "2026-09-23",
+   "last": "2026-09-23"
+  },
+  "content/career/journal/programWrite.md": {
+   "first": "2026-09-23",
+   "last": "2026-09-23"
+  },
+  "content/career/journal/programmingThinking.md": {
+   "first": "2026-09-23",
+   "last": "2026-09-23"
+  },
+  "content/career/journal/self-discipline.md": {
+   "first": "2026-09-23",
+   "last": "2026-09-23"
+  },
+  "content/career/journal/softwareThinking.md": {
+   "first": "2026-09-23",
+   "last": "2026-09-23"
+  },
+  "content/career/journal/studyTips.md": {
+   "first": "2026-09-23",
+   "last": "2026-09-23"
+  },
+  "content/career/journal/写作技巧.md": {
+   "first": "2026-09-23",
+   "last": "2026-09-25"
+  },
+  "content/interview/AI金项目面试/decisions.md": {
+   "first": "2026-09-24",
+   "last": "2026-09-24"
+  },
+  "content/interview/AI金项目面试/deliver-01-rag-defense.md": {
+   "first": "2026-09-24",
+   "last": "2026-09-24"
+  },
+  "content/interview/AI金项目面试/deliver-02-collect-kg-defense.md": {
+   "first": "2026-09-24",
+   "last": "2026-09-30"
+  },
+  "content/interview/AI金项目面试/deliver-03-three-links-defense.md": {
+   "first": "2026-09-24",
+   "last": "2026-09-24"
+  },
+  "content/interview/AI金项目面试/deliver-04-gis-defense.md": {
+   "first": "2026-09-24",
+   "last": "2026-09-24"
+  },
+  "content/interview/AI金项目面试/deliver-05-mined-material.md": {
+   "first": "2026-09-24",
+   "last": "2026-09-24"
+  },
+  "content/interview/AI金项目面试/deliver-06-defense-cards-round2.md": {
+   "first": "2026-09-24",
+   "last": "2026-09-24"
+  },
+  "content/interview/AI金项目面试/deliver-07-target-qingyuan.md": {
+   "first": "2026-09-24",
+   "last": "2026-09-24"
+  }
+ }
+}

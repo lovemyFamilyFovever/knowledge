@@ -11,13 +11,14 @@
 1. `content/` 下的 md/html 是唯一事实源；编辑、收藏、备注必须写回文件系统（frontmatter / sidecar `.notes.md`），禁止引入第二真相（数据库 / 云端同步）。
 2. 新知识只从 `content/_inbox/` 进；`_` 前缀目录（`_inbox/_assets/_trash/_meta/_unfiled`）不进分类树、不进任何索引。
 3. `indexes/`（index.db / rag.db）是纯派生缓存：可随时删除重建；禁止手改、禁止 git 跟踪。
-4. 删除必须走软删除（→ `content/_trash/`，`/api/delete`），git 历史是第二重保险。
+4. 删除必须走软删除（→ `content/_trash/`，`/api/delete`）。~~git 历史是第二重保险~~ —— **此保险已于 2026-10-07 失效**：因远端公开且历史含已退场的盗版书库（`content/小说/`，127 blob / 363.7MB），经用户授权把 main 重置为单提交（`b4cda2e`），724 个旧提交不可恢复。自此**软删除只剩 `_trash/` 一层**，`/api/delete` 之外不得再指望 `git show <旧提交>` 取回任何东西。
 5. 分类学（域 / 子域 / 来源 / 状态 / 色相）的权威是 `content/_meta/taxonomy.json`；代码里的字典只是缺省回退。改分类先改 JSON，不改代码。域条目可选 `"search": false` = 该域不进搜索浮层的筛选钮（小说域全是 `.txt/.epub`、FTS 只收 `.md/.html`，给了钮就是恒 0 结果）；可选 `"ai": false` = 该域正文**永不出站**给 AI（见不变量 9，与 `search` 同一口径：开关写在 JSON 里，模板与代码不许再抄一份域名单）。模板与 CSS 一律**不许再抄一份域名单**（浮层钮由 `LABELS` 派生，色点用 `--dh=色相数字`）。
 6. frontmatter 只存身世与元数据（title/source/collected/tags/favorite/status），不存阅读统计等高频运行时数据——阅读统计走 app/reading.py（indexes/reading.db 事件制：open/read_minute/finish 只追加，语料零污染），标签治理/重命名一律先 dry-run（scripts/govern_tags.py）。
 7. 嵌入 / 分词 / 切块逻辑变更必须递增 `app/rag.py::RAG_CODE_VERSION`，并用 `tokenizers` 库做逐 token 交叉验证后再提交。**递增之后的重嵌是逐篇续跑的**：每篇跑完就在 `files.embed_ver` 落自己的章（`upsert_file` 一事务），中途被 kill 下次只补没盖章的那些，不再从第 0 篇重来（轮次 51 之前是全库一次性提交，实测一趟 1126 篇 / 22006 块 / 约 38 分钟，中断等于整趟白跑）。版本判据**只活在 `files.embed_ver` 一处** —— `sync_rag` 不再读 `meta.code_version` 决定是否全量（同一规则两份实现是台账 §6 第 87 行点过名的坑，`rag_status` 里那个 `stale` 就是剩余量）。旧库缺这一列时打开即迁移，但**只有** `meta.code_version` 相符**且**向量行数与元数据一致才补章（`stamp_legacy`），来历不明就留 NULL 重嵌。**这条现在有断言在管**：`tests/test_rag.py::test_tokenizer_cross_validated_against_library()` 每次跑都拿参考库逐 id 比对，`test_predicates.py` 另有不依赖模型文件的合成 `tokenizer.json` 断言（轮次 49 第一次真跑就抓到一条真偏差：正文里字面的 `[CLS]` 被拆成三块碎片，而参考实现当它是一个 special token → 新增 `HFTokenizer._split_specials()` 并递增到 v4）。
 8. 阅读器同时支持 `start.bat`（任意 Python）与便携运行时（`.python\`）；`python app\app.py` 直启时项目根会自动补进 sys.path，不要依赖 cwd。
 9. ~~**AI 出站三禁**~~ —— **已于 2026-09-30（轮次 54）整体撤销**：用户判定「为了查一个词等半分钟、还要配 key 花钱」不划算，改为**手动复制到网页端问**。`app/{routes_ai,ai_config,ai_usage,ai_qa}.py`、`static/pages/{ai-ask.js,aiask.css}`、设置抽屉的「AI」页签、`/api/ai/*` 与 `/api/ask*` 全部删除，`tests/test_ai_{config,qa}.py` 两套随之删除（不变量门禁回到 I1~I9）。
    **这条编号保留是为了防止有人把它加回来**：项目自此**没有任何出站请求**，语料只进不出；要重新引入必须先与用户确认（他已两次明确要求做减法）。旧设计与实现细节见 `docs/spec-ai-assistant.md` 顶部注记与 git 历史（切片 1~5、轮次 53 的极简版都在里面）。
+10. **被跟踪即公开**（2026-10-07 起，泄露事故后新增）：本仓库的远端就是 GitHub 仓库，任何进入 git 跟踪的文件等于对外发布，**没有第二层拦截**。公开面的权威是 `.gitignore` 的「公开面硬边界」段，当前名单为 `content/projects/`、`content/小说/`、`content/漫画/`、`content/interview/AI金项目面试/resume-master.md`、`content/interview/AI金项目面试/profile-baseline.md`。判据与代价：`projects/` 内曾有真实形态飞书 App ID（`cli_` + 十六进制）与 32 位 AppSecret 字面量，两个 PII 文件含真实手机号与个人邮箱——**新语料含内部业务文档 / 凭据 / 真实身份信息时，必须先加进边界名单再 commit**。这条**目前没有门禁断言**（`tests/test_invariants.py` 只到 I1~I9），提交前人工复核入口是 `git ls-files -z | xargs -0 grep -laE "(cli_[0-9a-f]{12,}|(app_?secret|password|token)[\"' ]{0,3}[:=][\" ]{0,2}[0-9A-Za-z]{20,})"`，命中须逐个判真伪后处置。
 
 ## 常用命令
 
@@ -73,6 +74,7 @@ Agent 的**常驻工具脚本**统一收在 `scripts/agent/`（2026-09-18 从旧
 | `scripts/agent/watch_ci.py` | 盯 GitHub Actions 到结论：`python scripts/agent/watch_ci.py <sha 前缀> [等待秒=420]`。回 run 状态 + 逐步 conclusion + **annotations**（`::notice::STARTED` / `::warning::SKIPPED`，见 `tests/_ci.py`）—— 匿名 API 读不到日志正文，只有这三样能证明**这一步真跑了没**。匿名配额 60 次/小时按出口 IP 算，别裸轮询。**四类"读不到"分开报、绝不混成一句**：够不着 API=退出 4 / 403 限流=退出 3（带配额恢复时刻）/ API 正常但列表里没这个 sha=退出 5 / HTTP 200 但正文不是 JSON=退出 6（CONNECT 代理的隧道应答会混进正文，旧写法把响应头指到 `-` 时解析失败、直接崩栈 —— 2026-09-29 推完第一次实跑撞的就是它）；**代理 `127.0.0.1:10810` 不通时自动改直连重试一次**（2026-09-29 实测：代理客户端没起来而直连 1.16 秒通），判据 `tests/test_watch_ci.py`（38 条，假 GitHub 起在本进程，`KB_CI_API`/`KB_CI_PROXY` 是指针） |
 | `scripts/agent/scan_fm.py` | frontmatter 污染扫描：`python scripts/agent/scan_fm.py [扫描根]`，正文前 400 字符内又出现完整 fm 块 = 污染（baike 提质时沉淀） |
 | `scripts/agent/scan_dup.py` | 抓取残留副本扫描：`python scripts/agent/scan_dup.py [扫描根]`，`xxx-<数字>.md` 与 `xxx.md` 同名共存即残留 |
+| `scripts/agent/pinproxy.py` | GitHub 连通性应急隧道（2026-10-07 加，本机 DNS 常把 `github.com` 解到不通的 `20.205.243.166`）：`python scripts/agent/pinproxy.py` 后台起，只绑 127.0.0.1、只放行 `github.com:443` 的 CONNECT、TLS 不解密，然后 `git -c http.proxy=http://127.0.0.1:18080 push`；`KB_GH_IP`/`KB_PIN_PORT` 可换边缘 IP 与端口，用完 `taskkill //PID <pid> //F`（Git-Bash 的 `kill` 对 Windows PID 无效）。**不改 hosts、不落 git 配置。** |
 
 两个 scan 脚本的扫描根默认按脚本位置推导到仓库根下的 `content/`（不再写死盘符），传 argv[1] 可覆盖。
 
@@ -131,10 +133,13 @@ requirements/       依赖清单（requirements.txt 核心 / -rag.txt 语义检�
 - git 输出含中文文件名时默认转义为带引号的八进制串（如 `"\347\231\276….md"`），行尾多出的引号使 `\.md$` 类正则大面积漏计（实测 baike 目录 245 个文件只命中 9 个）。统计/匹配 git 路径输出一律加 `-c core.quotepath=false`。
 - PowerShell 5.1 读无 BOM 的 UTF-8 脚本按 GBK 解码：若文件还是 LF-only，行尾中文的 UTF-8 末字节（0x80-0xBF，合法 GBK 首字节）会把换行符吞进非法双字节序列，下一行代码被并入注释静默失效（实测 daily_backup.ps1 的 $root 赋值被吞，Join-Path 报 null）。仓库 .ps1 一律 UTF-8 BOM + CRLF（.gitattributes 已强制 `*.ps1 text eol=crlf`）。
 - 测试全绿 ≠ 启动路径可用：tests 从项目根导入 `app`，start.bat 脚本直启走另一条解析路径（sys.path[0]=app/ 目录）；2026-09-09 实测 app/ 缺 __init__.py 时直启崩、测试全绿。回归入口：`python app\app.py --import-check`（已入 tests/test_reader.py 断言与 pre-commit 链）。
+- **`NO_PROXY` 会让 pre-commit 永久假红**：本机系统环境变量 `NO_PROXY=localhost,127.0.0.1,::1` 使 `curl` 跳过 `tests/test_watch_ci.py` 自建的假代理，"代理不通→改直连"分支永不触发 → A2/H1 两条固定失败（实测同一份代码：带 `NO_PROXY` 36 passed / 2 failed，去掉后 **38 passed / 0 failed**）。钩子继承同一个变量，所以**本仓库每次提交都要 `env -u NO_PROXY -u no_proxy git commit ...`**。这是清理执行环境，**不是 `--no-verify` 绕闸**，门禁照常全跑。根治办法是让测试自己剥掉 `NO_PROXY`，属测试环境隔离缺陷，另案。
+- **`github.com` 解析到不可达边缘 IP**：本机 DNS 常返回 `20.205.243.166`（实测 TCP 握手超时 / TLS 被 RST），而 `140.82.113.3`、`140.82.112.4` 可达；`api.github.com` 走另一段所以看着正常 —— 症状就是 push/ls-remote 时通时不通。正解是临时隧道而非改 hosts：`python scripts\agent\pinproxy.py`（仅监听 127.0.0.1，只转发 `github.com:443` 的 CONNECT，TLS 端到端不解密），再 `git -c http.proxy=http://127.0.0.1:18080 push`，`-c` 不落配置、进程一杀就没。**判仓库是否真被删除**：`git ls-remote` 必须同时探一个已知公共仓做对照——443 超时/Connection reset 只代表线路问题，只有服务器实回 `remote: Repository not found` 才算删成；且本机 git 存有凭据助手，"匿名 ls-remote 成功"并不等于该仓公开。
+- **洗历史的操作顺序与三个静默失效点**：① 先抽取"只存在于历史里的元数据"（每文件首次/末次提交日期等）**再** `reflog expire + gc`，顺序反了就是不可逆丢失（`git log` 默认新→旧，用 `setdefault` 取 first 会把时间线整个抽反，须 `--reverse`）；② `git gc --prune=now` 会**返回 0 却什么都不删**——`.git/objects/pack/*.promisor` 侧车标记让 `repack -A -d` 整包跳过（`git config --unset remote.origin.partialclonefilter` **不清侧车文件**），而 `.git/ORIG_HEAD` 是 `git prune` 认的合法可达根，一个旧提交就能钉住整条旧历史；③ `git fetch --filter=blob:none <按 SHA 取>` 在 GitHub 上不保证生效（实测把 1528 blob / 393.9MB 全拉回本地），宣称省流量前先用 `git verify-pack -v .git/objects/pack/*.idx | awk '$2=="blob"{s+=$3}END{print s}'` 量一遍。另注：`git commit ... | tail -40` 的 `$?` 是 `tail` 的，管道后的 exit code 与后台任务通知里的 "exit code 0" 都**不能**证明提交成功，须 `echo "git rc=$?"` 紧跟 git 本身或复查 `git log -1`。
 
 ## 禁区
 
-- 禁止 `git push -f`、禁止改写 main 历史。
+- 禁止 `git push -f`、禁止改写 main 历史。**唯一例外**：2026-10-07 因远端公开且历史含盗版书库，经用户明确授权以 orphan 单提交重置 main（`b4cda2e`），旧 724 提交随之不可恢复。该例外**不通用、不可复用**——再次改写历史必须由用户重新逐次授权，且必须先做完「抽取历史独有元数据」这一步（见跨机器坑最后一条，本次顺序做错导致每文件提交时间线一度不可恢复，靠已删远端的 blobless fetch 才救回，成品已落盘进 git —— `docs/history-dates-20261007.json`，1446 条，已剔除 projects/小说/漫画 与两个 PII 文件的路径）。
 - 禁止把语料衍生物、模型权重、虚拟机运行时提交进 git（`.python/`、`app/rag_models/`、`indexes/` 已忽略）。
 - 禁止在 `content/` 根目录散放文件；一切新语料走 `_inbox`。
 - 不要移除或绕过「写回文件系统」的任何一条路径（api_save / api_note / api_favorite / api_move / api_delete）。
