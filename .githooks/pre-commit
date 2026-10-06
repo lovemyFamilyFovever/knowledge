@@ -185,6 +185,10 @@ if [ -f "tests/test_invariants.py" ]; then step invariants $PY tests/test_invari
 # tempfile 迷你语料，零网络、零端口。
 if [ -f "tests/test_e2e_smoke.py" ]; then step e2e_smoke $PY tests/test_e2e_smoke.py; fi
 
+# 合并方案 §4.6：静态导出器契约（导出 JSON == 端点响应 / raw·CSS 重写 / 分诊覆盖）。
+# 纯 Python、tempfile 合成语料、无浏览器、不写仓库 indexes/ —— 与上方同组的隔离口径一致。
+if [ -f "tests/test_export_static.py" ]; then step export_static $PY tests/test_export_static.py; fi
+
 # 轮次 54：整条 AI 出站链路（配置层 / 选词问 / 查漏 / 批量 / 问吧）按用户要求全部下线，
 # test_ai_config.py 与 test_ai_qa.py 两套随之删除。这里留一行注释是为了让下一个人
 # 明白"为什么并行组少了两条"，而不是"忘了挂"。
