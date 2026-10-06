@@ -34,6 +34,8 @@ qwenwork/
 # 日期戳 + 哈希的一次性 agent 会话目录（例如 2026-09-10-428af70d/）
 20??-??-??-*/
 
+# 静态导出产物（合并方案规格 §4.1）：派生缓存，可删可重建，不进 git
+site/
 /.qa
 /node_modules
 scripts/codemirror-vendor/node_modules/
