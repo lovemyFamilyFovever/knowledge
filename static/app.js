@@ -1,0 +1,3208 @@
+/* 知库 reader 前端：主题、面板折叠、客户端路由、正文渲染、编辑/备注/收藏/删除、双链、快捷键 */
+window.APP_JS_VERSION = 34;
+
+const $ = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+/* 问题3 修复：toast 唯一实现收拢到 kb-core 的 KB.util.toast（kb-core defer 顺序在前，可依赖）。
+   原先 app.js 与 kb-core.js 各持一个隐藏 timer（_h / _kbh）共用 #toast，两条 toast 先后出现时
+   第二条会被第一条的旧 timer 提前隐藏。此处只转调，不再自管 timer。 */
+const toast = (m, ms) => {
+  if (window.KB && KB.util && KB.util.toast) { KB.util.toast(m, ms); return; }
+  const t = $("#toast"); if (!t) return;
+  t.innerHTML = m; t.classList.add("show");
+  clearTimeout(t._kbh); t._kbh = setTimeout(() => t.classList.remove("show"), ms || 2600);
+};
+/* 问题8（阶段1）：/doc 与 /raw 的 URL 构造唯一实现在 kb-core.util（_root 补段 + 逐段 encode），
+   app.js 只转调。此前 docUrl 在 app.js 与 kb-core 双实现、navigate 里还有第三处局部影子。 */
+const docUrl = rel => KB.util.docUrl(rel);
+const rawUrl = rel => KB.util.rawUrl(rel);
+
+/* 统一图标：引用 base.html 精灵表 #i-<name>，替代所有彩色 emoji */
+const icon = (n, s = 14) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex:none;display:inline-block;vertical-align:-.15em"><use href="#i-${n}"/></svg>`;
+
+/* ---------- 主题 ---------- */
+function applyTheme(t) {
+  document.documentElement.setAttribute("data-theme", t);
+  const b = $("#theme-btn"); if (b) b.innerHTML = icon(t === "dark" ? "moon" : "sun", 15);
+  window.dispatchEvent(new CustomEvent("theme-changed", { detail: t }));
+  try { localStorage.setItem("kb-theme", t); } catch (e) {}
+}
+/* 风格皮肤六套 v2.0-STYLE（玄青基准 + 纸墨/午夜蓝/手卷/叠印/石墨，各带排印与版式语言）
+   字段：a/b=预览主辅色 bg/ink=预览纸底与墨色。风格层见 skins.css [S]。
+   旧值兼容：localStorage 里的 ink/forest/rose 会经 applySkin 回退到玄青。 */
+const SKINS = [
+  { id: "celadon",  name: "玄青",   desc: "基准 · 普鲁士 × 朱砂", a: "#1f4e8c", b: "#b23a2a", bg: "#ffffff", ink: "#1a1d21" },
+  { id: "zhimo",    name: "纸墨",   desc: "编辑部衬线 · 大序号",  a: "#c8331f", b: "#2f4d6e", bg: "#ffffff", ink: "#14161a" },
+  { id: "midnight", name: "午夜蓝", desc: "瑞士蓝印 · 空心编号",  a: "#2563eb", b: "#1c2733", bg: "#ffffff", ink: "#1c2733" },
+  { id: "shoujuan", name: "手卷",   desc: "东方纸墨 · 朱印眉批",  a: "#bf2b1e", b: "#2f4d6e", bg: "#ffffff", ink: "#1c1a14" },
+  { id: "dieyin",   name: "叠印",   desc: "Riso 双色 · 硬影贴纸", a: "#1f3a8a", b: "#ff4d8a", bg: "#ffffff", ink: "#1f3a8a" },
+  { id: "graphite", name: "石墨",   desc: "工业极简 · 橙带细线",  a: "#1c1c1a", b: "#c2410c", bg: "#ffffff", ink: "#1c1c1a" },
+];
+window.KB_SKINS = SKINS;
+function applySkin(id) {
+  const skin = SKINS.find(s => s.id === id) || SKINS[0];
+  if (skin.id === "celadon") document.documentElement.removeAttribute("data-skin");
+  else document.documentElement.setAttribute("data-skin", skin.id);
+  try { localStorage.setItem("kb-skin", skin.id); } catch (e) {}
+  window.dispatchEvent(new CustomEvent("skin-changed", { detail: skin.id }));
+}
+window.applySkin = applySkin;
+const themeBtn = $("#theme-btn");
+if (themeBtn) {
+  themeBtn.onclick = () => {
+    const now = document.documentElement.getAttribute("data-theme");
+    applyTheme(now === "dark" ? "light" : "dark");
+    if (window.DOC && document.querySelector("#article .mermaid")) renderArticle();
+  };
+  themeBtn.oncontextmenu = e => { e.preventDefault(); KB.settings.open(); }; // 右键直达设置弹窗（界面风格在内）
+  themeBtn.title = "切换白天 / 夜间（界面风格在设置弹窗）";
+}
+try { const saved = localStorage.getItem("kb-theme"); if (saved) applyTheme(saved); } catch (e) {}
+try { const savedSkin = localStorage.getItem("kb-skin"); if (savedSkin) applySkin(savedSkin); } catch (e) {}
+
+/* ---------- 面板折叠（workbench） ---------- */
+function setPanel(which, off) {
+  const pid = which === "left" ? "p-left" : which === "rail" ? "p-rail" : "p-list";
+  const cls = which === "left" ? "left-off" : which === "rail" ? "rail-off" : "list-off";
+  const p = document.getElementById(pid), m = document.querySelector("main");
+  if (!p || !m) return;
+  p.classList.toggle("collapsed", off);
+  m.classList.toggle(cls, off);
+}
+function togglePanel(which) {
+  const pid = which === "left" ? "p-left" : "p-list";
+  const off = !document.getElementById(pid).classList.contains("collapsed");
+  setPanel(which, off);
+  try { const s = JSON.parse(localStorage.getItem("kb-panels") || "{}"); s[which] = off;
+    localStorage.setItem("kb-panels", JSON.stringify(s)); } catch (e) {}
+}
+try { const s = JSON.parse(localStorage.getItem("kb-panels") || "{}");
+  if (s.left) setPanel("left", true); if (s.list) setPanel("list", true); } catch (e) {}
+
+/* ---------- mermaid 懒加载 ---------- */
+let mermaidLoading = null;
+function ensureMermaid() {
+  if (window.mermaid) return Promise.resolve();
+  if (!mermaidLoading) mermaidLoading = loadScript("/static/mermaid.min.js");
+  return mermaidLoading;
+}
+function loadScript(src) {
+  return new Promise((res, rej) => {
+    const s = document.createElement("script");
+    s.src = src; s.onload = res; s.onerror = () => rej(new Error("load failed: " + src));
+    document.head.appendChild(s);
+  });
+}
+
+/* ---------- 分类树：localStorage 缓存 + 后台刷新 ---------- */
+let TREE = null;
+const LS_TREE = "kb-tree";
+
+function findSub(domain, sub) {
+  const d = (TREE || []).find(x => x.id === domain);
+  return d ? d.subs.find(s => s.id === sub) : null;
+}
+
+async function loadTree() {
+  if (TREE) return;
+  try {
+    const c = JSON.parse(localStorage.getItem(LS_TREE) || "null");
+    if (c && Array.isArray(c.domains) && c.domains.length) { TREE = c.domains; renderTree(); }
+  } catch (e) {}
+  try {
+    const r = await fetch("/api/tree");
+    const d = await r.json();
+    if (Array.isArray(d.domains) && d.domains.length) {
+      TREE = d.domains;
+      try { localStorage.setItem(LS_TREE, JSON.stringify(d)); } catch (e) {}
+      renderTree();
+    }
+  } catch (e) { /* localStorage 缓存兜底 */ }
+}
+
+/* ---------- 右栏 tabs ---------- */
+function tab(id, el) {
+  $$(".rtab").forEach(t => { t.classList.remove("active"); t.setAttribute("aria-selected", "false"); });
+  el.classList.add("active"); el.setAttribute("aria-selected", "true");
+  if (!el.id) el.id = "rtab-" + id;
+  $$(".rpane").forEach(p => p.classList.remove("active"));
+  const pane = $("#pane-" + id); pane.classList.add("active");
+  pane.setAttribute("aria-labelledby", el.id);
+  if (id === "links") loadLinks();
+}
+
+/* ---------- 正文渲染 ---------- */
+let DOC = null;
+/* 把当前文档发布到 window：顶层 `let` 不会挂到 window 上，而跨脚本消费者读的就是
+   window.DOC（pages/wikilink-suggest.js 排除本篇）。
+   这个缺口是切片 2 的探针抓出来的 —— 在那之前 `if (window.DOC && ...)` 恒为假，
+   「双链补全排除当前文档」从来没生效过。换文档一律走 setDoc()，别再裸赋值。 */
+function setDoc(v) { DOC = v; window.DOC = v; return v; }
+let CUR = null; // {domain, sub, name}
+
+/* ---------- 渲染预处理（需求 #8/#9/#6） ----------
+   #8：marked 对「列表内缩进开栏、顶格闭栏」的围栏会在文末产幽灵空代码块
+   （删不掉的小尾巴）；把闭栏缩进对齐到开栏即可正常闭合。栈匹配：
+   闭栏 = 同字符、长度≥开栏、缩进≤开栏。 */
+function sanitizeFences(md) {
+  const lines = String(md || "").split("\n");
+  const open = [];
+  for (let i = 0; i < lines.length; i++) {
+    const m = lines[i].match(/^([ \t]*)(`{3,}|~{3,})/);
+    if (!m) continue;
+    const top = open[open.length - 1];
+    if (!top) {
+      open.push({ indentLen: m[1].length, ch: m[2][0], len: m[2].length });
+    } else if (m[2][0] === top.ch && m[2].length >= top.len && m[1].length <= top.indentLen) {
+      lines[i] = " ".repeat(top.indentLen) + m[2];
+      open.pop();
+    }
+  }
+  return lines.join("\n");
+}
+/* 渲染入口：源码围栏修复 + 解析后剥末尾幽灵空代码块（pre>code 仅空白） */
+function renderMarkdownSafe(md) {
+  const html = marked.parse(sanitizeFences(md));
+  return html.replace(/(?:<pre><code[^>]*>[\s\u00a0]*<\/code><\/pre>\s*)+$/, "");
+}
+
+/* #9：正文外链一律新标签打开；#6：站内相对图片走 /raw 直服（语料 md 旁的
+   imgs/、images/ 等任意扩展名资产，404 时占位提示）。渲染后同帧处理。 */
+function enhanceRenderedBody(el) {
+  el.querySelectorAll(".a-body a[href]").forEach(a => {
+    const h = a.getAttribute("href") || "";
+    if (/^(https?:)?\/\//i.test(h) || /^mailto:/i.test(h)) {
+      a.target = "_blank";
+      if (!a.rel) a.rel = "noopener";
+    }
+  });
+  el.querySelectorAll(".a-body img").forEach(img => {
+    const src = img.getAttribute("src") || "";
+    if (!src || /^(https?:)?\/\/|^(data|blob):/i.test(src) || src.startsWith("/raw/")) {
+      if (!img.dataset.kbErrBound) {
+        img.dataset.kbErrBound = "1";
+        img.addEventListener("error", () => {
+          img.alt = (img.alt || "图片") + "（缺失：仅 Markdown 源入库，图片未随迁）";
+          img.classList.add("kb-img-missing");
+        }, { once: true });
+      }
+      return;
+    }
+    const docDir = DOC && DOC.rel ? DOC.rel.split("/").slice(0, -1).join("/") : "";
+    const abs = src.startsWith("/") ? src.slice(1)
+      : (docDir ? docDir + "/" : "") + src.replace(/^\.\//, "");
+    const parts = [];
+    abs.split("/").forEach(seg => {
+      if (seg === "..") parts.pop(); else if (seg && seg !== ".") parts.push(seg);
+    });
+    img.src = "/raw/" + parts.map(encodeURIComponent).join("/");
+    if (!img.dataset.kbErrBound) {
+      img.dataset.kbErrBound = "1";
+      img.addEventListener("error", () => {
+        img.alt = (img.alt || "图片") + "（缺失：仅 Markdown 源入库，图片未随迁）";
+        img.classList.add("kb-img-missing");
+      }, { once: true });
+    }
+  });
+}
+
+/* 新建文档弹窗（空目录占位页复用；与 ctxSubItems 内联版同行为） */
+async function promptNewDocInDir(dom, sub) {
+  const base = sub ? `${dom}/${sub}` : dom;
+  const res = await kbModal({
+    title: "新建文档",
+    body: `将在 <span class='mono'>${esc(base)}/</span> 下创建 Markdown 文件，首行自动写入标题。`,
+    inputs: [{ key: "nm", label: "文件名（不含 .md）", placeholder: "示例：RAG 切块策略" }],
+    confirmText: "创建",
+  });
+  if (!res || !res.nm) return;
+  const rel = `${base}/${res.nm}.md`;
+  const r = await fetch("/api/save", { method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ path: rel, content: `# ${res.nm}\n\n` }) });
+  if (!r.ok) { toast("创建失败：" + r.status); return; }
+  await afterMutation();
+  await navigate(docUrl(rel), true);
+}
+window.promptNewDocInDir = promptNewDocInDir;
+
+/* ---------- 需求 #12：书库格式分流渲染（小说引擎见 kb-novel.js） ----------
+   .txt  → KBNOVEL.renderTxt：编码嗅探 + 章节引擎 + 懒渲染 + 搜索/朗读/续读
+   .epub → KBNOVEL.renderEpub：epub.js + 小说排版偏好 + CFI 续读 + spine 搜索
+   .pdf  → 浏览器原生 PDF 查看器（iframe 直通 /raw/）+ lib-bar 下载
+   .xlsx → SheetJS 渲染工作表前 200 行 + lib-bar 下载
+   .mobi → 不提供在线渲染（私有格式），给下载与「转 epub」提示 */
+/* 书库文档顶栏 chrome 同步：格式/体积信息在底部状态栏（updateStatusBarPath）。 */
+function syncLibraryChrome(ext, sizeMiB) {
+  updateStatusBarPath();
+}
+/* 切换到非书库文档时清掉上一个文档挂上的 chrome（防串场） */
+function clearLibraryChrome() {
+  const fmt = document.getElementById("kb-lib-fmt");
+  if (fmt && fmt.parentNode) fmt.parentNode.removeChild(fmt);
+}
+function libBar(rawHref, name) {
+  return `<div class="lib-bar"><span class="hint">${esc(name)}</span><span class="spacer"></span>
+    <a class="iconbtn" href="${rawHref}" download="${esc(name)}">${icon("download", 13)} 下载</a>
+    <a class="iconbtn" href="${rawHref}" target="_blank" rel="noopener">${icon("external-link", 13)} 新标签页</a></div>`;
+}
+function renderLibraryDoc(el, ext) {
+  el.classList.remove("pretty-mode");
+  const rawHref = rawUrl(DOC.rel);
+  const sizeMiB = (parseFloat(DOC.size) / 1024).toFixed(1); // DOC.size 是 KB 字符串
+  syncLibraryChrome(ext, sizeMiB);
+  if (ext === "pdf") {
+    el.innerHTML = `<div class="a-body">${libBar(rawHref, DOC.name || "file.pdf")}<div class="lib-frame-wrap"><iframe class="lib-frame" src="${rawHref}" title="${esc(DOC.title)}"></iframe></div></div>`;
+    buildToc(); // 清空残留目录
+    return;
+  }
+  if (ext === "mobi") {
+    el.innerHTML = `<div class="a-body"><div class="lib-mobi-card"><b>MOBI 暂不支持在线阅读</b>（Palm 私有格式）。<br>
+      推荐用 Calibre 或在线工具转成 EPUB 后放回书库，即可获得目录/护眼主题/朗读等完整阅读体验。
+      <p style="margin-top:12px"><a class="chip chip-btn" href="${rawHref}" download="${esc(DOC.name || "book.mobi")}">${icon("download", 11)} 下载原文件</a></p></div></div>`;
+    buildToc();
+    return;
+  }
+  if (ext === "epub") {
+    el.innerHTML = `<div class="a-body" id="lib-epub"></div>`;
+    KBNOVEL.renderEpub($("#lib-epub"), rawHref, DOC.rel);
+    return;
+  }
+  if (ext === "xlsx") {
+    el.innerHTML = `<div class="a-body">${libBar(rawHref, DOC.name || "sheet.xlsx")}<div id="lib-xlsx"><div class="kb-skeleton" aria-busy="true"><i style="width:60%"></i><i style="width:90%"></i></div></div></div>`;
+    renderXlsx(rawHref);
+    buildToc();
+    return;
+  }
+  // txt：全本阅读引擎（编码嗅探/章节/搜索/朗读均在 kb-novel.js）
+  el.innerHTML = `<div class="a-body" id="lib-txt"></div>`;
+  KBNOVEL.renderTxt($("#lib-txt"), rawHref, DOC.rel, sizeMiB);
+}
+
+let _sheetjsLoading = null;
+function ensureSheetJS() {
+  if (window.XLSX) return Promise.resolve();
+  if (!_sheetjsLoading) _sheetjsLoading = loadScript("/static/vendor/xlsx.full.min.js")
+    .catch(() => loadScript("https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"));
+  return _sheetjsLoading;
+}
+
+async function renderXlsx(url) {
+  try {
+    await ensureSheetJS();
+    const buf = await (await fetch(url)).arrayBuffer();
+    const wb = window.XLSX.read(buf, { type: "array" });
+    const wrap = $("#lib-xlsx");
+    if (!wrap) return;
+    wrap.innerHTML = wb.SheetNames.map(sn => {
+      const rows = window.XLSX.utils.sheet_to_json(wb.Sheets[sn], { header: 1, defval: "" });
+      const view = rows.slice(0, 200);
+      const th = (view[0] || []).map(c => `<th>${esc(String(c))}</th>`).join("");
+      const tr = view.slice(1).map(r => `<tr>${r.map(c => `<td>${esc(String(c))}</td>`).join("")}</tr>`).join("");
+      return `<div class="lib-sheet"><div class="lib-sheet-h">${esc(sn)} · 共 ${rows.length} 行${rows.length > 200 ? "（预览前 200 行）" : ""}</div>
+        <div class="tbl-wrap"><table><thead><tr>${th}</tr></thead><tbody>${tr}</tbody></table></div></div>`;
+    }).join("");
+  } catch (e) {
+    const wrap = $("#lib-xlsx");
+    if (wrap) wrap.innerHTML = `<p>表格渲染失败：${esc(String(e.message || e))}（可下载后本地打开）</p>`;
+  }
+}
+
+/* EPUB 在线阅读引擎已迁至 kb-novel.js（KBNOVEL.renderEpub，接小说排版偏好） */
+window.renderArticle = renderArticle;
+
+/* 美化版 HTML 挂载：作用域片段 → 正文直接内联渲染（非 iframe）；
+   完整文档 / 抓取失败 → 回退同源 iframe（保留自带样式脚本与撑满注入）。
+   迁移期两态并存，改一个 inline 一个，老页不会被撑花。 */
+async function mountHtmlDoc(box, rawHref, title) {
+  if (!box) return;
+  let txt = "";
+  try {
+    const r = await fetch(rawHref, { cache: "no-store" });
+    txt = await r.text();
+  } catch (e) {
+    txt = "";
+  }
+  const fullDoc = !!txt && (/<html[\s>]/i.test(txt) || /<!doctype\s+html/i.test(txt));
+  if (!txt || fullDoc) {
+    box.outerHTML = `<iframe class="html-frame" src="${rawHref}" sandbox="allow-same-origin allow-popups" title="${esc(title || "")}"
+        onload="try{const d=this.contentDocument;d.head.insertAdjacentHTML('beforeend','<style>.container,body>main,body>div{max-width:100%!important;padding-left:1.4rem!important;padding-right:1.4rem!important}</style>')}catch(e){}"></iframe>`;
+    return;
+  }
+  // 作用域片段 → Shadow DOM 隔离渲染：单独抽 <style> 绕过净化，正文走 DOMPurify，
+  // 既保住片段自带样式，又不被阅读器 #article 的 h1/p 等 ID 级规则污染（这些页无脚本，Shadow 无副作用）
+  const host = document.createElement("div");
+  host.className = "html-inline";
+  box.replaceWith(host);
+  const root = host.attachShadow({ mode: "open" });
+  const sm = txt.match(/<style[^>]*>([\s\S]*?)<\/style>/i);
+  const css = sm ? sm[1] : "";
+  const bodyHtml = sm ? txt.replace(sm[0], "") : txt;
+  const clean = DOMPurify.sanitize(bodyHtml, {
+    FORBID_TAGS: ["script", "iframe", "object", "embed", "link", "meta", "base", "form"],
+    ADD_ATTR: ["target", "colspan", "rowspan", "start", "type"],
+    ALLOW_DATA_ATTR: true,
+  });
+  root.innerHTML = `<style>:host{display:block;}\n${css}</style>${clean}`;
+}
+
+function renderArticle(forceMd) {
+  const el = $("#article");
+  if (!el || !DOC) return;
+  refreshDocMark(); // 已读/已掌握按钮状态（异步，不阻塞渲染）
+  /* 需求 #12：书库格式分流渲染 —— .txt 直接读文本、.pdf 原生 iframe、
+     .xlsx 用 SheetJS 渲染前 N 行、.epub 给下载/打开方式；不进 markdown 管线 */
+  const libExt = (DOC.name || "").match(/\.(txt|pdf|xlsx|epub|mobi)$/i);
+  if (libExt && !forceMd) { renderLibraryDoc(el, libExt[1].toLowerCase()); return; }
+  clearLibraryChrome(); // 非书库文档：清掉上一个书库文档挂的下载钮/格式 chip
+  /* 空目录占位（新建目录未放文档时不再 404，正文区给引导） */
+  if (DOC.empty) {
+    el.classList.remove("pretty-mode");
+    el.innerHTML = `<h1 class="a-title">${esc(DOC.title)}</h1>
+      <div class="a-rule"></div>
+      <div class="kb-empty-dir">
+        <p>这个目录还是空的。</p>
+        <p class="sub">点下方按钮新建第一篇文档；或把收件箱里的内容归档到这里。</p>
+        <button class="iconbtn primary" id="kb-empty-newdoc">${icon("folder-open", 13)} 新建第一篇文档</button>
+      </div>`;
+    const btn = el.querySelector("#kb-empty-newdoc");
+    if (btn) btn.onclick = () => promptNewDocInDir(DOC.domain, DOC.sub === "_root" ? "" : DOC.sub);
+    buildToc();
+    document.dispatchEvent(new CustomEvent("kb:article-rendered"));
+    return;
+  }
+  /* 统一分流逻辑（用户要求）：文档有美化版 HTML 就用 iframe 内嵌，
+     不再按域特殊化（原先只对 interview 域启用）。
+     - `.html` 文件本身 → 直载自己
+     - `.md` 且有旁挂 .html 美化版 → 载美化版（forceMd=true 可切回 Markdown 视图） */
+  const pretty = DOC.is_html || (DOC.has_html && !forceMd);
+  el.classList.toggle("pretty-mode", pretty); // 美化版：去标题区、iframe 撑满父宽
+  if (pretty) {
+    // 美化版 HTML：片段直接内联、完整文档回退 iframe（判定与注入见 mountHtmlDoc）；
+    // 绝不走 marked+DOMPurify 的 markdown 管线——大 HTML 过 markdown 解析会平铺成数万节点 DOM，卡且不可读
+    const srcRel = DOC.is_html ? DOC.rel : DOC.html_rel;
+    const rawHref = rawUrl(srcRel);
+    el.innerHTML = `<div class="html-render" id="html-render">
+        <div class="kb-skeleton" aria-busy="true"><i style="width:65%"></i><i style="width:88%"></i><i style="width:76%"></i></div>
+      </div>
+      <div class="kb-finish-bar" id="kb-finish-bar">
+        <span class="kb-finish-q">读完这篇了？</span>
+        <button type="button" class="kb-btn" id="mark-read-btn" onclick="toggleDocMark('read')" title="标记已读完（存本地复习库，不写语料）">已读完</button>
+        <button type="button" class="kb-btn" id="mark-mastered-btn" onclick="toggleDocMark('mastered')" title="标记已掌握 —— 术语门户会显示为已掌握">已掌握</button>
+      </div>`;
+    mountHtmlDoc(el.querySelector("#html-render"), rawHref, DOC.title).then(() => buildToc());
+  } else {
+    /* 2026-09-20 头部瘦身：.a-chips 元信息行撤销（标签已并入 crumb 右端）；
+       正文自带 H1 时不再重复渲染 .a-title 小标题——.a-rule 分隔线同批撤掉
+       （它是配小标题用的，正文 H1 自带绿色下划线，留着就是凭空多一条灰线）。 */
+    const bodyHtml = DOMPurify.sanitize(renderMarkdownSafe(DOC.md), { FORBID_TAGS: ['style', 'iframe', 'form', 'script'], ADD_ATTR: ['target'] });
+    const hasH1 = /^\s*<h1[\s>]/i.test(bodyHtml);
+    el.innerHTML = `${hasH1 ? "" : `<h1 class="a-title">${esc(DOC.title)}</h1><div class="a-rule"></div>`}
+      <div class="a-body">${bodyHtml}</div>
+      <div class="kb-finish-bar" id="kb-finish-bar">
+        <span class="kb-finish-q">读完这篇了？</span>
+        <button type="button" class="kb-btn" id="mark-read-btn" onclick="toggleDocMark('read')" title="标记已读完（存本地复习库，不写语料）">已读完</button>
+        <button type="button" class="kb-btn" id="mark-mastered-btn" onclick="toggleDocMark('mastered')" title="标记已掌握 —— 术语门户会显示为已掌握">已掌握</button>
+      </div>`;
+    applyReaderFonts(el); // 阅读字体双轨：英文 Cormorant/Work Sans + 中文宋黑回退（排版还原回 v2）
+  }
+  // mermaid：按需懒加载（3.5MB），仅文档真含 mermaid 图时加载
+  const mm = el.querySelectorAll("pre code.language-mermaid");
+  if (mm.length) {
+    ensureMermaid().then(() => {
+      const theme = document.documentElement.getAttribute("data-theme") === "dark" ? "dark" : "neutral";
+      window.mermaid.initialize({ startOnLoad: false, theme, securityLevel: "loose" });
+      mm.forEach(b => {
+        const div = document.createElement("div");
+        div.className = "mermaid";
+        div.textContent = b.textContent;
+        b.closest("pre").replaceWith(div);
+      });
+      window.mermaid.run({ nodes: el.querySelectorAll("div.mermaid") }).then(() => {
+        enhanceArticleDOM(el); // mermaid div 是异步产物，角标在此补挂（codeblock 部分幂等跳过）
+      }).catch(() => {});
+    }).catch(() => toast("mermaid 库加载失败，图示暂以代码块显示"));
+  }
+  if (window.hljs) el.querySelectorAll("pre code:not(.language-mermaid)").forEach(b => {
+    try { hljs.highlightElement(b); } catch (e) {}
+  });
+  enhanceArticleDOM(el); // 问题8：渲染方直接产出 final-form，不再由 observer 事后打补丁
+  enhanceRenderedBody(el); // 需求 #9 外链新标签 + #6 相对图片走 /raw 直服
+  assignHeadingIds(el); // 文内锚点与 TOC 共用的标题 id
+  enhanceInpageNav(el); // #7 片段链接平滑滚动 + #8 图片点击放大
+  buildToc();
+  decorateWikilinks(); // B4：[[双链]] 渲染为可点链接（正文里不再是方括号生肉）
+  scrollToHash();      // B5：heading id 就绪后再兑现 URL 锚点
+  document.dispatchEvent(new CustomEvent("kb:article-rendered")); // 页面级增强（Motion 刷新等）的显式挂点
+}
+
+/* ---------- B4：正文 [[双链]] → 可点链接 ----------
+   解析结果复用 /api/links（FTS 派生），每文档缓存一次；保存/移动后随
+   linksLoadedFor 一起失效重取。代码块 / 已有链接内的 [[..]] 不动。 */
+let WL_MAP = null, WL_MAP_REL = "";
+function invalidateWikilinkMap() { WL_MAP = null; WL_MAP_REL = ""; }
+
+async function decorateWikilinks() {
+  if (!DOC || DOC.is_html) return;
+  const relAtStart = DOC.rel;
+  if (!WL_MAP || WL_MAP_REL !== relAtStart) {
+    try {
+      const r = await fetch("/api/links?path=" + encodeURIComponent(relAtStart));
+      if (!r.ok) return;
+      const d = await r.json();
+      const m = {};
+      (d.outgoing || []).forEach(x => {
+        if (!(x.raw in m)) m[x.raw] = x.resolved && x.path ? docUrl(x.path) : null;
+      });
+      WL_MAP = m; WL_MAP_REL = relAtStart;
+    } catch (e) { return; }
+  }
+  if (!DOC || DOC.rel !== relAtStart) return; // 异步回来前已切文档
+  const bodyEl = document.querySelector("#article .a-body");
+  if (!bodyEl) return;
+  const rx = /\[\[([^\[\]|#]+)(#[^\[\]|]*)?(?:\|([^\[\]]*))?\]\]/g;
+  const walker = document.createTreeWalker(bodyEl, NodeFilter.SHOW_TEXT, {
+    acceptNode(n) {
+      if (!n.nodeValue || n.nodeValue.indexOf("[[") < 0) return NodeFilter.FILTER_REJECT;
+      const p = n.parentElement;
+      if (!p || p.closest("a, code, pre")) return NodeFilter.FILTER_REJECT;
+      return NodeFilter.FILTER_ACCEPT;
+    },
+  });
+  const nodes = [];
+  while (walker.nextNode()) nodes.push(walker.currentNode);
+  nodes.forEach(node => {
+    const text = node.nodeValue;
+    rx.lastIndex = 0;
+    if (!rx.test(text)) return;
+    rx.lastIndex = 0;
+    const frag = document.createDocumentFragment();
+    let last = 0, m2;
+    while ((m2 = rx.exec(text))) {
+      if (m2.index > last) frag.appendChild(document.createTextNode(text.slice(last, m2.index)));
+      const raw = m2[1].trim(), anchor = m2[2] || "", alias = (m2[3] || "").trim() || raw;
+      const href = WL_MAP[raw];
+      const a = document.createElement("a");
+      if (href) {
+        a.className = "wikilink";
+        a.href = href + anchor; // B5：[[x#小节]] 带着锚点跳转
+        a.textContent = alias;
+        a.title = "双链 → " + raw;
+      } else {
+        a.className = "wikilink dead";
+        a.textContent = alias;
+        a.title = "未解析的双链：" + raw + "（语料里还没有这篇，右栏「双链」可见详情）";
+      }
+      frag.appendChild(a);
+      last = m2.index + m2[0].length;
+    }
+    if (last < text.length) frag.appendChild(document.createTextNode(text.slice(last)));
+    node.parentNode.replaceChild(frag, node);
+  });
+}
+
+/* ---------- 正文后处理（阶段1·问题8，自 workbench.js observer 层迁入） ----------
+   标题 id（须最先：slug 基于原始标题文本，不受分组/徽章后处理影响）→
+   H2 分组卡片 → 稳定随机主题条 → 难度徽章 → 提示框分类 →
+   codeblock 顶栏（语言标签 + 复制）、mermaid 角标。
+   与 renderArticle 同帧执行：渲染方输出即最终形态，杜绝「半成品 + 赌时序清洗」的隐性契约。 */
+function enhanceArticleDOM(el) {
+  el.querySelectorAll(".a-body h1, .a-body h2, .a-body h3, .a-body h4").forEach(h => {
+    if (h.id) return;
+    // B5：标题 id = 文本去空白后空格→连字符，与 learn.js anchorHash 同一规则 ——
+    // 闪卡「跳转原文」的 #锚点 第一次真正可定位（marked 不生成 heading id，
+    // buildToc 的 sec-N 与卡片 anchor 永远接不上）。重名标题保留首个。
+    const slug = (h.textContent || "").trim().replace(/\s+/g, "-");
+    if (slug && !document.getElementById(slug)) h.id = slug;
+    // 题号锚点：抽卡器给面试卡的 anchor 是 `Q{no}`（app/cards.py 的 I-5/I-5b），
+    // 而面试语料的题干标题写成 `### N. 题干｜难度` —— slug id 是整句、跟 Q1 接不上，
+    // 于是复习页「跳转原文」一直落在页首。这里在标题前挂一个**出流**的空 span 承载
+    // #Q{n}：slug id 一个不动（[[x#小节]] 与 I-1 卡的落点还靠它），position:absolute
+    // + 零尺寸保证像素与改前逐点相同。重号（每节各自从 1 编号）保留首个。
+    const qno = (h.textContent || "").trim().match(/^(\d+)\s*[.、]/);
+    if (qno && !document.getElementById("Q" + qno[1])) {
+      const a = document.createElement("span");
+      a.className = "kb-qanchor";
+      a.id = "Q" + qno[1];
+      h.before(a);
+    }
+  });
+  // markdown 渲染重构 · 步骤1：按 ## 分组成 .sec-card 小节卡（幂等：整 body 只包一次）；
+  // H1（文章大标题）之后的游离内容留在卡外，与实验页行为一致
+  const body = el.querySelector(".a-body");
+  if (body && !body.dataset.secGrouped) {
+    body.dataset.secGrouped = "1";
+    let cur = null;
+    [...body.children].forEach(n => {
+      const tag = n.tagName;
+      if (tag === "H2") {
+        cur = document.createElement("div"); cur.className = "sec-card";
+        body.insertBefore(cur, n); cur.appendChild(n); // 标题 id 留在标题元素上
+      } else if (tag === "H1") {
+        cur = null;
+      } else if (cur) {
+        cur.appendChild(n);
+      }
+    });
+  }
+  // 步骤2：稳定随机主题条 —— 标题文字 hash 得色相，同一标题恒定、不同标题各异；
+  // --gh/--gh2 由 h2 渐变背景消费（明/暗明度差走 --bar-l）
+  el.querySelectorAll(".a-body h2").forEach(h => {
+    const s = h.textContent || "";
+    let g = 0;
+    for (let i = 0; i < s.length; i++) g = (g * 31 + s.charCodeAt(i)) >>> 0;
+    g %= 360;
+    h.style.setProperty("--gh", g);
+    h.style.setProperty("--gh2", (g + 42) % 360);
+  });
+  // 步骤3：难度徽章 —— 题干尾部「｜初级/中级/高级」剥离成 .badge.b/.m/.a（CSS 消费语义色）
+  el.querySelectorAll(".a-body h3").forEach(h => {
+    if (h.querySelector(".badge")) return; // 幂等
+    const m = (h.textContent || "").match(/[｜|]\s*(初级|中级|高级)\s*$/);
+    if (!m) return;
+    h.textContent = (h.textContent || "").replace(/[｜|]\s*(初级|中级|高级)\s*$/, "").trim();
+    const b = document.createElement("span");
+    b.className = "badge " + (m[1] === "初级" ? "b" : m[1] === "中级" ? "m" : "a");
+    b.textContent = m[1];
+    h.appendChild(b);
+  });
+  el.querySelectorAll(".a-body pre").forEach(pre => {
+    if (pre.closest(".codeblock")) return; // 幂等：已包壳跳过
+    if (pre.querySelector("code.language-mermaid")) return; // mermaid 源稍后整体替换为 div，不包壳
+    const code = pre.querySelector("code");
+    if (!code) return;
+    const m = (code.className || "").match(/language-([\w+-]+)/);
+    const lang = m ? m[1] : "text";
+    const wrap = document.createElement("div"); wrap.className = "codeblock";
+    const head = document.createElement("div"); head.className = "cb-head";
+    head.innerHTML = `<span class="cb-lang">${esc(lang)}</span>` +
+      `<button type="button" class="cb-copy" title="复制代码">${icon("copy-path", 12)}<span>复制</span></button>`;
+    pre.parentNode.insertBefore(wrap, pre);
+    wrap.appendChild(head); wrap.appendChild(pre); // pre 原地移入，hljs 染色保留
+    head.querySelector(".cb-copy").addEventListener("click", () =>
+      copyText(code.textContent || "", "代码已复制到剪贴板"));
+  });
+  el.querySelectorAll(".a-body blockquote").forEach(bq => {
+    if (bq.classList.contains("tip") || bq.classList.contains("warn") ||
+        bq.classList.contains("kp") || bq.classList.contains("fu")) return; // 幂等
+    const t = (bq.textContent || "").trim();
+    // 引用变体（渲染重构 v2）：💡→提示 ⚠️/❗→警告 🎯/关键要点(知识)→kp 🔍/追问→fu。纯前端约定，语料不用改。
+    if (/^💡/.test(t)) bq.classList.add("tip");
+    else if (/^(?:⚠\uFE0F?|❗)/.test(t)) bq.classList.add("warn");
+    else if (/^🎯|^关键要点|^关键知识点/.test(t)) bq.classList.add("kp");
+    else if (/^🔍|^追问/.test(t)) bq.classList.add("fu");
+  });
+  el.querySelectorAll(".a-body table").forEach(tb => {
+    if (tb.closest(".tbl-wrap")) return; // 幂等：已包壳跳过
+    const wrap = document.createElement("div"); wrap.className = "tbl-wrap";
+    tb.parentNode.insertBefore(wrap, tb);
+    wrap.appendChild(tb); // 圆角外框 + 横向滚动由 CSS 消费
+  });
+  el.querySelectorAll(".a-body ul li").forEach(li => {
+    // GFM 任务清单：不同 marked 版本不一定给 task-list-item 类，同帧补齐
+    if (li.querySelector(":scope > input[type=checkbox]")) li.classList.add("task-list-item");
+  });
+  el.querySelectorAll(".mermaid").forEach(div => {
+    if (div.querySelector(".m-cap")) return;
+    const cap = document.createElement("span");
+    cap.className = "m-cap";
+    cap.innerHTML = `${icon("md-code", 12)}<span>mermaid</span>`;
+    div.appendChild(cap);
+  });
+  // （原尾部「标题 id 生成」「H2 scrub 下划线」已移除：id 生成前置到函数头，
+  //  scrub hairline 被渲染重构的 h2 渐变主题条取代，不再挂 data-scrub-underline）
+}
+
+/* B5：URL fragment 定位（初始带 #锚点 进入 / 异步渲染完成后再滚一次） */
+function scrollToHash() {
+  const h = location.hash; if (!h || h.length < 2) return;
+  let id; try { id = decodeURIComponent(h.slice(1)); } catch (e) { id = h.slice(1); }
+  const t = id && document.getElementById(id);
+  if (t) t.scrollIntoView({ block: "start" });
+}
+
+/* ---------- 阅读字体双轨（印刷排版还原后唯一保留项，2026-09-14 用户决定）：
+   标题/引用用衬线栈（英文 Cormorant Garamond，中文思源宋/宋体），
+   正文/UI 用无衬线栈（英文 Work Sans，中文思源黑/PingFang/微软雅黑）。
+   字体离线 woff2 在 reader.css 注册；仅改字体家族，版式（字号/行高/间距/
+   颜色/标题记号/表格/引用样式）全部维持 v2 排版不动。 ---------- */
+function applyReaderFonts(el) {
+  const body = el.querySelector(".a-body");
+  if (!body || body.dataset.kbRdFont === "1") return;
+  body.dataset.kbRdFont = "1";
+  body.classList.add("rd-fonts");
+}
+
+/* 标题 slug id：marked 默认不给标题 id，文内 [x](#小节) 与右栏 TOC 都落不了点。
+   规则与 GitHub 致：去标点、空白转 -、中文保留；重名追加 -1/-2。 */
+function slugifyHeading(text, used) {
+  let s = String(text).trim().toLowerCase()
+    .replace(/[\u201c\u201d\u2018\u2019\u300c\u300d\u300e\u300f]/g, "")
+    .replace(/[^\p{L}\p{N}\s-]/gu, "")
+    .replace(/\s+/g, "-");
+  if (!s) s = "section";
+  let id = s, i = 1;
+  while (used.has(id)) { id = `${s}-${i++}`; }
+  used.add(id);
+  return id;
+}
+function assignHeadingIds(el) {
+  const used = new Set([...el.querySelectorAll("[id]")].map(x => x.id));
+  el.querySelectorAll(".a-body h1, .a-body h2, .a-body h3, .a-body h4").forEach(h => {
+    if (!h.id) h.id = slugifyHeading(h.textContent, used);
+  });
+}
+/* #7：文内片段链接（#开头）点击平滑滚动，不整页刷新；#8：图片点击放大 lightbox。 */
+function enhanceInpageNav(el) {
+  el.querySelectorAll(".a-body a[href^='#']").forEach(a => {
+    if (a.dataset.kbNavBound) return;
+    a.dataset.kbNavBound = "1";
+    a.addEventListener("click", e => {
+      e.preventDefault();
+      let id; try { id = decodeURIComponent(a.getAttribute("href").slice(1)); } catch (_) { id = a.getAttribute("href").slice(1); }
+      const t = id && document.getElementById(id);
+      if (t) t.scrollIntoView({ behavior: "smooth", block: "start" });
+      history.replaceState(null, "", "#" + encodeURIComponent(id));
+    });
+  });
+  el.querySelectorAll(".a-body img").forEach(img => {
+    if (img.dataset.kbZoomBound) return;
+    img.dataset.kbZoomBound = "1";
+    img.addEventListener("click", () => openImageZoom(img));
+  });
+}
+function openImageZoom(img) {
+  const ov = KB.overlay.open({
+    className: "kb-imgzoom-ov",
+    html: `<div class="kb-imgzoom"><img src="${esc(img.currentSrc || img.src)}" alt="${esc(img.alt || "")}"><div class="kb-imgzoom-hint">${esc(img.alt || "")} · 滚轮缩放 · 点击空白关闭</div></div>`,
+    returnFocus: true,
+  });
+  const box = ov.root.querySelector(".kb-imgzoom");
+  const big = ov.root.querySelector("img");
+  let scale = 1;
+  
+  ov.root.addEventListener("wheel", e => {
+    e.preventDefault();
+    scale = Math.min(8, Math.max(0.3, scale * (e.deltaY < 0 ? 1.15 : 0.87)));
+    big.style.transform = `scale(${scale})`;
+  }, { passive: false });
+}
+
+let _tocScrollSpy = null; // Shadow 片段目录的滚动高亮监听，重渲染前清理
+
+function buildToc() {
+  const pane = $("#pane-toc"); if (!pane) return;
+  if (_tocScrollSpy) { _tocScrollSpy(); _tocScrollSpy = null; }
+  // 小说/书库：章节列表由 KBNOVEL 灌进本面板（阅读器内不再放左目录）
+  if (window.KBNOVEL && DOC && /\.(txt|epub)$/i.test(DOC.name || "") && KBNOVEL.hasPaneToc()) {
+    KBNOVEL.paintPaneToc(pane);
+    return;
+  }
+  /* 右栏「目录」空状态：线稿插画 + 结论 + 说明，复用 .kb-empty 组件（三件缺一不可）。
+     两处调用点（Shadow DOM 与 Markdown 正文）共用本函数，避免样式与文案再次漂移。 */
+  function tocEmptyHTML() {
+    return `<div class="kb-empty toc-empty">
+      <div class="art"><svg viewBox="0 0 64 64" aria-hidden="true">
+        <rect x="13" y="8" width="38" height="48" rx="4"/>
+        <path d="M21 19h12"/>
+        <path d="M26 28h17"/><path d="M26 36h17"/>
+        <path d="M21 45h10"/>
+      </svg></div>
+      <div class="e-title">本文没有小节标题</div>
+      <div class="e-desc">正文里未出现二级 / 三级标题，所以没有大纲可列；带标题的文档会自动出现在这里。</div>
+    </div>`;
+  }
+  function tocOn(a) { $$("#pane-toc a").forEach(x => x.classList.remove("on")); if (a) a.classList.add("on"); }
+
+  /** 当前小节 = 最后一个已经滚到视口顶部（top ≤ 96）的标题。
+      两条渲染路径（内联 HTML 的 shadow 分支、Markdown 的 IO 分支）**共用这一个判据**：
+      几何判据是幂等的——排版中途多算一次也只是还没收敛，排版完成后收敛到同一个答案；
+      而旧的"IO 回调里最后一个 isIntersecting 的条目获胜"取决于条目批次顺序与回调时机，
+      实测同一篇文档两次打开会高亮不同条目（P5 视觉矩阵 doc_md_dark 两次截图 AE=964，见台账 §6 第 25 行）。 */
+  function tocSync(pairs) {
+    let cur = pairs[0];
+    for (const p of pairs) {
+      const r = p[0].getBoundingClientRect();
+      if (r.top <= 96) cur = p; else break;
+    }
+    tocOn(cur[1]);
+  }
+
+  // 内联 HTML 片段走 Shadow DOM：标题在 shadowRoot 内，普通 querySelectorAll 够不到
+  const host = $("#article .html-inline");
+  const sroot = host && host.shadowRoot ? host.shadowRoot : null;
+
+  if (sroot) {
+    const heads = [...sroot.querySelectorAll("h2.iv-h2, h3.iv-q-title")];
+    if (!heads.length) { pane.innerHTML = tocEmptyHTML(); renderTocSpark(); return; }
+    pane.innerHTML = "";
+    const pairs = [];
+    heads.forEach(h => {
+      const a = document.createElement("a");
+      a.textContent = h.textContent;
+      a.className = h.tagName === "H3" ? "lv3" : "";
+      a.onclick = () => { h.scrollIntoView({ behavior: "smooth", block: "start" }); tocOn(a); };
+      pane.appendChild(a);
+      pairs.push([h, a]);
+    });
+    const scroller = document.querySelector(".article");
+    const spy = () => tocSync(pairs);
+    if (scroller) { scroller.addEventListener("scroll", spy, { passive: true }); _tocScrollSpy = () => scroller.removeEventListener("scroll", spy); }
+    tocOn(pairs[0][1]);
+    renderTocSpark();
+    return;
+  }
+
+  const heads = $$("#article .a-body h1, #article .a-body h2, #article .a-body h3");
+  if (!heads.length) { pane.innerHTML = tocEmptyHTML(); return; }
+  pane.innerHTML = "";
+  const used = new Set([...$("#article").querySelectorAll("[id]")].map(x => x.id));
+  const pairs = [];
+  heads.forEach((h, i) => {
+    h.id = h.id || slugifyHeading(h.textContent, used);
+    const a = document.createElement("a");
+    a.textContent = h.textContent;
+    a.className = h.tagName === "H3" ? "lv3" : "";
+    a.onclick = () => { h.scrollIntoView({ behavior: "smooth", block: "start" }); tocOn(a); };
+    pane.appendChild(a);
+    pairs.push([h, a]);
+  });
+  const spy = new IntersectionObserver(() => tocSync(pairs),
+    { root: document.querySelector(".article"), rootMargin: "0px 0px -72% 0px", threshold: 0 });
+  heads.forEach(h => spy.observe(h));
+  tocOn(pairs[0][1]);
+  renderTocSpark();
+}
+
+/* ---------- C3-B1：TOC 下方近 7 日阅读篇数（本地 Chart.js，reading.db 只读供数） ---------- */
+let tocSparkSeq = 0;
+let tocSparkChart = null;
+let tocSparkHost = null;
+let tocSparkDays = null;          // 近 7 日序列与当前文档无关：缓存后主题切换免重取
+
+function sparkVar(name, fallback) {
+  const v = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+  return v || fallback || "";
+}
+function sparkAlpha(color, a) {   /* 只处理 #hex；其它色形式原样交给 canvas */
+  const m = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(color);
+  if (!m) return color;
+  let hex = m[1];
+  if (hex.length === 3) hex = hex.split("").map(c => c + c).join("");
+  const n = parseInt(hex, 16);
+  return `rgba(${[(n >> 16) & 255, (n >> 8) & 255, n & 255].join(",")},${a})`;
+}
+
+/* 把缓存里的 days 画进 host（幂等：先销毁旧实例） */
+function drawTocSpark(host) {
+  if (!host || !host.isConnected || !tocSparkDays) return;
+  const body = host.querySelector(".kb-toc-spark-b");
+  const meta = host.querySelector(".kb-toc-spark-meta");
+  if (!body) return;
+  if (tocSparkChart) { tocSparkChart.destroy(); tocSparkChart = null; }
+
+  const counts = tocSparkDays.map(x => x.count);
+  if (!counts.length || counts.every(c => c === 0)) {
+    body.innerHTML = `<div class="kb-toc-spark-empty">近 7 日暂无阅读</div>`;
+    if (meta) meta.innerHTML = "";
+    return;
+  }
+  const avg = counts.reduce((s, c) => s + c, 0) / counts.length;
+  const peak = Math.max(...counts);
+  if (meta) meta.innerHTML = `<span>峰值 ${peak} 篇</span><span>日均 ${avg.toFixed(1)} 篇</span>`;
+  if (!window.Chart) return;                       // 引擎缺失：留白，数值仍在 meta 里
+
+  const acc = sparkVar("--c-acc"), line = sparkVar("--c-line"), line2 = sparkVar("--c-line2"),
+    faint = sparkVar("--faint"), ink = sparkVar("--c-ink"), panel = sparkVar("--c-panel"),
+    mono = sparkVar("--f-mono", "monospace");
+  const canvas = document.createElement("canvas");
+  canvas.setAttribute("role", "img");
+  canvas.setAttribute("aria-label", "近 7 日阅读篇数柱状图");
+  body.textContent = "";
+  body.appendChild(canvas);
+
+  /* 日均参考线：Chart.js 无标注插件，直接按 y 轴像素画虚线（色盲兜底：虚线 + meta 数值） */
+  const avgLine = {
+    id: "kbTocAvg",
+    afterDatasetsDraw(chart) {
+      const y = chart.scales.y.getPixelForValue(avg);
+      const a = chart.chartArea;
+      const ctx = chart.ctx;
+      ctx.save();
+      ctx.strokeStyle = sparkAlpha(line, 0.9);
+      ctx.lineWidth = 1;
+      ctx.setLineDash([3, 3]);
+      ctx.beginPath(); ctx.moveTo(a.left, y); ctx.lineTo(a.right, y); ctx.stroke();
+      ctx.restore();
+    }
+  };
+
+  tocSparkChart = new window.Chart(canvas, {
+    type: "bar",
+    data: {
+      labels: tocSparkDays.map(d => String(d.date || "").slice(8, 10)),
+      datasets: [{
+        data: counts,
+        backgroundColor: c => (c.raw > 0 ? sparkAlpha(acc, 0.9) : sparkAlpha(line, 0.55)),
+        hoverBackgroundColor: c => (c.raw > 0 ? acc : sparkAlpha(line, 0.8)),
+        borderRadius: 2,
+        borderSkipped: false,
+        maxBarThickness: 14
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      animation: false,
+      layout: { padding: { top: 3 } },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: panel, titleColor: ink, bodyColor: ink,
+          borderColor: line2, borderWidth: 1, padding: 8, displayColors: false,
+          titleFont: { family: mono, size: 10.5 }, bodyFont: { family: mono, size: 11.5 },
+          callbacks: {
+            title: items => (tocSparkDays[items[0].dataIndex] || {}).date || "",
+            label: it => `阅读 ${it.formattedValue} 篇`
+          }
+        }
+      },
+      scales: {
+        x: {
+          grid: { display: false },
+          border: { color: line },                      // 原手绘基线
+          ticks: { color: faint, font: { family: mono, size: 9 }, maxRotation: 0, autoSkip: false }
+        },
+        y: { display: false, beginAtZero: true, suggestedMax: Math.max(peak, avg * 1.6) }
+      }
+    },
+    plugins: [avgLine]
+  });
+}
+
+function renderTocSpark() {
+  const pane = $("#pane-toc"); if (!pane) return;
+  const host = document.createElement("div");
+  host.className = "kb-toc-spark";
+  host.id = "kb-toc-spark";
+  host.innerHTML = `<div class="kb-toc-spark-h">近 7 日阅读</div>`
+    + `<div class="kb-toc-spark-b">…</div><div class="kb-toc-spark-meta"></div>`;
+  pane.appendChild(host);
+  tocSparkHost = host;
+  const seq = ++tocSparkSeq;
+  if (tocSparkDays) { drawTocSpark(host); return; }     // 已有真实数据：直接画，免重取
+  fetch("/api/learn/recent_read")
+    .then(r => r.json())
+    .then(d => {
+      if (seq !== tocSparkSeq) return;                  // 文档已切换，丢弃过期响应
+      tocSparkDays = (d && d.days) || [];
+      drawTocSpark(host);
+    })
+    .catch(() => {
+      const body = host.querySelector(".kb-toc-spark-b");
+      if (body && seq === tocSparkSeq) body.innerHTML = `<div class="kb-toc-spark-empty">近 7 日暂无阅读</div>`;
+    });
+}
+
+/* 主题切换后 canvas 里的取色不会自动跟着 CSS 变量走，用缓存数据整组重绘 */
+new MutationObserver(() => drawTocSpark(tocSparkHost))
+  .observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+
+/* ---------- 分类树 / 文档列表（客户端渲染） ---------- */
+/* 与 workbench.html 服务端模板保持一致：每个域带 .dom-caret 折叠箭头，且**默认全部收起**
+   （不再强制当前域 open）。展开状态读/写 workbench.js 共用的 localStorage 钥匙 kb-tree-open，
+   故客户端跳转（navigate）或 afterMutation 重渲染后，用户的折叠选择不会丢。 */
+/* 一级/二级/三级可见性状态：
+   - kb-tree-open        : 一级域展开集合
+   - kb-sub-collapsed    : 二级「手动收起」集合（键 dom/sub）—— 与「默认展开」语义配合
+   - kb-subdir-collapsed : 三级「手动收起」集合（键 dom/sub/dir）
+   二级/三级均为纯前端原地切换：所有子域的文档列表一次性预渲染（数据来自 /api/tree，
+   无额外请求），仅靠 .collapsed 类控制显隐，点击不跳转、不刷新文档列表（用户要求）。 */
+function treeOpenSet() {
+  try { const raw = localStorage.getItem("kb-tree-open"); if (raw) return new Set(JSON.parse(raw)); } catch (e) {}
+  return new Set();
+}
+/* 二级/三级可见性状态（三个独立集合，均为「显式记录」语义，默认收起）：
+   - kb-tree-open        : 一级域「已展开」集合
+   - kb-sub-open         : 二级「已展开」集合（键 dom/sub）
+   - kb-subdir-collapsed : 三级「已收起」集合（键 dom/sub/dir，三级默认展开故用收起集合）
+   二级/三级均为纯前端原地切换：所有子域的文档列表一次性预渲染（数据来自 /api/tree，
+   无额外请求），仅靠 .collapsed 类控制显隐，点击不跳转、不刷新文档列表。 */
+function treeOpenSet() {
+  try { const raw = localStorage.getItem("kb-tree-open"); if (raw) return new Set(JSON.parse(raw)); } catch (e) {}
+  return new Set();
+}
+/* 二级「已展开」集合：默认空 → 全部收起（用户要求：打开一级不应默认展开二级）。 */
+function subOpenSet() {
+  try { const raw = localStorage.getItem("kb-sub-open"); if (raw) return new Set(JSON.parse(raw)); } catch (e) {}
+  return new Set();
+}
+function subdirCollapsedSet() {
+  try { const raw = localStorage.getItem("kb-subdir-collapsed"); if (raw) return new Set(JSON.parse(raw)); } catch (e) {}
+  return new Set();
+}
+/* 子域文档列表是否展开：默认收起，仅「显式展开过」的展开 */
+function subIsOpen(domId, subId) {
+  return subOpenSet().has(`${domId}/${subId}`);
+}
+function setSubOpen(key, open) {
+  const set = subOpenSet();
+  if (open) set.add(key); else set.delete(key);
+  try { localStorage.setItem("kb-sub-open", JSON.stringify(Array.from(set))); } catch (e) {}
+}
+function setDirCollapsed(key, collapsed) {
+  const set = subdirCollapsedSet();
+  if (collapsed) set.add(key); else set.delete(key);
+  try { localStorage.setItem("kb-subdir-collapsed", JSON.stringify(Array.from(set))); } catch (e) {}
+}
+/* ---------- 目录树「当前选中节点」状态 ----------
+   用户需求：点击选中某个目录节点后，用 ←/→ 展开收起该层级。
+   不能依赖 document.activeElement —— 点击 `.sub`/`.dom-head` 时我们
+   preventDefault() 阻止了导航，浏览器不会把焦点给该元素（实测落到 BODY），
+   故显式记录「最后点击的树节点」，供 kb-core.js 的方向键处理读取。
+   同时给它 .focus()，保证键盘用户可见焦点环。 */
+let TREE_SEL = null;
+/* 一级域点击会触发整树重渲染，旧节点引用失效 —— 用 key 记录意图，
+   renderTree 结束后 rebindTreeSel() 按 key 找回新节点。 */
+let TREE_SEL_KEY = null;
+function treeSelectNode(el) {
+  /* 清掉 DOM 里所有遗留标记（重渲染后旧引用失效，按类名清最可靠） */
+  document.querySelectorAll("#tree .tree-sel").forEach(n => { if (n !== el) n.classList.remove("tree-sel"); });
+  TREE_SEL = el || null;
+  if (TREE_SEL) {
+    TREE_SEL.classList.add("tree-sel");
+    try { TREE_SEL.focus({ preventScroll: true }); } catch (e) {}
+  }
+}
+/* 重渲染后按 key 重新定位选中节点（key 形如 "dom:articles"）。
+   重渲染会销毁旧节点，TREE_SEL 的引用失效 —— 先清掉 DOM 里所有遗留 .tree-sel，
+   再按 key 找新节点标记。 */
+function rebindTreeSel() {
+  if (!TREE_SEL_KEY || TREE_SEL_KEY.indexOf("dom:") !== 0) return;
+  const id = TREE_SEL_KEY.slice(4);
+  TREE_SEL = null;   // 旧引用已随重渲染失效
+  const head = document.querySelector(`#tree .dom[data-dom="${CSS.escape(id)}"] > .dom-head`);
+  if (head) treeSelectNode(head);
+}
+window.KB_treeSelected = () => TREE_SEL;
+window.KB_treeSelect = treeSelectNode;
+
+/* ---------- 文件类型 → 前缀图标（目录树 / 文档列表共用） ----------
+   按扩展名映射到对应图标：md / txt / epub / pdf / xlsx / 图片 / html / zip。
+   未知扩展名回落通用 i-file；目录/文件夹用 i-folder。 */
+const FILE_ICON_MAP = {
+  md: "file-md", markdown: "file-md",
+  txt: "file-txt", text: "file-txt", log: "file-txt",
+  epub: "file-epub", mobi: "file-epub", azw3: "file-epub",
+  pdf: "file-pdf",
+  xlsx: "file-xlsx", xls: "file-xlsx", csv: "file-xlsx",
+  png: "file-image", jpg: "file-image", jpeg: "file-image",
+  gif: "file-image", webp: "file-image", svg: "file-image",
+  bmp: "file-image", ico: "file-image", avif: "file-image",
+  html: "file-html", htm: "file-html",
+  zip: "file-zip", gz: "file-zip", tar: "file-zip", "7z": "file-zip", rar: "file-zip",
+  js: "file-code", ts: "file-code", py: "file-code", json: "file-code",
+  css: "file-code", sh: "file-code", bat: "file-code", ps1: "file-code",
+};
+/* 取文件扩展名对应的图标 id；无扩展名时按文档默认类型（md）处理。
+   注意：返回值不含 "i-" 前缀——icon() 内部会拼 "#i-<name>"，多写会失配（曾踩）。 */
+function fileIconId(name) {
+  const m = String(name || "").match(/\.([a-z0-9]+)$/i);
+  if (!m) return FILE_ICON_MAP.md;
+  return FILE_ICON_MAP[m[1].toLowerCase()] || "file";
+}
+/* 图标语义标题（title 属性用） */
+function fileIconTitle(name) {
+  const m = String(name || "").match(/\.([a-z0-9]+)$/i);
+  const ext = m ? m[1].toLowerCase() : "md";
+  const label = { txt: "纯文本", epub: "EPUB 电子书", mobi: "电子书", azw3: "电子书",
+    pdf: "PDF", xlsx: "表格", xls: "表格", csv: "表格",
+    png: "图片", jpg: "图片", jpeg: "图片", gif: "图片", webp: "图片", svg: "图片",
+    html: "HTML", htm: "HTML", zip: "压缩包", gz: "压缩包", tar: "压缩包",
+    "7z": "压缩包", rar: "压缩包", md: "Markdown", markdown: "Markdown" }[ext];
+  return label || ext.toUpperCase() + " 文件";
+}
+
+function renderTree() {
+  const nav = $("#tree"); if (!nav || !TREE) return;
+  const open = treeOpenSet();                // 默认空集合 → 一级全部收起
+  const dirCollapsed = subdirCollapsedSet(); // 三级手动收起集合
+  // 域图标 sprite 只有内置七域（base.html 固定符号）；重命名出的新域 id 回退通用 folder
+  const DOM_ICON_IDS = new Set(["baike", "articles", "interview", "projects", "handbook", "career", "ai-assets"]);
+  nav.innerHTML = TREE.map(d => {
+    const isOpen = open.has(d.id);
+    // 空域根（没有散文件的"总览"伪节点）不显示；域根一旦建了文档它会自动回来
+    const subs = d.subs.filter(s => !(s.id === "_root" && !s.n));
+    const headSub = ((subs[0] || d.subs[0] || {}).id) || "_root";
+    return `
+   <div class="dom ${isOpen ? "open" : ""}" style="--dh:${HUES[d.id] || 158}" data-dom="${esc(d.id)}">
+    <a class="dom-head ${CUR && CUR.domain === d.id ? "active" : ""}" href="/browse/${d.id}/${headSub}" role="button" tabindex="0" aria-expanded="${isOpen ? "true" : "false"}" title="${esc(d.label)} · 点击展开/收起 · ←/→ 收起展开">
+     <span class="dom-glyph" style="--dh:${HUES[d.id] || 158}"><svg><use href="#i-${DOM_ICON_IDS.has(d.id) ? d.id : "folder"}"/></svg></span>
+     <span class="dom-name" title="${esc(d.label)}">${esc(d.label)}</span><span class="dom-n">${d.n}</span>
+    </a>
+    <div class="subs">${subs.map(s => {
+      // 需求 #11：单列树 —— 文档内联在子域下（第二列列表列已移除）
+      // 需求 #7：多层目录支持 —— name 含斜杠的深层文档按路径分组缩进
+      const cur = CUR && CUR.domain === d.id && CUR.sub === s.id;
+      const subKey = `${d.id}/${s.id}`;
+      const subOpen = subIsOpen(d.id, s.id);   // 纯前端展开态（默认展开）
+      const docsByDir = {};
+      (s.docs || []).forEach(doc => {
+        const slash = doc.name.lastIndexOf("/");
+        const dir = slash >= 0 ? doc.name.slice(0, slash) : "";
+        (docsByDir[dir] = docsByDir[dir] || []).push(doc);
+      });
+      const dirKeys = Object.keys(docsByDir).sort();
+      const docLink = (doc, dir) => {
+        const href = docUrl(`${d.id}/${s.id}/${doc.name}.md`);
+        const leaf = dir ? doc.name.slice(dir.length + 1) : doc.name;
+        const deep = dir ? dir.split("/").length : 0; // 多层缩进层级
+        /* 用户要求：目录中的文档项不再显示标签 chips（三级尤其拥挤）。
+           改为「文件类型前缀图标」（md/txt/epub/pdf/图片…），一图标顶一行信息。 */
+        const ic = fileIconId(doc.name);
+        /* 当前文档的高亮：**拿链接比链接**，不比名字。
+           旧写法是 `CUR.name === doc.name`，而 CUR.name 来自 DOC.name（=URL 里的文件名，
+           带扩展名，如 `alpha.md`），树里的 doc.name 却是**不含 .md** 的键（长这样是因为
+           链接要 `docUrl(... + '.md')` 再被 docUrl 削掉后缀）—— 两边永远对不上，
+           于是打开任何一篇文档，左树都没有"你在这儿"（.doc.active 恒空）。
+           比 href 同时覆盖 md / txt / html 三种命名，不再依赖两边的字符串约定。 */
+        /* 直载 /doc/xxx/alpha.md 时 location.pathname **带** .md，而 href 是 docUrl 产物（削掉后缀）
+           —— 所以比对前给两边同一份规范化，否则 SPA 切页有高亮、直接打开/刷新就没高亮。 */
+        const here = location.pathname.replace(/\.md$/, "");
+        const isActive = cur && href === here;
+        /* 美化版/HTML 仍给一个角标（不影响类型图标语义） */
+        const badges = (doc.has_html || doc.is_html)
+          ? `<span class="doc-flag" title="${doc.is_html ? "HTML 文档" : "有美化版"}">${icon("external-link", 11)}</span>` : "";
+        return `
+        <a class="doc ${isActive ? "active" : ""} ${dir ? "in-subdir" : ""}" data-name="${esc(doc.name)}" data-dom="${esc(d.id)}" data-sub="${esc(s.id)}" draggable="true" style="--deep:${deep}" href="${href}" title="${esc(doc.name)}">
+          <div class="doc-t"><span class="doc-ic" title="${esc(fileIconTitle(doc.name))}">${icon(ic, 11)}</span>${badges}<span class="doc-t-txt">${esc(leaf)}</span></div>
+        </a>`;
+      };
+      /* 三级（多层目录）：头部可点击收起/展开；收起状态持久化 */
+      const subdirHtml = (dir) => {
+        const key = `${d.id}/${s.id}/${dir}`;
+        const dirCollapsedNow = dirCollapsed.has(key);
+        return `<div class="tree-subdir${dirCollapsedNow ? " collapsed" : ""}" style="--deep:${dir.split("/").length}" data-dir-key="${esc(key)}">
+          <div class="tree-subdir-h" role="button" tabindex="0" aria-expanded="${dirCollapsedNow ? "false" : "true"}" title="${esc(dir)} · 点击展开/收起 · ←/→ 收起展开">${icon("archive-box", 11)}<span class="tsd-t">${esc(dir.split("/").pop())}</span></div>
+          <div class="tree-subdir-body">${docsByDir[dir].map(doc => docLink(doc, dir)).join("")}</div>
+        </div>`;
+      };
+      const groups = dirKeys.map(dir => dir === ""
+        ? docsByDir[""].map(doc => docLink(doc, "")).join("")
+        : subdirHtml(dir)
+      ).join("");
+      /* 全量渲染：文档列表始终在 DOM 中，靠 .collapsed 控制显隐 —— 支持纯原地展开/收起 */
+      return `
+      <a class="sub ${cur ? "active" : ""}${subOpen ? "" : " collapsed"}" data-dom="${esc(d.id)}" data-sub="${esc(s.id)}" data-sub-key="${esc(subKey)}" href="/browse/${d.id}/${s.id}" role="button" tabindex="0" aria-expanded="${subOpen ? "true" : "false"}" title="${esc(s.label)} · 点击展开/收起 · ←/→ 收起展开"><span class="sub-ic" title="子目录">${icon("folder", 13)}</span><span class="sub-t">${esc(s.label)}</span><span class="n">${s.n}</span></a>
+      <div class="sub-docs${subOpen ? "" : " collapsed"}">${groups}</div>`;
+    }).join("")}
+    </div>
+   </div>`;
+  }).join("");
+  rebindTreeSel();   // 重渲染后按 key 找回选中节点（一级点击会走导航+重渲染）
+}
+
+/* ---------- 目录聚合树（移动弹窗 + 目录统计共用；1 分钟缓存） ---------- */
+let DIRTREE = null, DIRTREE_T = 0;
+async function loadDirTree(force) {
+  if (!force && DIRTREE && Date.now() - DIRTREE_T < 60000) return DIRTREE;
+  const r = await fetch("/api/dir/tree");
+  if (!r.ok) { toast("目录树加载失败：" + r.status); return null; }
+  const d = await r.json();
+  DIRTREE = d.domains || [];
+  DIRTREE_T = Date.now();
+  return DIRTREE;
+}
+
+function renderDocList(docs, subLabel, activeName) {
+  const title = $("#list-title");
+  if (title) title.innerHTML = `${esc(subLabel)}<span class="cnt">${docs.length}</span><button class="fold" onclick="togglePanel('list')" title="收起列表"><svg><use href="#i-fold-l"/></svg></button>`;
+  const list = $("#doclist"); if (!list) return;
+  /* 问题8：星标 ◈ 直接输出 SVG（原 workbench.js cleanChars 事后清洗的产物），
+     href 统一走 docUrl(rel)（原手工拼接是第三份 encode 逻辑）。 */
+  list.innerHTML = docs.map(d => `
+    <a class="doc ${d.name === activeName ? "active" : ""}" data-name="${esc(d.name)}" draggable="true" href="${docUrl(`${CUR.domain}/${CUR.sub}/${d.name}.md`)}">
+      <div class="doc-t">${d.has_html ? `<span class="star" title="有美化版">${icon("external-link", 12)}</span>` : ""}${esc(d.title)}</div>
+      <div class="doc-meta">
+        ${(d.tags && d.tags.length) ? d.tags.map(t => `<span class="mini tag">${esc(t)}</span>`).join("") : `<span class="mini untag">未打标</span>`}
+        ${d.has_html ? `<span class="mini html">美化版</span>` : ""}
+        ${d.is_html ? `<span class="mini html">HTML</span>` : ""}
+      </div>
+    </a>`).join("") || `<div style="padding:20px;color:var(--faint);font-size:13px">无匹配文档</div>`;
+}
+
+/* 图3：面包屑（正文区「域 / 子域」行）移除 —— 路径显示在底部状态栏左侧 #sb-path。
+   2026-09-20 头部瘦身：状态/收录日期/体积元信息也从 crumb 撤下，一并挂在这里。 */
+function updateStatusBarPath() {
+  const el = document.getElementById("sb-path"); if (!el) return;
+  if (!DOC) { el.textContent = ""; return; }
+  const meta = [
+    DOC.status_label || "",
+    DOC.fm && DOC.fm.collected ? `${DOC.fm.collected} 收录` : "",
+    DOC.size || "",
+  ].filter(Boolean).join(" · ");
+  el.textContent = `${DOC.domain_label || ""} / ${DOC.sub_label || ""} · ${DOC.name || ""}`.replace(/^\s*\/\s*/, "")
+    + (meta ? ` · ${meta}` : "");
+}
+
+/* 美化版 ↔ Markdown 源 双向切换（统一分流后所有有美化版的文档都可用）。
+   MD_SRC_ON 记录当前是否强制 Markdown 视图；切换后重渲染正文 + 刷新 crumb
+   （按钮文案随之变化），不改动语料。 */
+let MD_SRC_ON = false;
+function toggleMdSource() {
+  MD_SRC_ON = !MD_SRC_ON;
+  renderArticle(MD_SRC_ON);
+  renderCrumb();
+  toast(MD_SRC_ON ? "已切到 Markdown 源视图" : "已切回美化版视图");
+}
+window.toggleMdSource = toggleMdSource;
+
+function renderCrumb() {
+  const crumb = $("#crumb"); if (!crumb) return;
+  if (!DOC) {
+    // 无文档态（初始/已删除/404 自愈中）：给一个可用的空态行，不残留旧按钮也不留死白
+    crumb.innerHTML = `<b>未选择文档</b><span class="spacer"></span>`;
+    return;
+  }
+  /* 面包屑不再显示 content/<路径>（用户要求）。
+     统一分流后：所有「有美化版」的 .md 文档都显示「Markdown 源」切换按钮
+     （原先只对 interview 域显示）；服务端渲染保持同一套结构。 */
+  const canSwitchToMd = DOC.has_html && !DOC.is_html;
+  /* 书库格式（txt/pdf/xlsx/epub/mobi）：编辑/删除/标签/收藏与小说阅读无关，
+     全部撤下；下载按钮移入阅读器工具栏（kb-novel.js / libBar）。 */
+  const isLib = /\.(txt|pdf|xlsx|epub|mobi)$/i.test(DOC.name || "");
+  const segs = [];
+  if (canSwitchToMd) segs.push(`<button class="seg-btn" id="kb-md-src-btn" onclick="toggleMdSource()" title="在美化版 / Markdown 源之间切换">${MD_SRC_ON ? icon("preview-eye", 13) + " 美化版" : icon("file-md", 13) + " Markdown 源"}</button>`);
+  if (DOC.has_html) segs.push(`<a class="seg-btn" href="${rawUrl(DOC.is_html ? DOC.rel : DOC.html_rel)}" target="_blank" title="新标签页打开美化版">${icon("external-link", 13)} 新标签页</a>`);
+  if (!DOC.is_html && !isLib) segs.push(
+    `<button class="seg-btn" onclick="openEditor()">${icon("edit",13)} 编辑</button>`,
+    `<button class="seg-btn danger" onclick="deleteDoc()" title="移入 content/_trash/">${icon("trash",13)} 删除</button>`,
+    `<button class="seg-btn" onclick="jumpToTagEdit()" title="编辑本篇标签（右栏信息·标签页）">${icon("tag-outline",13)} 标签</button>`);
+  /* 「查漏」按钮随切片 3 一起在轮次 53 被移除（用户：只要选词问，其余全砍）。
+     crumb 的按钮全部由这里现拼，模板里那份静态 markup 会被 innerHTML 整体换掉。 */
+  if (/\.md$/i.test(DOC.name || "")) segs.push(
+    `<button class="seg-btn" onclick="copyDocSource()" title="复制本篇 Markdown 原文到剪贴板">${icon("copy",13)} 复制原文</button>`);
+  crumb.innerHTML = `<span class="crumb-tags" id="crumb-tags"></span><span class="spacer"></span>
+    ${segs.length ? `<span class="seg-group">${segs.join("")}</span>` : ""}
+    ${isLib ? "" : `<button class="iconbtn primary ${DOC.favorite ? "faved" : ""}" id="fav-btn" onclick="toggleFav()">${icon("star",13)} ${DOC.favorite ? "已收藏" : "收藏"}</button>`}`;
+  renderHeadChips();
+}
+
+/* crumb 右端标签 chips（2026-09-20 头部瘦身）：原 #crumb-chips 元信息行已撤销，
+   状态/收录/体积进底部状态栏，分类徽章删除（底部本就有路径）。书库格式无标签编辑。 */
+function renderHeadChips() {
+  const box = $("#crumb-tags"); if (!box || !DOC) return;
+  if (/\.(txt|pdf|xlsx|epub|mobi)$/i.test(DOC.name || "")) { box.innerHTML = ""; return; }
+  box.innerHTML = buildChipsRow();
+}
+
+/* 右栏页签计数徽标：0 时清空（不显示「0」占位） */
+function tabCount(id, n) {
+  const el = document.getElementById(id);
+  if (el) el.textContent = n ? String(n) : "";
+}
+
+function renderInfo() {
+  const pane = $("#pane-info"); if (!pane || !DOC) return;
+  const rows = (DOC.info_rows || []).map(([k, v]) =>
+    `<div class="kv"><span class="k">${esc(k)}</span><span class="v">${esc(v)}</span></div>`).join("");
+  const editable = !DOC.is_html; // .md 可写；.html 美化版语料不可写 → 只读展示
+  const tags = (DOC.fm && Array.isArray(DOC.fm.tags)) ? DOC.fm.tags : [];
+  const tagChips = tags.length
+    ? tags.map(t => `<span class="tagchip" data-tag="${esc(t)}"><span class="tagchip-name">${esc(t)}</span>${editable ? `<button type="button" class="tagchip-x" title="移除标签「${esc(t)}」" aria-label="移除标签 ${esc(t)}" onclick="removeTag(this.parentElement)">${icon("cancel-x", 11)}</button>` : ""}</span>`).join("")
+    : (editable ? `<span class="tag-empty">还没有标签</span>` : `<span class="tag-empty">美化版不支持在线编辑标签</span>`);
+  pane.innerHTML =
+    `<div class="tag-edit${editable ? "" : " readonly"}">
+      <div class="tag-edit-h">${icon("tag-outline", 14)} 标签${tags.length ? `<span class="tag-edit-cnt">${tags.length}</span>` : ""}</div>
+      <div class="tag-chips" id="tag-chips">${tagChips}</div>
+      ${editable ? `<button type="button" class="tag-addbar" id="tag-add-btn" title="添加标签">${icon("plus-circle", 12)} 添加标签（逗号可批量）</button>` : ""}
+      <div class="tag-inputrow" id="tag-inputrow" hidden>
+        <input id="tag-in" placeholder="输入标签，逗号可批量，回车确认" maxlength="64" autocomplete="off">
+      </div>
+    </div>
+    <div class="rp-card">
+      <div class="rp-ch">${icon("info-circle", 14)} 元信息</div>
+      ${rows}
+    </div>`;
+  tabCount("rt-n-tags", tags.length);
+  const addBtn = pane.querySelector("#tag-add-btn");
+  const row = pane.querySelector("#tag-inputrow");
+  const input = pane.querySelector("#tag-in");
+  if (addBtn && row && input) {
+    addBtn.addEventListener("click", () => { row.hidden = !row.hidden; if (!row.hidden) { if (window.TagSuggest) TagSuggest.ensureIndex(); requestAnimationFrame(() => input.focus()); } });
+    /* 懒绑定（不在此处直接 bind）：renderInfo 由 app.js 启动块同步调用，
+       那一刻 tag-suggest.js（defer 顺序在 app.js 之后）尚未执行，
+       window.TagSuggest 还是 undefined，直接 bind 会被静默跳过，
+       导致右栏输入框永远弹不出补全（实测坑）。改为首次 focus 时绑定。 */
+    input.addEventListener("focus", function bindOnce() {
+      input.removeEventListener("focus", bindOnce);
+      if (window.TagSuggest) { TagSuggest.ensureIndex(); TagSuggest.bind(input); }
+    });
+    input.onkeydown = e => {
+      if (window.TagSuggest && TagSuggest.handleKey(input, e)) { e.preventDefault(); return; } // 浮层已消费（↑↓/Enter填充/Esc关浮层）
+      if (e.key === "Enter") { e.preventDefault(); const raw = input.value.trim(); if (raw) addTagsFromRaw(raw); input.value = ""; }
+      else if (e.key === "Escape") { row.hidden = true; }
+    };
+  }
+}
+
+/* 标签补全：原 datalist 方案已弃用（原生下拉外观不可定制、与主题割裂），
+   改由 static/pages/tag-suggest.js 的自绘浮层承担（window.TagSuggest，
+   复用 [[ 双链补全 .wl-suggest 的视觉 token）。数据源不变：
+   /api/globalstats top_tags，从录入端杜绝「C#/C#C#」式分叉。 */
+
+/* ---------- 标签编辑（需求 #2）：走 /api/tags，服务端行级手术写回 ---------- */
+function addTagsFromRaw(raw) {
+  // 逗号 / 中文逗号 / 分号分隔批量输入；单枚去空白
+  const tags = raw.split(/[,，;；]/).map(s => s.trim()).filter(Boolean);
+  if (!tags.length) return;
+  apiTags({ op: "add", tags });
+}
+
+function removeTag(chipEl) {
+  const t = chipEl && chipEl.dataset.tag;
+  if (!t) return;
+  apiTags({ op: "remove", tags: [t] });
+}
+
+async function apiTags(payload) {
+  if (!DOC) return;
+  try {
+    const r = await fetch("/api/tags", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ path: DOC.rel, ...payload })
+    });
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok || !data.ok) throw new Error(data.error || ("HTTP " + r.status));
+    DOC.fm.tags = data.tags || [];
+    renderInfo();
+    renderChipsRow();          // 正文头部 chips 同步
+    // 左列表徽标同步：列表数据来自 findSub(domain, sub).docs（含每篇的 tags 快照）
+    if (CUR) {
+      const s2 = findSub(CUR.domain, CUR.sub);
+      if (s2) {
+        const hit = (s2.docs || []).find(d => d.name === DOC.name);
+        if (hit) hit.tags = data.tags || [];
+        renderDocList(s2.docs, s2.label, CUR.name);
+      }
+    }
+    toast(data.tags.length ? `标签已保存（${data.tags.length} 枚）` : "标签已清空");
+  } catch (e) {
+    toast("标签保存失败：" + e.message);
+  }
+}
+
+/* Story 4（2026-09-20 头部瘦身后）：crumb 标签行只留标签本体 + 就地编辑入口；
+   来源/路径/收录日期 chips 随头部瘦身撤销。无标签时不显示占位（用户要求：
+   没标签就别显示）。标签 chip 就地可编辑：× 删除复用现有 removeTag（按钮自带
+   data-tag），+ 展开就地输入框回车添加；html 美化版语料不可写，保持只读。 */
+function buildChipsRow() {
+  const editable = !DOC.is_html;
+  const tags = (DOC.fm && Array.isArray(DOC.fm.tags)) ? DOC.fm.tags : [];
+  const tagChips = tags.map(t => `<span class="chip acc tag-chip">${esc(t)}${editable
+    ? `<button type="button" class="chip-x" data-tag="${esc(t)}" title="移除标签「${esc(t)}」" aria-label="移除标签 ${esc(t)}" onclick="removeTag(this)">${icon("cancel-x", 9)}</button>`
+    : ""}</span>`).join("");
+  return [
+    tagChips,
+    editable ? `<button type="button" class="chips-add" onclick="chipsAddToggle()" title="添加标签">＋ 标签</button>` : "",
+  ].filter(Boolean).join("");
+}
+
+function renderChipsRow() {
+  const el = document.querySelector("#crumb-tags"); if (!el || !DOC) return;
+  el.innerHTML = buildChipsRow();
+}
+
+/* Story 4：头部「+ 标签」→ 就地展开输入框，标签补全走 TagSuggest 浮层
+   （datalist 已弃用），回车批量添加走现有 addTagsFromRaw → /api/tags；
+   浮层未消费的 Esc/空失焦收起。 */
+function chipsAddToggle() {
+  const row = document.querySelector("#crumb-tags"); if (!row || !DOC) return;
+  const existed = row.querySelector(".chips-in");
+  if (existed) { existed.remove(); return; } // 再点 + 收起
+  if (window.TagSuggest) TagSuggest.ensureIndex();
+  const input = document.createElement("input");
+  input.className = "chips-in";
+  input.maxLength = 64;
+  input.placeholder = "标签，逗号分隔，回车添加";
+  input.setAttribute("autocomplete", "off");
+  input.setAttribute("aria-label", "添加标签");
+  row.appendChild(input);
+  if (window.TagSuggest) TagSuggest.bind(input);
+  input.focus();
+  input.addEventListener("keydown", e => {
+    if (window.TagSuggest && TagSuggest.handleKey(input, e)) { e.preventDefault(); return; } // 浮层已消费
+    if (e.key === "Enter") {
+      e.preventDefault();
+      const raw = input.value.trim();
+      input.remove();
+      if (raw) addTagsFromRaw(raw); // 成功后 apiTags 会调 renderChipsRow 重建整行
+    } else if (e.key === "Escape") {
+      input.remove();
+    }
+  });
+  input.addEventListener("blur", () => { if (!input.value.trim()) input.remove(); });
+}
+
+/* 需求 #2 补充：编辑标签入口在右上角 crumb 按钮组（收藏旁），点开右栏「信息·标签」页。
+   focus 必须 rAF 延后一帧：pane 刚从 display:none 切可见时同帧 focus() 会被
+   Chrome 静默忽略（布局未完成）——原 datalist 时代无感，浮层化后 focus 失败
+   = 补全不弹，显性化了。 */
+function jumpToTagEdit() {
+  const infoTab = document.querySelector('.rtab[data-pane="info"]');
+  if (infoTab) tab("info", infoTab);
+  const row = $("#tag-inputrow");
+  if (row && row.hidden) { const b = $("#tag-add-btn"); if (b) b.click(); }
+  else { const input = $("#tag-in"); if (input) requestAnimationFrame(() => input.focus()); }
+}
+window.jumpToTagEdit = jumpToTagEdit;
+
+function renderNotes() {
+  const pane = $("#pane-notes"); if (!pane || !DOC) return;
+  const notes = DOC.notes || [];
+  pane.innerHTML = `<div class="notes-flow">` + (notes.map(n =>
+    `<div class="note-item"><div class="note-when"><span class="dt">${esc(n.when)}</span></div><p>${esc(n.text)}</p></div>`).join("")
+    || `<div class="note-empty">还没有批注。读到值得记一笔的地方，写在下面。</div>`)
+    + `</div><div class="note-input"><input id="ni" placeholder="追加批注，回车保存…" aria-label="追加批注"><button onclick="addNote()">${icon("plus-circle", 12)} 记录</button></div>`;
+  tabCount("rt-n-notes", notes.length);
+  const ni = $("#ni"); if (ni) ni.onkeydown = e => { if (e.key === "Enter") addNote(); };
+}
+
+/* ---------- 客户端路由（仅阅读页；其他页面走普通跳转） ---------- */
+const WORKBENCH = !!document.getElementById("article");
+let ED_LAST_HREF = location.pathname + location.search; // 最近一次成功导航的地址（dirty guard 中止 popstate 时恢复地址栏用）
+
+async function navigate(url, push) {
+  if (!WORKBENCH) {
+    // 非阅读页（总览/搜索/收藏）：同类 URL 原地不动，避免 back 触发重复刷新
+    if (location.pathname + location.search !== url) location.href = url;
+    return;
+  }
+  // 问题1：导航前必须过 dirty guard；用户选「继续编辑」则中止本次导航。
+  // popstate（push=false）时地址栏已经变了，中止就把上一个成功地址推回去，保持地址与内容一致。
+  if (!(await tryCloseEditor())) {
+    if (!push) history.pushState({}, "", ED_LAST_HREF);
+    return;
+  }
+  ED_LAST_HREF = url;
+  const path = url.split("?")[0];
+  const segs = path.split("/").filter(Boolean).map(s => { try { return decodeURIComponent(s); } catch (e) { return s; } });
+  // /doc/<domain>/<sub>/<name...>
+  if (segs[0] === "doc" && segs.length >= 4) {
+    const domain = segs[1], sub = segs[2], name = segs.slice(3).join("/");
+    await loadTree();
+    if (push) history.pushState({}, "", url);
+    await openDoc(domain, sub, name);
+    return;
+  }
+  // /browse/<domain>/<sub> → 打开该子域第一篇
+  if (segs[0] === "browse" && segs.length === 3) {
+    await loadTree();
+    const s = findSub(decodeURIComponent(segs[1]), decodeURIComponent(segs[2]));
+    if (!s || !s.docs.length) { location.href = url; return; }
+    const first = s.docs[0];
+    // 问题8：原这里是局部 `const docUrl = …` 手工拼接（第三份 _root/encode 逻辑），
+    // 改名并统一走 KB.util.docUrl(rel) 单一实现。
+    const firstDocUrl = docUrl(`${segs[1]}/${segs[2]}/${first.name}.md`);
+    if (push) history.pushState({}, "", url);
+    await navigate(firstDocUrl, false);
+    return;
+  }
+  location.href = url; // 其余页面（总览/搜索/收藏）走整页加载
+}
+
+async function openDoc(domain, sub, name) {
+  CUR = { domain, sub, name };
+  const s = findSub(domain, sub);
+  if (s) renderDocList(s.docs, s.label, name);
+  renderTree();
+  /* 问题14：加载反馈——fetch 期间放骨架（3 行灰条）。本地通常 <50ms 无感知，
+     但磁盘冷读 / 索引重建时不能让正文区挂着一篇旧文档静默等待。 */
+  const artEl = $("#article");
+  if (artEl) artEl.innerHTML = `<div class="kb-skeleton" aria-busy="true" aria-label="文档加载中">
+    <i style="width:62%"></i><i style="width:93%"></i><i style="width:78%"></i></div>`;
+  const r = await fetch(`/api/doc?domain=${encodeURIComponent(domain)}&sub=${encodeURIComponent(sub)}&name=${encodeURIComponent(name)}`);
+  if (!r.ok) {
+    if (artEl) artEl.innerHTML = `<div class="a-kicker">无法打开</div><h1 class="a-title">${esc(name)}</h1>
+      <div class="a-rule"></div><div class="a-body"><p>${r.status === 404 ? "文档不存在（可能已被删除或移动）。" : "加载失败 " + r.status + "。"}</p></div>`;
+    toast(r.status === 404 ? "文档不存在（可能已被删除）" : "加载失败 " + r.status);
+    // 第三轮 #10：404 = 树缓存陈旧（文档已删/已移）→ 失效重拉树自愈，右侧列表同步消失
+    if (r.status === 404) { invalidate("tree"); await loadTree(); renderTree();
+      if (CUR) { const s2 = findSub(CUR.domain, CUR.sub); if (s2) renderDocList(s2.docs, s2.label, null); } }
+    // bug 修复：404 也必须重建 crumb 按钮——此前 crumb 停在上一态（可能是“已删除”纯文本），
+    // 用户看到的就是「编辑/删除/收藏按钮全消失」
+    setDoc(null);
+    renderCrumb();
+    updateStatusBarPath();
+    return;
+  }
+  const data = await r.json();
+  setDoc(data.doc);
+  DOC.info_rows = data.info_rows || []; // /api/doc 把 info_rows 放在 doc 同级，不接上则元信息卡空白
+  try { localStorage.setItem("kb-last-doc", ED_LAST_HREF || location.pathname + location.search); } catch (e) {}
+  MD_SRC_ON = false;   // 换文档重置视图偏好（避免上一篇的 Markdown 源状态带过来）
+  updateStatusBarPath();
+  // 编辑态残留防护：openDoc 必须从干净阅读态开始（删除文档后再开新文档时，
+  // 编辑器/class 残留会让新文档的 crumb 按钮“消失”或编辑态错乱）
+  const ed = $("#editor"); if (ed) ed.classList.remove("show");
+  const artEl2 = $("#article"); if (artEl2) artEl2.style.display = "";
+  ED_OPEN = false;
+  renderArticle();
+  /* 「选词问 AI」整条链路在轮次 54 按用户要求下线（正文渲染完不再通知任何组件）。 */
+  renderCrumb();
+  renderInfo();
+  renderNotes();
+  setTrackingDoc(DOC.rel);
+  linksLoadedFor = null;
+  if (document.querySelector("#pane-links.active")) loadLinks(); // 停在双链标签时跟随切换
+  else if (window.requestIdleCallback) requestIdleCallback(() => loadLinks()); // 空闲预取：填页签计数徽标
+  const art = document.querySelector(".article"); if (art) art.scrollTop = 0;
+  resetReadProgress(); // C1：新文档渲染前进度归零（restoreReadPos 回跳时 scroll 事件自然续上）
+  restoreReadPos();
+}
+
+/* ---------- 快赢：阅读位置记忆 ----------
+   per-doc scrollTop 存 localStorage['kb-readpos']；进入文档恢复，滚动防抖写入。 */
+const READPOS_LS = "kb-readpos";
+let readposTimer = null;
+function readposLoad(rel) {
+  try { return (JSON.parse(localStorage.getItem(READPOS_LS) || "{}")[rel]) | 0; } catch (e) { return 0; }
+}
+function readposSave(rel, top) {
+  try {
+    const all = JSON.parse(localStorage.getItem(READPOS_LS) || "{}");
+    all[rel] = Math.round(top);
+    const keys = Object.keys(all);
+    if (keys.length > 500) delete all[keys[0]]; // 控制体积：只保留最近 500 篇
+    localStorage.setItem(READPOS_LS, JSON.stringify(all));
+  } catch (e) {}
+}
+function wireReadPos() {
+  const art = document.querySelector(".article");
+  if (!art) return;
+  art.addEventListener("scroll", () => {
+    if (!DOC) return;
+    clearTimeout(readposTimer);
+    readposTimer = setTimeout(() => readposSave(DOC.rel, art.scrollTop), 400);
+  }, { passive: true });
+}
+wireReadPos();
+/* ---------- C1：阅读进度条接线（--kb-read-pct，进度条伪元素在 .article-wrap 顶部边框） ----------
+   passive + rAF 节流（不每帧强制重排）；reset 与 navigate 的 scrollTop=0 同帧。
+   变量写在外壳 .article-wrap 上：进度条伪元素挂在外壳顶部边框（不随滚动），
+   而 custom property 只沿 DOM 向下继承，写在滚动容器 .article 上外壳拿不到。 */
+let readPctRaf = 0;
+function readPctHost() {
+  const art = document.querySelector(".article");
+  return art ? (art.closest(".article-wrap") || art.parentElement || art) : null;
+}
+function wireReadProgress() {
+  const art = document.querySelector(".article");
+  const host = readPctHost();
+  if (!art || !host || host.dataset.kbReadPct === "1") return;
+  host.dataset.kbReadPct = "1";
+  art.addEventListener("scroll", () => {
+    if (readPctRaf) return;
+    readPctRaf = requestAnimationFrame(() => {
+      readPctRaf = 0;
+      const max = art.scrollHeight - art.clientHeight;
+      const pct = max > 40 ? Math.min(100, Math.max(0, (art.scrollTop / max) * 100)) : 0;
+      host.style.setProperty("--kb-read-pct", pct.toFixed(2) + "%");
+    });
+  }, { passive: true });
+}
+wireReadProgress();
+function resetReadProgress() {
+  const host = readPctHost();
+  if (host) host.style.setProperty("--kb-read-pct", "0%");
+}
+function restoreReadPos() {
+  const art = document.querySelector(".article");
+  if (!art || !DOC) return;
+  const saved = readposLoad(DOC.rel);
+  if (saved > 40) { art.scrollTop = saved; toast("已回到上次阅读位置"); }
+}
+
+/* 点击拦截：阅读页内站内文档/分类链接走客户端路由，不再整页刷新。
+   注意：二级/三级目录的纯前端展开收起必须在本监听器内先处理并 return，
+   否则「先注册先执行」的导航拦截会把点击当成路由跳转（用户要求：不跳转）。 */
+document.addEventListener("click", e => {
+  if (!WORKBENCH) return;
+  if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+
+  /* ① 二级/三级目录：原地展开/收起（在导航拦截之前处理） */
+  const treeEl = document.getElementById("tree");
+  if (treeEl && treeEl.contains(e.target)) {
+    const sdHead = e.target.closest(".tree-subdir-h");
+    if (sdHead) {
+      e.preventDefault(); e.stopPropagation();
+      treeSelectNode(sdHead);   // 记录选中，供 ←/→ 使用
+      const box = sdHead.closest(".tree-subdir");
+      const key = box && box.dataset.dirKey;
+      if (key) {
+        const collapsed = box.classList.toggle("collapsed");
+        sdHead.setAttribute("aria-expanded", collapsed ? "false" : "true");
+        setDirCollapsed(key, collapsed);
+      }
+      return;
+    }
+    const subA = e.target.closest(".sub");
+    if (subA) {
+      const docsBox = subA.nextElementSibling;
+      if (docsBox && docsBox.classList.contains("sub-docs")) {
+        e.preventDefault(); e.stopPropagation();   // 只做展开/收起，绝不导航
+        treeSelectNode(subA);   // 记录选中，供 ←/→ 使用
+        const key = subA.dataset.subKey || `${subA.dataset.dom}/${subA.dataset.sub}`;
+        const collapsed = docsBox.classList.toggle("collapsed");
+        const nowOpen = !collapsed;
+        subA.classList.toggle("collapsed", collapsed);
+        subA.setAttribute("aria-expanded", nowOpen ? "true" : "false");
+        setSubOpen(key, nowOpen);
+        return;
+      }
+    }
+    /* 一级域头：记录选中（←/→ 可收起/展开该域）。
+       注意：一级点击会走导航 → 整树重渲染，旧节点引用会失效；
+       故只记 key，由 renderTree 结束后的 rebindTreeSel() 重新定位新节点。 */
+    const domHeadEl = e.target.closest(".dom-head");
+    if (domHeadEl) { TREE_SEL_KEY = "dom:" + (domHeadEl.closest(".dom") || {}).dataset?.dom; }
+    /* 文档项：不参与 ←/→ 层级操作，清掉树选中态避免误操作 */
+    if (e.target.closest(".doc")) { TREE_SEL_KEY = null; treeSelectNode(null); }
+  }
+
+  const a = e.target.closest("a");
+  if (!a || a.target === "_blank" || a.hasAttribute("download")) return;
+  const href = a.getAttribute("href");
+  if (!href || !/^\/(doc|browse)\//.test(href)) return;
+  e.preventDefault();
+  navigate(href, true);
+});
+
+window.addEventListener("popstate", () => {
+  if (!WORKBENCH) return;
+  // #锚点点击也会触发 popstate：path+search 未变时不重渲染，只兑现滚动位置
+  const now = location.pathname + location.search;
+  if (now === ED_LAST_HREF || now === location.pathname + location.search && ED_LAST_HREF && ED_LAST_HREF.split("#")[0] === now) { scrollToHash(); return; }
+  navigate(location.pathname + location.search, false);
+});
+
+/* ---------- 编辑 ---------- */
+/* frontmatter 原文：openEditor 曾直接用 JSON.stringify 重建 fm，
+   会把 `tags: [AI资产, 越狱词]` 写成 `tags: ["AI资产","越狱词"]` —— 用户「打开即保存」
+   什么都没改也会把 content/ 弄脏。这里改为从 /raw/<rel> 取回原始 frontmatter 块原样填入。
+   缓存键是 DOC.rel，换文档自动失效。 */
+let FM_RAW = null;      // "---\n…\n---\n"；无 frontmatter 时为 ""；取不到时为 null
+let FM_RAW_REL = "";
+let ED_INITIAL_HEAD = "";  // 打开编辑器时填入的 frontmatter 区块，保存前用来判断用户动没动过
+/* 问题1 修复（dirty guard）：语料是唯一事实源，编辑中途按 Esc / 点树 / 路由跳转
+   曾经把未保存内容静默丢弃。ED_SNAPSHOT 记录打开瞬间的全文，tryCloseEditor() 是唯一
+   关闭入口：无差异直接关，有差异弹三键弹窗（保存并关闭 / 丢弃修改 / 继续编辑）。
+   Escape、navigate、popstate、编辑器「取消」按钮全部改走该入口。 */
+let ED_OPEN = false;
+let ED_SNAPSHOT = "";
+let UC_OPEN = false; // confirmUnsavedChanges 在展示中：防重入（连按 Esc / 弹窗期间又点树）
+
+async function fetchFmRaw() {
+  if (!DOC || !DOC.rel) return null;
+  if (FM_RAW_REL === DOC.rel && FM_RAW !== null) return FM_RAW;
+  try {
+    const r = await fetch(rawUrl(DOC.rel));
+    if (!r.ok) return null;
+    const txt = await r.text();
+    const m = txt.match(/^\uFEFF?---[ \t]*\r?\n[\s\S]*?\r?\n---[ \t]*(?:\r?\n|$)/);
+    FM_RAW = m ? m[0] : "";
+    FM_RAW_REL = DOC.rel;
+    return FM_RAW;
+  } catch (e) {
+    return null;
+  }
+}
+
+/* 兜底序列化：只有 /raw 取不到原文时才用，尽量贴近语料常见的无引号列表风格 */
+function fmSerialize(fm) {
+  const one = (v) => {
+    if (v === true || v === false) return String(v);
+    if (Array.isArray(v)) return "[" + v.join(", ") + "]";
+    const s = String(v);
+    return /^[A-Za-z0-9_.\-\u4e00-\u9fa5][A-Za-z0-9_ .\-\u4e00-\u9fa5]*$/.test(s) ? s : JSON.stringify(s);
+  };
+  return "---\n" + Object.entries(fm || {}).map(([k, v]) => `${k}: ${one(v)}`).join("\n") + "\n---\n";
+}
+
+async function openEditor() {
+  if (!DOC || DOC.is_html) return;
+  // 需求 #12：书库格式（txt/pdf/xlsx/epub）不进 Markdown 编辑器
+  if (/\.(txt|pdf|xlsx|epub|mobi)$/i.test(DOC.name || "")) { toast("书库文件不支持在线编辑，请下载后用本地应用处理"); return; }
+  $("#article").style.display = "none";
+  $("#editor").classList.add("show");
+  const hint = $("#ed-hint");
+  if (hint) hint.style.display = ""; // frontmatter 引导：这是编辑页顶部空白区的用途说明
+  $("#ed-path").textContent = DOC.rel;
+  const raw = await fetchFmRaw();
+  const head = raw != null ? raw : fmSerialize(DOC.fm);
+  $("#ed-text").value = (raw ? raw + "\n" : head + "\n") + DOC.md;
+  ED_INITIAL_HEAD = head;   // 保存前用来判断用户有没有动过 frontmatter
+  ED_OPEN = true;
+  ED_SNAPSHOT = $("#ed-text").value; // dirty guard 基准快照
+  /* Story 2：CodeMirror 接管输入载体。attach 内部会 loadIntoCM(ta.value)
+     并把内容实时同步回 ta.value —— 上面刚设好的 value/ED_SNAPSHOT 契约不变。
+     bundle 未加载时 attach 静默返回，回落裸 textarea。 */
+  if (window.KBED) KBED.attach(); else $("#ed-text").focus();
+  toast("编辑态 · 保存即写回文件系统，git 记录本次变更");
+}
+function editorIsOpen() {
+  const ed = $("#editor");
+  return !!ed && ed.classList.contains("show");
+}
+function closeEditor() {
+  const ed = $("#editor"); if (!ed) return;
+  const hint = $("#ed-hint");
+  if (hint) hint.style.display = "none";
+  ed.classList.remove("show");
+  $("#article").style.display = "";
+  ED_OPEN = false;
+  // Story 2：退出编辑态前把 CM 最终内容落回 ta.value 并隐藏 CM
+  if (window.KBED) KBED.detach();
+}
+/* 未保存确认弹窗：kbModal 只有两键，按其视觉规范做三键弹层（问题11 前例）。
+   resolve "save" | "discard" | null（继续编辑 / Esc / 遮罩）。问题13：走 KB.overlay 原语。 */
+function confirmUnsavedChanges() {
+  return new Promise(resolve => {
+    UC_OPEN = true;
+    const ov = KB.overlay.open({
+      html: `<div class="kbm" role="document">
+      <div class="kbm-title">${icon("warn", 16)} 编辑器有未保存的修改<span class="spacer" style="flex:1"></span><button class="iconbtn uc-x" title="关闭（Esc）" aria-label="关闭">${icon("cancel-x", 14)}</button></div>
+      <div class="kbm-body">关闭会丢失未写回的修改。先保存，还是直接丢弃？</div>
+      <div class="kbm-btns">
+        <button class="iconbtn uc-keep">继续编辑</button>
+        <button class="iconbtn danger uc-discard">丢弃修改</button>
+        <button class="iconbtn primary uc-save">保存并关闭</button>
+      </div></div>`,
+      onClose: () => { UC_OPEN = false; resolve(null); },
+      initialFocus: root => root.querySelector(".uc-keep"),
+    });
+    let settled = false;
+    const done = v => { if (settled) return; settled = true; resolve(v); ov.close("btn"); };
+    ov.root.querySelector(".uc-keep").onclick = () => done(null);
+    ov.root.querySelector(".uc-x").onclick = () => done(null);
+    ov.root.querySelector(".uc-discard").onclick = () => done("discard");
+    ov.root.querySelector(".uc-save").onclick = () => done("save");
+    
+  });
+}
+/* 唯一的「关编辑器」入口：无改动直接关；有改动先问。返回 true = 编辑器已可关闭。 */
+async function tryCloseEditor() {
+  if (UC_OPEN) return false; // 确认弹窗已在展示：不叠加第二个，调用方中止
+  if (!editorIsOpen()) return true;
+  const ta = $("#ed-text");
+  if (!ta || ta.value === ED_SNAPSHOT) { closeEditor(); return true; }
+  const act = await confirmUnsavedChanges();
+  if (act === "discard") { closeEditor(); return true; }
+  if (act === "save") {
+    const ok = await saveDoc();
+    if (ok) closeEditor(); // saveDoc 内部不再自行关闭，dirty 状态由快照刷新清除
+    return !!ok;
+  }
+  return false; // 继续编辑：调用方（navigate 等）必须中止
+}
+async function saveDoc() {
+  let text = $("#ed-text").value;
+  /* 安全网：若用户没动过 frontmatter 区块，落盘前还原成语料原文区块，
+     杜绝任何序列化差异（引号、顺序、空行）污染 content/。
+     比对前两侧都归一到 LF：FM_RAW 来自 /raw（CRLF 语料含 \r），
+     textarea 值永远是 LF——不归一则 head === ED_INITIAL_HEAD 永假，
+     安全网沦为死逻辑（残留 2，2026-09-13 修复）。还原时用 FM_RAW 原文
+     （含 \r），与语料字节保真一致。 */
+  if (FM_RAW && ED_INITIAL_HEAD) {
+    const m = text.match(/^\uFEFF?---[ \t]*\r?\n[\s\S]*?\r?\n---[ \t]*(?:\r?\n|$)/);
+    const head = m ? m[0] : "";
+    const lf = (s) => s.replace(/\r\n/g, "\n");
+    if (head && lf(head) === lf(ED_INITIAL_HEAD) && lf(head) !== lf(FM_RAW)) text = FM_RAW + text.slice(head.length);
+  }
+  const r = await fetch("/api/save", { method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ path: DOC.rel, content: text }) });
+  /* Story 3：失败路径取人话错误。后端正常时回 JSON {error}；若被反代/框架拦成
+     非 JSON（如 502 HTML），回退到截断纯文本，不让用户看到一坨标签。 */
+  if (!r.ok) {
+    let msg = "";
+    try {
+      const j = await r.json();
+      msg = (j && (j.error || j.detail)) || "";
+    } catch (e) {
+      msg = (await r.text().catch(() => "")).replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim().slice(0, 120);
+    }
+    toast(`保存失败：${msg || ("HTTP " + r.status)}`);
+    return false;
+  }
+  const saveRes = await r.json().catch(() => ({}));
+  /* 注意：JS 正则不支持 \A（那会被当成字面字母 A，导致永远匹配失败）——
+     曾因这里写成 \A，保存后本地 DOC.md 被错误地存成「含 frontmatter 的全文」，
+     下次打开编辑器就拼出双 frontmatter 落盘。JS 里文本开头用 ^（无 m 标志时）。 */
+  const fm = {}, m = text.match(/^---\n([\s\S]*?)\n---\n\n?/);
+  let body = text;
+  if (m) {
+    for (const line of m[1].split("\n")) {
+      const i = line.indexOf(":");
+      if (i > 0) {
+        const k = line.slice(0, i).trim(), v = line.slice(i + 1).trim();
+        fm[k] = v === "true" ? true : (v.startsWith("[") ? v.slice(1, -1).split(",").map(x => x.trim().replace(/^"|"$/g, "")).filter(Boolean) : v.replace(/^"|"$/g, ""));
+      }
+    }
+    body = text.slice(m[0].length);
+  }
+  DOC.fm = fm; DOC.md = body; DOC.title = fm.title || DOC.title;
+  const sd = findSub(CUR.domain, CUR.sub);
+  const td = sd && sd.docs.find(x => x.name === DOC.name);
+  if (td) { td.title = DOC.title; persistTree(); }
+  linksLoadedFor = null;
+  invalidateWikilinkMap(); // B4：正文双链解析结果随保存失效
+  ED_SNAPSHOT = text; // dirty 基准同步（tryCloseEditor 不再弹「未保存」确认）
+  /* 需求 #9 / 图4 第五修：先退编辑器，再重渲染。
+     此前 closeEditor 排在 renderArticle/renderCrumb 之后——四次修复都加了退出逻辑，
+     但任一重渲染抛异常（frontmatter 手改坏、DOM 竞态）都会中断执行链，
+     编辑器永远收不回去，用户看到的就是「保存写回后还是编辑态」。
+     现在：先 closeEditor 保证视图必然还原，渲染包 try/catch 兜底刷新页面。 */
+  closeEditor();
+  try {
+    renderArticle(); renderCrumb(); renderInfo();
+  } catch (err) {
+    console.error("保存后重渲染失败，强制整页刷新兜底", err);
+    toast("已保存，但视图刷新异常，正在刷新页面…");
+    setTimeout(() => location.reload(), 600);
+    return true;
+  }
+  /* Story 3：成功反馈明确区分「frontmatter 如何处理」，让用户不必再开 git diff
+     确认身世元数据没被改坏。三种状态由 /api/save 的 fm_status 回报。 */
+  const fmNote = {
+    preserved: "frontmatter 完好",
+    recovered: "frontmatter 已找回",
+    stamped: "已补 frontmatter",
+  }[saveRes.fm_status] || "frontmatter 完好";
+  toast(`已写回 <span class="mono">${esc(DOC.rel)}</span> · ${fmNote} · 索引已更新`);
+  return true;
+}const edText = $("#ed-text");
+if (edText) edText.onkeydown = e => {
+  if ((e.ctrlKey || e.metaKey) && e.key === "s") { e.preventDefault(); saveDoc(); }
+};
+
+/* ---------- 备注 ---------- */
+async function addNote() {
+  const i = $("#ni"); const text = i.value.trim(); if (!text) return;
+  const btn = i.closest(".note-input").querySelector("button"); // 问题14：pending 防连点
+  if (btn) btn.disabled = true;
+  try {
+    const r = await fetch("/api/note", { method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ path: DOC.rel, text }) });
+    if (!r.ok) { toast("备注失败"); return; }
+    const data = await r.json(); i.value = "";
+    DOC.notes = data.notes;
+    renderNotes();
+    toast("备注已写入旁挂 <span class='mono'>.notes.md</span>");
+  } finally { if (btn) btn.disabled = false; }
+}
+
+/* ---------- 已读完 / 已掌握（文档级标记，存 indexes/reading.db 的 doc_marks，不写语料） ---------- */
+function renderDocMark(m) {
+  const rb = document.getElementById("mark-read-btn");
+  const mb = document.getElementById("mark-mastered-btn");
+  if (!rb || !mb) return;
+  rb.classList.toggle("mark-on", !!m.read);
+  rb.textContent = m.read ? "✓ 已读完" : "已读完";
+  mb.classList.toggle("mark-on", !!m.mastered);
+  mb.textContent = m.mastered ? "✓ 已掌握" : "已掌握";
+}
+function refreshDocMark() {
+  if (!DOC || !DOC.rel) return;
+  fetch("/api/docmark?path=" + encodeURIComponent(DOC.rel))
+    .then(r => r.json())
+    .then(j => { if (j.ok) renderDocMark(j); })
+    .catch(() => {});
+}
+async function toggleDocMark(kind) {
+  if (!DOC || !DOC.rel) return;
+  const btn = document.getElementById(kind === "read" ? "mark-read-btn" : "mark-mastered-btn");
+  const cur = btn.classList.contains("mark-on");
+  btn.disabled = true; // 问题14：pending 防连点（连点会把 on/off 序列打到后端）
+  let r;
+  try {
+    r = await fetch("/api/docmark", { method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ path: DOC.rel, mark: kind, on: !cur }) });
+  } finally { btn.disabled = false; }
+  if (!r.ok) { toast("标记失败：" + (await r.text()).slice(0, 100)); return; }
+  const j = await r.json();
+  renderDocMark(j);
+  toast(kind === "mastered"
+    ? (j.mastered ? "已标记掌握 —— 术语门户会显示为已掌握" : "已取消掌握标记")
+    : (j.read ? "已标记读完" : "已取消读完（掌握标记一并取消）"));
+}
+
+/* ---------- 收藏 ---------- */
+async function toggleFav() {
+  const b = $("#fav-btn");
+  if (b) b.disabled = true; // 问题14：pending 防连点
+  let r;
+  try {
+    r = await fetch("/api/favorite", { method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ path: DOC.rel }) });
+  } finally { if (b) b.disabled = false; }
+  if (!r.ok) { toast("操作失败"); return; }
+  const data = await r.json();
+  DOC.favorite = data.favorite;
+  b.innerHTML = `${icon("star",13)} ${data.favorite ? "已收藏" : "收藏"}`;
+  b.classList.toggle("faved", data.favorite);
+  // 同步树缓存里的收藏标记，收藏页/列表星星即时一致
+  const s = findSub(DOC.domain, DOC.sub);
+  const td = s && s.docs.find(x => x.name === DOC.name);
+  if (td) { td.favorite = data.favorite; persistTree(); }
+  toast(data.favorite ? "已收藏 · favorite: true 写入 frontmatter" : "已取消收藏");
+}
+
+/* ---------- 树缓存持久化（增删改后即时同步） ---------- */
+function persistTree() {
+  /* 问题10：废除 sig:"(本地已改)" 假标记——它从不参与任何校验（loadTree 只看
+     domains 数组），留着只会让人误以为有 sig 机制。 */
+  try { localStorage.setItem(LS_TREE, JSON.stringify({ domains: TREE })); } catch (e) {}
+}
+/* 缓存失效唯一入口（问题10）：kind ∈ tree | dirtree | palette | links | all。
+   TREE/LS_TREE/DIRTREE 的作废只允许走这里；palette 缓存在 kb-core 手里，
+   经 KB.palette.dropCache 接线。B4：正文双链映射（/api/links 派生）同属派生缓存，
+   写操作后随 links/all 一起作废。 */
+function invalidate(kind) {
+  kind = kind || "all";
+  if (kind === "all" || kind === "tree") {
+    TREE = null;
+    try { localStorage.removeItem(LS_TREE); } catch (e) {}
+  }
+  if (kind === "all" || kind === "dirtree") { DIRTREE = null; DIRTREE_T = 0; }
+  if (kind === "all" || kind === "palette") {
+    if (window.KB && KB.palette && KB.palette.dropCache) KB.palette.dropCache();
+  }
+  if (kind === "all" || kind === "links") invalidateWikilinkMap();
+}
+window.invalidate = invalidate; // 统一失效入口（pages/*.js 可用；invalidateCaches 别名在 misc 切换后已删除）
+/* 写操作（移动/重命名/新建/删除等）后的统一局部重渲染（问题9）：
+   缓存失效 → 重拉 /api/tree → 重画分类树 + 当前子域列表；当前文档自身被移动时
+   由调用方再走 navigate(docUrl(dst)) 客户端跳转。禁止 setTimeout + location.reload——
+   此前 6 处 reload 把 toast 随页面一起销毁，900–1600ms 假死还丢反馈。
+   非工作台页（inbox/tags）各自有数据源，只需 invalidate("all") 后做局部 DOM 更新。 */
+async function afterMutation() {
+  invalidate("all");
+  await loadTree();
+  renderTree();
+  if (WORKBENCH && CUR) {
+    const s = findSub(CUR.domain, CUR.sub);
+    if (s) renderDocList(s.docs, s.label, DOC && DOC.name);
+  }
+}
+window.afterMutation = afterMutation;
+
+/* ---------- 删除（软删除：移入 _trash，kbModal 统一确认，问题11） ---------- */
+let undoDelete = null; // 快赢：删除可撤销 —— toast 撤销按钮触发的反向 move 闭包
+async function deleteDoc() {
+  if (!DOC || DOC.is_html) return;
+  const rel = DOC.rel, deletedTitle = DOC.title;
+  const c = await kbModal({
+    title: icon("trash", 16) + " 删除这篇文档？",
+    body: `《<b>${esc(deletedTitle)}</b>》及其旁挂美化版 / 备注将整体移入 <span class="mono">content/_trash/</span>（软删除，可找回；git 历史是第二重保险）。`,
+    danger: true, confirmText: "移入回收站", cancelText: "取消",
+  });
+  if (!c) return;
+  // 问题2：悲观更新——先等 /api/delete 落盘，成功后才动 UI 与树缓存；失败保持原状。
+  const delBtns = [...document.querySelectorAll("#crumb .iconbtn, #crumb .seg-btn, #ed-del")].filter(b => b.textContent.includes("删除") || b.id === "ed-del");
+  delBtns.forEach(b => { b.disabled = true; });
+  let r;
+  try {
+    r = await fetch("/api/delete", { method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ path: rel }) });
+  } catch (e) {
+    toast("删除请求失败（网络异常），文件未变动");
+    return;
+  } finally {
+    delBtns.forEach(b => { b.disabled = false; });
+  }
+  if (!r.ok) {
+    let err = ""; try { err = (await r.json()).error || ""; } catch (e) {}
+    toast("服务端删除失败" + (err ? "：" + err : "") + "（文件仍在 " + esc(rel) + "，可重试）");
+    return;
+  }
+  const s = findSub(DOC.domain, DOC.sub);
+  if (s) {
+    s.docs = s.docs.filter(x => x.name !== DOC.name);
+    s.n = s.docs.length;
+    const d = TREE.find(x => x.id === DOC.domain);
+    if (d) d.n = d.subs.reduce((a, x) => a + x.n, 0);
+    persistTree();
+    renderTree();
+    renderDocList(s.docs, s.label, null);
+  }
+  closeEditor(); // 删除已确认，编辑器（若开着）随文档一并作废
+  setDoc(null);
+  $("#article").innerHTML = `<div class="a-kicker">已删除</div>
+    <h1 class="a-title">文档已移入回收站</h1>
+    <div class="a-rule"></div>
+    <div class="a-body"><p>《${esc(deletedTitle)}》及其美化版、备注已一起移入 <code>content/_trash/</code>，git 历史亦可找回。</p>
+    <p>从左侧选择其他文档继续阅读。</p></div>`;
+  { const _c = $("#crumb"); if (_c) _c.innerHTML = `<b>已删除</b><span class="sep">·</span>${esc(deletedTitle)}`; }
+  // 快赢：删除可撤销 —— 5 秒内 toast 内点「撤销」反向 move 回原路径
+  const trashRel = rel.replace(/^content\//, "");
+  const undo = async () => {
+    const r2 = await fetch("/api/move", { method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ src: trashRel, dst: rel }) });
+    if (r2.ok) {
+      toast("已撤销删除，文档已放回原位");
+      invalidate("tree"); await loadTree(); renderTree();
+    } else {
+      toast("撤销失败：文件仍在回收站，可手动移回");
+    }
+  };
+  undoDelete = undo; // 存到模块级变量，toast 按钮触发（toast 是 innerHTML 注入，无法直接闭包）
+  toast(`已移入回收站 · <button type="button" class="undo-del" onclick="undoDelete()" style="background:none;border:1px solid var(--c-line);color:var(--c-acc);border-radius:6px;padding:2px 10px;margin-left:6px;cursor:pointer;font-size:12px">撤销</button>`, 6000);
+}
+
+/* ---------- 双链面板（懒加载） ---------- */
+let linksLoadedFor = null;
+function loadLinks() {
+  const pane = $("#pane-links"); if (!pane) return;
+  if (!DOC || DOC.is_html) { pane.innerHTML = `<div class="lk-empty">HTML 文档暂无双链解析。</div>`; tabCount("rt-n-links", 0); return; }
+  if (linksLoadedFor === DOC.rel) return;
+  linksLoadedFor = DOC.rel;
+  pane.innerHTML = `<div class="lk-empty">解析中…</div>`;
+  fetch("/api/links?path=" + encodeURIComponent(DOC.rel))
+    .then(r => r.json())
+    .then(d => {
+      const live = d.outgoing.filter(x => x.resolved);
+      const dead = d.outgoing.filter(x => !x.resolved);
+      const pad = i => String(i + 1).padStart(2, "0");
+      const row = (x, i, dir) =>
+        `<a class="lk-row ${dir}" href="${docUrl(x.path)}"><span class="no">${pad(i)}</span><div class="tt"><div class="t1">${esc(x.title)}</div><div class="p">${esc(x.path)}</div></div></a>`;
+      const back = d.incoming.map((x, i) => row(x, i, "in")).join("");
+      const fwd = live.map((x, i) => row(x, i, "out")).join("") + dead.map(x =>
+        `<div class="lk-row dead"><span class="no">✕</span><div class="tt"><div class="t1">${esc(x.raw)}</div><div class="p">[[${esc(x.raw)}]] · 语料中不存在</div></div><button type="button" class="fix" data-raw="${esc(x.raw)}" title="为该断链目标创建占位文档">补建</button></div>`).join("");
+      tabCount("rt-n-links", d.incoming.length + d.outgoing.length);
+      pane.innerHTML =
+        `<div class="lk-stats">
+          <div class="lk-st"><div class="sv">${d.incoming.length}</div><div class="sk">入站引用</div></div>
+          <div class="lk-st"><div class="sv">${live.length}</div><div class="sk">出站链接</div></div>
+          <div class="lk-st d"><div class="sv">${dead.length}</div><div class="sk">断链</div></div>
+        </div>
+        <div class="lk-h">入站 · 谁引用了它${d.incoming.length ? `<span class="cnt">${d.incoming.length}</span>` : ""}</div>` +
+        (back || `<div class="lk-empty">还没有。写别的文档时打个 [[${esc(DOC.title)}]] 就连上了。</div>`) +
+        `<div class="lk-h">出站 · 它引用${d.outgoing.length ? `<span class="cnt">${d.outgoing.length}</span>` : ""}</div>` +
+        (fwd || `<div class="lk-empty">本文没有 [[双链]]。</div>`);
+      pane.querySelectorAll(".lk-row .fix").forEach(b => {
+        b.addEventListener("click", () => fixDeadLink(b.dataset.raw || ""));
+      });
+      document.dispatchEvent(new CustomEvent("kb:links-rendered")); // roam 增强挂点（问题8：替代 observer）
+    })
+    .catch(() => { pane.innerHTML = `<div class="lk-empty">加载失败，稍后再试。</div>`; linksLoadedFor = null; });
+}
+
+/* ---------- C2：断链「补建占位」——走既有 /api/save 写回，不新造通道 ----------
+   目标域解析：/api/wikilink/suggest Top1 有 → 落该建议所在子域（复用既有分类）；
+   无建议 → 落当前文档同域根（不落 _inbox：_ 前缀目录 api_save 400 拒写且不进索引，
+   补建的占位文档必须可解析、可检索）。确认弹窗防误建；失败 toast 不静默。 */
+async function fixDeadLink(raw) {
+  raw = String(raw || "").trim();
+  if (!raw) return;
+  let sug = null;
+  try {
+    const r = await fetch("/api/wikilink/suggest?q=" + encodeURIComponent(raw) + "&limit=1");
+    const d = await r.json();
+    if (d && d.items && d.items[0] && d.items[0].score >= 70) sug = d.items[0]; // 仅采信高分建议（精确/前缀/包含）
+  } catch (e) {}
+  const rel = sug ? sug.rel : (DOC ? DOC.rel.split("/").slice(0, 2).join("/") + "/" + raw + ".md" : raw + ".md");
+  const where = sug ? `已有相似文档「${sug.name}」在 ${sug.rel}——将创建的占位仍按你输入命名` : `落当前文档同域：${rel}`;
+  const res = await kbModal({
+    title: "补建占位文档",
+    body: `为断链 <span class='mono'>[[${esc(raw)}]]</span> 创建占位 Markdown。<br><span style="color:var(--faint);font-size:12px">${esc(where)}</span>`,
+    inputs: [{ key: "nm", label: "目标路径（域/子域/文件名.md）", value: rel }],
+    confirmText: "创建",
+  });
+  if (!res || !res.nm) return; // 取消 → 不建
+  const r = await fetch("/api/save", { method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ path: res.nm, content: `# ${raw}\n\n> 由断链补建占位生成（源：[[${raw}]]），待整理。\n` }) });
+  if (!r.ok) { toast("补建失败：" + r.status); return; }
+  toast("占位已创建：" + res.nm);
+  await afterMutation();          // 既有刷新链（FTS/树/计数）
+  invalidateWikilinkMap();        // 正文 [[双链]] 解析表失效
+  linksLoadedFor = null;          // 双链面板缓存失效
+  if (DOC && $("#article")) renderArticle(); // 当前正文重渲染：dead wikilink 即时转正常
+  if (document.querySelector("#pane-links.active")) loadLinks(); // 面板停留时立即重载（断链行消失）
+}
+
+/* ---------- 美化版弹窗（KB.overlay：Esc/遮罩/焦点归还统一，问题13） ---------- */
+let PRETTY_OV = null;
+function openPretty() {
+  if (!DOC || !DOC.has_html) return;
+  if (PRETTY_OV) PRETTY_OV.close("re-open");
+  const rawHref = rawUrl(DOC.html_rel);
+  const ov = KB.overlay.open({
+    className: "pretty-ov show",
+    html: `<div class="pretty-box">
+      <div class="pretty-bar"><span class="pt">${esc(DOC.title)} · 美化版</span>
+        <a class="iconbtn" id="pretty-newtab" href="${rawHref}" target="_blank">${icon("external-link", 12)} 新窗口</a>
+        <button class="iconbtn pp-close">${icon("cancel-x", 12)} 关闭</button></div>
+      <iframe src="${rawHref}" sandbox="allow-same-origin allow-popups" title="${esc(DOC.title)}"></iframe></div>`,
+    onClose: () => { PRETTY_OV = null; },
+  });
+  PRETTY_OV = ov;
+  ov.root.querySelector(".pp-close").onclick = () => ov.close("btn");
+  
+}
+function closePretty() { if (PRETTY_OV) PRETTY_OV.close("api"); }
+
+/* ---------- 右键菜单：文档移动 / 复制双链 / 统计信息 ----------
+   问题13：改走 KB.overlay——Esc 关闭、关闭归还焦点、Tab 被困在菜单内；
+   新增 ↑↓ 导航 + 打开即聚焦首项，配合下方 ContextMenu/Shift+F10 唤起入口。 */
+let CTX = null; // 当前菜单目标 {kind:'doc'|'sub', rel|domain, sub, name}
+let CTX_OV = null;
+
+function closeCtxMenu() {
+  if (CTX_OV) { const o = CTX_OV; CTX_OV = null; o.close("api"); }
+  CTX = null;
+}
+
+function docRelOf(domain, sub, name) {
+  return sub === "_root" ? `${domain}/${name}.md` : `${domain}/${sub}/${name}.md`;
+}
+
+function openCtxMenu(x, y, items) {
+  if (CTX_OV) { const o = CTX_OV; CTX_OV = null; o.close("re-open"); }
+  const ov = KB.overlay.open({
+    className: "ctx-menu",
+    html: items.map((it, i) =>
+      it === "-" ? `<div class="ctx-sep"></div>` :
+      `<button class="ctx-item ${it.danger ? "danger" : ""}" data-i="${i}">${it.icon ? `<span class="ctx-ic">${it.icon}</span>` : ""}<span>${esc(it.label)}</span></button>`).join(""),
+    returnFocus: true,
+  });
+  CTX_OV = ov;
+  const r = ov.root.getBoundingClientRect();
+  ov.root.style.left = Math.min(x, innerWidth - r.width - 8) + "px";
+  ov.root.style.top = Math.min(y, innerHeight - r.height - 8) + "px";
+  ov.root.addEventListener("click", e => {
+    const b = e.target.closest(".ctx-item");
+    if (!b) return;
+    const it = items[+b.dataset.i];
+    CTX_OV = null; ov.close("pick");
+    if (it && it.fn) it.fn();
+  });
+  ov.root.addEventListener("keydown", e => {
+    const btns = [...ov.root.querySelectorAll(".ctx-item")];
+    if (!btns.length) return;
+    const i = btns.indexOf(document.activeElement);
+    if (e.key === "ArrowDown") { e.preventDefault(); btns[(i + 1) % btns.length].focus(); }
+    else if (e.key === "ArrowUp") { e.preventDefault(); btns[(i - 1 + btns.length) % btns.length].focus(); }
+    else if (e.key === "Home") { e.preventDefault(); btns[0].focus(); }
+    else if (e.key === "End") { e.preventDefault(); btns[btns.length - 1].focus(); }
+  });
+  setTimeout(() => {
+    const first = ov.root.querySelector(".ctx-item"); if (first) first.focus();
+    // 点击菜单外任意处关闭（once + isConnected 守卫，close 后自动失效）
+    document.addEventListener("mousedown", function off(ev) {
+      if (!ov.root.isConnected) return;
+      if (!ov.root.contains(ev.target)) { CTX_OV = null; ov.close("outside"); }
+      else document.addEventListener("mousedown", off, { once: true });
+    }, { once: true });
+  }, 0);
+}
+
+async function copyText(t, okMsg) {
+  try { await navigator.clipboard.writeText(t); toast(okMsg); }
+  catch (e) {
+    const ta = document.createElement("textarea"); ta.value = t; document.body.appendChild(ta);
+    ta.select(); document.execCommand("copy"); ta.remove(); toast(okMsg);
+  }
+}
+window.copyText = copyText;
+
+/* 复制原文：拉 /raw 直服的源文件全文进剪贴板（md 事实源，复制即可粘贴走用） */
+async function copyDocSource() {
+  if (!DOC) return;
+  try {
+    const r = await fetch(rawUrl(DOC.rel));
+    if (!r.ok) throw new Error("HTTP " + r.status);
+    copyText(await r.text(), "原文已复制到剪贴板");
+  } catch (e) { toast("复制失败：" + (e.message || e)); }
+}
+window.copyDocSource = copyDocSource;
+
+function showStats(rel) {
+  fetch("/api/stats?path=" + encodeURIComponent(rel))
+    .then(r => { if (!r.ok) throw new Error(r.status); return r.json(); })
+    .then(s => {
+      const kb = (s.size / 1024).toFixed(1);
+      const ROW_IC = { "标题": "file-md", "路径": "folder", "字数": "edit-pencil", "结构": "toc-list",
+        "双链": "backlink-graph", "标签": "tag-outline", "来源": "source", "收录": "calendar-day", "文件": "file" };
+      const rows = [
+        ["标题", s.title], ["路径", s.path],
+        ["字数", `${s.chars} 字符（中文 ${s.cjk} · 英数词 ${s.words}）`],
+        ["结构", `${s.lines} 行 · ${s.headings} 个标题 · ${s.code_blocks} 个代码块`],
+        ["双链", s.wikilinks + " 条"],
+        ["标签", s.tags.length ? s.tags.join("、") : "未打标"],
+        ["来源", s.source || "—"], ["收录", s.collected || "—"],
+        ["文件", kb + " KB · 修改 " + new Date(s.mtime * 1000).toLocaleString()],
+      ];
+      const ov = KB.overlay.open({
+        className: "pretty-ov",
+        html: `<div class="pretty-box stats-box"><div class="pretty-bar"><span class="pt">${icon("stats-chart", 14)} 统计信息</span><button class="iconbtn gs-close">${icon("cancel-x", 12)} 关闭</button></div>
+      <div class="stats-body">${rows.map(([k, v]) => `<div class="meta-row"><span class="k">${icon(ROW_IC[k] || "info-circle", 12)}${esc(k)}</span><span class="v">${esc(v)}</span></div>`).join("")}</div></div>`,
+      });
+      ov.root.querySelector(".gs-close").onclick = () => ov.close("btn");
+      
+    })
+    .catch(err => toast("统计失败：" + (err.message || err)));
+}
+
+/* ---------- 通用弹窗（替代系统 prompt/alert/confirm） ----------
+   kbModal({ title, body, html, inputs:[{key,label,value,placeholder}], confirmText, cancelText, danger })
+   → Promise<null | { values:{key:value} }>；Esc / 取消 / 点击遮罩返回 null。
+   问题13：焦点管理（Tab 陷阱 / 关闭归还）统一委托 KB.overlay 原语，不再各写 Esc。 */
+function kbModal(opt) {
+  return new Promise(resolve => {
+    const inputs = opt.inputs || [];
+    const ov = KB.overlay.open({
+      html: `<div class="kbm" role="document">
+      <div class="kbm-title"><span class="kbm-title-t">${opt.title && opt.title.indexOf("<") >= 0 ? opt.title : esc(opt.title || "")}</span><span class="spacer" style="flex:1"></span><button class="iconbtn kbm-x" title="关闭（Esc）" aria-label="关闭">${icon("cancel-x", 14)}</button></div>
+      ${opt.body ? `<div class="kbm-body">${opt.body}</div>` : ""}
+      ${opt.html ? `<div class="kbm-body">${opt.html}</div>` : ""}
+      ${inputs.map(i => `<label class="kbm-label">${esc(i.label || "")}
+        ${i.multiline
+          ? `<textarea class="kbm-input kbm-ta" data-k="${esc(i.key)}" rows="4" placeholder="${esc(i.placeholder || "")}" spellcheck="false"></textarea>`
+          : `<input class="kbm-input" data-k="${esc(i.key)}" value="${esc(i.value ?? "")}"
+          placeholder="${esc(i.placeholder || "")}" spellcheck="false">`}</label>`).join("")}
+      <div class="kbm-btns">
+        <button class="iconbtn kbm-cancel">${esc(opt.cancelText || "取消")}</button>
+        <button class="iconbtn primary kbm-ok ${opt.danger ? "danger" : ""}">${esc(opt.confirmText || "确定")}</button>
+      </div></div>`,
+      onClose: () => resolve(null), // Esc / 遮罩（未显式完成时）统一按「取消」结算
+      initialFocus: root => { const i = root.querySelector(".kbm-input"); return i || null; },
+    });
+    let settled = false;
+    const done = val => { if (settled) return; settled = true; resolve(val); ov.close("done"); };
+    const collect = () => {
+      const values = {};
+      ov.root.querySelectorAll(".kbm-input").forEach(inp => values[inp.dataset.k] = inp.value.trim());
+      return values;
+    };
+    ov.root.querySelector(".kbm-ok").onclick = () => done(collect());
+    ov.root.querySelector(".kbm-cancel").onclick = () => done(null);
+    const xbtn = ov.root.querySelector(".kbm-x");
+    if (xbtn) xbtn.onclick = () => done(null);
+    
+    ov.root.addEventListener("keydown", e => {
+      if (e.key === "Enter" && (e.metaKey || e.ctrlKey || !inputs.length)) { e.preventDefault(); done(collect()); }
+    });
+    const first = ov.root.querySelector(".kbm-input");
+    if (first) { first.focus(); first.select(); }
+  });
+}
+
+async function showSubStats(dom, sub) {
+  const r = await fetch(`/api/substats?domain=${encodeURIComponent(dom)}&sub=${encodeURIComponent(sub)}`);
+  if (!r.ok) { toast("目录统计失败：" + r.status); return; }
+  const s = await r.json();
+  const maxTag = s.tags.length ? s.tags[0].n : 1;
+  const tagRows = s.tags.map(t => `
+    <div class="ss-tag"><span class="ss-tag-name">${esc(t.tag)}</span>
+      <span class="ss-bar"><i style="width:${Math.round(100 * t.n / maxTag)}%"></i></span>
+      <span class="ss-tag-n">${t.n}</span></div>`).join("") || `<div class="kbm-li">无标签</div>`;
+  // 兄弟目录排行（可点击切换）：与移动弹窗共用 /api/dir/tree 聚合数据
+  const dirTree = await loadDirTree();
+  const domObj = (dirTree || []).find(d => d.id === s.domain);
+  const siblings = domObj ? domObj.subs.filter(x => x.id !== s.sub) : [];
+  const sibRows = siblings.map(x => `
+    <button class="ss-sib" onclick="openCtxStats('${esc(s.domain)}','${esc(x.id)}')">
+      <span class="ss-sib-l">${esc(x.label)}</span>
+      <span class="ss-sib-bar"><i style="width:${Math.round(100 * x.n / Math.max(1, domObj.subs[0].n))}%"></i></span>
+      <span class="ss-sib-n">${x.n} 篇 · ${Math.round(x.cjk / 1000)}k 字</span>
+    </button>`).join("") || `<div class="kbm-li">本域仅此一个目录</div>`;
+  let ov = KB.overlay.open({ // 目录统计层实例（兄弟切换须走 close，见模块级 SUBSTATS_OV）
+    html: `<div class="kbm kbm-stats" role="document">
+    <div class="kbm-title">${icon("chart", 16)} ${esc(s.domain_label)} / ${esc(s.label)} · 目录统计<span class="spacer" style="flex:1"></span><button class="iconbtn ss-x" title="关闭（Esc）" aria-label="关闭">${icon("cancel-x", 14)}</button></div>
+    <div class="kbm-body">
+    <div class="gkpi">
+      <div class="g"><div class="lab">文档</div><div class="num acc" data-counter data-count="${s.n_docs}">${s.n_docs}</div><div class="sub">本目录篇数</div></div>
+      <div class="g"><div class="lab">总字数</div><div class="num" data-counter data-count="${s.total_cjk}">${s.total_cjk.toLocaleString()}</div><div class="sub">CJK 字符</div></div>
+      <div class="g"><div class="lab">篇均字数</div><div class="num" data-counter data-count="${s.avg_cjk}">${s.avg_cjk.toLocaleString()}</div><div class="sub">字 / 篇</div></div>
+      <div class="g"><div class="lab">未打标</div><div class="num ${s.n_untagged ? "warn" : "acc"}" data-counter data-count="${s.n_untagged}">${s.n_untagged}</div><div class="sub">待补 tags</div></div>
+    </div>
+    <div class="ss-sec">标签分布 Top ${s.tags.length}</div>
+    <div class="ss-tags">${tagRows}</div>
+    <div class="ss-sec">最近更新</div>
+    <div class="kbm-li">《${esc(s.newest.title || "—")}》 · ${esc(s.newest.when)}</div>
+    ${siblings.length ? `<div class="ss-sec">${esc(s.domain_label)} · 其他目录</div><div class="ss-sibs">${sibRows}</div>` : ""}
+    </div>
+    <div class="kbm-btns"><button class="iconbtn primary ss-close">关闭</button></div></div>`,
+  });
+  SUBSTATS_OV = ov;
+  ov.root.querySelector(".ss-close").onclick = () => ov.close("btn");
+  
+}
+let SUBSTATS_OV = null; // 当前目录统计层实例
+function openCtxStats(dom, sub) {
+  if (SUBSTATS_OV) SUBSTATS_OV.close("switch"); // 兄弟目录切换：走 close，别裸 remove（会泄漏监听与计数）
+  showSubStats(dom, sub);
+}
+
+/* ---------- 全库聚合统计（顶栏全局「统计」按钮）----------
+   与目录统计共用 .ss-* 视觉；数据来自 /api/globalstats。 */
+let GS_OV = null; // 当前全库统计层实例（重开时 close 旧的）
+/* 问吧（/api/ask 检索增强问答）整块在轮次 53 按用户要求移除；顶栏导航钮同批删。 */
+
+
+
+async function showGlobalStats() {
+  if (GS_OV) GS_OV.close("re-open"); // 重开时走 close，防监听/计数泄漏
+  const ov = KB.overlay.open({
+    html: `<div class="kbm kbm-stats" role="document">
+    <div class="kbm-title">${icon("chart", 16)} 全库统计<span class="spacer" style="flex:1"></span><a class="iconbtn" href="/stats" title="月度阅读趋势在统计页">${icon("trend", 13)} 月度趋势</a><button class="iconbtn gs-close" title="关闭（Esc）" aria-label="关闭">${icon("cancel-x", 14)}</button></div>
+    <div class="kbm-body" id="gs-body">统计中…</div></div>`,
+  });
+  GS_OV = ov;
+  ov.root.querySelector(".gs-close").onclick = () => ov.close("btn");
+  
+  const bodyEl = ov.root.querySelector("#gs-body");
+  let d;
+  try {
+    const r = await fetch("/api/globalstats");
+    if (!r.ok) { bodyEl.textContent = "统计失败：" + r.status; return; }
+    d = await r.json();
+  } catch (e) { bodyEl.textContent = "统计失败：" + e; return; }
+  const maxDom = Math.max(1, ...d.domains.map(x => x.n));
+  const maxTag = Math.max(1, ...(d.top_tags || []).map(t => t.n));
+  const L = d.links || { total: 0, dead: 0, dead_docs: 0 };
+  bodyEl.innerHTML = `
+    <div class="gkpi">
+      <div class="g"><div class="lab">文档</div><div class="num acc" data-counter data-count="${d.n_docs}">${d.n_docs.toLocaleString()}</div><div class="sub">美化版 ${d.n_html} · 收藏 ${d.n_fav}</div></div>
+      <div class="g"><div class="lab">总字数</div><div class="num" data-counter data-count="${d.total_cjk}">${d.total_cjk.toLocaleString()}</div><div class="sub">CJK 字符</div></div>
+      <div class="g"><div class="lab">标签覆盖</div><div class="num ${d.tagged_pct < 50 ? "warn" : "acc"}" data-counter data-count="${d.tagged_pct}" data-count-suffix="%">${d.tagged_pct}<span class="u">%</span></div><div class="sub">共 ${d.n_tag_types} 种标签</div></div>
+      <div class="g"><div class="lab">双链健康</div><div class="num ${L.dead ? "rose" : "acc"}" data-counter data-count="${L.dead}">${L.dead}</div><div class="sub">死链 / 共 ${L.total} 链</div></div>
+    </div>
+    <div class="ss-sec">各域分布 · ${d.domains.length} 域</div>
+    <div class="ss-tags">${d.domains.map(x => {
+      const h = (window.HUES && HUES[x.id]) || 158;
+      return `
+      <div class="ss-tag"><span class="ss-tag-name"><i class="ss-dot" style="background:hsl(${h} 58% 45%)"></i>${esc(x.label)}</span>
+        <span class="ss-bar"><i style="width:${Math.round(100 * x.n / maxDom)}%;background:linear-gradient(90deg,hsl(${h} 52% 40%),hsl(${h} 68% 55%))"></i></span>
+        <span class="ss-tag-n">${x.n}</span></div>`;}).join("")}</div>
+    <div class="ss-sec">Top 标签 · 共 ${d.n_tag_types} 种</div>
+    <div class="ss-tags">${(d.top_tags || []).map(t => `
+      <div class="ss-tag"><span class="ss-tag-name">${esc(t.tag)}</span>
+        <span class="ss-bar"><i style="width:${Math.round(100 * t.n / maxTag)}%"></i></span>
+        <span class="ss-tag-n">${t.n}</span></div>`).join("") || `<div class="kbm-li">无标签</div>`}</div>
+    <div class="ss-sec">其他</div>
+    <div class="kbm-li">美化版 HTML ${d.n_html} 份 · 收藏 ${d.n_fav} 篇 · 收件箱待归档 ${d.inbox}</div>
+    ${L.dead ? `<div class="kbm-li" style="color:var(--rose)">${L.dead} 条死链分布在 ${L.dead_docs} 篇文档中</div>` : ""}`;
+}
+
+/* ---------- 移动：目录树选择器（仅换目录，文件名不变） ----------
+   树节点 = 真实目录（域可展开为子目录）；目标目录点击选择，路径实时预览；
+   同名冲突/越界/未选目录前端拦截，后端 /api/move 兜底。只改文件名走 renameDocPrompt。 */
+async function moveDocPrompt(rel) {
+  const dirTree = await loadDirTree(true);
+  if (!dirTree || !dirTree.length) { toast("目录树为空，无法移动"); return; }
+  const parts = rel.split("/");
+  const fileName = parts.pop().replace(/\.md$/, "");
+  const srcDir = parts.join("/");
+  // 域根文档 → sub=_root；子目录文档（含嵌套 architecture/xx）→ sub=parts[1]
+  const curSubId = parts.length >= 2 ? parts[1] : "_root";
+
+  const ov = document.createElement("div");
+  ov.className = "kbm-ov";
+  ov.id = "mv-ov";
+  ov.innerHTML = `<div class="kbm kbm-mv" role="dialog" aria-modal="true">
+    <div class="kbm-title">${icon("move-arrow", 16)} 移动到<span class="spacer" style="flex:1"></span><button class="iconbtn mv-x" title="关闭（Esc）" aria-label="关闭">${icon("cancel-x", 14)}</button></div>
+    <div class="mv-src mono">${esc(rel)}</div>
+    <div class="mv-cols">
+      <div class="mv-treebox">
+        <input class="kbm-input mv-filter" placeholder="过滤目录…" spellcheck="false">
+        <div class="mv-tree" tabindex="0"></div>
+      </div>
+      <div class="mv-side">
+        <div class="mv-dst-label">目标路径（文件名不变）</div>
+        <div class="mv-dst mono"></div>
+        <div class="mv-hint">同名冲突、越界与未选目录会被拦截；移动后 FTS / 双链 / 向量索引自动级联更新，git 可追溯。只想改文件名请用右键菜单「重命名…」。</div>
+      </div>
+    </div>
+    <div class="kbm-btns">
+      <button class="iconbtn mv-cancel">取消</button>
+      <button class="iconbtn primary mv-ok">移动</button>
+    </div></div>`;
+  document.body.appendChild(ov);
+
+  const treeEl = ov.querySelector(".mv-tree");
+  const dstEl = ov.querySelector(".mv-dst");
+  const okBtn = ov.querySelector(".mv-ok");
+  const filterEl = ov.querySelector(".mv-filter");
+  const state = { dom: parts[0], sub: curSubId, open: new Set([parts[0]]) };
+
+  function subDirOf(d, sid) { return sid === "_root" ? d.id : `${d.id}/${sid}`; }
+  function refresh() {
+    const dom = dirTree.find(d => d.id === state.dom);
+    const sub = dom && dom.subs.find(s => s.id === state.sub);
+    const same = !!(sub && subDirOf(dom, state.sub) === srcDir);
+    if (!sub) {
+      dstEl.innerHTML = `<span class="mv-dst-empty">← 先在左侧选择目标目录</span>`;
+    } else {
+      dstEl.innerHTML = `<span class="mv-dst-dir">${esc(subDirOf(dom, state.sub))}/</span><span class="mv-dst-file">${esc(fileName)}</span><span class="mv-dst-dir">.md</span>`;
+    }
+    dstEl.classList.toggle("mv-dst-same", same);
+    okBtn.disabled = !sub || same;
+    okBtn.innerHTML = same ? "已在该目录" : `${icon("check", 13)} 移动`;
+  }
+  function renderTreeNodes() {
+    const kw = filterEl.value.trim().toLowerCase();
+    treeEl.innerHTML = dirTree.map(d => {
+      if (kw && !(`${d.label}${d.id}`.toLowerCase().includes(kw) || d.subs.some(s => `${s.label}${s.id}`.toLowerCase().includes(kw)))) return "";
+      const open = kw ? true : state.open.has(d.id);
+      const subs = d.subs
+        .filter(s => !kw || `${s.label}${s.id}`.toLowerCase().includes(kw) || `${d.label}${d.id}`.toLowerCase().includes(kw))
+        .map(s => {
+          const dir = subDirOf(d, s.id);
+          const isCur = dir === srcDir;
+          const sel = state.dom === d.id && state.sub === s.id;
+          return `<div class="mv-node mv-sub ${sel ? "sel" : ""} ${isCur ? "cur" : ""}" data-dom="${esc(d.id)}" data-sub="${esc(s.id)}">
+            <span class="mv-tw"></span><span class="mv-ic">${icon("file", 13)}</span>
+            <span class="mv-lb">${esc(s.label)}</span><span class="mv-n">${s.n}</span></div>`;
+        }).join("");
+      return `<div class="mv-domrow ${state.open.has(d.id) ? "open" : ""}">
+          <div class="mv-node mv-dom" data-dom="${esc(d.id)}">
+            <span class="mv-tw">${open ? "▾" : "▸"}</span><span class="mv-ic">${icon("folder", 13)}</span>
+            <span class="mv-lb">${esc(d.label)}</span><span class="mv-n">${d.n}</span></div>
+          ${open ? subs : ""}
+        </div>`;
+    }).join("");
+    refresh();
+  }
+  treeEl.addEventListener("click", e => {
+    const node = e.target.closest(".mv-node");
+    if (!node) return;
+    const d = dirTree.find(x => x.id === node.dataset.dom);
+    if (node.classList.contains("mv-dom")) {
+      // 单击域头：展开/收起 + 选中该域“总览”子目录（与现有点击习惯一致）
+      if (state.open.has(d.id) && state.dom === d.id) state.open.delete(d.id);
+      else state.open.add(d.id);
+      const first = d.subs.find(s => s.id === "_root") || d.subs[0];
+      state.dom = d.id; state.sub = first.id;
+    } else {
+      state.dom = node.dataset.dom; state.sub = node.dataset.sub;
+      state.open.add(node.dataset.dom);
+    }
+    renderTreeNodes();
+  });
+  // 键盘导航：↑↓ 移动高亮，←→ 折叠/展开，Enter 确认选中
+  treeEl.addEventListener("keydown", e => {
+    const nodes = [...treeEl.querySelectorAll(".mv-node:not(.mv-tw)")];
+    const vis = nodes.filter(n => n.offsetParent !== null);
+    if (!vis.length) return;
+    let i = vis.findIndex(n => n.classList.contains("sel"));
+    if (e.key === "ArrowDown") { e.preventDefault(); i = Math.min(i + 1, vis.length - 1); }
+    else if (e.key === "ArrowUp") { e.preventDefault(); i = Math.max(i - 1, 0); }
+    else if (e.key === "ArrowRight" || e.key === "ArrowLeft" || e.key === "Enter") {
+      e.preventDefault();
+      const n = vis[i] || vis[0];
+      if (n.classList.contains("mv-dom")) {
+        if (e.key === "ArrowRight") state.open.add(n.dataset.dom);
+        else if (e.key === "ArrowLeft") state.open.delete(n.dataset.dom);
+        else { state.dom = n.dataset.dom; state.sub = (dirTree.find(d => d.id === n.dataset.dom).subs.find(s => s.id === "_root") || dirTree.find(d => d.id === n.dataset.dom).subs[0]).id; }
+      } else { state.dom = n.dataset.dom; state.sub = n.dataset.sub; }
+      renderTreeNodes();
+      const cur = treeEl.querySelector(".mv-node.sel"); if (cur) cur.scrollIntoView({ block: "nearest" });
+      return;
+    } else return;
+    vis.forEach(n => n.classList.remove("sel"));
+    if (vis[i]) {
+      const n = vis[i];
+      if (n.classList.contains("mv-dom")) { state.dom = n.dataset.dom; state.sub = (dirTree.find(d => d.id === n.dataset.dom).subs.find(s => s.id === "_root") || dirTree.find(d => d.id === n.dataset.dom).subs[0]).id; }
+      else { state.dom = n.dataset.dom; state.sub = n.dataset.sub; }
+      renderTreeNodes();
+      const cur = treeEl.querySelector(".mv-node.sel"); if (cur) cur.scrollIntoView({ block: "nearest" });
+    }
+  });
+  filterEl.addEventListener("input", renderTreeNodes);
+
+  const close = () => { ov.remove(); document.removeEventListener("keydown", onEsc); };
+  const onEsc = e => { if (e.key === "Escape") close(); };
+  document.addEventListener("keydown", onEsc);
+  ov.querySelector(".mv-cancel").onclick = close;
+    ov.querySelector(".mv-x").onclick = close;
+  
+  renderTreeNodes();
+  filterEl.focus();
+
+  okBtn.onclick = async () => {
+    const dst = `${subDirOf(dirTree.find(d => d.id === state.dom), state.sub)}/${fileName}.md`;
+    okBtn.disabled = true; okBtn.textContent = "移动中…";
+    const r = await fetch("/api/move", { method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ src: rel, dst }) });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok || !d.ok) { okBtn.disabled = false; okBtn.textContent = "移动"; toast("移动失败：" + (d.error || r.status)); return; }
+    close();
+    toast(`已移动至 <span class='mono'>${esc(d.dst)}</span> · 索引已级联更新`);
+    // 问题9：不再 location.href 整页跳转。局部重渲染树/列表；
+    // 当前正看的文档被移动时走客户端路由打开新位置。
+    const movedCur = !!(DOC && DOC.rel === rel);
+    await afterMutation();
+    if (movedCur) await navigate(docUrl(d.dst), true);
+  };
+}
+
+/* ---------- 重命名：仅改文件名，目录不变 ----------
+   与移动共用 /api/move：dst = 原目录 + 新文件名。空名/非法字符/未变化前端拦截，
+   同名冲突与越界由后端兜底报错。旁挂备注 / 美化版随行，索引自动级联。 */
+async function renameDocPrompt(rel) {
+  const parts = rel.split("/");
+  const fileName = parts.pop().replace(/\.md$/, "");
+  const srcDir = parts.join("/");
+
+  const ov = document.createElement("div");
+  ov.className = "kbm-ov";
+  ov.innerHTML = `<div class="kbm" role="dialog" aria-modal="true">
+    <div class="kbm-title">${icon("edit-pencil", 16)} 重命名<span class="spacer" style="flex:1"></span><button class="iconbtn mv-x" title="关闭（Esc）" aria-label="关闭">${icon("cancel-x", 14)}</button></div>
+    <div class="mv-src mono">${esc(rel)}</div>
+    <label class="kbm-label">文件名（不含 .md）
+      <input class="kbm-input mv-name" value="${esc(fileName)}" spellcheck="false"></label>
+    <div class="mv-dst-label">新路径（目录不变）</div>
+    <div class="mv-dst mono"></div>
+    <div class="mv-hint">空名与非法字符（\\ / : * ? " &lt; &gt; |）被拦截；同名冲突由服务端拒绝。改完 FTS / 双链 / 向量索引自动级联更新，git 可追溯。</div>
+    <div class="kbm-btns">
+      <button class="iconbtn mv-cancel">取消</button>
+      <button class="iconbtn primary mv-ok">重命名</button>
+    </div></div>`;
+  document.body.appendChild(ov);
+
+  const nameEl = ov.querySelector(".mv-name");
+  const dstEl = ov.querySelector(".mv-dst");
+  const okBtn = ov.querySelector(".mv-ok");
+  const cleanNm = s => s.trim().replace(/\.md$/i, "");
+  function refresh() {
+    const nm = cleanNm(nameEl.value);
+    const invalid = !nm || /[\\/:*?"<>|]/.test(nm);
+    const same = `${srcDir}/${nm}.md` === rel;
+    dstEl.innerHTML = `<span class="mv-dst-dir">${esc(srcDir)}/</span><span class="mv-dst-file">${esc(nm || "（未命名）")}</span><span class="mv-dst-dir">.md</span>`;
+    dstEl.classList.toggle("mv-dst-same", same);
+    okBtn.disabled = invalid || same;
+    okBtn.textContent = same ? "未变化" : "重命名";
+  }
+  nameEl.addEventListener("input", refresh);
+  nameEl.addEventListener("keydown", e => { if (e.key === "Enter" && !okBtn.disabled) okBtn.click(); });
+
+  const close = () => { ov.remove(); document.removeEventListener("keydown", onEsc); };
+  const onEsc = e => { if (e.key === "Escape") close(); };
+  document.addEventListener("keydown", onEsc);
+  ov.querySelector(".mv-cancel").onclick = close;
+  ov.querySelector(".mv-x").onclick = close;
+
+  refresh();
+  nameEl.focus(); nameEl.select();
+
+  okBtn.onclick = async () => {
+    const dst = `${srcDir}/${cleanNm(nameEl.value)}.md`;
+    okBtn.disabled = true; okBtn.textContent = "重命名中…";
+    const r = await fetch("/api/move", { method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ src: rel, dst }) });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok || !d.ok) { okBtn.disabled = false; okBtn.textContent = "重命名"; toast("重命名失败：" + (d.error || r.status)); return; }
+    close();
+    toast(`已重命名为 <span class='mono'>${esc(d.dst)}</span> · 索引已级联更新`);
+    const movedCur = !!(DOC && DOC.rel === rel);
+    await afterMutation();
+    if (movedCur) await navigate(docUrl(d.dst), true);
+  };
+}
+
+/* ---------- 拖拽移动：文档列表 → 左栏目录树 ---------- */
+function wireDragMove() {
+  const list = $("#doclist"), nav = $("#tree");
+  if (!nav) return;
+  // 需求 #11：列表列已移除，拖拽源改为树内文档（#doclist 存在时兼容旧模板）
+  const dragSrc = list || nav;
+  dragSrc.addEventListener("dragstart", e => {
+    const a = e.target.closest(".doc");
+    if (!a) return;
+    const dom = a.dataset.dom || (CUR && CUR.domain);
+    const sub = a.dataset.sub || (CUR && CUR.sub);
+    e.dataTransfer.setData("text/kb-doc", docRelOf(dom, sub, a.dataset.name));
+    e.dataTransfer.effectAllowed = "move";
+    nav.classList.add("drop-armed");
+  });
+  dragSrc.addEventListener("dragend", () => {
+    nav.classList.remove("drop-armed");
+    nav.querySelectorAll(".drop-hint").forEach(x => x.classList.remove("drop-hint"));
+  });
+  ["dragover", "dragleave", "drop"].forEach(ev => nav.addEventListener(ev, e => {
+    const t = e.target.closest(".sub, .dom-head");
+    if (ev === "dragleave") { t && t.classList.remove("drop-hint"); return; }
+    e.preventDefault(); // 允许 drop
+    nav.querySelectorAll(".drop-hint").forEach(x => x.classList.remove("drop-hint"));
+    if (!t) return;
+    t.classList.add("drop-hint");
+    if (ev === "drop") {
+      t.classList.remove("drop-hint"); nav.classList.remove("drop-armed");
+      const rel = e.dataTransfer.getData("text/kb-doc");
+      if (!rel) return;
+      const [dom, sub] = t.classList.contains("dom-head")
+        ? [t.closest(".dom").dataset.dom, null] : [t.dataset.dom, t.dataset.sub];
+      const d = (TREE || []).find(x => x.id === dom);
+      const tgtSub = d && d.subs.find(s => s.id === (sub || "_root")) ? (sub || "_root") : (d && d.subs[0].id);
+      const target = tgtSub || sub;
+      if (!target) return;
+      if (dom === CUR.domain && target === CUR.sub) { toast("已在该目录，无需移动"); return; }
+      const nm = rel.split("/").pop().replace(/\.md$/, "");
+      const dst = (target === "_root" ? dom : `${dom}/${target}`) + `/${nm}.md`;
+      (async () => {
+        const c = await kbModal({ title: "⇄ 拖拽移动",
+          body: `将 <span class='mono'>${esc(rel)}</span><br>移动到 <span class='mono'>${esc(dst)}</span> ？<br>旁挂的备注 / 美化版会随行，索引自动级联。`,
+          confirmText: "移动" });
+        if (!c) return;
+        const r = await fetch("/api/move", { method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ src: rel, dst }) });
+        const dj = await r.json().catch(() => ({}));
+        if (!r.ok || !dj.ok) { toast("移动失败：" + (dj.error || r.status)); return; }
+        toast(`已移动至 <span class='mono'>${esc(dj.dst)}</span> · 索引已级联更新`);
+        const movedCur = rel === (DOC && DOC.rel);
+        await afterMutation();
+        if (movedCur) await navigate(docUrl(dj.dst), true);
+      })();
+    }
+  }));
+}
+
+/* 右键菜单 items（鼠标 contextmenu 与键盘 ContextMenu/Shift+F10 共用，问题13）
+   第三轮 #7 重排：信息/复制在前，分隔线，移动/删除在后，危险项置底。 */
+function ctxDocItems(docA) {
+  const name = docA.dataset.name;
+  // 需求 #11：树内联文档自带 data-dom/data-sub；列表文档回退 CUR
+  const domain = docA.dataset.dom || (CUR && CUR.domain);
+  const sub = docA.dataset.sub || (CUR && CUR.sub);
+  const rel = docRelOf(domain, sub, name);
+  return [
+    { icon: icon("trend"), label: "统计信息", fn: () => showStats(rel) },
+    "-",
+    { icon: icon("copy"), label: "复制 Markdown 原文", fn: async () => {
+        const r = await fetch(rawUrl(rel));
+        if (!r.ok) { toast("读取原文失败：" + r.status); return; }
+        copyText(await r.text(), "已复制 Markdown 原文");
+      } },
+    { icon: icon("copy-link"), label: "复制站内链接", fn: () => copyText(location.origin + docUrl(rel.replace(/\.md$/, "")), "已复制站内链接") },
+    { icon: icon("copy-path"), label: "复制相对路径", fn: () => copyText(rel, "已复制路径") },
+    "-",
+    { icon: icon("move-arrow"), label: "移动到…", fn: () => moveDocPrompt(rel) },
+    { icon: icon("edit-pencil"), label: "重命名…", fn: () => renameDocPrompt(rel) },
+    { icon: icon("trash"), label: "删除…", danger: true, fn: async () => {
+        const s = findSub(CUR.domain, CUR.sub);
+        const d = s && s.docs.find(x => x.name === name);
+        if (!d) { toast("文档不在当前列表"); return; }
+        const c = await kbModal({
+          title: icon("trash", 16) + " 删除这篇文档？",
+          body: `《<b>${esc(d.title)}</b>》及其旁挂美化版 / 备注将整体移入 <span class="mono">content/_trash/</span>（软删除，可找回）。`,
+          danger: true, confirmText: "移入回收站", cancelText: "取消",
+        });
+        if (!c) return;
+        const r = await fetch("/api/delete", { method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ path: rel }) });
+        if (!r.ok) {
+          let err = ""; try { err = (await r.json()).error || ""; } catch (e) {}
+          // 第三轮 #10：404 = 文件已不在（早已删除/路径陈旧）→ 按「已删除」收尾，不再报错卡死
+          if (r.status === 404) { toast("文件已不存在，列表已同步"); await ctxDiscardDoc(rel, d.title, false); return; }
+          toast("删除失败：" + (err || r.status)); return;
+        }
+        // 第三轮 #9：删除的是当前打开的文档时，同步清理正文区（与 crumb 版 deleteDoc 同一套收尾）
+        if (DOC && DOC.rel === rel) await ctxDiscardDoc(rel, d.title, true);
+        else { toast("已移入回收站"); await afterMutation(); }
+      } },
+  ];
+}
+/* 第三轮 #9/#10：右键删除后的正文区收尾（从 deleteDoc 提取的共用逻辑）：
+   局部更新树/列表 → 关编辑器 → 清 DOC → 正文区展示「已移入回收站」占位。
+   deletedJustNow=false 表示 404 自愈（文件早已不在），文案改为「此前已删除」。 */
+async function ctxDiscardDoc(rel, title, deletedJustNow) {
+  const deletedTitle = title || rel;
+  const s = findSub(CUR ? CUR.domain : "", CUR ? CUR.sub : "");
+  const nm = rel.split("/").pop();
+  if (s) {
+    s.docs = s.docs.filter(x => x.name !== nm);
+    s.n = s.docs.length;
+    const d = TREE.find(x => x.id === (CUR && CUR.domain));
+    if (d) d.n = d.subs.reduce((a, x) => a + x.n, 0);
+    persistTree();
+    renderTree();
+    renderDocList(s.docs, s.label, null);
+  }
+  closeEditor();
+  setDoc(null);
+  $("#article").innerHTML = `<div class="a-kicker">已删除</div>
+    <h1 class="a-title">文档已移入回收站</h1>
+    <div class="a-rule"></div>
+    <div class="a-body"><p>《${esc(deletedTitle)}》及其美化版、备注已${deletedJustNow ? "" : "此前"}移入 <code>content/_trash/</code>，git 历史亦可找回。</p>
+    <p>从左侧选择其他文档继续阅读。</p></div>`;
+  { const _c = $("#crumb"); if (_c) _c.innerHTML = `<b>已删除</b><span class="sep">·</span>${esc(deletedTitle)}`; }
+  await afterMutation();
+}
+/* 新建子目录（需求 #4）：域下二级目录，或子域下嵌套目录。
+   一个名字搞定：目录名即文件夹名、也即左侧树的显示名（store.sub_label 无别名时回退 id）。
+   空目录也会入树（n=0），建完引导去新建文档 / 导入本地文件。 */
+async function promptNewSubdir(baseDomain, parentSub) {
+  const parent = parentSub ? `${baseDomain}/${parentSub}` : "";
+  const res = await kbModal({
+    title: "新增目录",
+    body: parent
+      ? `将在 <span class='mono'>${esc(parent)}/</span> 下新建子目录。`
+      : `将在 <span class='mono'>${esc(baseDomain)}/</span> 下新建二级目录（左侧分类树的一级条目）。`,
+    inputs: [{ key: "nm", label: "目录名（即文件夹名与左侧显示名）", placeholder: "示例：RAG 笔记 或 rag-notes" }],
+    confirmText: "创建",
+  });
+  if (!res || !res.nm) return;
+  const r = await fetch("/api/mkdir", { method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ domain: baseDomain, parent, name: res.nm.trim() }) });
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok || !d.ok) { toast("创建失败：" + (d.error || r.status)); return; }
+  await afterMutation();
+  toast(`已创建 <span class='mono'>${esc(d.created)}</span> · 右键它可新建文档或导入本地 .md`);
+}
+function ctxSubItems(subA) {
+  const dom = subA.dataset.dom, sub = subA.dataset.sub;
+  const base = sub === "_root" ? dom : `${dom}/${sub}`;
+  // 第三轮 #7：动词优先、危险置底；_root（域根散文件区）不给重命名/删除
+  const items = [
+    { icon: icon("new-file"), label: "在此新建文档…", fn: async () => {
+        const res = await kbModal({
+          title: "新建文档",
+          body: `将在 <span class='mono'>${esc(base)}/</span> 下创建 Markdown 文件，首行自动写入标题。`,
+          inputs: [{ key: "nm", label: "文件名（不含 .md）", placeholder: "示例：RAG 切块策略" }],
+          confirmText: "创建",
+        });
+        if (!res || !res.nm) return;
+        const nm = res.nm;
+        const rel = `${base}/${nm}.md`;
+        const r = await fetch("/api/save", { method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ path: rel, content: `# ${nm}\n\n` }) });
+        if (r.ok) {
+          await afterMutation();
+          await navigate(docUrl(rel), true); // 问题9：客户端打开新文档，不整页跳转
+        }
+        else toast("创建失败：" + r.status);
+      } },
+    { icon: icon("plus-circle"), label: "新建子目录…", fn: () => promptNewSubdir(dom, sub === "_root" ? "" : sub) },
+    { icon: icon("download"), label: "导入文档…", fn: () => importDocsPrompt(dom, sub === "_root" ? "" : sub) },
+  ];
+  if (sub !== "_root") {
+    items.push(
+      "-",
+      { icon: icon("swap"), label: "重命名目录…", fn: () => renameSubPrompt(dom, sub) },
+      { icon: icon("trash"), label: "删除目录…", danger: true, fn: () => rmdirPrompt(dom, sub) }
+    );
+  }
+  return items;
+}
+/* 域级右键（第三轮 #7 契约）：新增二级目录 + 导入 + 复制域名 + 删除域；
+   #3：data-dom 挂在 .dom 父元素上，domA（.dom-head）需 closest 向上取。 */
+function ctxDomItems(domA) {
+  const host = domA.closest(".dom") || domA;
+  const dom = host.dataset.dom || domA.dataset.dom;
+  return [
+    { icon: icon("new-file"), label: "在此新建文档…", fn: () => promptNewDocInDir(dom, "") },
+    { icon: icon("plus-circle"), label: "新增二级目录…", fn: () => promptNewSubdir(dom, "") },
+    { icon: icon("download"), label: "导入文档…", fn: () => importDocsPrompt(dom, "") },
+    { icon: icon("swap"), label: "重命名域…", fn: () => renameDomainPrompt(dom) },
+    "-",
+    { icon: icon("copy"), label: "复制域名", fn: () => copyText(dom, "已复制域名") },
+    { icon: icon("trash"), label: "删除域…", danger: true, fn: () => rmdirPrompt(dom, "") },
+  ];
+}
+/* 删除目录 / 域：后端整棵子树软删除进 content/_trash/<时间戳>/，非空也可删。
+   sub 传空 = 删整个域目录。git 历史是第二重保险。 */
+async function rmdirPrompt(dom, sub) {
+  const path = sub ? `${dom}/${sub}/` : `${dom}/`;
+  const c = await kbModal({
+    title: icon("trash", 16) + (sub ? " 删除目录？" : " 删除域？"),
+    body: `将把 <span class='mono'>${esc(path)}</span> 整棵子树移入 <b>回收站</b> <span class='mono'>content/_trash/</span>。`
+        + `<br><br>目录里的<b>所有文档会一并移走</b>；此操作可从回收站手动恢复，git 历史亦可找回。`,
+    danger: true, confirmText: sub ? "删除目录" : "删除域", cancelText: "取消",
+  });
+  if (!c) return;
+  const r = await fetch("/api/rmdir", { method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ domain: dom, sub: sub || "" }) });
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok || !d.ok) { toast("删除失败：" + (d.error || r.status)); return; }
+  toast(`已删除 <span class='mono'>${esc(d.removed)}/</span> · ${d.docs} 篇文档移入 <span class='mono'>${esc(d.to_trash)}</span>`);
+  // 删除的若正是当前浏览的目录（或其上级域）→ 回首页，避免右侧残留（第三轮 #9 同源问题）
+  if (CUR && (CUR.domain === dom || (sub && `${CUR.domain}/${CUR.sub}` === `${dom}/${sub}`)
+              || (sub && CUR.domain === dom && String(CUR.sub || "").startsWith(sub)))) {
+    invalidate("all"); location.href = "/"; return;
+  }
+  await afterMutation();
+}
+/* 右键「导入文档」：选本地 .md 批量落到该目录（域根或某个子目录）。
+   走 /api/import（multipart）：同名不覆盖（后端 ~2 避让）、无 frontmatter 的补身世
+   （source=desktop，取 taxonomy 既有词表，不发明新值），逐个 upsert 进 FTS 索引。 */
+function importDocsPrompt(dom, sub) {
+  const inp = document.createElement("input");
+  inp.type = "file"; inp.accept = ".md,text/markdown"; inp.multiple = true;
+  inp.style.display = "none";
+  inp.onchange = async () => {
+    const files = [...(inp.files || [])];
+    inp.remove();
+    if (!files.length) return;
+    const fd = new FormData();
+    fd.append("domain", dom);
+    fd.append("sub", sub || "");
+    files.forEach(f => fd.append("files", f, f.name));
+    toast(`正在导入 ${files.length} 个文件…`);
+    let d = {};
+    try {
+      const r = await fetch("/api/import", { method: "POST", body: fd });
+      d = await r.json().catch(() => ({}));
+      if (!r.ok || !d.ok) { toast("导入失败：" + (d.error || r.status)); return; }
+    } catch (e) { toast("导入失败：" + e); return; }
+    await afterMutation();
+    const sk = (d.skipped && d.skipped.length) ? ` · 跳过 ${d.skipped.length} 个非 .md` : "";
+    toast(`已导入 <b>${d.imported.length}</b> 篇到 <span class='mono'>${esc(d.dir)}/</span>${sk}`);
+    if (CUR && CUR.domain === dom) location.href = sub ? `/browse/${encodeURIComponent(dom)}/${encodeURIComponent(sub)}` : `/browse/${encodeURIComponent(dom)}`;
+  };
+  document.body.appendChild(inp);
+  inp.click();
+}
+/* 第三轮 #1 目录重命名：/api/rename-sub（store.rename_sub 修复后经 Web 暴露）。 */
+async function renameSubPrompt(dom, sub) {
+  const res = await kbModal({
+    title: "重命名目录",
+    body: `重命名 <span class='mono'>${esc(dom)}/${esc(sub)}/</span>（文档与索引自动级联）。`,
+    inputs: [{ key: "nm", label: "新目录名（英文 id）", value: sub, placeholder: "new-id" }],
+    confirmText: "重命名",
+  });
+  if (!res || !res.nm) return;
+  const nn = res.nm.trim();
+  const r = await fetch("/api/rename-sub", { method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ domain: dom, sub, new: nn }) });
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok || !d.ok) { toast("重命名失败：" + (d.error || r.status)); return; }
+  if (d.alias_only) {
+    toast(`已清除显示别名「${esc(d.dropped_alias)}」，目录改以本名 <span class='mono'>${esc(nn)}</span> 显示`);
+    await afterMutation(); return;
+  }
+  toast(`已重命名为 <span class='mono'>${esc(dom)}/${esc(nn)}</span> · 索引已级联更新`);
+  if (CUR && CUR.domain === dom && CUR.sub === sub) {
+    invalidate("all"); location.href = `/browse/${encodeURIComponent(dom)}/${encodeURIComponent(nn)}`; return;
+  }
+  await afterMutation();
+}
+/* 域重命名：/api/rename-domain 整目录搬移 + taxonomy 键迁移。
+   id 留空 = 只改显示名（alias_only 分支）；两者都空 = 取消。 */
+async function renameDomainPrompt(dom) {
+  const res = await kbModal({
+    title: "重命名域",
+    body: `重命名 <span class='mono'>${esc(dom)}/</span>：改目录 id 会整体搬移该域全部文档（含旁挂，索引自动级联）；id 留空则只改显示名。`,
+    inputs: [
+      { key: "nm", label: "新目录 id（英文，留空=不改 id）", placeholder: "new-domain-id" },
+      { key: "lb", label: "显示名（留空=保留当前）", value: (window.LABELS && window.LABELS[dom]) || "" },
+    ],
+    confirmText: "重命名",
+  });
+  if (!res) return;
+  const nn = (res.nm || "").trim();
+  const lb = (res.lb || "").trim();
+  if (!nn && !lb) { toast("id 与显示名都没填，已取消"); return; }
+  const r = await fetch("/api/rename-domain", { method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ domain: dom, new: nn, label: lb }) });
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok || !d.ok) { toast("重命名失败：" + (d.error || r.status)); return; }
+  if (d.alias_only) {
+    toast(lb ? `显示名已改为「${esc(lb)}」` : "显示别名已清除，回退目录本名");
+    await afterMutation(); return;
+  }
+  toast(`已重命名域 <span class='mono'>${esc(dom)} → ${esc(d.to)}</span> · ${d.n_docs} 篇文档级联完成`);
+  if (CUR && CUR.domain === dom) {
+    invalidate("all"); location.href = `/browse/${encodeURIComponent(d.to)}/${encodeURIComponent(CUR.sub || "")}`; return;
+  }
+  await afterMutation();
+}
+/* 问题13：键盘唤起——文档列表项或树子域获得焦点后按 Menu 键 / Shift+F10，
+   菜单锚定在该元素下方（触摸设备右键不可达的键盘补偿路径） */
+document.addEventListener("keydown", e => {
+  if (!WORKBENCH || (e.key !== "ContextMenu" && !(e.shiftKey && e.key === "F10"))) return;
+  const a = e.target.closest && (e.target.closest("#doclist .doc") || e.target.closest("#tree .doc") || e.target.closest("#tree .sub") || e.target.closest("#tree .dom-head"));
+  if (!a) return;
+  e.preventDefault();
+  const r = a.getBoundingClientRect();
+  const items = a.classList.contains("doc") ? ctxDocItems(a)
+    : a.classList.contains("dom-head") ? ctxDomItems(a) : ctxSubItems(a);
+  openCtxMenu(r.left + 8, r.bottom + 2, items);
+});
+
+document.addEventListener("contextmenu", e => {
+  // 工作台（阅读页）：文档列表 / 分类树（含树内联文档）/ 域头的右键
+  if (WORKBENCH) {
+    const docA = e.target.closest("#doclist .doc") || e.target.closest("#tree .doc");
+    if (docA) { e.preventDefault(); openCtxMenu(e.clientX, e.clientY, ctxDocItems(docA)); return; }
+    const subA = e.target.closest("#tree .sub");
+    if (subA) { e.preventDefault(); openCtxMenu(e.clientX, e.clientY, ctxSubItems(subA)); return; }
+    const domA = e.target.closest("#tree .dom-head");
+    if (domA) { e.preventDefault(); openCtxMenu(e.clientX, e.clientY, ctxDomItems(domA)); return; }
+    return;
+  }
+  // 总览页：领域卡片 / 最近更新行的右键（此前被 WORKBENCH 门禁整体挡掉）
+  const dcard = e.target.closest("#view-home .dcard");
+  if (dcard) {
+    e.preventDefault();
+    const m = (dcard.getAttribute("href") || "").match(/^\/browse\/([^/]+)\/([^/]+)/);
+    if (!m) return;
+    const [_, dom, firstSub] = m;
+    openCtxMenu(e.clientX, e.clientY, [
+      { icon: icon("chart"), label: "统计信息", fn: () => showSubStats(dom, firstSub) },
+      { icon: icon("folder"), label: "进入该目录", fn: () => { location.href = dcard.getAttribute("href"); } },
+      { icon: icon("copy-path"), label: "复制目录路径", fn: () => copyText(dom, "已复制路径") },
+    ]);
+    return;
+  }
+  const rrow = e.target.closest("#view-home .rrow");
+  if (rrow) {
+    e.preventDefault();
+    const href = rrow.getAttribute("href") || "";
+    const rp = (rrow.querySelector(".rp") || {}).textContent || "";
+    const dm = href.match(/^\/doc\/(.+)$/);
+    if (!dm) { copyText(rp, "已复制路径"); return; } // _inbox 外链行：只给路径
+    const rel = decodeURIComponent(dm[1]) + ".md";
+    openCtxMenu(e.clientX, e.clientY, [
+      { icon: icon("trend"), label: "统计信息", fn: () => showStats(rel) },
+      { icon: icon("copy"), label: "复制 Markdown 原文", fn: async () => {
+          const r = await fetch(rawUrl(rel));
+          if (!r.ok) { toast("读取原文失败：" + r.status); return; }
+          copyText(await r.text(), "已复制 Markdown 原文");
+        } },
+      { icon: icon("move-arrow"), label: "移动到…", fn: () => moveDocPrompt(rel) },
+      { icon: icon("edit-pencil"), label: "重命名…", fn: () => renameDocPrompt(rel) },
+    ]);
+  }
+});
+
+/* ---------- 阅读统计埋点（v1：open / 60s 心跳 / finish，全部本地） ---------- */
+let READ_TRACK = { path: null, lastOpenSent: 0, minutes: 0, timer: null };
+
+function trackEvent(event, seconds) {
+  if (!READ_TRACK.path) return;
+  fetch("/api/track", { method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ path: READ_TRACK.path, event, seconds }) }).catch(() => {});
+}
+
+function startReadTracking() {
+  clearInterval(READ_TRACK.timer);
+  READ_TRACK.minutes = 0;
+  READ_TRACK.timer = setInterval(() => {
+    // 页面不可见不计时长；每满 1 分钟上报一次增量
+    if (document.visibilityState !== "visible" || !READ_TRACK.path) return;
+    READ_TRACK.minutes += 1;
+    trackEvent("read_minute", 60);
+  }, 60000);
+}
+
+function setTrackingDoc(rel) {
+  if (READ_TRACK.path === rel) return; // 同文档刷新不重复 open
+  READ_TRACK.path = rel;
+  READ_TRACK.minutes = 0;
+  const now = Date.now();
+  if (rel && now - READ_TRACK.lastOpenSent > 600000) { // 10 分钟同文档去重（双保险）
+    READ_TRACK.lastOpenSent = now;
+    trackEvent("open", 0);
+  }
+}
+
+/* ---------- 快捷键与搜索 ---------- */
+/* 全局 keydown 统一交给 kb-core.js 的 KB.keys 分发器（需求7）。
+   kb-core.js 在本文件之前 defer 加载；若它没起来，退回 v18 的原始行为，
+   保证 `/` 聚焦搜索、Escape 关编辑器不丢。 */
+document.addEventListener("keydown", e => {
+  if (window.KB && KB.keys && typeof KB.keys.handle === "function") {
+    if (!e.__kbHandled) { e.__kbHandled = true; KB.keys.handle(e); } // kb-core 已在捕获阶段处理过就不再重复
+    return;
+  }
+  if (e.key === "/" && !["INPUT", "TEXTAREA"].includes(document.activeElement.tagName)) { e.preventDefault(); const q = $("#q"); q && q.focus(); }
+  if (e.key === "Escape") {
+    // 沉浸模式优先退出（快赢）：编辑器内 Esc 仍归 dirty guard 管辖
+    const mMain = document.querySelector("main");
+    if (mMain && mMain.classList.contains("immersive") && !editorIsOpen()) {
+      mMain.classList.remove("immersive");
+      setPanel("left", false); setPanel("rail", false);
+      toast("已退出沉浸模式");
+    } else { tryCloseEditor(); }
+  }
+  // 快赢：沉浸阅读模式 —— W 键一键收起两侧栏只留正文，再按恢复（编辑器内不劫持）
+  if ((e.key === "w" || e.key === "W") && !e.ctrlKey && !e.metaKey && !e.altKey
+      && !["INPUT", "TEXTAREA"].includes(document.activeElement.tagName)
+      && !editorIsOpen() && WORKBENCH) {
+    e.preventDefault();
+    const m = document.querySelector("main");
+    const immersive = m.classList.toggle("immersive");
+    setPanel("left", immersive);
+    setPanel("rail", immersive);
+    toast(immersive ? "沉浸模式 · 按 W 或 Esc 退出" : "已退出沉浸模式");
+  }
+});
+const q = $("#q");
+if (q) q.addEventListener("keydown", e => {
+  if (e.key === "Enter" && q.value.trim()) location.href = "/search?q=" + encodeURIComponent(q.value.trim());
+});
+
+/* ---------- 需求 #9：搜索框空态下拉 —— 点击空的搜索框展示探索面板 ----------
+   数据源：命令面板索引（术语/文档/子域 Top）+ 固定快捷入口 + 最近更新。 */
+/* ---------- L2 就地搜索浮层（阶段5 STEP2 授权接线） ----------
+   旧 searchdrop 下拉退役：快速前往/探索语料并入浮层空态。
+   钩子保留：#searchbox #q（触发器 + `/` 键）；Esc 关闭；无 backdrop 关闭（反模式纪律）。 */
+const SO = {
+  ov: null, box: null, input: null, body: null, stat: null,
+  engine: "fts", scope: "", tag: "", timer: null, seq: 0, lastQ: "",
+  esc2: s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c])),
+};
+
+function soOpen() {
+  if (!SO.ov) SO.ov = document.getElementById("kb-search-ov");
+  if (!SO.ov) return;
+  SO.box = SO.box || SO.ov.querySelector(".kb-search-box");
+  SO.input = SO.input || document.getElementById("kb-so-q");
+  SO.body = SO.body || document.getElementById("kb-so-body");
+  SO.ov.hidden = false;
+  SO.ov.classList.add("show");
+  if (!SO.ov.dataset.wired) {
+    soWire();
+    SO.ov.dataset.wired = "1";
+  }
+  SO.body.innerHTML = soEmptyState();
+  /* dataset 不随 innerHTML 重建而清：SPA 切页不刷页，上一次搜索留下的
+     hasResults="1" 会让 soRenderRecent 的守卫永远跳过（2026-09-21 最近查询消失 bug） */
+  SO.body.dataset.hasResults = "0";
+  soSyncClear();
+  setTimeout(() => { if (SO.input) SO.input.focus(); }, 0);
+  // 打开即带出最近查询（纯前端 localStorage，无编造）
+  soRenderRecent();
+}
+
+/* 清空按钮：输入框有字才现身；点击清空并回到空态（浮层保持打开） */
+function soSyncClear() {
+  const btn = document.getElementById("kb-so-clear");
+  if (btn && SO.input) btn.hidden = !SO.input.value;
+}
+
+function soClose() {
+  if (!SO.ov) return;
+  SO.ov.classList.remove("show");
+  SO.ov.hidden = true;
+  if (q) { try { q.blur(); } catch (e) {} }
+}
+
+function soWire() {
+  /* 浮层键位刻意极简（2026-09-21 用户要求，避免与别的软件冲突）：
+     只留 Esc 关闭 + Enter 打开首条；点空白关闭在 kb-core 的 Esc/点遮罩链里。
+     原 F2/F3 切引擎、Shift+Enter 结果页已连代码一并删除。 */
+  SO.ov.addEventListener("keydown", e => {
+    if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); soClose(); }
+    else if (e.key === "Enter") { e.preventDefault(); soOpenFirst(); }
+    e.stopPropagation();
+  });
+  SO.ov.querySelectorAll(".kb-eng-chip").forEach(ch => {
+    ch.addEventListener("click", () => soSetEngine(ch.dataset.eng));
+  });
+  /* 点结果/快速前往等任意链接 → 先关浮层再放行导航：
+     workbench 的 SPA 全局 click 接管会吃掉整页跳转，浮层不主动关就一直悬在脸上 */
+  SO.body.addEventListener("click", e => {
+    /* 最近查询：逐条删除 / 全部清除（先于 data-q 分支，避免冒泡触发重检） */
+    const del = e.target.closest && e.target.closest(".kb-sr-del");
+    if (del) { soForget(del.dataset.del); return; }
+    if (e.target.closest && e.target.closest(".kb-sr-clearall")) { soForget(null); return; }
+    /* 最近查询条目（非链接，带 data-q）→ 填入该词并立即重检，浮层保持打开 */
+    const rec = e.target.closest && e.target.closest(".kb-sr[data-q]");
+    if (rec) {
+      if (SO.input) SO.input.value = rec.dataset.q;
+      soRun();
+      return;
+    }
+    if (e.target.closest && e.target.closest("a[href]")) soClose();
+  });
+  SO.ov.querySelectorAll(".kb-scope-chip").forEach(ch => {
+    ch.addEventListener("click", () => {
+      const v = ch.dataset.scope || "";
+      SO.scope = v.startsWith("fav") || v.startsWith("unmastered") ? "" : v;
+      SO.tag = "";
+      SO.ov.querySelectorAll(".kb-scope-chip").forEach(x => x.classList.toggle("on", x === ch));
+      soRun();
+    });
+  });
+  if (SO.input) SO.input.addEventListener("input", () => {
+    soSyncClear();
+    clearTimeout(SO.timer);
+    SO.timer = setTimeout(soRun, 240);
+  });
+  const clearBtn = document.getElementById("kb-so-clear");
+  if (clearBtn) clearBtn.addEventListener("click", () => {
+    if (SO.input) { SO.input.value = ""; SO.input.focus(); }
+    soSyncClear();
+    SO.body.innerHTML = soEmptyState();
+    soRenderRecent();
+  });
+}
+
+function soSetEngine(eng) {
+  if (!["hybrid", "fts", "semantic"].includes(eng)) return;
+  SO.engine = eng;
+  SO.ov.querySelectorAll(".kb-eng-chip").forEach(ch => {
+    const on = ch.dataset.eng === eng;
+    ch.classList.toggle("on", on);
+    ch.setAttribute("aria-pressed", on ? "true" : "false");
+  });
+  soRun();
+}
+
+function soEmptyState() {
+  const shortcuts = [
+    { icon: "i-inbox-tray", label: "收件箱（待归档）", href: "/inbox" },
+    { icon: "i-favorite-heart", label: "我的收藏", href: "/favorites" },
+    { icon: "i-tag-outline", label: "标签管理", href: "/tags" },
+    { icon: "i-stats-chart", label: "月度统计", href: "/stats" },
+    { icon: "i-sort-alpha", label: "术语门户（A-Z）", href: "/glossary" },
+    { icon: "i-clock-heartbeat", label: "间隔复习", href: "/review" },
+  ];
+  return `<div class="kb-sr-group">快速前往</div>
+    <div class="kb-sdrop-grid">${shortcuts.map(s =>
+      `<a class="kb-sdrop-item" href="${s.href}"><svg class="i i-14"><use href="#${s.icon}"/></svg>${SO.esc2(s.label)}</a>`).join("")}</div>
+    <div class="kb-sr-group">搜索语法</div>
+    <div style="font:400 13px/1.8 var(--f-body);color:var(--muted);padding:2px 2px 8px">
+      直接输入 = 混合检索 · <span class="mono">? 问题</span> = 语义 · <span class="mono">Enter</span> 打开首条 · <span class="mono">Esc</span> 关闭</div>`;
+}
+
+function soRenderRecent() {
+  try {
+    const list = JSON.parse(localStorage.getItem("kb-recent-queries") || "[]");
+    if (!Array.isArray(list) || !list.length) return;
+    const body = document.getElementById("kb-so-body");
+    if (!body || body.dataset.hasResults === "1") return;
+    const div = document.createElement("div");
+    div.className = "kb-sr-recent";
+    div.innerHTML = `<div class="kb-sr-group">最近查询<span class="n">本地</span><button type="button" class="kb-sr-clearall">全部清除</button></div>` +
+      list.slice(0, 5).map(qs => `<div class="kb-sr" data-q="${SO.esc2(qs)}"><div class="sr-top"><span class="idx">↺</span><span class="path">${SO.esc2(qs)}</span><button type="button" class="kb-sr-del" data-del="${SO.esc2(qs)}" aria-label="删除该条" title="删除"><svg class="i" aria-hidden="true"><use href="#i-cancel-x"/></svg></button></div></div>`).join("");
+    body.insertBefore(div, body.firstChild);
+  } catch (e) {}
+}
+
+/* 删除单条（q 为词）或全部清除（q 为 null），随后重建最近查询区块 */
+function soForget(q) {
+  try {
+    let list = JSON.parse(localStorage.getItem("kb-recent-queries") || "[]");
+    list = q == null ? [] : list.filter(x => x !== q);
+    localStorage.setItem("kb-recent-queries", JSON.stringify(list));
+  } catch (e) {}
+  const body = document.getElementById("kb-so-body");
+  const old = body && body.querySelector(".kb-sr-recent");
+  if (old) old.remove();
+  soRenderRecent();
+}
+
+function soRemember(qstr) {
+  try {
+    let list = JSON.parse(localStorage.getItem("kb-recent-queries") || "[]");
+    list = [qstr, ...list.filter(x => x !== qstr)].slice(0, 8);
+    localStorage.setItem("kb-recent-queries", JSON.stringify(list));
+  } catch (e) {}
+}
+
+function soRun() {
+  const qstr = (SO.input ? SO.input.value : "").trim();
+  SO.lastQ = qstr;
+  if (!qstr) { SO.body.innerHTML = soEmptyState(); SO.body.dataset.hasResults = "0"; soRenderRecent(); return; }
+  const seq = ++SO.seq;
+  const eng = SO.engine === "semantic" ? "semantic" : SO.engine;
+  const pfx = SO.engine === "semantic" && !qstr.startsWith("?") ? "?" + qstr : qstr;
+  const params = new URLSearchParams({ q: pfx, engine: eng, limit: "12" });
+  if (SO.scope) params.set("domain", SO.scope);
+  fetch("/api/search?" + params.toString()).then(r => r.json()).then(j => {
+    if (seq !== SO.seq) return; // 旧响应丢弃
+    soRenderResults(j, qstr);
+  }).catch(() => {
+    if (seq !== SO.seq) return;
+    SO.body.innerHTML = `<div class="kb-sr-group">检索失败</div><div style="font:400 13.5px/1.7 var(--f-body);color:var(--muted);padding:8px 2px">网络或索引异常，稍后重试。</div>`;
+  });
+}
+
+const SO_GROUP_TITLES = { exact: "精确命中", prefix: "标题前缀", contains: "标题包含", tag: "标签命中", title: "标题命中", body: "正文命中", semantic: "语义相近" };
+
+function soRenderResults(j, qstr) {
+  soRemember(qstr);
+  const all = (j.exact || []).concat(j.hits || []);
+  const hybrid = j.mode === "hybrid";
+  const groups = {};
+  all.forEach(it => {
+    const g = hybrid ? (it.match || "body") : (it.match === "semantic" ? "semantic" : (it.match || "body"));
+    (groups[g] = groups[g] || []).push(it);
+  });
+  let html = "";
+  let idx = 0;
+  Object.keys(groups).forEach(g => {
+    const arr = groups[g];
+    html += `<div class="kb-sr-group">${SO.esc2(SO_GROUP_TITLES[g] || g)}<span class="n">${arr.length}</span></div>`;
+    arr.slice(0, 6).forEach(it => {
+      idx += 1;
+      const num = String(idx).padStart(2, "0");
+      const hl = s => SO.esc2(s || "").replace(/&lt;mark&gt;/g, "<mark>").replace(/&lt;\/mark&gt;/g, "</mark>");
+      let scoreHtml = "";
+      if (hybrid && it.score_fts != null && it.score_semantic != null) {
+        const wf = Math.max(2, Math.min(100, Math.round(parseFloat(it.score_fts) * 100)));
+        const ws = Math.max(2, Math.min(100, Math.round(parseFloat(it.score_semantic) * 100)));
+        scoreHtml = `<span class="sr-scores" title="FTS 与语义双路归一化分">
+          <span class="sc sc-fts" style="--w:${wf}%"><i></i><b>${SO.esc2(String(it.score_fts))}</b></span>
+          <span class="sc sc-sem" style="--w:${ws}%"><i></i><b>${SO.esc2(String(it.score_semantic))}</b></span></span>`;
+      } else {
+        scoreHtml = `<span class="score">${SO.esc2(it.score_label || "")}</span>`;
+      }
+      const pos = (it.hit_in_snippet != null && it.hit_in_snippet >= 0) ? ` · 命中位 ${it.hit_in_snippet}` : "";
+      html += `<a class="kb-sr" href="${it.url || docUrl(it.path || "")}" data-path="${SO.esc2(it.path || "")}">
+        <div class="sr-top"><span class="idx">${num}</span>
+          <span class="path">${SO.esc2(it.path || "")}${SO.esc2(pos)}</span>${scoreHtml}</div>
+        <div class="sr-title">${hl(it.title || "")}</div>
+        <div class="sr-snippet">${(it.snippet || "")}</div>
+        ${(it.tags && it.tags.length) ? `<div class="kb-res-tags">${it.tags.slice(0, 4).map(tg => `<span class="kb-tag mute">${SO.esc2(tg)}</span>`).join("")}</div>` : ""}
+      </a>`;
+    });
+  });
+  SO.body.innerHTML = html || `<div class="kb-sr-group">无结果</div><div style="font:400 13.5px/1.7 var(--f-body);color:var(--muted);padding:8px 2px">换个关键词，或用左侧引擎/域筛选缩小范围。</div>`;
+  SO.body.dataset.hasResults = all.length ? "1" : "0";
+}
+
+function soOpenFirst() {
+  const first = SO.body.querySelector("a.kb-sr[href]");
+  if (first && !first.href.endsWith("#")) location.href = first.href;
+}
+
+function initSearchDrop() {
+  if (!q || q.dataset.sdrop) return;
+  q.dataset.sdrop = "1";
+  // L1 触发器（阶段5 STEP2）：点击容器任意位置（图标/文案/键帽）开 L2；
+  // Tab 聚焦 input 也开；Esc 关闭在浮层内处理。旧 searchdrop 下拉退役。
+  const sbEl = document.getElementById("searchbox");
+  if (sbEl) sbEl.addEventListener("click", () => soOpen());
+  q.addEventListener("focus", () => { if (!q.value.trim()) soOpen(); });
+}
+initSearchDrop();
+
+/* ---------- 启动 ---------- */
+const docData = document.getElementById("doc-data");
+if (docData) {
+  try {
+    setDoc(JSON.parse(docData.textContent));
+    CUR = { domain: DOC.domain, sub: DOC.sub, name: DOC.name };
+    renderArticle();
+    renderCrumb();
+    updateStatusBarPath(); // 直载 /doc 页也填充底部路径+元信息（此前只在 SPA 切页时更新）
+    renderInfo();
+    renderNotes();
+    setTrackingDoc(DOC.rel);
+    startReadTracking();
+  } catch (e) { console.error("初始渲染失败", e); }
+}
+if (WORKBENCH) wireDragMove();
+loadTree().then(() => {
+  renderTree();
+});
+
+/* 首页「继续阅读」：接上最后打开的文档（滚动进度由 restoreReadPos 自动续） */
+if (!WORKBENCH) {
+  const cont = document.getElementById("btn-continue");
+  if (cont) { try { const l = localStorage.getItem("kb-last-doc"); if (l) { cont.href = l; cont.hidden = false; } } catch (e) {} }
+}

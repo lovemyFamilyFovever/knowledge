@@ -1,0 +1,19 @@
+{
+  "name": "codemirror-vendor-build",
+  "private": true,
+  "version": "1.0.0",
+  "description": "离线构建 static/vendor/codemirror.bundle.js 的配方（不在运行时使用，仅重建 bundle 时用）",
+  "scripts": {
+    "build": "esbuild entry.js --bundle --format=iife --minify --target=es2018 --outfile=../../static/vendor/codemirror.bundle.js"
+  },
+  "dependencies": {
+    "@codemirror/autocomplete": "^6.20.3",
+    "@codemirror/commands": "^6.11.1",
+    "@codemirror/lang-markdown": "^6.5.2",
+    "@codemirror/language": "^6.11.0",
+    "@codemirror/state": "^6.7.5",
+    "@codemirror/view": "^6.43.12",
+    "@lezer/highlight": "^1.2.3",
+    "esbuild": "^0.28.2"
+  }
+}

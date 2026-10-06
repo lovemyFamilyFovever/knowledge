@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}出错了 · 知库{% endblock %}
+{% block head %}<link rel="stylesheet" href="/static/pages/misc.css?v={{ av('pages/misc.css') }}">{% endblock %}
+{% block body %}
+<main class="single">
+  <section class="panel page-panel">
+    <div class="err-wrap">
+      <div class="e-title">出错了</div>
+      <div class="e-desc">{{ message }}</div>
+      <a class="mbtn primary" href="/"><svg aria-hidden="true"><use href="#i-chev-left"/></svg>返回首页</a>
+    </div>
+  </section>
+</main>
+{% endblock %}

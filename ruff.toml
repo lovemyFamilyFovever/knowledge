@@ -1,0 +1,24 @@
+# Ruff —— 回归安全网（不是风格警察）。
+# 目标：只抓会导致崩溃/错误的真问题（语法、未定义名、重复定义、未用变量/导入），
+# 不强制改写可工作的既有代码风格。改完 Python 后跑：`python -m ruff check .`
+line-length = 100
+target-version = "py311"
+
+# 派生缓存 / 便携运行时 / 虚拟环境不检查
+extend-exclude = [
+  "indexes", ".python", "app/rag_models", "node_modules",
+  "content", "qwenwork", ".qoder-cn", ".cowork-temp",
+]
+
+[lint]
+# 高信号子集：
+#   E9  语法与运行时错误   F821 未定义名   F811 重复定义
+#   F841 赋值未使用        F401 未使用导入（保留为提示，不自动改）
+#   F63x/F7xx 比较/返回/打印等典型笔误
+select = ["E9", "F63", "F7", "F82", "F401", "F841"]
+ignore = [
+  "F401",  # 未使用导入：app 工厂 / __init__ 再导出常有刻意导入，避免误删
+]
+
+[lint.per-file-ignores]
+"app/__init__.py" = ["F401"]   # 包再导出

@@ -1,0 +1,161 @@
+/* =====================================================================
+   知库 · Workbench 页面级样式（T1 产出 · frontend-redesign-tasks/T1-workbench-阅读.md）
+   设计基准：qwenwork/canvas/mtvq30t7ur2d66tl/index.html 第 01/02/04 屏
+   规则：只引用 T0 底座 token（--seed-*、--acc、--dh、--hairline 等），组件层零硬编码 hex 色值
+        不重复定义底座已有类，只做页面级叠加与覆盖。
+   ===================================================================== */
+
+/* ---- [1] 左树：第三轮 #2 移除树项左侧装饰竖条（.dom-head/.sub::before 整块删除，
+   用户反馈黑色竖线无章法；active 态保留底座 style.css 的 inset 绿条） ---- */
+/* 域 glyph 走 --dh（模板已注入数字色相，底座 .dom-glyph 以 hsl(var(--dh)) 消费） */
+
+/* ---- [2] 文档列表：active 态靠底色+边框区分（左侧竖条已按用户要求移除） ---- */
+.doc{border-radius:var(--rd-ctl)}
+.doc:hover{transform:translateX(2px)}
+.doc-t .star{display:inline-flex;color:var(--c-info)}
+.doc-t .star svg{width:12px;height:12px}
+/* 密度切换 */
+#p-list.density-compact .doc{padding:5px 11px;margin-bottom:1px}
+#p-list.density-compact .doc-t{font-size:12.5px;line-height:1.4}
+#p-list.density-compact .doc-meta{margin-top:3px;gap:4px}
+#p-list.density-compact .mini{padding:.5px 5px;font-size:9px}
+#p-list.density-compact .doclist{padding:5px 8px}
+
+/* ---- [3] doclist-head：密度切换胶囊（对齐设计稿 01 屏 doclist-head） ---- */
+.doclist-head{flex:none;display:flex;align-items:center;gap:6px;padding:7px 12px 5px;
+  border-bottom:1px solid var(--c-line);min-height:30px}
+.doclist-head .head-cap{font-family:var(--f-mono);font-size:10.5px;letter-spacing:.05em;color:var(--faint)}
+.density-toggle{margin-left:auto;display:inline-flex;border:1px solid var(--c-line);border-radius:var(--rd-pill);overflow:hidden}
+.density-toggle button{display:inline-flex;align-items:center;gap:4px;padding:2px 9px;font-size:10.5px;
+  color:var(--faint);transition:.15s;cursor:pointer}
+.density-toggle button svg{width:11px;height:11px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.density-toggle button:hover{color:var(--muted)}
+.density-toggle button.on{background:var(--acc-soft);color:var(--c-acc);font-weight:600}
+
+/* ---- [4] 面包屑：路径/图标节奏（对齐 01 屏 crumb） ---- */
+.crumb .path{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.crumb .sep{margin:0 2px}
+
+/* ---- [5] 阅读页（对齐 04 屏）：fm-chip 化的 chips / wikilink / codeblock / mermaid ---- */
+.a-chips .chip{border-radius:var(--rd-pill);padding:2.5px 10px}
+.a-chips .chip svg{width:10px;height:10px;margin-right:2px}
+.a-body .wikilink,.a-body a.wikilink{color:var(--c-acc);border-bottom:1px dashed color-mix(in oklab,var(--c-acc),transparent 55%);
+  padding-bottom:1px;cursor:pointer}
+.a-body .wikilink:hover{border-bottom-style:solid}
+/* mermaid 角标视觉迁 reader.css/style.css [8]，此处保留定位 */
+.mermaid{position:relative}
+
+/* ---- [6] 编辑器 overlay：平面薄板（INSTRUMENT 无玻璃） + 三按钮全 SVG ---- */
+.article-wrap{position:relative}
+.editor{position:absolute;inset:0;z-index:6;padding:14px 18px;
+  background:var(--c-panel);
+  flex-direction:column;display:none}
+.editor.show{display:flex;animation:rise .25s var(--ease-out)}
+.editor .bar{display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:nowrap}
+.editor .bar .path{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--c-acc)}
+.editor .bar .ed-note{flex:none}
+.editor .bar .iconbtn{flex:none}
+.editor .editor-hint{display:flex;align-items:flex-start;gap:8px;padding:8px 10px;margin:0 0 8px;border-radius:var(--rd-ctl);
+  background:color-mix(in oklab,var(--c-info),transparent 92%);border:1px solid color-mix(in oklab,var(--c-info),transparent 75%);
+  font-size:12px;line-height:1.6;color:var(--muted)}
+.editor .editor-hint svg{flex:none;margin-top:2px;color:var(--c-info)}
+.editor .editor-hint b{color:var(--c-info)}
+.editor textarea{flex:1;min-height:0}
+/* ---- [12] CodeMirror 6 编辑器（Story 2）：CM 接管可见输入，textarea 降为值事实源 ---- */
+/* 编辑器字体 token：bundle 主题读 --ed-mono/--ed-fs/--ed-lh（带 --f-mono/13px/1.7 兜底）。
+   偏编程风格连字栈：本机常见 Cascadia Code / JetBrains Mono（含 Nerd Font 变体名
+   JetBrainsMono NF）优先，再列 Fira Code / Sarasa 兜底；遵守项目「本机字族、不新增
+   @font-face 网络字体」原则（style.css [1] 段）。中文回落雅黑/苹方保证中英混排协调。
+   字号对齐原 textarea 13px 基准。 */
+/* 本段只定义 --ed-* 令牌，与上面那条 .editor 布局规则同名不同职责，有意分层 */
+/* stylelint-disable-next-line no-duplicate-selectors */
+.editor{
+  --ed-mono:"Cascadia Code","JetBrainsMono NF","JetBrains Mono","Fira Code","Sarasa Mono SC","Microsoft YaHei UI","PingFang SC",var(--f-mono);
+  --ed-fs:13px;
+  --ed-lh:1.75;
+  --ed-gutter-fs:11.5px;
+}
+.cm-host{flex:1;min-height:0;display:flex;flex-direction:column;overflow:hidden;
+  border:1px solid var(--c-line2);border-radius:var(--rd-card);background:var(--c-panel)}
+.cm-host .cm-editor{flex:1;min-height:0;outline:none}
+.cm-host .cm-editor.cm-focused{outline:none}
+.cm-host .cm-scroller{overflow:auto}
+/* 编程连字（=> -> !== 等）：字体栈里的 Fira/JetBrains/Cascadia Code 均自带 ligatures */
+.cm-host .cm-content{font-variant-ligatures:contextual;font-feature-settings:"calt" 1,"liga" 1}
+/* CM 接管后隐藏原生 textarea（保留在 DOM 作值事实源，app.js 照旧读写 .value）。
+   用 clip-path 而非已废弃的 clip（stylelint property-no-deprecated）。 */
+.editor textarea.cm-hidden{position:absolute;width:1px;height:1px;padding:0;margin:-1px;
+  overflow:hidden;clip-path:inset(50%);white-space:nowrap;border:0;opacity:0;pointer-events:none}
+
+/* ---- [13] 头部标签 chip 就地编辑（Story 4）：× 就地删 / + 就地加，免跳右栏 ---- */
+.a-chips .tag-chip{gap:3px;padding-right:5px}
+.a-chips .chip-x{display:inline-flex;align-items:center;justify-content:center;flex:none;
+  width:14px;height:14px;border:none;background:transparent;color:var(--c-acc);
+  opacity:.5;border-radius:50%;cursor:pointer;padding:0;transition:opacity .15s,background .15s}
+.a-chips .chip-x:hover{opacity:1;background:var(--acc-line)}
+.a-chips .chip-x svg{display:block}
+.chips-in{width:150px;border:1px solid var(--acc-line);border-radius:var(--rd-ctl);
+  background:var(--c-panel);color:var(--c-ink);font:400 11px/1.4 var(--f-mono);
+  padding:4px 8px;outline:none}
+.chips-in:focus{box-shadow:0 0 0 3px var(--acc-soft)}
+.chips-in::placeholder{color:var(--faint)}
+
+/* ---- [7] 右 rail：药丸页签内的图标节奏（页签本体样式在 style.css [9]） ---- */
+.rtab svg{width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex:none;opacity:.78}
+.rtab.active svg{color:var(--c-acc);opacity:1}
+.rtab:focus-visible{outline:3px solid color-mix(in oklab,var(--c-acc),transparent 20%);outline-offset:1px;border-radius:var(--rd-card)}
+.rpane-hint{padding:6px 2px;font-size:12.5px;color:var(--faint)}
+
+/* ---- [8] 面板 reveal 微调：三栏不同步起跳（stagger 由 data-reveal 顺序决定） ---- */
+html.motion-ready .wb-panel{will-change:transform}
+
+/* ---- [10] v1.1 追加：双链面板「→ 加入串学」（需求4，pages/workbench.js 注入）
+   2026-09-22 三 tab 重构：行变紧凑后串学入口改为 hover 浮层，零高度不占行。 ---- */
+.lk-roam{display:flex;justify-content:flex-end;align-items:center;height:0;position:relative;top:-26px;z-index:2;
+  opacity:0;pointer-events:none;transition:opacity var(--dur-1)}
+.lk-row:hover + .lk-roam,.lk-roam:focus-within{opacity:1;pointer-events:auto}
+.kb-roam-link{
+  display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:var(--rd-pill);
+  border:1px dashed var(--acc-line);background:var(--c-panel);color:var(--c-acc);
+  font-size:10.5px;text-decoration:none;transition:background .15s,border-color .15s;
+}
+.kb-roam-link svg{width:11px;height:11px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.kb-roam-link:hover{background:var(--acc-soft);border-style:solid}
+@media (max-width:480px){.kb-roam-link{min-height:36px;padding:6px 12px;font-size:11.5px}}
+
+
+/* ---- [11] 编辑器 [[ 双链补全下拉（Story 1，pages/wikilink-suggest.js 注入）
+   观感对齐原生下拉：小圆角（--rd-ctl）+ 轻阴影 + 紧凑行高，配色全部走项目
+   token（--c-panel/--c-line/--c-ink），明暗主题自动跟随。此前误用不存在的
+   --panel/--line 变量导致永远白底硬边（暗色主题下刺眼），已修正。 ---- */
+.wl-suggest{
+  position:fixed;z-index:9000;max-height:264px;overflow-y:auto;
+  background:var(--c-panel);border:1px solid var(--c-line2);border-radius:var(--rd-ctl);
+  box-shadow:0 3px 14px color-mix(in oklab,var(--c-ink),transparent 76%);
+  padding:2px 0;font:400 12px/1 var(--f-mono);
+}
+.wl-item{
+  display:flex;align-items:center;gap:6px;padding:6px 10px;
+  cursor:pointer;line-height:1.4;color:var(--c-ink);
+}
+.wl-item.on{background:color-mix(in oklab,var(--c-acc),transparent 88%)}
+.wl-item.on .wl-sub{color:var(--muted)} /* 选中态提亮子域说明（暗色下 faint 对比不足） */
+.wl-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.wl-kind{flex:none;font-size:10px;color:var(--c-info)}
+.wl-sub{flex:none;margin-left:auto;font-size:10.5px;color:var(--faint)}
+.wl-empty{padding:7px 10px;font-size:11.5px;color:var(--faint)}
+
+/* ---- [14] 标签补全浮层（tag-suggest.js）：与 .wl-suggest 同一套克制视觉，
+   仅定位逻辑不同（锚输入框底边而非 caret）。position:fixed 与
+   getBoundingClientRect 的视口坐标配套（absolute 在页面滚动后会错位）。 ---- */
+.tag-suggest{
+  position:fixed;z-index:9000;max-height:264px;overflow-y:auto;
+  background:var(--c-panel);border:1px solid var(--c-line2);border-radius:var(--rd-ctl);
+  box-shadow:0 3px 14px color-mix(in oklab,var(--c-ink),transparent 76%);
+  padding:2px 0;font:400 12px/1 var(--f-mono);
+}
+
+/* ---- [9] 窄屏（<1280；整体断点归 T6） ---- */
+@media (max-width:1280px){
+  .article{padding:24px 26px 50px}
+}

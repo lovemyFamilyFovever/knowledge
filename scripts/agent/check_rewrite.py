@@ -1,0 +1,668 @@
+"""baike 重写验收：按 docs/writing-spec-v1.2.md §3 做机械检查。
+
+用法: python scripts/agent/check_rewrite.py content/baike/<域>/<词条>.md [...]
+      python scripts/agent/check_rewrite.py --exempt <path> [...] <待检路径> [...]
+      python scripts/agent/check_rewrite.py --strict <待检路径> [...]
+退出码 0 = 全部 PASS；非 0 = 至少一篇 FAIL。warning 不影响退出码。
+
+v1.2 变更：
+- 枢纽信号②b 收紧：粗体领起项除自身叙述 ≥70 字外，**还必须内含 ≥1 个 [[双链]]**
+  才计入豁免信号。堵住叶子词条靠「≥3 条粗体 bullet + 一张表」白拿 3400 额度。
+- 新增 ⑨：`> 🎯` 首行去空白后 ≤150 字，超限 FAIL（原 v1.0 §2 的 30–60 字不可行）。
+- ⑨ 带 grandfather（默认生效）：台账状态恰为 `done` **且**末次提交严格早于 v1.2 落盘
+  commit（`ANSWER_GATE_COMMIT`）的存量稿，超标降级为 WARNING；新稿、split 新产物、
+  未登记稿仍硬 FAIL。加 `--strict` 关闭 grandfather，用于三期速答压缩会话全量清账。
+
+v1.1 变更：
+- 枢纽信号② 两条 OR：②a H2/H3 或编号粗体具名子概念 ≥3；②b「核心机制」节内
+  粗体领起列表项 ≥3 且各项叙述 ≥100 字（不含表格行与围栏）——折叠式枢纽由此拿到 3400 豁免。
+- exempt-reference（v1.1 §5）：--exempt 显式豁免，或自动读 docs/refactor/exempt-reference.md
+  （一行一路径，# 为注释）；命中者输出 EXEMPT、跳过全部检查、计入 PASS。
+
+v1.3 变更：
+- ⑦ 改为**只比六个身世键**（title/source/source_path/collected/status/tags）：阅读器会按
+  AGENTS.md 不变量 1/6 往 frontmatter 写回 favorite 等运行时键，整块比对会把用户的正常
+  收藏操作报成"AI 越权改 frontmatter"（实测假 FAIL 1 篇，且会随使用增长）。非身世键差异
+  降级为 warning 说明，不再 FAIL。
+- 新增 ⑩（warning 级，v1.2 §8.2 概念级查重）：悬空双链若在库内某文件的"括号别名 / 词条名 /
+  定义段 / 正文"里能对上（如 [[CDN]] → network/内容分发网络.md），提示疑似已有专条、应考虑改链。
+
+注意四处盲区（v1.1 §9 / v1.2 §3、§8）：⑦ 比的是 HEAD，分片提交后即空转，收尾须另与批前基线比；
+⑧ 悬空双链是朴素正则，会误报围栏里的 bash `[[ -f x ]]`，权威口径是 index.db 的 links.resolved；
+⑨ 是新加的门，对 ⑨ 之前已判 done 的存量稿有追溯力——存量超标只修 🎯 那一行，不要顺手重写全篇。
+"""
+from __future__ import annotations
+
+import pathlib
+import re
+import subprocess
+import sys
+
+ROOT = pathlib.Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(ROOT))
+
+from app.cards import parse_file  # noqa: E402
+
+# 规范 §3：只有"核心机制"这一节的节名可按类型变化
+CORE_VARIANTS = {"核心机制", "核心流程", "做法", "计算逻辑", "核心能力"}
+# 规范 §2 骨架中必须存在的节（已归一化）
+REQUIRED_H2 = {
+    "定义", "为什么需要它", "具体示例", "何时用与何时不用", "优劣与代价",
+    "与相关概念的区别", "常见误区", "面试速答", "相关术语",
+}
+# 骨架节名全集：枢纽型判定时排除，避免任何词条凭骨架节数冒充枢纽
+SKELETON = REQUIRED_H2 | CORE_VARIANTS | {"参考资料"}
+
+CURLY = "“”‘’"
+RE_DEF = re.compile(r"^\*\*一句话定义：\*\*[ \t]*(\S.*)$", re.M)
+RE_ARXIV = re.compile(r"arXiv[:：\s]\s*(\d{4}\.\d{4,5})")
+RE_DOI = re.compile(r"\b(10\.\d{4,9}/[^\s)>\]，。；]+)")
+RE_WIKI = re.compile(r"\[\[([^\]|#]+)")
+RE_NUM_BOLD = re.compile(r"^\s*\d+\.\s+\*\*[^*]+\*\*", re.M)
+# 枢纽信号②b：粗体领起的列表项，兼容 `- **名**：` 与 `- **名：**` 两种写法
+RE_BOLD_LEAD = re.compile(r"^\s*(?:[-*+]\s+|\d+\.\s+)\*\*([^*]+?)\*\*[：:]?")
+# ②b 每项叙述字数下限。取 70 而非 v1.0 ②a 的 100：折叠式枢纽的项普遍 70–110 字，
+# 100 会把 ESB 这类正主挡在豁免外（实测其四项为 107/91/75/46）。
+BOLD_ITEM_MIN = 70
+# 规范 v1.2 §4：`> 🎯` 首行去空白后的字数上限（原 30–60 字装不下"定义+取舍+关键词"）
+ANSWER_MAX = 150
+RE_ANSWER = re.compile(r"^>\s*🎯\s*(.+)$", re.M)
+EXEMPT_LIST = ROOT / "docs" / "refactor" / "exempt-reference.md"
+
+
+def norm_title(t: str) -> str:
+    """归一化节名：`何时用 / 何时不用` 与规范的 `何时用与何时不用` 视为同一节。"""
+    return re.sub(r"\s+", "", t.strip()).replace("/", "与").replace("／", "与")
+
+
+def split_frontmatter(text: str) -> tuple[str, str]:
+    if not text.startswith("---"):
+        return "", text
+    end = text.find("\n---", 3)
+    if end == -1:
+        return "", text
+    close = text.find("\n", end + 1)
+    return text[: close + 1], text[close + 1 :]
+
+
+def h2_titles(body: str) -> list[str]:
+    return [norm_title(m.group(1)) for m in re.finditer(r"^## (?!#)(.+)$", body, re.M)]
+
+
+def section_lines(body: str, title: str) -> list[str]:
+    """取 `## title` 节内的原始行（到下一个 H2 为止）。"""
+    lines = body.splitlines()
+    out: list[str] = []
+    grab = False
+    for ln in lines:
+        if re.match(r"^## (?!#)", ln):
+            if grab:
+                break
+            grab = norm_title(ln[3:]) == title
+            continue
+        if grab:
+            out.append(ln)
+    return out
+
+
+def fence_stats(body: str) -> tuple[int, int]:
+    """返回 (围栏块数, 围栏内总行数)。"""
+    blocks, cur, inner = 0, False, 0
+    for ln in body.splitlines():
+        if ln.lstrip().startswith("```"):
+            if cur:
+                blocks += 1
+            cur = not cur
+            continue
+        if cur:
+            inner += 1
+    if cur:  # 未闭合
+        blocks += 1
+    return blocks, inner
+
+
+def narrative_body(body: str) -> str:
+    """规范 §4 字径：剔除 `> 📌` 导航行与 `## 相关术语`/`## 参考资料` 整节。
+
+    出处与双链不占叙述预算——否则越规范的引用列表会挤掉正文配额，
+    反向激励 harness 删引用。
+    """
+    out, skip = [], False
+    for ln in body.splitlines():
+        if re.match(r"^## (?!#)", ln):
+            skip = norm_title(ln[3:]) in {"相关术语", "参考资料"}
+        if skip or ln.lstrip().startswith("> 📌"):
+            continue
+        out.append(ln)
+    return "\n".join(out)
+
+
+def prose_len(body: str) -> int:
+    """正文字数：叙述体去空白后的字符数。"""
+    return len(re.sub(r"\s", "", narrative_body(body)))
+
+
+def has_mermaid(body: str) -> bool:
+    return bool(re.search(r"^\s*```\s*mermaid\s*$", body, re.I | re.M))
+
+
+def table_data_rows(body: str) -> int:
+    """正文中最长一张表的"数据行"数：表头与 |---| 分隔行不计。"""
+    best, group = 0, []
+
+    def flush(g: list[str]) -> int:
+        sep = next(
+            (i for i, x in enumerate(g) if re.match(r"^\s*\|[\s:|-]+\|?\s*$", x)), None
+        )
+        return 0 if sep is None else len(g) - sep - 1
+
+    for ln in list(body.splitlines()) + [""]:
+        if ln.lstrip().startswith("|"):
+            group.append(ln)
+            continue
+        if group:
+            best = max(best, flush(group))
+            group = []
+    return best
+
+
+def subconcept_count(body: str) -> int:
+    """枢纽信号②：H2/H3 或编号粗体领起、且其后叙述 ≥100 字的具名子概念数。"""
+    lines = body.splitlines()
+    marks: list[tuple[int, bool, str]] = []
+    for i, ln in enumerate(lines):
+        m = re.match(r"^#{2,3} (.+)$", ln)
+        if m:
+            marks.append((i, norm_title(m.group(1)) not in SKELETON, ""))
+        elif RE_NUM_BOLD.match(ln):
+            # 编号粗体领起的叙述常与标记同行，需把本行残余计入
+            marks.append((i, True, re.sub(r"^\s*\d+\.\s+\*\*[^*]+\*\*[：:]?", "", ln)))
+    bounds = [i for i, _, _ in marks] + [len(lines)]
+    n = 0
+    for k, (i, cand, inline) in enumerate(marks):
+        if not cand:
+            continue
+        seg = inline + "\n".join(lines[i + 1 : bounds[k + 1]])
+        if len(re.sub(r"\s", "", seg)) >= 100:
+            n += 1
+    return n
+
+
+def core_bold_subconcepts(body: str) -> list[str]:
+    """枢纽信号②b（v1.1 立、v1.2 收紧）：核心机制节内粗体领起、自身叙述 ≥BOLD_ITEM_MIN 字
+    **且该项内含 ≥1 个 [[双链]]** 的列表项名。
+
+    多定义汇编收敛成折叠式枢纽时子概念写在项目符号里、拿不到 ②a 的 H2/H3 计数，
+    本函数补这条路。计数剔除表格行与围栏内容，避免靠塞表格凑豁免。
+
+    v1.2 加双链硬条件的原因：只验结构会漏——任何叶子词条把「核心能力/做法」写成
+    ≥3 条粗体 bullet 再加一张 ≥4 行表，就能白拿 3400 额度（实测 Playwright 与 Cypress
+    在 2775 字时以"②b 粗体项 6"过线，而它根本不是枢纽）。枢纽的定义性特征是**索引子词条**，
+    故要求每项自带双链。
+    """
+    seg: list[str] = []
+    grab = False
+    for ln in body.splitlines():
+        if re.match(r"^## (?!#)", ln):
+            grab = norm_title(ln[3:]) in CORE_VARIANTS
+            continue
+        if grab:
+            seg.append(ln)
+
+    fenced: list[bool] = []
+    cur = False
+    for ln in seg:
+        if ln.lstrip().startswith("```"):
+            cur = not cur
+            fenced.append(True)
+            continue
+        fenced.append(cur)
+
+    marks = [i for i, ln in enumerate(seg) if RE_BOLD_LEAD.match(ln)]
+    bounds = marks + [len(seg)]
+    out: list[str] = []
+    for k, i in enumerate(marks):
+        m = RE_BOLD_LEAD.match(seg[i])
+        name = m.group(1).strip().rstrip("：:").strip()
+        parts = [seg[i][m.end() :]]
+        for j in range(i + 1, bounds[k + 1]):
+            if fenced[j] or seg[j].lstrip().startswith("|"):
+                continue
+            parts.append(seg[j])
+        text = "\n".join(parts)
+        if len(re.sub(r"\s", "", text)) >= BOLD_ITEM_MIN and RE_WIKI.search(text):
+            out.append(name)
+    return out
+
+
+def length_limit(body: str, nchars: int) -> tuple[int, str]:
+    """规范 v1.1 §2：超 2200 时按枢纽信号①②决定放行到 3400 还是维持原判。"""
+    if nchars <= 2200:
+        return 2200, ""
+    mer, rows, subs = has_mermaid(body), table_data_rows(body), subconcept_count(body)
+    bolds = core_bold_subconcepts(body)
+    s1 = mer or rows >= 4
+    s2 = subs >= 3 or len(bolds) >= 3
+    sig2 = f"具名子概念 {subs}" if subs >= 3 else f"折叠式粗体子概念 {len(bolds)}（{'、'.join(bolds[:3])}）"
+    if s1 and s2:
+        sig1 = "mermaid" if mer else f"对比表 {rows} 数据行"
+        return 3400, f"枢纽型（①{sig1} ②{sig2}）"
+    return 2200, (
+        f"未获枢纽豁免（①{'满足' if s1 else '不满足：无 mermaid 且对比表 <4 数据行'} "
+        f"②不满足：具名子概念 {subs} <3 且核心机制粗体项 {len(bolds)} <3"
+        f"（粗体项须自身 ≥{BOLD_ITEM_MIN} 字且内含 [[双链]]））"
+    )
+
+
+STRICT = False
+ANSWER_GATE_COMMIT = "e611848"  # ⑨ 门落盘的 commit；此前已判 done 的存量稿享受 grandfather
+_BAIKE_REL_RE = re.compile(r"^(?:content/)?(?:baike/)?")
+_done_rows: set[str] | None = None
+
+
+def done_ledger_paths() -> set[str]:
+    """`docs/refactor/status/sN.md` 中状态列恰为 done 的路径，归一为 `<子域>/<文件>.md`。
+
+    五片台账的路径前缀有三种写法（`子域/x.md` / `baike/子域/x.md` / `content/baike/子域/x.md`），
+    统一剥掉前缀后比对，避免为此回头改写台账。只认精确 `done`：done-hub / split /
+    exempt-reference 都是本轮或之后的产物，不该享受追溯豁免。
+    """
+    global _done_rows
+    if _done_rows is None:
+        _done_rows = set()
+        for f in sorted((ROOT / "docs" / "refactor" / "status").glob("*.md")):
+            for ln in f.read_text(encoding="utf-8").splitlines():
+                if not ln.startswith("|"):
+                    continue
+                cells = [c.strip() for c in ln.strip("|").split("|")]
+                if len(cells) < 2 or cells[1] != "done" or not cells[0].endswith(".md"):
+                    continue
+                _done_rows.add(_BAIKE_REL_RE.sub("", cells[0]))
+    return _done_rows
+
+
+def is_grandfathered(p: pathlib.Path) -> bool:
+    """⑨ 门 grandfather：v1.2 落盘前就已判 done 的存量稿，超标只 WARNING 不 FAIL。
+
+    两个条件缺一不可——既是台账 done、又确实在 `ANSWER_GATE_COMMIT` 之前提交。
+    新稿、split 新产物、未登记稿一律硬 FAIL。非 baike 语料路径直接不豁免。
+    """
+    try:
+        rel_baike = _BAIKE_REL_RE.sub(
+            "", p.relative_to(ROOT / "content" / "baike").as_posix()
+        )
+    except ValueError:
+        return False
+    if rel_baike not in done_ledger_paths():
+        return False
+    rel_root = p.relative_to(ROOT).as_posix()
+    r = subprocess.run(
+        ["git", "-C", str(ROOT), "log", "-1", "--format=%H", "--", rel_root],
+        capture_output=True, text=True,
+    )
+    last = r.stdout.strip()
+    if not last:
+        return False
+    g = subprocess.run(
+        ["git", "-C", str(ROOT), "rev-parse", ANSWER_GATE_COMMIT],
+        capture_output=True, text=True,
+    )
+    gate = g.stdout.strip()
+    if not gate or last == gate:
+        return False
+    a = subprocess.run(
+        ["git", "-C", str(ROOT), "merge-base", "--is-ancestor", last, gate],
+        capture_output=True,
+    )
+    return a.returncode == 0
+
+
+def content_rel(p: pathlib.Path) -> str:
+    try:
+        return p.relative_to(ROOT / "content").as_posix()
+    except ValueError:
+        return p.as_posix()
+
+
+def git_head_text(rel_from_root: str) -> str | None:
+    r = subprocess.run(
+        ["git", "-C", str(ROOT), "show", f"HEAD:{rel_from_root}"],
+        capture_output=True,
+    )
+    if r.returncode != 0:
+        return None
+    return r.stdout.decode("utf-8", errors="replace")
+
+
+# ⑦ 只比这六个身世键；favorite 等由阅读器运行时写回，属 AGENTS.md 不变量 6 允许的路径。
+PROVENANCE_KEYS = ("title", "source", "source_path", "collected", "status", "tags")
+_FM_KEY = re.compile(r"^([A-Za-z_][\w-]*)\s*:\s*(.*)$")
+
+
+def fm_fields(fm: str) -> dict[str, str]:
+    return {m.group(1): m.group(2).strip() for m in _FM_KEY.finditer(fm)}
+
+
+_title_hay: list[tuple[str, str]] | None = None
+
+
+def title_haystacks() -> list[tuple[str, str, str, str, str]]:
+    """[(括号别名, 名称串, 定义段, 全文段, 相对路径, 用于排序的原文)]，供概念级分档查重。
+
+    只比文件名会漏掉"概念已有专条但名字不同"（[[CDN]] vs `内容分发网络.md`）。
+    分三档是为了压住误报：全文里顺带提过某词的普通词条，不该赢过真正那一篇。
+    """
+    global _title_hay
+    if _title_hay is None:
+        _title_hay = []
+        for q in (ROOT / "content" / "baike").rglob("*.md"):
+            try:
+                txt = q.read_text(encoding="utf-8", errors="replace")
+            except OSError:
+                continue
+            m = re.search(r'^title:\s*"?(.*?)"?\s*$', txt[:600], re.M)
+            nm = re.sub(r"[\s/、，,（）()]+", "",
+                        f"{q.stem} {m.group(1) if m else ''} "
+                        f"{' '.join(re.findall('^# +(.+)$', txt[:400], re.M))}").lower()
+            head = re.sub(r"[\s/、，,（）()]+", "", txt[:1200]).lower()
+            # 别名只取开篇定义区、且剔除含双链的括号——否则"（见 [[X]]）"会让
+            # 引用方 X 的那篇反而抢走 X 的专条（实测 concept_match(事件驱动架构) 误报 API设计）。
+            alias = " ".join(x for x in re.findall(r"[(（]([^()（）]{1,60})[)）]", txt[:800])
+                             if "[[" not in x and "：" not in x and ":" not in x or re.fullmatch(r"[A-Za-z ,/.\-]{2,60}", x))
+            alias = re.sub(r"[\s/、，,]+", "", alias).lower()
+            tail = re.sub(r"[\s/、，,（）()]+", "", txt[:2500]).lower()
+            _title_hay.append((alias, nm, head, tail,
+                               q.relative_to(ROOT / "content").as_posix(),
+                               txt[:2500].lower()))
+    return _title_hay
+
+
+def norm_link(s: str) -> str:
+    return re.sub(r"[\s/、，,（）()]+", "", s).lower()
+
+
+def levenshtein(a: str, b: str, cap: int = 3) -> int:
+    if abs(len(a) - len(b)) > cap:
+        return cap + 1
+    prev = list(range(len(b) + 1))
+    for i, ca in enumerate(a, 1):
+        cur = [i]
+        for j, cb in enumerate(b, 1):
+            cur.append(min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (ca != cb)))
+        if min(cur) > cap:
+            return cap + 1
+        prev = cur
+    return prev[-1]
+
+
+def concept_match(target: str, exclude: str | None = None) -> str | None:
+    """疑似已存在的专条。分档优先级：括号别名 > 词条名 > 定义段 > 正文提及。
+
+    同级按"该词在正文中首次出现的位置"升序——专条会开篇就定义这个概念，
+    只是顺带提一嘴的那篇通常出现在中段。（早先按文件名长度排序会选错：
+    [[CDN]] 被判给 `图片优化.md`，因为它文件名更短、且把 CDN 写在括号里。）
+    """
+    tt = norm_link(target)
+    if len(tt) < 2:
+        return None
+    hay = title_haystacks()
+    # tier 2/3 是"定义段/正文提及"，短词极易误撞（Serverless 撞到不相关长文），
+    # 故只在目标名足够长时才启用后两档；前两档（别名/词条名）本就是精确匹配。
+    def keep(path: str) -> bool:
+        # 不能把"自己"当疑似专条推荐：汇编自身常含该词，建议会毫无意义
+        return exclude is None or path != exclude
+
+    order = (1, 0, 2, 3) if len(tt) >= 5 else (1, 0)
+    for tier in order:
+        hits = [(hay_pos(raw, target), pth) for al, n, h, a, pth, raw in hay
+                if tt in (al, n, h, a)[tier] and keep(pth)]
+        if hits:
+            return min(hits)[1]
+    near = []
+    for *_, pth, raw in hay:
+        if not keep(pth):
+            continue
+        stem = norm_link(pth.rsplit("/", 1)[-1][:-3])
+        # 只看"近似拼写"不够：4 字中文词改两个字就到距离 2（曾把 链路追踪
+        # 误推给 光线追踪、把 重试 推给 死锁）。要求共享前缀或后缀 ≥3 才算笔误。
+        if not (common_prefix(tt, stem) >= 3 or common_suffix(tt, stem) >= 3):
+            continue
+        d = levenshtein(tt, stem)
+        if d <= 2:
+            near.append((d, pth))
+    return min(near)[1] if near else None
+
+
+def common_prefix(a: str, b: str) -> int:
+    i = 0
+    while i < len(a) and i < len(b) and a[i] == b[i]:
+        i += 1
+    return i
+
+
+def common_suffix(a: str, b: str) -> int:
+    i = 0
+    while i < len(a) and i < len(b) and a[-1 - i] == b[-1 - i]:
+        i += 1
+    return i
+
+
+def hay_pos(raw_lower: str, target: str) -> int:
+    """目标词在正文中的首次出现位置；两路探测取更早者，未命中记 9999。"""
+    tl, tn = target.lower(), norm_link(target)
+    compact = raw_lower.replace(" ", "")
+    pos = [raw_lower.find(tl)] if tl else [-1]
+    pos.append(compact.find(tn) if tn else -1)
+    got = [x for x in pos if x >= 0]
+    return min(got) if got else 9999
+
+
+_all_stems: set[str] | None = None
+
+
+def md_stems() -> set[str]:
+    global _all_stems
+    if _all_stems is None:
+        _all_stems = {p.stem for p in (ROOT / "content").rglob("*.md")}
+    return _all_stems
+
+
+def check(path_arg: str, exempt: set[str] | None = None) -> tuple[int, int]:
+    """返回 (fail 数, warn 数)。"""
+    p = pathlib.Path(path_arg).resolve()
+    if exempt and p.as_posix() in exempt:
+        print(f"EXEMPT {content_rel(p)}  （v1.1 §5 exempt-reference：原样保留，跳过检查）")
+        return 0, 0
+    fails: list[str] = []
+    warns: list[str] = []
+
+    if not p.exists():
+        print(f"FAIL {path_arg}\n   - 文件不存在")
+        return 1, 0
+
+    raw = p.read_text(encoding="utf-8")
+    fm, body = split_frontmatter(raw)
+
+    # ④ 弯引号 / <details>
+    if any(c in raw for c in CURLY):
+        bad = "".join(sorted({c for c in raw if c in CURLY}))
+        fails.append(f"④ 含弯引号 [{bad}]（规范 §6 只允许直引号）")
+    if "<details>" in raw:
+        fails.append("④ 含 <details> 自测块（规范 §4 禁止）")
+
+    # ② 一句话定义
+    m = RE_DEF.search(body)
+    if not m:
+        fails.append("② 未找到与 `**一句话定义：**` 同行且非空的值")
+    elif len(m.group(1).strip()) < 8:
+        fails.append(f"② 一句话定义仅 {len(m.group(1).strip())} 字（需 ≥8）")
+
+    # ③ 必备 H2
+    titles = set(h2_titles(body))
+    missing = sorted(REQUIRED_H2 - titles)
+    if missing:
+        fails.append("③ 缺少必备 H2：" + "、".join(missing))
+    if not (titles & CORE_VARIANTS):
+        fails.append("③ 缺少『核心机制』节（可用 §3 变体名：" + "、".join(sorted(CORE_VARIANTS)) + "）")
+
+    # ① 卡片数与误区条数
+    cards = parse_file(content_rel(p), raw)
+    n_def = sum(1 for c in cards if c.kind == "baike_def")
+    n_trap = sum(1 for c in cards if c.kind == "baike_trap")
+    if n_def != 1:
+        fails.append(f"① baike_def 卡数 = {n_def}（需恰好 1）")
+    if n_trap != 2:
+        fails.append(f"① baike_trap 卡数 = {n_trap}（需恰好 2）")
+    mistakes = [ln for ln in section_lines(body, "常见误区") if re.match(r"^-\s+\S", ln)]
+    if not 2 <= len(mistakes) <= 3:
+        fails.append(f"① 常见误区列表 {len(mistakes)} 条（需 2–3 条）")
+    for ln in mistakes:
+        val = ln[1:].strip()
+        if len(val) < 4:
+            fails.append(f"① 误区条目过短：{val!r}")
+
+    # ⑥ 围栏与篇幅预算
+    nb, nl = fence_stats(body)
+    if nb > 2:
+        fails.append(f"⑥ 代码围栏 {nb} 块（上限 2）")
+    if nl > 20:
+        fails.append(f"⑥ 围栏内共 {nl} 行（上限 20）")
+    nchars = prose_len(body)
+    limit, hub_note = length_limit(body, nchars)
+    if nchars > limit:
+        fails.append(f"⑥ 正文 {nchars} 字 > 上限 {limit}｜{hub_note}")
+
+    # ⑨ 面试速答长度（规范 v1.2 §4）
+    answers = [re.sub(r"\s", "", a) for a in RE_ANSWER.findall(body)]
+    if answers:
+        longest = max(answers, key=len)
+        if len(longest) > ANSWER_MAX:
+            msg = f"⑨ 面试速答 🎯 首行 {len(longest)} 字 > 上限 {ANSWER_MAX}（规范 v1.2 §4）"
+            if not STRICT and is_grandfathered(p):
+                warns.append(msg + "｜grandfather：v1.2 前的存量 done 稿，三期 --strict 清理")
+            else:
+                fails.append(msg)
+
+    # ⑤ / ⑦ 与 git HEAD 比对
+    try:
+        rel_root = p.relative_to(ROOT).as_posix()
+    except ValueError:
+        rel_root = None
+    head_raw = git_head_text(rel_root) if rel_root else None
+    if head_raw is None:
+        warns.append("⑤⑦ 文件不在 HEAD 中，跳过 arXiv 保留与 frontmatter 比对")
+    else:
+        h_fm, w_fm = fm_fields(split_frontmatter(head_raw)[0]), fm_fields(fm)
+        changed = [(k, h_fm.get(k), w_fm.get(k)) for k in PROVENANCE_KEYS
+                   if h_fm.get(k) != w_fm.get(k)]
+        if changed:
+            fails.append("⑦ 身世字段被改动（批量阶段禁止）："
+                         + "；".join(f"{k}: {a!r}→{b!r}" for k, a, b in changed))
+        else:
+            extra = sorted(k for k in set(h_fm) | set(w_fm)
+                           if k not in PROVENANCE_KEYS and h_fm.get(k) != w_fm.get(k))
+            if extra:
+                warns.append("⑦ 已忽略非身世键差异（阅读器运行时写回，不判 FAIL）："
+                             + "、".join(extra))
+        lost = (set(RE_ARXIV.findall(head_raw)) | set(RE_DOI.findall(head_raw))) - \
+               (set(RE_ARXIV.findall(raw)) | set(RE_DOI.findall(raw)))
+        if lost:
+            fails.append("⑤ 原稿可核验引用丢失：" + "、".join(sorted(lost)))
+
+    # ⑧ 双链可解析（warning 级）
+    stems = md_stems()
+    linked = {l.strip() for l in RE_WIKI.findall(body)}
+    slashed = sorted(x for x in linked if "/" in x)
+    if slashed:
+        fails.append("⑧ 双链目标含斜杠（会与文件名歧义，须改用 `-`）：" + "、".join(slashed))
+    dangling = sorted(linked - stems)
+    for d in dangling:
+        warns.append(f"⑧ 悬空双链 [[{d}]]")
+        hit = concept_match(d, exclude=content_rel(p))
+        if hit:
+            warns.append(f"⑩ 疑似已有专条 {hit}，请确认 [[{d}]] 是否应改链（概念级查重，v1.2 §8.2）")
+
+    tag = "FAIL" if fails else "PASS"
+    hub = f" [{hub_note}]" if limit == 3400 else ""
+    print(
+        f"{tag} {content_rel(p)}  "
+        f"(正文 {nchars}/{limit} 字 / 围栏 {nb} 块 {nl} 行 / 卡 {n_def}def+{n_trap}trap){hub}"
+    )
+    for f in fails:
+        print(f"   ✗ {f}")
+    for w in warns:
+        print(f"   · {w}")
+    return len(fails), len(warns)
+
+
+def _resolve(s: str) -> str:
+    p = pathlib.Path(s)
+    return (p if p.is_absolute() else ROOT / p).resolve().as_posix()
+
+
+def load_exempt(cli: list[str]) -> set[str]:
+    """v1.1 §5：--exempt 显式豁免 + docs/refactor/exempt-reference.md 清单（缺文件视为空）。"""
+    out = {_resolve(s) for s in cli}
+    if not EXEMPT_LIST.exists():
+        return out
+    for ln in EXEMPT_LIST.read_text(encoding="utf-8").splitlines():
+        s = ln.strip()
+        if not s or s.startswith("#"):
+            continue
+        if s.startswith("|"):
+            cells = [c.strip() for c in s.strip("|").split("|")]
+            s = cells[0] if cells else ""
+        else:
+            s = s.lstrip("->* \t").strip("`").strip()
+        if s.endswith(".md"):
+            out.add(_resolve(s))
+    return out
+
+
+def main() -> int:
+    args = sys.argv[1:]
+    if not args:
+        print(__doc__)
+        return 2
+    global STRICT
+    paths: list[str] = []
+    cli_exempt: list[str] = []
+    i = 0
+    while i < len(args):
+        a = args[i]
+        if a == "--strict":
+            STRICT = True
+            i += 1
+            continue
+        if a == "--exempt":
+            if i + 1 >= len(args):
+                print("--exempt 缺少路径")
+                return 2
+            cli_exempt.append(args[i + 1])
+            i += 2
+            continue
+        if a.startswith("--"):
+            print(f"未知参数：{a}")
+            return 2
+        paths.append(a)
+        i += 1
+    if not paths:
+        print(__doc__)
+        return 2
+
+    exempt = load_exempt(cli_exempt)
+    total_f = total_w = n_ex = 0
+    for arg in paths:
+        if _resolve(arg) in exempt:
+            n_ex += 1
+        f, w = check(arg, exempt)
+        total_f += f
+        total_w += w
+    ex = f"，其中 EXEMPT {n_ex} 篇" if n_ex else ""
+    mode = "strict（⑨ 全量硬 FAIL）" if STRICT else "默认（⑨ 对 v1.2 前 done 存量降级 WARNING）"
+    print(f"\n{len(paths)} 篇检查 [{mode}]：{total_f} 项 FAIL，{total_w} 项 warning{ex}")
+    return 1 if total_f else 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

@@ -1,0 +1,153 @@
+{% extends "base.html" %}
+{% block bodyattrs %}data-kb-particles="1" data-kb-count="85" data-kb-link="1"{% endblock %}
+{% block title %}知库 · 从这里开始{% endblock %}
+{% block head %}<link rel="stylesheet" href="/static/pages/landing.css?v={{ av('pages/landing.css') }}">{% endblock %}
+{% block body %}
+<main class="land-main">
+  <section class="panel wb-panel" id="p-left" data-reveal data-reveal-y="14">
+    <div class="panel-h">分类目录<span class="cnt" id="tree-total">{{ n_md }}</span><button class="fold" onclick="togglePanel('left')" title="收起左栏" aria-label="收起左栏"><svg class="i i-12"><use href="#i-fold-l"/></svg></button></div>
+    <nav class="tree" id="tree" aria-label="分类目录">
+      {% for d in domains %}
+      <div class="dom" style="--dh:{{ HUES[d.id] }}" data-dom="{{ d.id }}">
+        <a class="dom-head" href="/browse/{{ d.id }}/{{ d.subs[0].id }}" role="button" aria-expanded="false" title="{{ d.label }} · 点击展开/收起">
+          <span class="dom-glyph"><svg><use href="#i-{{ d.id }}"/></svg></span>
+          <span class="dom-name" title="{{ d.label }}">{{ d.label }}</span><span class="dom-n">{{ d.n }}</span>
+        </a>
+        <div class="subs">
+          {% for s in d.subs %}
+          <a class="sub" href="/browse/{{ d.id }}/{{ s.id }}" title="{{ s.label }} · 点击展开/收起" role="button"><span class="sub-ic" title="子目录"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="#i-folder"/></svg></span><span class="sub-t">{{ s.label }}</span><span class="n">{{ s.n }}</span></a>
+          {% endfor %}
+        </div>
+      </div>
+      {% endfor %}
+    </nav>
+    <button class="unfold" onclick="togglePanel('left')" title="展开左栏" aria-label="展开左栏"><svg class="i"><use href="#i-fold-r"/></svg></button>
+  </section>
+
+  <section class="panel land-panel" id="p-land" data-reveal data-reveal-y="14">
+    <div class="land-grid">
+      <div class="land-side">
+        <div class="land-kicker"><span class="land-dot"></span>未打开文档</div>
+        <h1 class="land-title">从一次检索开始</h1>
+        <form class="land-box" action="/search" method="get" role="search">
+          <svg class="i i-16"><use href="#i-search-magnifier"/></svg>
+          <input name="q" placeholder="检索标题 / 正文 / 标签…" autocomplete="off" aria-label="检索知识库">
+          <kbd>↵</kbd>
+        </form>
+        <div class="land-list">
+          <a href="#" id="land-continue" hidden><svg class="i i-13"><use href="#i-history-clock"/></svg>继续上次阅读</a>
+          <a href="/inbox"><svg class="i i-13"><use href="#i-inbox-tray"/></svg>进入收件箱<span class="land-li-meta">{{ inbox_n }} 条待归档</span></a>
+          <a href="/stats"><svg class="i i-13"><use href="#i-stats-chart"/></svg>本月阅读统计<span class="land-li-meta">{{ month }}</span></a>
+          <a href="/glossary"><svg class="i i-13"><use href="#i-backlink-graph"/></svg>开始一次串学漫游<span class="land-li-meta">术语门户</span></a>
+        </div>
+        <div class="land-keys"><kbd>/</kbd> 搜索 <kbd>g</kbd><kbd>t</kbd> 术语 <kbd>?</kbd> 快捷键</div>
+        <div class="land-cards" id="land-cards"></div>
+      </div>
+      <div class="land-view">
+        <div class="land-frame">
+          {# present=1 由 archify 自己的 head 脚本落地，比父页 load 后再补属性稳；
+             父页 sync() 仍会兜底设一次，防止有人直接改 src。 #}
+          <iframe src="/static/archify/zhiku-pipeline.html?present=1" title="知库 · 单机知识管线架构图" loading="lazy"></iframe>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+{% endblock %}
+{% block scripts %}
+<script>
+/* 继续阅读：与首页同一数据源（app.js 在每次成功打开文档时写 kb-last-doc） */
+(function () {
+  try {
+    var last = localStorage.getItem("kb-last-doc");
+    var a = document.getElementById("land-continue");
+    if (!last || !a) return;
+    a.href = last; a.hidden = false;
+  } catch (e) {}
+})();
+
+/* 架构图取景框联动：iframe 与本页同源，但**只借这份同源做两件 archify 自己做不到的事**，
+   它的外观一概不改（标题、控件位置、字号、底色全部交还 archify 原生）：
+   1) 主题跟随阅读器换肤（viewer 只认自己的 data-theme / localStorage）
+   2) 把它在 data-present 舞台模式下藏掉的三张结论卡搬到左栏底部渲染，
+      内容仍以 archify 为唯一事实源
+   曾经还有第 3 件——注入样式压 chrome 字号 + 搬工具栏 + 改标题，已整条撤除：
+   跨文档改写只能发生在首帧之后，改了就必然看得见一跳。详见下面 sync() 上方的实测记录。 */
+(function () {
+  var f = document.querySelector(".land-frame iframe");
+  if (!f) return;
+
+  function harvestCards(doc) {
+    var host = document.getElementById("land-cards");
+    if (!host || host.childElementCount) return;
+    var cards = doc.querySelectorAll(".cards > *");
+    if (!cards.length) return;
+    Array.prototype.forEach.call(cards, function (c) {
+      var t = c.querySelector("h3, .card-title, strong, b");
+      var items = c.querySelectorAll("li");
+      var box = document.createElement("div");
+      box.className = "land-card";
+      var b = document.createElement("b");
+      b.textContent = (t ? t.textContent : c.textContent).trim().slice(0, 24);
+      box.appendChild(b);
+      if (items.length) {
+        var ul = document.createElement("ul");
+        Array.prototype.forEach.call(items, function (li) {
+          var e = document.createElement("li");
+          e.textContent = li.textContent.replace(/^[\s•·]+/, "").trim();
+          ul.appendChild(e);
+        });
+        box.appendChild(ul);
+      }
+      host.appendChild(box);
+    });
+  }
+
+  /* 架构图 chrome 一律走 archify 原生形态：不改标题、不搬控件、不压字号、不抹灰底。
+     父页只补两件 archify 自己做不到的小事——同步明暗主题、把它在 present 模式下
+     藏掉的三张结论卡搬到左栏渲染。
+
+     为什么"什么都不改"才是对的：跨文档改写只能发生在 iframe 首帧之后，所以只要改，
+     就必然看得见"原生一瞬 → 改写后"那一跳。2026-09-25 实测三态（2000 宽窗口）：
+     300ms 空白 / 3s 原生（标题屏显 ~23px）/ 9s 注入后（~14px，取景框那圈灰边也被
+     --bg:#fff 抹掉）——用户判定原生那态才是要的，于是整条 #kb-land-style 字号注入
+     与 fitType() 一并撤掉：首帧即终帧，闪动从根上没了。
+
+     代价（已知，别再当 bug 回查）：窗口窄到 ~1440（框宽 706、缩放 0.49）时 archify
+     chrome 屏显只有 10~12px，偏小。真要治得回 archify 的 spec/交付物里做——在父页
+     打补丁就等于把这一跳请回来。 */
+  function sync() {
+    var dark = document.documentElement.getAttribute("data-theme") === "dark";
+    var want = dark ? "dark" : "light";
+    var d = null;
+    try { d = f.contentDocument; } catch (e) { return false; }
+    /* 只认 archify 自己的地标：about:blank 与半截文档一律跳过、继续轮询。
+       上一版就栽在这——往 about:blank 里注样式，注完就判定"已同步"并停止轮询，
+       等 archify 真文档画出来，人看到的仍是未处理的态（闪动没被门挡住）。 */
+    if (!d || !d.querySelector || !d.querySelector(".toolbar")) return false;
+    d.documentElement.setAttribute("data-theme", want);
+    /* 兜底：?present=1 已由 archify 自己在 head 里落地（zhiku-pipeline.html:21），
+       这行防的是有人改 iframe src 把参数弄丢。 */
+    d.documentElement.setAttribute("data-present", "true");
+    localStorage.setItem("archify-theme", want);
+    harvestCards(d);
+    return true;
+  }
+  f.addEventListener("load", sync);
+  if (window.MutationObserver) {
+    new MutationObserver(function () { sync(); }).observe(document.documentElement,
+      { attributes: true, attributeFilter: ["data-theme"] });
+  }
+  /* 静态资源命中缓存时架构图可能在本脚本执行前就 load 完，load 事件不会再触发；
+     而它 1MB 上下、冷缓存下要好几秒才就位，所以轮询到 archify 地标出现为止。
+     这里不再需要"露脸门"：既然不改它的外观，原生那一帧就是终态，没东西要遮。 */
+  var tries = 0;
+  function poll() {
+    if (sync()) return;
+    if (++tries > 100) return;   // ~12s 仍不就绪：多半 archify 压根没加载出来，别再空转
+    setTimeout(poll, 120);
+  }
+  poll();
+})();
+</script>
+{% endblock %}

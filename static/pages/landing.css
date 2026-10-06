@@ -1,0 +1,86 @@
+/* ============================================================
+   landing.css —— `/` 占位页（P2 分栏：左检索命令 · 右系统全景图）
+   挂载：landing.html；令牌全部取阅读器变量，换肤自动跟随。
+   ============================================================ */
+
+.land-main{grid-template-columns:280px minmax(0,1fr)}
+/* 阅读器主栅格在文档页是「目录 | 列表 | 正文 | 右栏」，收起/沉浸态各有规则；
+   占位页只有两列，不逐态覆盖的话，收起左栏时那条 264px 右栏列会变成空白带。 */
+.land-main.left-off{grid-template-columns:46px minmax(0,1fr)}
+.land-main.immersive{grid-template-columns:0 minmax(0,1fr)}
+
+.land-panel{display:flex;flex-direction:column;min-height:0;overflow:hidden}
+.land-grid{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,340px) minmax(0,1fr);
+  gap:18px;padding:20px}
+
+/* 小标题：主色圆点 + mono 大字距 */
+.land-kicker{display:flex;align-items:center;gap:8px;font:700 10.5px/1 var(--f-mono);letter-spacing:.16em;
+  text-transform:uppercase;color:var(--muted)}
+.land-dot{width:7px;height:7px;border-radius:50%;background:var(--c-acc);flex:none}
+.land-title{font-family:var(--f-disp);font-weight:700;font-size:23px;line-height:1.25;
+  letter-spacing:.01em;color:var(--c-ink);margin:10px 0 12px}
+
+/* 检索条 */
+.land-box{display:flex;align-items:center;gap:11px;padding:13px 16px;background:var(--c-panel);
+  border:1px solid var(--c-line2);border-radius:10px;transition:border-color var(--dur-1),box-shadow var(--dur-1)}
+.land-box:focus-within{border-color:var(--c-acc);box-shadow:0 2px 12px color-mix(in oklab,var(--c-acc),transparent 88%)}
+.land-box svg{color:var(--c-acc);flex:none}
+.land-box input{flex:1;min-width:0;border:0;outline:none;background:none;color:var(--c-ink);
+  font:14px var(--f-body);letter-spacing:.01em}
+.land-box input::placeholder{color:var(--faint)}
+.land-box kbd{font:500 10.5px/1 var(--f-mono);color:var(--faint);border:1px solid var(--c-line);
+  border-radius:var(--rd-ctl);padding:3px 6px;background:var(--c-panel)}
+
+/* 命令列表：条目不加边框（靠发丝分隔），hover 才给底色 */
+.land-list{margin-top:12px;background:var(--c-panel);border:1px solid var(--c-line);border-radius:10px;overflow:hidden}
+.land-list a{display:flex;align-items:center;gap:11px;padding:12px 15px;font-size:13.5px;font-weight:600;
+  color:var(--c-ink);text-decoration:none;border-bottom:1px solid var(--c-line);transition:background var(--dur-1)}
+.land-list a:last-child{border-bottom:0}
+.land-list a[hidden]{display:none}  /* display:flex 会压过 hidden 属性，必须显式关掉 */
+.land-list a:hover{background:var(--c-sunk)}
+.land-list a svg{color:var(--muted);flex:none}
+.land-list a:hover svg{color:var(--c-acc)}
+.land-li-meta{margin-left:auto;font:500 11px var(--f-mono);color:var(--faint);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:46%}
+
+.land-keys{margin-top:14px;font:500 11px var(--f-mono);color:var(--faint);display:flex;gap:7px;align-items:center}
+.land-keys kbd{font:600 10.5px/1 var(--f-mono);color:var(--muted);border:1px solid var(--c-line2);
+  border-radius:var(--rd-ctl);padding:3px 6px;background:var(--c-panel)}
+
+/* 左栏纵向排布：与右栏顶端对齐（居中会和图的标题错位） */
+.land-side{display:flex;flex-direction:column;justify-content:flex-start;min-width:0;padding-top:2px}
+
+/* 右栏：架构图取景框
+   iframe 按 archify 交付尺寸 1440x900 渲染，再用容器查询把整幅等比缩进面板，
+   这样看到的是完整可交互的图（切引导视图 / 追踪 / 导出都在），而不是截图或裁切。 */
+.land-view{display:flex;flex-direction:column;min-width:0}
+/* 取景框：iframe 内部按 archify 交付尺寸 1440x900 排版，再用双轴容器查询取
+   「宽够放」与「高够放」里较小的那个缩放比，既撑满父元素又不裁切图形。
+   外层不再画边框/投影——archify 面板自带一圈，双层框看着像套了两层窗口。 */
+.land-frame{flex:1;min-height:0;position:relative;overflow:hidden;background:transparent;
+  border:0;border-radius:12px;container-type:size}
+.land-frame iframe{position:absolute;left:0;top:0;width:1440px;
+  /* 高度按取景框真实宽高比反推：1440 × (框高/框宽)，按宽缩放后纵向刚好铺满，不留空带 */
+  height:calc(1440px * 100cqh / 100cqw);border:0;
+  transform:scale(calc(100cqw / 1440px));transform-origin:0 0}
+  /* 这里曾加过一道 opacity:0 → .kb-shown 淡入门，用来遮住"父页注入样式改写 chrome"
+     的那一跳。2026-09-25 注入链整条撤除后它失去意义（首帧即终帧，没东西要遮），
+     而且实测门会开得太早反而把原生那帧放出去——别再往回加。 */
+
+/* 左栏底部：三张结论卡（内容从架构图 .cards 里取，避免两处手写走样） */
+.land-cards{margin-top:auto;padding-top:18px;display:flex;flex-direction:column;gap:8px}
+.land-card{border:1px solid var(--c-line);border-radius:8px;background:var(--c-panel);padding:9px 11px}
+.land-card b{display:flex;align-items:center;gap:7px;font-size:12.5px;font-weight:700;color:var(--c-ink)}
+.land-card b::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--c-acc);flex:none}
+.land-card ul{margin:5px 0 0;padding-left:15px}
+.land-card li{font-size:11.5px;line-height:1.6;color:var(--muted)}
+
+@media (max-width:1180px){
+  .land-grid{grid-template-columns:minmax(0,1fr);overflow-y:auto}
+  .land-frame{min-height:360px}
+}
+/* 1280 断点内文档页栅格会扩成四列（目录|列表|正文|右栏），占位页始终两列 */
+@media (max-width:1280px){
+  .land-main,.land-main.left-off,.land-main.list-off,.land-main.left-off.list-off{
+    grid-template-columns:220px minmax(0,1fr)}
+}

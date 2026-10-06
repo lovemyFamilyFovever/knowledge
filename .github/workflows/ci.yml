@@ -1,0 +1,97 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: windows-latest
+    # Windows runner 的默认控制台编码是 cp1252：任何一步 print 中文都会
+    # UnicodeEncodeError 把步骤顶红（CI 从 #36 起一路红在
+    # "Ledger reconciliation"就是这条 —— 本地钩子是 GBK 控制台，能编码中文，所以从没暴露）。
+    # 与 tests/_tmpapp.py 给临时实例传 PYTHONIOENCODING=utf-8 同源，这里一次性给整个作业设上；
+    # 各脚本自己也照样不许因控制台编码崩（见 scripts/check_ledger_counts.py 的 reconfigure）。
+    env:
+      PYTHONIOENCODING: utf-8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      # 轮次 40 补：本地钩子跑 eslint/stylelint 而 CI 不跑，就是"CI 覆盖面小于本地钩子"
+      # （§6 第 1 行的老缺口）。devDependencies 走 npm ci（有 package-lock.json，装的是同一份），
+      # node 版本钉成与本机一致（本机 v24.19.0），免得版本漂移造出只在 CI 有的告警。
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+      - name: Install deps (reader + RAG + ruff)
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements/requirements.txt -r requirements/requirements-rag.txt ruff
+      - name: Install node tooling (eslint + stylelint)
+        run: npm ci --no-audit --no-fund
+      - name: ruff (regression net)
+        run: python -m ruff check .
+      # 与钩子同序：静态层里 ruff 之后就是 JS/CSS 两条 lint（轮次 40 起 stylelint 为严格模式）
+      - name: eslint (npm run lint:js)
+        run: npm run --silent lint:js
+      - name: stylelint (npm run lint:css)
+        run: npm run --silent lint:css
+      # 两条与 diff 无关的静态检查（本地钩子一直在跑，CI 此前漏了）：
+      # 台账 §0 数字 vs §1~§5 状态列对账、CSS 悬空令牌。
+      # 不接 check_rag_version.py —— 它靠"工作区/暂存 vs HEAD"的 diff，在全新 checkout 里恒为空转，
+      # 接进来只会造一个"看起来在跑其实没跑"的假门禁（该局限已记在台账 §7）。
+      - name: Ledger reconciliation (check §0 numbers vs §1~§5 status columns)
+        run: python scripts/check_ledger_counts.py
+      - name: Dangling CSS tokens check
+        run: python scripts/check_dangling_tokens.py
+      # 公开站 Quartz 用严格 YAML 解析语料头；这道闸保证坏 frontmatter 不会先把
+      # garden 的构建打挂（2026-09-25 实测：一个 title:"x" 让 Actions 整站 failure）。
+      - name: Frontmatter strict-YAML gate
+        run: python scripts/check_frontmatter.py
+      - name: Reader smoke
+        run: python tests/test_reader.py
+      - name: Predicate smoke (store/fts 判定谓词 · P6 存活清单回填)
+        run: python tests/test_predicates.py
+      - name: Property tests (彻查 P3 · 任意输入不变量)
+        run: python tests/test_properties.py
+      - name: Scaffolder smoke
+        run: python tests/test_new_project.py
+      - name: Learn/review smoke
+        run: python tests/test_learn.py
+      - name: Govern/stats smoke
+        run: python tests/test_govern.py
+      - name: Invariants gate (AGENTS 不变量 1-9 · 本文件 I1~I10)
+        run: python tests/test_invariants.py
+      - name: E2E endpoint smoke (62 routes, tempfile corpus)
+        run: python tests/test_e2e_smoke.py
+      # 轮次 54：AI 出站链路（配置层 / 选词问 / 查漏 / 批量 / 问吧）整体下线，
+      # 对应的两个 CI 步骤与两套测试同批删除。项目自此**没有任何出站请求**（见 AGENTS 不变量）。
+      - name: Known-defects regression (empty-sub 500 / resolve-prefix 500)
+        run: python tests/test_known_defects.py
+      # Agent 工具自身（2026-09-29）：watch_ci 的"读不到"分三类点名 + 代理不通自动直连。
+      # 打的是本进程假 GitHub（现挑端口），零外网 —— 所以在 runner 上没有配额与出口 IP 依赖。
+      - name: watch_ci tool regression (fake in-process GitHub; no network)
+        run: python tests/test_watch_ci.py
+      # 彻查 P3-B：浏览器侧书库解析性质测试。脚本自己探测 node/Chrome，
+      # 缺任一个就打 SKIP 返回 0 —— 挂进来只为满足"CI 覆盖面不得小于本地钩子"。
+      - name: JS property tests in real browser (SKIP without node/Chrome)
+        run: python tests/test_js_props.py
+      # 彻查轮次 24：UI 行为回归（台账 §2 那 9 行"点了有没有反应"）。同样自探测，
+      # 缺 node/Chrome 就 SKIP —— 挂着是为了"CI 覆盖面不得小于本地钩子"这条口径。
+      # 轮次 37 实测：runner 带 node 与 Chrome，annotations 里是 `js_props STARTED` /
+      # `ui_behavior STARTED`（不是 SKIP），所以这两套在 CI 上真跑。
+      - name: UI behavior regression (9 controls; SKIP without node/Chrome)
+        run: python tests/test_ui_behavior.py
+      # 覆盖面如实登记（轮次 37 §6 第 50 行）：CI 没有 94MB 权重，`test_rag` 里
+      # 「tokenizer 逐 token 对齐」与「端到端语义检索」两条以权重存在为前提，在 CI 上恒 SKIP
+      # （annotations 会打出两条 SKIPPED）。以前这步叫 "RAG smoke (model not preloaded;
+      # download via mirror)"，读起来像"缺了会自动下载再测"—— 其实不会：那两条是 `is_file()`
+      # 判空就 return，不触发下载。改名让承诺与实际覆盖面一致；模型侧四条以本地钩子为权威。
+      - name: RAG smoke (model-dependent cases SKIP when weights absent)
+        env:
+          HF_ENDPOINT: https://hf-mirror.com
+        run: python tests/test_rag.py

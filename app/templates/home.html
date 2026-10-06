@@ -1,0 +1,147 @@
+{% extends "base.html" %}
+{% block bodyattrs %}data-kb-particles="1" data-kb-count="85" data-kb-link="1"{% endblock %}
+{% block title %}总览 · 知库{% endblock %}
+{# 页面级样式放进 <head>：避免首帧只吃到 style.css / kb-core.css，
+   页面内的裸 <svg><use/></svg> 按替换元素默认尺寸渲染成 300×150 巨幅图标（FOUC）。 #}
+{% block head %}
+<link rel="stylesheet" href="/static/pages/home.css?v={{ av('pages/home.css') }}">
+{% endblock %}
+{% block body %}
+{# 统一的文档链接：两段 rel 的「域根文档」补 _root 段，逐段 URL 编码。
+   与 static/kb-core.js 的 KB.util.docUrl / static/app.js 的 docUrl() 保持同一套规则，
+   否则 /doc/<domain>/<sub>/<name> 三段路由匹配不上 → 404。 #}
+{% macro doc_href(rel) -%}
+{%- set p = rel[:-3].split('/') -%}
+{%- if p|length == 2 -%}
+/doc/{{ p[0]|urlencode }}/_root/{{ p[1]|urlencode }}
+{%- else -%}
+/doc/{{ p|map('urlencode')|join('/') }}
+{%- endif -%}
+{%- endmacro %}
+<main id="view-home" class="show">
+ <div class="home-inner">
+  <div class="home-mark">知</div>
+
+  {# ========== hero：左巨型字 + 右知识星座图（设计稿第 06 屏） ========== #}
+  <section class="home-hero" data-parallax>
+    <div class="home-hero-text">
+      <div class="hero-eyebrow"><svg aria-hidden="true"><use href="#ill-compass-mini"/></svg>{{ date }} · {{ greet }}</div>
+      <h1 class="hero-title" data-line-mask><span class="line">知</span><span class="line">库</span></h1>
+      {# 逐词 reveal：span 间不留任何空白——inline-block 会把模板换行/缩进渲染成可见空隙，
+         中文标点叠加后就是「把 散落 的 知识」式断裂（2026-09-13 用户反馈） #}
+      <p class="hero-tagline"><span data-reveal>把</span><span data-reveal>散落</span><span data-reveal>的</span><span data-reveal>知识，</span><span data-reveal>接回</span><span data-reveal>一个</span><span data-reveal>入口</span></p>
+      <p class="hero-sub">Markdown 是唯一事实源，索引只是派生缓存。当前已归档 <strong>{{ pct }}%</strong>（{{ n_md }} 篇正文 / {{ inbox_n }} 篇待归档）。</p>
+      <div class="hero-cta">
+        <a class="iconbtn primary" href="/inbox" data-cursor-label="进入"><svg><use href="#i-inbox-tray"/></svg>去收件箱 · {{ inbox_n }}</a>
+        <a class="iconbtn" id="btn-continue" hidden href="/" data-cursor-label="续读"><svg><use href="#i-history-clock"/></svg>继续阅读</a>
+        <a class="iconbtn" href="/search?q=%3F" data-magnetic="0.2"><svg><use href="#i-search-semantic"/></svg>语义检索</a>
+        <a class="iconbtn" href="/favorites" data-magnetic="0.2"><svg><use href="#i-star-outline"/></svg>收藏 · {{ stats.n_fav }}</a>
+      </div>
+    </div>
+    <div class="home-hero-visual">
+      <svg class="hero-constellation" viewBox="0 0 340 260" role="img" aria-label="知识节点连成的星座">
+        <title>知识星座：术语、文档与双链连成的网络</title>
+        <circle cx="170" cy="128" r="84" fill="var(--ill-halo)" opacity=".45"/>
+        <g class="cst-links parallax-layer" stroke="var(--ill-line)" stroke-width="1.1" opacity=".55" fill="none" data-depth="0.3">
+          <path d="M170 128 L108 74 M170 128 L242 82 M170 128 L92 176 M170 128 L246 182 M170 128 L160 214"/>
+          <path d="M108 74 L242 82 M92 176 L246 182 M108 74 L92 176"/>
+        </g>
+        <g class="cst-nodes parallax-layer" data-depth="0.55">
+          <circle cx="108" cy="74" r="7" fill="var(--c-acc)"/>
+          <circle cx="242" cy="82" r="6" fill="var(--c-info)"/>
+          <circle cx="92" cy="176" r="8" fill="var(--warn)"/>
+          <circle cx="246" cy="182" r="5.5" fill="var(--rose)"/>
+          <circle cx="160" cy="214" r="6.5" fill="var(--info)"/>
+          <circle cx="300" cy="140" r="4" fill="var(--c-acc)" opacity=".6"/>
+          <circle cx="44" cy="118" r="4.5" fill="var(--c-info)" opacity=".6"/>
+        </g>
+        <g class="parallax-layer" data-depth="0.8">
+          <circle class="cst-halo" cx="170" cy="128" r="30" fill="var(--c-acc)" opacity=".14"/>
+          <circle cx="170" cy="128" r="19" fill="var(--c-acc)"/>
+          <circle cx="170" cy="128" r="7" fill="var(--c-bg)"/>
+          <circle class="cst-ring" cx="170" cy="128" r="30" fill="none" stroke="var(--c-acc)" stroke-width="1" stroke-dasharray="2 5" opacity=".5"/>
+        </g>
+        <circle class="cst-dot cst-dot-a" cx="0" cy="0" r="4" fill="var(--c-acc)"/>
+        <circle class="cst-dot cst-dot-b" cx="0" cy="0" r="4" fill="var(--c-info)"/>
+      </svg>
+    </div>
+  </section>
+
+  {# ========== KPI 条：只渲染后端实传的真实数字（countUp） ========== #}
+  <div class="kpi-strip">
+    <div class="k" data-reveal><span class="kn"><span data-counter data-count="{{ n_md }}" data-count-duration="2.2" data-count-delay="0.5">{{ n_md }}</span><span class="u">篇</span></span><span class="kl"><svg aria-hidden="true"><use href="#i-file"/></svg>文档总量</span></div>
+    <div class="k" data-reveal><span class="kn"><span data-counter data-count="{{ leaves }}" data-count-duration="2.2" data-count-delay="0.65">{{ leaves }}</span><span class="u">个</span></span><span class="kl"><svg aria-hidden="true"><use href="#i-scope-domain"/></svg>子域</span></div>
+    <div class="k" data-reveal><span class="kn"><span data-counter data-count="{{ stats.n_fav }}" data-count-duration="2.2" data-count-delay="0.8">{{ stats.n_fav }}</span><span class="u">篇</span></span><span class="kl"><svg aria-hidden="true"><use href="#i-star-outline"/></svg>已收藏</span></div>
+    <div class="k" data-reveal><span class="kn"><span data-counter data-count="{{ days }}" data-count-duration="2.2" data-count-delay="0.95">{{ days }}</span><span class="u">天</span></span><span class="kl"><svg aria-hidden="true"><use href="#i-calendar-day"/></svg>距 10·01</span></div>
+  </div>
+
+  {# ========== 今日学习（需求3）：真实数字，由 pages/home.js 调 /api/learn/today + /api/learn/mastery 渲染 ========== #}
+  <section class="kb-today" id="kb-today" data-reveal aria-label="今日学习">
+    <div class="kb-today-h">
+      <svg class="i i-14" aria-hidden="true"><use href="#i-clock-heartbeat"/></svg>
+      <b>今日学习</b>
+      <span class="kb-today-date">载入中…</span>
+    </div>
+  </section>
+
+  {# ========== 最近更新：跑马灯（设计稿第 06 屏语言） ========== #}
+  <div class="home-sec-label">最近更新<span class="n">{{ recents|length }} 条 · 最近改动优先</span></div>
+  {% if recents %}
+  <div class="marquee"><div class="marquee-track" id="mq">
+    {% for r in recents %}
+    <a class="mq-item" {% if r.rel.startswith('_inbox') %}href="/raw/{{ r.rel }}" target="_blank"{% else %}href="{{ doc_href(r.rel) }}"{% endif %}>
+      <span class="d"></span><span class="t">{{ r.title }}</span>
+      <span class="rp">{{ r.rel.rsplit('/', 1)[0] }}</span>
+      <span class="tm">{{ SOURCE_LABELS.get(r.source, r.source) }}</span>
+    </a>
+    {% endfor %}
+    {% for r in recents %}{# 第二份副本：跑马灯无缝循环，读屏隐藏 #}
+    <a class="mq-item" aria-hidden="true" tabindex="-1" {% if r.rel.startswith('_inbox') %}href="/raw/{{ r.rel }}" target="_blank"{% else %}href="{{ doc_href(r.rel) }}"{% endif %}>
+      <span class="d"></span><span class="t">{{ r.title }}</span>
+      <span class="rp">{{ r.rel.rsplit('/', 1)[0] }}</span>
+      <span class="tm">{{ SOURCE_LABELS.get(r.source, r.source) }}</span>
+    </a>
+    {% endfor %}
+  </div></div>
+  {% else %}
+  <div class="empty-state">
+    <div class="e-title">还没有更新记录</div><div class="e-desc">新内容先落到 <code>_inbox/</code>，归档后这里会出现最近的文档。</div>
+  </div>
+  {% endif %}
+
+  {# ========== 7 域入口 + 新建域占位 = 8 列（设计稿第 06 屏） ========== #}
+  <div class="home-sec-label">{{ stats.domains|length }} 个域入口<span class="n">hue 色相系统 · 磁吸 hover</span></div>
+  {% if stats.domains %}
+  <div class="dom-cards">
+    {% for d in stats.domains %}
+    <a class="dom-card" style="--dh:{{ HUES[d.id] }}" data-reveal data-magnetic="0.12" href="/browse/{{ d.id }}/{{ d.subs[0].id if d.subs else '_root' }}" title="{{ d.label }} · {{ d.n }} 篇">
+      <div class="top"><span class="glyph-wrap"><svg aria-hidden="true"><use href="#i-{{ d.id }}"/></svg></span><span class="label">{{ d.label }}</span><span class="n">{{ d.n }}</span></div>
+      <div class="seg-bar">{% if d.n %}{% for s in d.subs[:5] %}<span style="width:{{ '%.1f'|format(100 * s.n / d.n) }}%;opacity:{{ '%.2f'|format(1 - loop.index0 * 0.18) }}" title="{{ s.label }} · {{ s.n }} 篇"></span>{% endfor %}{% endif %}</div>
+      <div class="dsub">{% for s in d.subs[:3] %}{{ s.label }} {{ s.n }}{{ " · " if not loop.last }}{% endfor %}{% if d.subs|length > 3 %} …{% endif %}</div>
+    </a>
+    {% endfor %}
+    <div class="dom-card new-card" data-reveal data-magnetic="0.18" title="新域 = 改 content/_meta/taxonomy.json，刷新即生效">
+      <div class="top"><span class="glyph-wrap"><svg aria-hidden="true"><use href="#i-plus-circle"/></svg></span></div>
+      <div class="new-note">新建域 · 改 <code>taxonomy.json</code></div>
+    </div>
+  </div>
+  {% else %}
+  <div class="empty-state">
+    <div class="e-title">还没有任何域</div><div class="e-desc">编辑 <code>content/_meta/taxonomy.json</code> 定义域与子域后，这里会出现入口卡。</div>
+  </div>
+  {% endif %}
+
+  {# ========== 归档管线：现状真实模块保留，按设计语言重绘（第 06 屏无此模块，见差异清单） ========== #}
+  <div class="home-sec-label">归档管线<span class="n">新内容只从 _inbox 进</span></div>
+  <div class="home-pipe" data-reveal>
+   {% for ic, label, st in [("i-scan","全量扫描","done"),("i-inbox-s","收件箱 " ~ inbox_n,"done"),("i-grid","归档分类","active"),("i-database","全文索引 " ~ n_md,"done"),("i-commit","Git 提交","done")] %}
+   <div class="pipe-node {{ st }}"><span class="pic"><svg><use href="#{{ ic }}"/></svg></span><span class="pl">{{ label }}</span></div>
+   {% if not loop.last %}<span class="pipe-line"></span>{% endif %}
+   {% endfor %}
+  </div>
+ </main>
+</div>
+{% endblock %}
+{% block scripts %}
+<script src="/static/pages/home.js?v={{ av('pages/home.js') }}" defer></script>
+{% endblock %}

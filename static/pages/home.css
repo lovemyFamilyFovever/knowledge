@@ -1,0 +1,175 @@
+/* 知库 · Home 总览页面样式（T2 产出 · 只服务 home.html）
+   设计基准：qwenwork/canvas/mtvq30t7ur2d66tl/index.html 第 06 屏 + Awwwards spec §5.1
+   规则：颜色全部走 token（--seed-* / --acc / --dh / --ill-*），组件层零硬编码 hex；
+   motion-ready 前内容始终可见；prefers-reduced-motion 全降级。 */
+
+/* ---------- hero（spec §5.1：60vh、--wash-hero 底晕、巨型字） ---------- */
+.home-hero{position:relative;min-height:52vh;display:grid;grid-template-columns:1.1fr .9fr;gap:28px;
+  align-items:center;padding:12px 4px 28px;overflow:hidden}
+.home-hero::before{content:"";position:absolute;inset:-30% -10% auto -10%;height:120%;z-index:0;
+  background:radial-gradient(50% 60% at 72% 40%,var(--wash-hero),transparent 70%);pointer-events:none}
+.home-hero>*{position:relative;z-index:1}
+.hero-eyebrow{display:inline-flex;align-items:center;gap:6px;font:600 var(--fs-label)/1 var(--f-mono);
+  letter-spacing:.14em;text-transform:uppercase;color:var(--c-acc);margin-bottom:28px}
+.hero-eyebrow svg{width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.hero-title{font-family:var(--f-disp);font-weight:700;font-size:var(--fs-hero);line-height:.92;
+  letter-spacing:-.045em;color:var(--ink);margin:0;display:flex;gap:0}
+/* gap 必须为 0：--fs-hero 巨型字号下哪怕 .06em 也是 ~9px 的「知 库」裂缝（2026-09-13 实测截图），
+   spec 的 -.045em 收紧意图对中文 flex item 不生效——两字间距只由 gap 决定 */
+/* 中文走 Georgia 600（spec §3.1 Hero display 行） */
+.hero-title .line{font-family:var(--f-disp);color:var(--c-acc);font-weight:600;display:inline-block}
+.hero-tagline{margin-top:16px;font-family:var(--f-disp);font-weight:500;
+  font-size:clamp(1.35rem,2.7vw,2.4rem);line-height:1.3;max-width:22ch;color:var(--muted);letter-spacing:-.01em}
+.hero-tagline [data-reveal]{display:inline-block}
+.hero-sub{margin-top:12px;font-size:14px;line-height:1.7;color:var(--muted);max-width:44ch}
+.hero-sub strong{color:var(--c-acc);font-variant-numeric:tabular-nums}
+.hero-cta{margin-top:18px;display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.iconbtn{display:inline-flex;align-items:center;gap:7px;height:34px;padding:0 14px;border-radius:var(--rd-pill);
+  border:1px solid var(--c-line);background:color-mix(in oklab,var(--c-panel),transparent 40%);
+  font-size:12.5px;font-weight:500;color:color-mix(in oklab,var(--c-ink),transparent 15%);letter-spacing:.02em;
+  cursor:pointer;transition:.25s var(--ease-out);white-space:nowrap}
+.iconbtn svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.iconbtn:hover{color:var(--c-ink);border-color:var(--c-line2);}
+.iconbtn.primary{background:linear-gradient(165deg,var(--c-acc),var(--c-info));border-color:transparent;
+  color:color-mix(in oklab,var(--c-bg),white 6%);font-weight:600}
+[data-magnetic]{transition:box-shadow .3s var(--ease-out),transform .35s var(--ease-back)}
+/* 原先这里有一条空的 [data-magnetic]:hover{}（轮次 40 删）：磁吸效果的实现已收在
+   motion.js 里用 transform 写内联样式，空规则只是早期改版的残留。 */
+.home-hero-visual{position:relative;display:flex;justify-content:center;align-items:center;min-height:320px}
+.home-hero-visual .hero-constellation{width:min(100%,380px);height:auto}
+.parallax-layer{will-change:transform;transform:translate(var(--px,0),var(--py,0))}
+/* ---------- 星座图动效（motion-ok 类门禁：系统允许或用户强制开启时挂上；静态即终态） ---------- */
+@keyframes cst-dash{to{stroke-dashoffset:-28}}
+@keyframes cst-tw{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.3;transform:scale(.68)}}
+@keyframes cst-spin{to{transform:rotate(360deg)}}
+@keyframes cst-breathe{0%,100%{transform:scale(1);opacity:.14}50%{transform:scale(1.5);opacity:.34}}
+@keyframes cst-run{0%{offset-distance:0%;opacity:0;transform:scale(.6)}12%{opacity:1;transform:scale(1)}88%{opacity:1}100%{offset-distance:100%;opacity:0;transform:scale(.6)}}
+html.motion-ok .cst-links{opacity:.85;stroke-width:1.6}
+html.motion-ok .cst-links path{stroke-dasharray:8 6;animation:cst-dash 1s linear infinite}
+html.motion-ok .cst-links path:nth-child(2){animation-duration:1.6s;animation-direction:reverse}
+html.motion-ok .cst-nodes circle{transform-box:fill-box;transform-origin:center;animation:cst-tw 2.4s ease-in-out infinite}
+html.motion-ok .cst-nodes circle:nth-child(2n){animation-delay:.5s}
+html.motion-ok .cst-nodes circle:nth-child(3n){animation-delay:1.1s}
+html.motion-ok .cst-ring{transform-box:view-box;transform-origin:170px 128px;stroke-width:1.6;animation:cst-spin 9s linear infinite}
+html.motion-ok .cst-halo{transform-box:fill-box;transform-origin:center;animation:cst-breathe 3.2s ease-in-out infinite}
+html.motion-ok .cst-dot{opacity:0}
+html.motion-ok .cst-dot-a{fill:var(--c-acc);filter:drop-shadow(0 0 6px var(--c-acc));offset-path:path("M170 128 L108 74");animation:cst-run 2.6s cubic-bezier(.4,0,.2,1) infinite}
+html.motion-ok .cst-dot-b{fill:var(--c-info);filter:drop-shadow(0 0 6px var(--c-info));offset-path:path("M170 128 L246 182");animation:cst-run 2.6s cubic-bezier(.4,0,.2,1) 1.3s infinite}
+
+/* ---------- KPI 条（真实数字 countUp） ---------- */
+.kpi-strip{display:grid;grid-template-columns:repeat(4,1fr);border-top:1px solid var(--c-line);
+  border-bottom:1px solid var(--c-line);padding:20px 0}
+.kpi-strip .k{display:flex;flex-direction:column;gap:3px;padding:0 20px;border-left:1px solid var(--c-line)}
+.kpi-strip .k:first-child{border-left:0;padding-left:0}
+.kpi-strip .kn{font-family:var(--f-disp);font-weight:700;font-size:clamp(1.9rem,4vw,2.9rem);
+  line-height:1;color:var(--ink);font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+.kpi-strip .kn .u{font-size:.85rem;font-family:var(--f-body);color:var(--muted);margin-left:3px;font-weight:500}
+.kpi-strip .kl{font:500 11px/1.3 var(--f-body);letter-spacing:.05em;text-transform:uppercase;color:var(--faint);
+  display:flex;align-items:center;gap:5px}
+.kpi-strip .kl svg{width:12px;height:12px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+
+/* ---------- 小节标签 ---------- */
+.home-sec-label{display:flex;align-items:baseline;gap:10px;font:600 12px/1 var(--f-mono);letter-spacing:.14em;
+  text-transform:uppercase;color:var(--c-acc);margin:26px 0 8px}
+.home-sec-label::after{content:"";flex:1;height:1px;background:var(--c-line)}
+.home-sec-label .n{color:var(--faint);font-family:var(--f-body);text-transform:none;letter-spacing:0;font-size:11.5px;font-weight:400}
+
+/* ---------- 最近更新：跑马灯 ---------- */
+.marquee{overflow:hidden;mask:linear-gradient(90deg,transparent,var(--c-ink) 6%,var(--c-ink) 94%,transparent);
+  padding:4px 0;border-top:1px solid var(--c-line);border-bottom:1px solid var(--c-line)}
+.marquee-track{display:inline-flex;gap:26px;white-space:nowrap;will-change:transform;
+  animation:homeMq calc(42s * var(--motion-scale,1)) linear infinite}
+.marquee:hover .marquee-track{animation-play-state:paused}
+@keyframes homeMq{to{transform:translateX(-50%)}}
+.mq-item{display:inline-flex;align-items:center;gap:8px;font-size:13px;color:var(--muted);padding:9px 0}
+.mq-item:hover .t{color:var(--c-acc)}
+.mq-item .d{width:7px;height:7px;border-radius:50%;flex:none;background:var(--c-acc)}
+.mq-item .t{color:color-mix(in oklab,var(--c-ink),transparent 8%);font-weight:500}
+.mq-item .rp{font-family:var(--f-mono);font-size:10.5px;color:var(--faint)}
+.mq-item .tm{font:500 10.5px/1 var(--f-mono);color:var(--faint);font-variant-numeric:tabular-nums}
+
+/* ---------- 域卡：7 域 + 新建域 = 8 列；hover 光晕中心色 --dh ----------
+   轨道用 minmax(0,1fr)：1fr === minmax(auto,1fr) 会把轨道抬到 min-content
+   （.dsub 的 nowrap 文本可达 200px+），8 列总宽溢出容器被裁掉。 */
+.dom-cards{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:12px}
+.dom-card{padding:11px 10px;border:1px solid var(--c-line);border-radius:var(--rd-card);
+  background:var(--c-panel);backdrop-filter:blur(18px);cursor:pointer;position:relative;display:flex;
+  flex-direction:column;gap:8px;min-height:118px;min-width:0;transition:.25s var(--ease-out);
+  box-shadow:var(--elev-1);text-decoration:none}
+.dom-card:hover{transform:translateY(-3px);border-color:color-mix(in oklab,hsl(var(--dh,158) 55% 45%),transparent 45%);
+  box-shadow:0 0 0 1px color-mix(in oklab,hsl(var(--dh,158) 55% 45%),transparent 65%),
+    0 10px 28px color-mix(in oklab,hsl(var(--dh,158) 55% 45%),transparent 86%)}
+.dom-card .top{display:flex;align-items:center;gap:8px}
+.dom-card .glyph-wrap{width:28px;height:28px;flex:none;border-radius:8px;display:grid;place-items:center;
+  color:hsl(var(--dh,158) 55% 40%);background:hsl(var(--dh,158) 55% 42% / .10)}
+html[data-theme="dark"] .dom-card .glyph-wrap{color:hsl(var(--dh,158) 72% 64%);background:hsl(var(--dh,158) 70% 60% / .12)}
+.dom-card .glyph-wrap svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.dom-card .label{font-size:12.5px;font-weight:600;color:var(--c-ink);letter-spacing:.02em;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dom-card .n{margin-left:auto;font:700 9.5px/1 var(--f-mono);padding:2px 5px;border-radius:var(--rd-pill);
+  color:hsl(var(--dh,158) 55% 38%);background:hsl(var(--dh,158) 55% 42% / .08);font-variant-numeric:tabular-nums}
+html[data-theme="dark"] .dom-card .n{color:hsl(var(--dh,158) 70% 66%)}
+.dom-card .seg-bar{display:flex;gap:2px;height:4px;margin-top:auto}
+.dom-card .seg-bar span{display:block;border-radius:2px;background:hsl(var(--dh,158) 55% 45%)}
+.dom-card .dsub{font-family:var(--f-mono);font-size:9.5px;color:var(--faint);letter-spacing:.02em;
+  min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dom-card.new-card .glyph-wrap{background:color-mix(in oklab,var(--c-acc),transparent 90%);color:var(--c-acc)}
+.dom-card.new-card .new-note{font-size:11px;color:var(--faint);line-height:1.5;margin-top:auto}
+.dom-card.new-card .new-note code{font-size:10px;color:var(--c-acc)}
+
+/* ---------- 归档管线（现状真实模块，重绘为设计语言） ---------- */
+.home-pipe{display:flex;align-items:flex-start;border:1px solid var(--c-line);border-radius:var(--rd-card);
+  padding:20px 24px 16px;background:var(--c-panel);backdrop-filter:blur(18px);box-shadow:var(--elev-1)}
+.home-pipe .pipe-node{display:flex;flex-direction:column;align-items:center;gap:9px;min-width:88px}
+.home-pipe .pic{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;
+  border:1px solid var(--c-line);color:var(--muted);background:color-mix(in oklab,var(--c-panel),transparent 30%)}
+.home-pipe .pic svg{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.home-pipe .done .pic{color:var(--c-acc);border-color:color-mix(in oklab,var(--c-acc),transparent 60%)}
+.home-pipe .active .pic{color:var(--c-info);border-color:color-mix(in oklab,var(--c-info),transparent 55%);
+  box-shadow:0 0 0 3px color-mix(in oklab,var(--c-info),transparent 90%)}
+.home-pipe .pl{font-size:11px;color:var(--muted);letter-spacing:.02em}
+.home-pipe .active .pl{color:var(--c-info);font-weight:600}
+.home-pipe .pipe-line{flex:1;height:1px;margin-top:15px;
+  background:linear-gradient(90deg,color-mix(in oklab,var(--c-acc),transparent 60%),var(--c-line))}
+
+/* ---------- 空态（第 11/12 屏） ---------- */
+.empty-state{display:flex;flex-direction:column;align-items:center;gap:10px;padding:28px 20px;text-align:center;
+  border:1px dashed var(--c-line);border-radius:var(--rd-card);background:color-mix(in oklab,var(--c-panel),transparent 55%)}
+.empty-state .e-title{font-size:14px;font-weight:500;color:color-mix(in oklab,var(--c-ink),transparent 20%)}
+.empty-state .e-desc{font-size:12.5px;color:var(--muted)}
+.empty-state .e-desc code{font-size:11.5px;color:var(--c-acc)}
+
+/* ---------- 动效挂载与降级（页面级；motion.js 驱动，无 JS / 无 GSAP 时内容始终可见） ---------- */
+html.motion-ready .home-hero [data-reveal],
+html.motion-ready .kpi-strip [data-reveal],
+html.motion-ready .dom-cards [data-reveal],
+html.motion-ready .home-pipe[data-reveal]{opacity:0;transform:translateY(var(--reveal-y,0px));
+  transition:opacity calc(.45s * var(--motion-scale,1)) var(--ease-out),transform calc(.45s * var(--motion-scale,1)) var(--ease-out)}
+html.motion-ready .home-hero [data-reveal].in,
+html.motion-ready .kpi-strip [data-reveal].in,
+html.motion-ready .dom-cards [data-reveal].in,
+html.motion-ready .home-pipe[data-reveal].in{opacity:1;transform:none}
+/* will-change 归属动效分区（有意分置，勿上移合并）；豁免重复选择器检查 */
+.hero-title .line{will-change:transform} /* stylelint-disable-line no-duplicate-selectors */
+
+@media (max-width:1080px){.dom-cards{grid-template-columns:repeat(4,minmax(0,1fr))}}
+@media (max-width:780px){
+  .home-hero{grid-template-columns:1fr;min-height:auto}
+  .home-hero-visual{min-height:220px}
+  .kpi-strip{grid-template-columns:repeat(2,1fr);gap:16px}
+  .kpi-strip .k{border-left:0;padding-left:0}
+  .dom-cards{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .home-pipe{flex-wrap:wrap;gap:10px}
+  .home-pipe .pipe-line{display:none}
+}
+
+@media (prefers-reduced-motion: reduce){
+  html.motion-ready:not(.motion-force) .home-hero [data-reveal],
+  html.motion-ready:not(.motion-force) .kpi-strip [data-reveal],
+  html.motion-ready:not(.motion-force) .dom-cards [data-reveal],
+  html.motion-ready:not(.motion-force) .home-pipe[data-reveal]{opacity:1;transform:none;transition:none}
+  html:not(.motion-force) .marquee-track{animation:none;transform:none}
+  html:not(.motion-force) .parallax-layer{transform:none !important;will-change:auto}
+  html:not(.motion-force) [data-magnetic]{transform:none !important}
+  html:not(.motion-force) *,html:not(.motion-force) *::before,html:not(.motion-force) *::after{animation-duration:.01ms !important;animation-iteration-count:1 !important}
+}

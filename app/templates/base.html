@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{% block title %}知库{% endblock %}</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230c9a6a'/%3E%3Cpath d='M8 9h6a4 4 0 0 1 4 4v10a3 3 0 0 0-3-3H8zM24 9h-6a4 4 0 0 0-4 4v10a3 3 0 0 1 3-3h7z' fill='none' stroke='%23f2efe7' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E">
+<link rel="preload" as="font" href="/static/vendor/space-grotesk-var.woff2" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="/static/style.css?v={{ av('style.css') }}">
+<link rel="stylesheet" href="/static/reader.css?v={{ av('reader.css') }}">
+<link rel="stylesheet" href="/static/hljs-github-dark.min.css?v={{ av('hljs-github-dark.min.css') }}">
+<script>window.LABELS={{ LABELS|tojson }};window.HUES={{ HUES|tojson }};window.SUB_LABELS={{ SUB_LABELS|tojson }};window.SOURCE_LABELS={{ SOURCE_LABELS|tojson }};</script>
+<link rel="stylesheet" href="/static/kb-core.css?v={{ av('kb-core.css') }}">
+<link rel="stylesheet" href="/static/pages/searchoverlay.css?v={{ av('pages/searchoverlay.css') }}">
+<link rel="stylesheet" href="/static/pages/searchdrop.css?v={{ av('pages/searchdrop.css') }}">
+<link rel="stylesheet" href="/static/pages/skins.css?v={{ av('pages/skins.css') }}">
+<script src="/static/kb-core.js?v={{ av('kb-core.js') }}" defer></script>
+<script src="/static/marked.umd.js" defer></script>
+<script src="/static/purify.min.js" defer></script>
+<script src="/static/highlight.min.js" defer></script>
+<script src="/static/kb-novel.js?v={{ av('kb-novel.js') }}" defer></script>
+<script src="/static/app.js?v={{ av('app.js') }}" defer></script>
+<script src="/static/vendor/gsap.min.js" defer></script>
+<script src="/static/vendor/ScrollTrigger.min.js" defer></script>
+<script src="/static/motion.js?v={{ av('motion.js') }}" defer></script>
+<script src="/static/kb-particles.js?v={{ av('kb-particles.js') }}" defer></script>
+{% block head %}{% endblock %}
+</head>
+<body {% block bodyattrs %}{% endblock %}>
+<svg xmlns="http://www.w3.org/2000/svg" style="display:none" aria-hidden="true">
+ <symbol id="i-baike" viewBox="0 0 24 24"><path d="M2 4.5h6a4 4 0 0 1 4 4V20a3 3 0 0 0-3-3H2z"/><path d="M22 4.5h-6a4 4 0 0 0-4 4V20a3 3 0 0 1 3-3h7z"/></symbol>
+ <symbol id="i-baike-f" viewBox="0 0 24 24"><path fill="currentColor" stroke="none" d="M2 4.5h6a4 4 0 0 1 4 4V20a3 3 0 0 0-3-3H2z"/><path fill="currentColor" stroke="none" opacity=".7" d="M22 4.5h-6a4 4 0 0 0-4 4V20a3 3 0 0 1 3-3h7z"/></symbol>
+ <symbol id="i-articles" viewBox="0 0 24 24"><path d="M20.24 12.24a6 6 0 0 0-8.49-8.49L5 10.5V19h8.5z"/><path d="M16 8 2 22"/><path d="M17.5 15H9"/></symbol>
+ <symbol id="i-articles-f" viewBox="0 0 24 24"><path fill="currentColor" stroke="none" opacity=".9" d="M20.24 12.24a6 6 0 0 0-8.49-8.49L5 10.5V19h8.5z"/></symbol>
+ <symbol id="i-interview" viewBox="0 0 24 24"><path d="M21 11.6a8.4 8.4 0 0 1-8.5 8.4 8.5 8.5 0 0 1-3.8-.9L3 21l1.9-5.7A8.5 8.5 0 1 1 21 11.6z"/><path d="M9.7 9.6a2.3 2.3 0 1 1 3.3 2.1c-.8.4-1 .9-1 1.7"/><path d="M12 16.4h.01"/></symbol>
+ <symbol id="i-interview-f" viewBox="0 0 24 24"><path fill="currentColor" stroke="none" opacity=".9" d="M21 11.6a8.4 8.4 0 0 1-8.5 8.4 8.5 8.5 0 0 1-3.8-.9L3 21l1.9-5.7A8.5 8.5 0 1 1 21 11.6z"/></symbol>
+ <symbol id="i-projects" viewBox="0 0 24 24"><circle cx="6" cy="6" r="2.6"/><circle cx="6" cy="18" r="2.6"/><circle cx="18" cy="6" r="2.6"/><path d="M6 8.6v6.8M18 8.6c0 4.2-4.6 4.9-9.4 5.4"/></symbol>
+ <symbol id="i-projects-f" viewBox="0 0 24 24"><circle cx="6" cy="6" r="2.6" fill="currentColor" stroke="none"/><circle cx="6" cy="18" r="2.6" fill="currentColor" stroke="none"/><circle cx="18" cy="6" r="2.6" fill="currentColor" stroke="none" opacity=".65"/><path stroke="currentColor" fill="none" stroke-width="1.6" d="M6 8.6v6.8M18 8.6c0 4.2-4.6 4.9-9.4 5.4"/></symbol>
+ <symbol id="i-handbook" viewBox="0 0 24 24"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H19a1 1 0 0 1 1 1v18a1 1 0 0 1-1 1H6.5a1 1 0 0 1 0-5H20"/><path d="M10 2v8l3-3 3 3V2"/></symbol>
+ <symbol id="i-handbook-f" viewBox="0 0 24 24"><path fill="currentColor" stroke="none" opacity=".9" fill-rule="evenodd" d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H19a1 1 0 0 1 1 1v18a1 1 0 0 1-1 1H6.5a1 1 0 0 1 0-5H20zM10 2v8l3-3 3 3V2z"/></symbol>
+ <symbol id="i-career" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m16.2 7.8-2.9 6.5-6.5 2.9 2.9-6.5z"/></symbol>
+ <symbol id="i-career-f" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="currentColor" stroke="none" opacity=".2"/><path fill="currentColor" stroke="none" d="m16.2 7.8-2.9 6.5-6.5 2.9 2.9-6.5z"/></symbol>
+ <symbol id="i-ai-assets" viewBox="0 0 24 24"><path d="M12 3.5l1.8 4.7 4.7 1.8-4.7 1.8L12 16.5l-1.8-4.7-4.7-1.8 4.7-1.8z"/><path d="M18.8 15.6l.7 1.9 1.9.7-1.9.7-.7 1.9-.7-1.9-1.9-.7 1.9-.7z"/></symbol>
+ <symbol id="i-ai-assets-f" viewBox="0 0 24 24"><path fill="currentColor" stroke="none" opacity=".9" d="M12 3.5l1.8 4.7 4.7 1.8-4.7 1.8L12 16.5l-1.8-4.7-4.7-1.8 4.7-1.8z"/><circle cx="19" cy="17.5" r="1.6" fill="currentColor" stroke="none"/></symbol>
+ <symbol id="i-brand-zhiku" viewBox="0 0 32 32"><path stroke="currentColor" fill="none" stroke-width="1.6" stroke-linecap="round" d="M4 8h8a4 4 0 0 1 4 4V24a3 3 0 0 0-3-3H4z"/><path stroke="currentColor" fill="none" stroke-width="1.6" stroke-linecap="round" d="M28 8h-8a4 4 0 0 0-4 4V24a3 3 0 0 1 3-3h9z"/><circle cx="16" cy="4" r="1.5" fill="currentColor" stroke="none"/></symbol>
+ <symbol id="i-fold-l" viewBox="0 0 24 24"><path fill="currentColor" stroke="none" d="M15 4 7 12l8 8z"/></symbol>
+ <symbol id="i-fold-r" viewBox="0 0 24 24"><path fill="currentColor" stroke="none" d="M9 4l8 8-8 8z"/></symbol>
+ <symbol id="i-sidebar-toggle" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16"/></symbol>
+ <symbol id="i-panel-left-close" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16"/><path d="m16 10-2 2 2 2"/></symbol>
+ <symbol id="i-panel-right-close" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M15 4v16"/><path d="m8 10 2 2-2 2"/></symbol>
+ <symbol id="i-expand-all" viewBox="0 0 24 24"><path fill="currentColor" stroke="none" d="M12 4 5.5 12h13z"/><path fill="currentColor" stroke="none" opacity=".5" d="M12 12 5.5 20h13z"/></symbol>
+ <symbol id="i-collapse-all" viewBox="0 0 24 24"><path fill="currentColor" stroke="none" d="M12 20 5.5 12h13z"/><path fill="currentColor" stroke="none" opacity=".5" d="M12 12 5.5 4h13z"/></symbol>
+ <symbol id="i-drawer-handle" viewBox="0 0 24 24"><path d="M4 16h16M8 12h8M10 8h4"/></symbol>
+ <symbol id="i-chev-up" viewBox="0 0 24 24"><path d="m6 15 6-6 6 6"/></symbol>
+ <symbol id="i-chev-down" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+ <symbol id="i-chev-left" viewBox="0 0 24 24"><path d="m15 6-6 6 6 6"/></symbol>
+ <symbol id="i-chev-right" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></symbol>
+ <symbol id="i-database" viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="8" ry="2.8"/><path d="M4 5v14c0 1.6 3.6 2.9 8 2.9s8-1.3 8-2.9V5"/><path d="M4 12c0 1.6 3.6 2.9 8 2.9s8-1.3 8-2.9"/></symbol>
+ <symbol id="i-vector-embedding" viewBox="0 0 24 24"><path d="M4 6h16M4 12h10M4 18h16"/><circle cx="17" cy="12" r="2"/></symbol>
+ <symbol id="i-scan" viewBox="0 0 24 24"><path d="M3 7V5.5A2.5 2.5 0 0 1 5.5 3H7M17 3h1.5A2.5 2.5 0 0 1 21 5.5V7M21 17v1.5a2.5 2.5 0 0 1-2.5 2.5H17M7 21H5.5A2.5 2.5 0 0 1 3 18.5V17"/><path d="M7 12h10"/></symbol>
+ <symbol id="i-commit" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.2"/><path d="M3 12h5.8M15.2 12H21"/></symbol>
+ <symbol id="i-git-commit" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.2"/><path d="M3 12h5.8M15.2 12H21"/></symbol>
+ <symbol id="i-git-branch" viewBox="0 0 24 24"><circle cx="6" cy="6" r="2"/><circle cx="6" cy="18" r="2"/><circle cx="18" cy="9" r="2"/><path d="M6 8v8M18 11a6 6 0 0 1-6 6H8"/></symbol>
+ <symbol id="i-grid" viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="7" height="7" rx="1.6"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.6"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.6"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.6"/></symbol>
+ <symbol id="i-inbox-s" viewBox="0 0 24 24"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></symbol>
+ <symbol id="i-inbox-tray" viewBox="0 0 24 24"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></symbol>
+ <symbol id="i-star" viewBox="0 0 24 24"><path d="m12 3 2.7 5.8 6.3.8-4.6 4.4 1.2 6.3L12 17.2 6.4 20.3l1.2-6.3L3 9.6l6.3-.8z"/></symbol>
+ <symbol id="i-star-outline" viewBox="0 0 24 24"><path d="m12 3 2.7 5.8 6.3.8-4.6 4.4 1.2 6.3L12 17.2 6.4 20.3l1.2-6.3L3 9.6l6.3-.8z"/></symbol>
+ <symbol id="i-star-filled" viewBox="0 0 24 24"><path fill="currentColor" stroke="none" d="m12 3 2.7 5.8 6.3.8-4.6 4.4 1.2 6.3L12 17.2 6.4 20.3l1.2-6.3L3 9.6l6.3-.8z"/></symbol>
+ <symbol id="i-trash" viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M8 6V4.5A1.5 1.5 0 0 1 9.5 3h5A1.5 1.5 0 0 1 16 4.5V6"/><path d="M19 6l-1 13.5A2 2 0 0 1 16 21.5H8a2 2 0 0 1-2-2L5 6"/><path d="M10 10.5v6M14 10.5v6"/></symbol>
+ <symbol id="i-trash-outline" viewBox="0 0 24 24"><path d="M4 7h16M9 7V5h6v2M6 7l1 13h10l1-13"/></symbol>
+ <symbol id="i-trash-filled" viewBox="0 0 24 24"><path fill="currentColor" stroke="none" d="M4 7h16v2H4zM7 9l1 12h8l1-12zM9 4h6v2H9z"/></symbol>
+ <symbol id="i-chart" viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M8 17v-4M13 17V8M18 17v-6"/></symbol>
+ <symbol id="i-stats-chart" viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M8 17v-4M13 17V8M18 17v-6"/></symbol>
+ <symbol id="i-trend" viewBox="0 0 24 24"><path d="m3 16 5.5-5.5 3.5 3.5L21 6"/><path d="M15 6h6v6"/></symbol>
+ <symbol id="i-trend-up" viewBox="0 0 24 24"><path d="m4 16 6-6 4 3 6-8"/><path d="M14 5h6v6"/></symbol>
+ <symbol id="i-trend-down" viewBox="0 0 24 24"><path d="m4 8 6 6 4-3 6 8"/><path d="M20 19h-6v-6"/></symbol>
+ <symbol id="i-calendar-day" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/><rect x="7" y="13" width="4" height="4" rx=".6" fill="currentColor" stroke="none"/></symbol>
+ <symbol id="i-clock-heartbeat" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8v4l2.5 1.5M8 12h1l.5-1 1 2 1-1.5h1"/></symbol>
+ <symbol id="i-tag-outline" viewBox="0 0 24 24"><path d="M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l8.704 8.704a2.4 2.4 0 0 0 3.396 0l6.704-6.704a2.4 2.4 0 0 0 0-3.396z"/><circle cx="7.5" cy="7.5" r="1.2" fill="currentColor" stroke="none"/></symbol>
+ <symbol id="i-tag-filled" viewBox="0 0 24 24"><path fill="currentColor" stroke="none" fill-rule="evenodd" d="M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l8.704 8.704a2.4 2.4 0 0 0 3.396 0l6.704-6.704a2.4 2.4 0 0 0 0-3.396zM7.5 6.2a1.3 1.3 0 1 0 0 2.6 1.3 1.3 0 0 0 0-2.6z"/></symbol>
+ <symbol id="i-favorite-heart" viewBox="0 0 24 24"><path d="m12 21 8.6-8.8a5 5 0 0 0-7.1-7L12 6.7l-1.5-1.5a5 5 0 1 0-7.1 7z"/></symbol>
+ <symbol id="i-check-circle" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/></symbol>
+ <symbol id="i-x-circle" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m9 9 6 6M15 9l-6 6"/></symbol>
+ <symbol id="i-plus-circle" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></symbol>
+ <symbol id="i-minus-circle" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M8 12h8"/></symbol>
+ <symbol id="i-spinner-ring" viewBox="0 0 24 24"><path d="M12 3a9 9 0 0 1 9 9"/></symbol>
+ <symbol id="i-progress-ring" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" opacity=".15"/><path d="M12 3a9 9 0 0 1 8 5"/></symbol>
+ <symbol id="i-signal-bars" viewBox="0 0 24 24"><path d="M4 20v-4M9 20v-8M14 20V9M19 20V6"/></symbol>
+ <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></symbol>
+ <symbol id="i-eye-off" viewBox="0 0 24 24"><path d="M17.94 17.94A10 10 0 0 1 2 12s3.5-7 10-7a10 10 0 0 1 5.94 1.94"/><path d="M1 1l22 22"/><path d="M9.9 5.06A10 10 0 0 1 22 12a12 12 0 0 1-3.09 3.94"/></symbol>
+ <symbol id="i-mem-meter" viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12" rx="2"/><path d="M6 10v4M10 10v4M14 10v4M18 10v4"/></symbol>
+ <symbol id="i-file" viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9.5 13h5M9.5 16.5h5"/></symbol>
+ <symbol id="i-file-code" viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="m10 12-2 2 2 2M14 12l2 2-2 2"/></symbol>
+ <symbol id="i-file-md" viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="M7 17v-4l2 2 2-2v4M14 13v3h3M14 16l3-3"/></symbol>
+ <symbol id="i-new-file" viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="M12 12v5M9.5 14.5h5"/></symbol>
+ <symbol id="i-folder" viewBox="0 0 24 24"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></symbol>
+ {# 文件类型图标（目录树/列表按扩展名前缀）：与 i-file 同族，仅右下角标记不同 #}
+ <symbol id="i-file-txt" viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="M8.5 13h7M8.5 16.5h7M8.5 20h4"/></symbol>
+ <symbol id="i-file-epub" viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="M10 12.5v5.5c0 .6 2 1 2 1s2-.4 2-1v-5.5"/></symbol>
+ <symbol id="i-file-pdf" viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="M9 21v-5h1.5a1.5 1.5 0 0 1 0 3H9M14 16h2.5M14 16v5M14 18.5h2"/></symbol>
+ <symbol id="i-file-xlsx" viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="M8 12h8M8 16h8M11 12v8M15 12v8"/></symbol>
+ <symbol id="i-file-image" viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><circle cx="10" cy="13" r="1.2"/><path d="M7 20l3.2-3.6 2.4 2.2 2.6-3.4 2.8 2.8"/></symbol>
+ <symbol id="i-file-html" viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="M10.5 13l-2 2.5 2 2.5M13.5 13l2 2.5-2 2.5"/></symbol>
+ <symbol id="i-file-zip" viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="M10 3v2M12 5v2M10 7v2M12 9v2M10 11h2v2h-2z"/></symbol>
+ <symbol id="i-home" viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5"/><path d="M5.5 9.5V20a1 1 0 0 0 1 1H10v-5.5h4V21h3.5a1 1 0 0 0 1-1V9.5"/></symbol>
+ <symbol id="i-folder-open" viewBox="0 0 24 24"><path d="M6 20 4 12V5a1 1 0 0 1 1-1h4l2 3h7a1 1 0 0 1 1 1v2"/><path d="m6 20 2-8h13l-2 8z"/></symbol>
+ <symbol id="i-source" viewBox="0 0 24 24"><path d="M8 4 3 12l5 8M16 4l5 8-5 8M14 4l-4 16"/></symbol>
+ <symbol id="i-search-magnifier" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></symbol>
+ <symbol id="i-search-semantic" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/><path d="M9.5 8.5a1.5 1.5 0 0 1 3 0c0 .8-.7 1-1.2 1.3-.5.3-.8.7-.8 1.3"/><circle cx="10.5" cy="14" r=".6" fill="currentColor" stroke="none"/></symbol>
+ <symbol id="i-filter-funnel" viewBox="0 0 24 24"><path d="M4 5h16l-6 8v6l-4-2v-4z"/></symbol>
+ <symbol id="i-sort-alpha" viewBox="0 0 24 24"><path d="M7 6v12M4 15l3 3 3-3M13 7h7M13 12h6M13 17h5"/></symbol>
+ <symbol id="i-sort-date" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/><path d="M11 15h6M11 18h4"/></symbol>
+ <symbol id="i-highlight-mark" viewBox="0 0 24 24"><path d="m9 11-6 6v3h9l3-3"/><path d="m22 12-4.6 4.6a2 2 0 0 1-2.8 0l-5.2-5.2a2 2 0 0 1 0-2.8L14 4"/></symbol>
+ <symbol id="i-history-clock" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 5v4h4"/><path d="M12 7v5l3 2"/></symbol>
+ <symbol id="i-clear-x-circle" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m9 9 6 6M15 9l-6 6"/></symbol>
+ <symbol id="i-regex" viewBox="0 0 24 24"><path d="M4 12h4M6 10v4M14 10l4 4M18 10l-4 4M17 17h1M9 17h1M13 17h1"/></symbol>
+ <symbol id="i-whole-word" viewBox="0 0 24 24"><path d="M6 4v6a6 6 0 0 0 12 0V4"/><path d="M4 20h16"/></symbol>
+ <symbol id="i-scope-domain" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="9"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3"/></symbol>
+ <symbol id="i-toc-list" viewBox="0 0 24 24"><path d="M4 6h10M4 12h12M4 18h8"/><path d="M17 6h3M17 12h3M17 18h3"/></symbol>
+ <symbol id="i-info-circle" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></symbol>
+ <symbol id="i-note-pen" viewBox="0 0 24 24"><path d="M15 5 19 9M4 20V16l11-11 4 4-11 11z"/><path d="M4 20h16"/></symbol>
+ <symbol id="i-backlink-arrow" viewBox="0 0 24 24"><path d="M4 12h14"/><path d="m12 6 6 6-6 6"/><path d="M4 6v12"/></symbol>
+ <symbol id="i-backlink-graph" viewBox="0 0 24 24"><circle cx="6" cy="6" r="2"/><circle cx="18" cy="6" r="2"/><circle cx="12" cy="18" r="2"/><path d="M8 6h8M7 8l3 8M17 8l-3 8"/></symbol>
+ <symbol id="i-rail-toggle" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M15 4v16"/><path d="m16.5 9.5 3 2.5-3 2.5"/></symbol>
+ <symbol id="i-edit" viewBox="0 0 24 24"><path d="M4 20h4L18.5 9.5a2.1 2.1 0 0 0-3-3L5 17z"/><path d="M13.5 6.5l3 3"/></symbol>
+ <symbol id="i-edit-pencil" viewBox="0 0 24 24"><path d="M15 5 19 9M4 20V16l11-11 4 4-11 11z"/></symbol>
+ <symbol id="i-external" viewBox="0 0 24 24"><path d="M7 17 17 7"/><path d="M8 7h9v9"/></symbol>
+ <symbol id="i-external-link" viewBox="0 0 24 24"><path d="M14 4h6v6"/><path d="M20 4 11 13"/><path d="M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></symbol>
+ <symbol id="i-copy" viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></symbol>
+ <symbol id="i-copy-link" viewBox="0 0 24 24"><path d="M10 14a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1"/><path d="M14 10a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1"/></symbol>
+ <symbol id="i-copy-path" viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></symbol>
+ <symbol id="i-copy-uri" viewBox="0 0 24 24"><path d="M4 12a8 8 0 0 1 8-8h4M20 12a8 8 0 0 1-8 8h-4"/><path d="M9 12h6"/></symbol>
+ <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 4v11"/><path d="m7 11 5 5 5-5"/><path d="M5 20h14"/></symbol>
+ <symbol id="i-duplicate" viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 4H6a2 2 0 0 0-2 2v10"/></symbol>
+ <symbol id="i-move-arrow" viewBox="0 0 24 24"><path d="M12 4v16M4 12h16"/><path d="m8 8-4 4 4 4M16 8l4 4-4 4"/></symbol>
+ <symbol id="i-rename-input" viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="10" rx="2"/><path d="M8 12h8"/><path d="m14 9 2 3-2 3"/></symbol>
+ <symbol id="i-archive-box" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="4" rx="1"/><path d="M5 8v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8"/><path d="M10 12h4"/></symbol>
+ <symbol id="i-swap" viewBox="0 0 24 24"><path d="M7 4 3 8l4 4"/><path d="M3 8h12.5"/><path d="M17 20l4-4-4-4"/><path d="M21 16H8.5"/></symbol>
+ <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12 5 5 9-11"/></symbol>
+ <symbol id="i-save-write" viewBox="0 0 24 24"><path d="M5 3h11l3 3v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M7 3v6h8V3"/><rect x="7" y="12" width="10" height="7" rx="1"/></symbol>
+ <symbol id="i-cancel-x" viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></symbol>
+ <symbol id="i-preview-eye" viewBox="0 0 24 24"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></symbol>
+ <symbol id="i-frontmatter-braces" viewBox="0 0 24 24"><path d="M8 3c-2 0-3 1-3 3v3c0 2-1 3-3 3 2 0 3 1 3 3v3c0 2 1 3 3 3M16 3c2 0 3 1 3 3v3c0 2 1 3 3 3-2 0-3 1-3 3v3c0 2-1 3-3 3"/></symbol>
+ <symbol id="i-md-h1" viewBox="0 0 24 24"><path d="M4 6v12M12 6v12M4 12h8M17 9l2-2v11"/></symbol>
+ <symbol id="i-md-h2" viewBox="0 0 24 24"><path d="M4 6v12M11 6v12M4 12h7M16 8a2.5 2.5 0 1 1 4 2l-4 5h5"/></symbol>
+ <symbol id="i-md-code" viewBox="0 0 24 24"><path d="m8 8-5 4 5 4M16 8l5 4-5 4M13 6l-2 12"/></symbol>
+ <symbol id="i-md-link" viewBox="0 0 24 24"><path d="M10 14a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1"/><path d="M14 10a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1"/></symbol>
+ <symbol id="i-md-image" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="8.5" cy="10" r="1.5"/><path d="m3 17 5-5 4 4 3-3 6 6"/></symbol>
+ <symbol id="i-md-quote" viewBox="0 0 24 24"><path d="M6 15c-2 0-3-1-3-3s1-4 3-4 3 2 3 3c0 4-3 6-3 6M15 15c-2 0-3-1-3-3s1-4 3-4 3 2 3 3c0 4-3 6-3 6"/></symbol>
+ <symbol id="i-volume-2" viewBox="0 0 24 24"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M19 5a10 10 0 0 1 0 14"/></symbol>
+ <symbol id="i-book-open" viewBox="0 0 24 24"><path d="M2 4h6a4 4 0 0 1 4 4v12a3 3 0 0 0-3-3H2z"/><path d="M22 4h-6a4 4 0 0 0-4 4v12a3 3 0 0 1 3-3h7z"/></symbol>
+ <symbol id="i-md-list" viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13M3 6h2M3 12h2M3 18h2"/></symbol>
+ <symbol id="i-md-table" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="1"/><path d="M3 10h18M3 15h18M9 5v14M15 5v14"/></symbol>
+ <symbol id="i-md-bold" viewBox="0 0 24 24"><path d="M7 5h6a4 4 0 0 1 0 8H7zM7 13h7a4 4 0 0 1 0 8H7z"/></symbol>
+ <symbol id="i-md-italic" viewBox="0 0 24 24"><path d="M12 5h5M7 19h5M14 5 10 19"/></symbol>
+ <symbol id="i-md-hr" viewBox="0 0 24 24"><path d="M3 12h18"/></symbol>
+ <symbol id="i-wikilink" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7"/><path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7"/></symbol>
+ <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.2 2.2M16.9 16.9l2.2 2.2M4.9 19.1l2.2-2.2M16.9 7.1l2.2-2.2"/></symbol>
+ <symbol id="i-moon" viewBox="0 0 24 24"><path d="M21 12.8A9 9 0 1 1 11.2 3 7 7 0 0 0 21 12.8z"/></symbol>
+ <symbol id="i-theme-auto" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path fill="currentColor" stroke="none" d="M12 3a9 9 0 0 1 0 18z"/></symbol>
+ <symbol id="i-palette" viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 0 0 18 2 2 0 0 0 2-2 2 2 0 0 1 2-2h1a4 4 0 0 0 4-4 9 9 0 0 0-9-8z"/><circle cx="7.5" cy="10.5" r="1.2" fill="currentColor" stroke="none"/><circle cx="12" cy="7.5" r="1.2" fill="currentColor" stroke="none"/><circle cx="16.5" cy="10.5" r="1.2" fill="currentColor" stroke="none"/></symbol>
+ <symbol id="i-contrast" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path fill="currentColor" stroke="none" d="M12 3a9 9 0 0 1 0 18z"/></symbol>
+ <symbol id="i-warn" viewBox="0 0 24 24"><path d="M10.3 4.3 2.5 18a2 2 0 0 0 1.7 3h15.6a2 2 0 0 0 1.7-3L13.7 4.3a2 2 0 0 0-3.4 0z"/><path d="M12 9.5v4M12 17h.01"/></symbol>
+ <symbol id="i-warning-triangle" viewBox="0 0 24 24"><path d="M12 3 2 20h20z"/><path d="M12 10v5M12 18h.01"/></symbol>
+ <symbol id="i-warning-circle" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16h.01"/></symbol>
+ <symbol id="i-error-x" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m9 9 6 6M15 9l-6 6"/></symbol>
+ <symbol id="i-hint-bulb" viewBox="0 0 24 24"><path d="M9 18a3 3 0 0 0 6 0v-1H9zM12 3a6 6 0 0 0-3 11v2h6v-2a6 6 0 0 0-3-11z"/><path d="M12 1v1M4 6l1 1M20 6l-1 1"/></symbol>
+ <symbol id="i-empty-box" viewBox="0 0 24 24"><path d="M3 8l9-5 9 5-9 5z"/><path d="M3 8v9l9 4 9-4V8"/><path d="M12 13v9"/></symbol>
+ <symbol id="i-check-square" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="m7 12 3 3 7-7"/></symbol>
+ <symbol id="i-alert-dots" viewBox="0 0 24 24"><circle cx="6" cy="12" r="1.5" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none"/><circle cx="18" cy="12" r="1.5" fill="currentColor" stroke="none"/></symbol>
+ <symbol id="i-sep-dot" viewBox="0 0 24 24"><circle cx="12" cy="12" r="1.6" fill="currentColor" stroke="none"/></symbol>
+ <symbol id="i-kbd-slash" viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12" rx="2"/><path d="m10 10 4 4"/></symbol>
+ <symbol id="i-kbd-esc" viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12" rx="2"/><path d="M6 10h4M6 12h3M6 14h4M11 10h4M11 14h4"/></symbol>
+ <symbol id="i-kbd-enter" viewBox="0 0 24 24"><path d="M18 6v6a2 2 0 0 1-2 2H5"/><path d="m8 11-3 3 3 3"/></symbol>
+ <symbol id="i-kbd-tab" viewBox="0 0 24 24"><path d="m10 8-4 4 4 4M6 12h12M18 8v8"/></symbol>
+ <symbol id="i-kbd-arrow" viewBox="0 0 24 24"><path d="M12 4v16M6 10l6-6 6 6"/></symbol>
+ <symbol id="i-kbd-shift" viewBox="0 0 24 24"><path d="M12 4 4 12h5v8h6v-8h5z"/></symbol>
+ <symbol id="i-kbd-cmd" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2"/><rect x="9" y="9" width="6" height="6" rx="1"/></symbol>
+ <symbol id="i-kbd-ctrl" viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="10" rx="2"/><path d="M7 12h3M14 12h3M12 10v4"/></symbol>
+ <symbol id="i-checkbox-empty" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="3"/></symbol>
+ <symbol id="i-checkbox-checked" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="m7 12 3 3 7-7"/></symbol>
+ <symbol id="i-checkbox-indeterminate" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M8 12h8"/></symbol>
+ <symbol id="i-select-all" viewBox="0 0 24 24"><rect x="3" y="3" width="8" height="8" rx="2"/><rect x="13" y="3" width="8" height="8" rx="2"/><rect x="3" y="13" width="8" height="8" rx="2"/><path d="m14 17 2 2 4-4"/></symbol>
+ <symbol id="i-drag-handle" viewBox="0 0 24 24"><circle cx="9" cy="6" r="1.4" fill="currentColor" stroke="none"/><circle cx="15" cy="6" r="1.4" fill="currentColor" stroke="none"/><circle cx="9" cy="12" r="1.4" fill="currentColor" stroke="none"/><circle cx="15" cy="12" r="1.4" fill="currentColor" stroke="none"/><circle cx="9" cy="18" r="1.4" fill="currentColor" stroke="none"/><circle cx="15" cy="18" r="1.4" fill="currentColor" stroke="none"/></symbol>
+ <symbol id="i-drop-target" viewBox="0 0 24 24"><path d="M12 4v10M8 10l4 4 4-4"/><path d="M4 18h16"/></symbol>
+ <symbol id="i-localhost-shield" viewBox="0 0 24 24"><path d="M12 3 4 6v6c0 5 3.5 8.5 8 9 4.5-.5 8-4 8-9V6z"/><path d="M9 12h6M9 9.5h6M9 14.5h4"/></symbol>
+ <symbol id="i-ram-cpu" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="1.5"/><path d="M9 3v3M15 3v3M9 18v3M15 18v3M3 9h3M3 15h3M18 9h3M18 15h3"/></symbol>
+ <symbol id="i-server" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="7" rx="1"/><rect x="3" y="13" width="18" height="7" rx="1"/><path d="M7 7.5h.01M7 16.5h.01"/></symbol>
+ <symbol id="ill-compass-mini" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" stroke="currentColor" fill="none" stroke-width="1.5"/><path stroke="currentColor" fill="none" stroke-width="1.6" stroke-linecap="round" d="m15 9-2 5-4 1 2-5z"/></symbol>
+ <symbol id="ill-key-mini" viewBox="0 0 24 24"><circle cx="8" cy="12" r="4" stroke="currentColor" fill="none" stroke-width="1.6"/><path stroke="currentColor" fill="none" stroke-width="1.6" stroke-linecap="round" d="M12 12h9M18 12v3M15 12v2"/></symbol>
+<symbol id="i-小说" viewBox="0 0 24 24"><path d="M12 5.5C10.2 4 7.6 3.4 4.5 3.4c-.6 0-1 .4-1 1v13.2c0 .6.4 1 1 1 3.1 0 5.7.6 7.5 2.1 1.8-1.5 4.4-2.1 7.5-2.1.6 0 1-.4 1-1V4.4c0-.6-.4-1-1-1-3.1 0-5.7.6-7.5 2.1z"/><path d="M12 5.5v15.2"/></symbol><symbol id="i-漫画" viewBox="0 0 24 24"><rect x="3.5" y="4.5" width="17" height="13" rx="1.5"/><path d="M3.5 13.5l4.2-3.6 3.3 2.8 3.4-4.2 6.1 5.4"/><circle cx="9" cy="8" r="1.1"/></symbol>
+<symbol id="i-小说-f" viewBox="0 0 24 24"><path d="M12 6C10.2 4.6 7.8 4 5 4h-.5c-.3 0-.5.2-.5.5v13c0 .3.2.5.5.5 2.8 0 5.2.6 7.5 2V6z"/><path d="M12 6c1.8-1.4 4.2-2 7-2h.5c.3 0 .5.2.5.5v13c0 .3-.2.5-.5.5-2.8 0-5.2.6-7.5 2V6z" opacity=".55"/></symbol><symbol id="i-漫画-f" viewBox="0 0 24 24"><rect x="3.5" y="4.5" width="17" height="13" rx="1.5" opacity=".28"/><path d="M3.5 13.5l4.2-3.6 3.3 2.8 3.4-4.2 6.1 5.4" fill="none"/><circle cx="9" cy="8" r="1.1"/></symbol></svg>
+<div class="aurora"></div>
+<div class="grain"></div>
+
+<header>
+  <a class="brand" href="/home" title="返回总览">
+    <svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true"><use href="#i-brand-zhiku"/></svg>
+    <span class="zh">知库</span>
+  </a>
+  {# 问题12：一级导航显式化——复习/术语/统计不再只藏在 home 卡片与命令面板里 #}
+  <nav class="topnav" aria-label="一级导航">
+    {% set p = request.path %}
+    <a class="tn {{ 'on' if p.startswith('/doc') or p.startswith('/browse') or p == '/' }}" href="/" title="阅读工作台">阅读</a>
+    <a class="tn {{ 'on' if p.startswith('/review') or p.startswith('/quiz') }}" href="/review" title="间隔复习（SM-2 抽卡）">复习</a>
+    <a class="tn {{ 'on' if p.startswith('/glossary') }}" href="/glossary" title="术语门户">术语</a>
+    <a class="tn {{ 'on' if p.startswith('/stats') }}" href="/stats" title="月度阅读统计">统计</a>
+    {# 需求 #6 修正：问吧/收藏/标签 放在左侧文字链接旁（统计右边），不在右侧图标区 #}
+    <span class="tn-sep" aria-hidden="true"></span>
+    <a class="tn tn-act {{ 'on' if p.startswith('/favorites') }}" href="/favorites" title="收藏"><svg class="i i-13"><use href="#i-favorite-heart"/></svg>收藏</a>
+    <a class="tn tn-act {{ 'on' if p.startswith('/tags') }}" href="/tags" title="标签管理"><svg class="i i-13"><use href="#i-tag-outline"/></svg>标签</a>
+    <a class="tn tn-act {{ 'on' if p.startswith('/governance') }}" href="/governance" title="治理驾驶舱：断链 / 孤儿文档 / 近义标签"><svg class="i i-13"><use href="#i-localhost-shield"/></svg>治理</a>
+  </nav>
+  <div class="searchbox" id="searchbox" role="search">
+    <svg class="i i-14" aria-hidden="true"><use href="#i-search-magnifier"/></svg>
+    <input id="q" placeholder="检索，? 前缀走语义…" autocomplete="off" value="{{ q|default('') }}">
+    <span class="sb-eng" aria-hidden="true">全文 / 语义 / 标签</span>
+    <kbd>/</kbd>
+  </div>
+  <div class="top-right">
+    <button class="pill icon-only" id="global-stats-btn" onclick="showGlobalStats()" title="全库快照：总量 / 各域分布 / 标签覆盖 / 双链健康"><svg class="i i-14"><use href="#i-chart"/></svg></button>
+    <a class="pill icon-only" href="/inbox" title="收件箱（待归档 {{ inbox_n|default(0) }}）"><svg class="i i-14"><use href="#i-inbox-tray"/></svg><span class="n">{{ inbox_n|default(0) }}</span></a>
+    <button class="pill icon-only" id="theme-btn" title="切换白天 / 夜间"><svg class="i i-16"><use href="#i-sun"/></svg></button>
+    <button class="pill icon-only" id="kb-settings-btn" title="设置：界面风格 / 阅读偏好（字号 · 行高 · 标题 · 代码）/ 快捷键"><svg class="i i-16"><use href="#i-palette"/></svg></button>
+  </div>
+</header>
+
+{% block body %}{% endblock %}
+
+<div class="statusbar">
+  <span class="sb-acc">知库 · 本地阅读器</span>
+  <span id="sb-path" class="sb-path" title="当前文档路径"></span>
+  <span>content/ = 唯一事实源 · 索引只是派生缓存</span>
+  {# 问题12：原顶栏「全文检索已就绪」pill 降级为状态栏文字；B22：计数以索引内篇数 fts_n 为准 #}
+  <span>{{ fts_n|default(n_md)|default(0) }} 篇已入全文索引</span>
+  {# 状态栏右端的地址跟着实例走：写死 localhost:5001 时，换端口/直启/临时实例里这句话就是假的 #}
+  <span class="right"><span>{{ request.host }}</span></span>
+</div>
+<div id="toast"></div>
+{# 命令面板 / 阅读偏好面板容器（kb-core.js 在首次打开时注入内部结构） #}
+<div id="kb-palette"></div>
+{# 就地搜索浮层 · 方案 D 白底版（2026-09-20 用户拍板）：左栏引擎/域竖排，右栏结果区 #}
+<div class="kb-search-ov" id="kb-search-ov" hidden>
+  <div class="kb-search-box" role="dialog" aria-label="就地搜索">
+    <div class="kb-search-head">
+      <svg class="i" aria-hidden="true"><use href="#i-search-magnifier"/></svg>
+      <input id="kb-so-q" placeholder="检索正文 / 标签 / 术语…（? 前缀走语义）" autocomplete="off" spellcheck="false" aria-label="搜索词">
+      <button type="button" class="kb-so-clear" id="kb-so-clear" aria-label="清空搜索" title="清空" hidden><svg class="i i-12" aria-hidden="true"><use href="#i-cancel-x"/></svg></button>
+      <kbd>Esc</kbd>
+    </div>
+    <div class="kb-search-cols">
+      <div class="kb-search-rail">
+        <div class="so-rail-h">ENGINE</div>
+        <div class="kb-search-engines" role="tablist" aria-label="检索引擎">
+          <button type="button" class="kb-eng-chip" data-eng="hybrid" aria-pressed="false">混合 Hybrid</button>
+          <button type="button" class="kb-eng-chip on" data-eng="fts" aria-pressed="true">全文 FTS5</button>
+          <button type="button" class="kb-eng-chip" data-eng="semantic" aria-pressed="false">语义 RAG</button>
+          <button type="button" class="kb-eng-chip" data-eng="tags" aria-pressed="false">标签</button>
+        </div>
+        <div class="so-rail-h">SCOPE</div>
+        <div class="kb-search-scopes" aria-label="范围筛选">
+          <button type="button" class="kb-scope-chip on" data-scope="">全部域</button>
+          {# 域钮从 taxonomy 派生（不变量 5）：新增域只改 JSON，这里不再抄第三份名单。
+             键名一旦与 JSON 漂移，点它就是 0 结果 —— 2026-09-24 实测「AI 资产」发 domain=ai（台账 §6 第 27 行）。
+             search_hidden（JSON 里 "search": false）滤掉语料全是书库格式（.txt/.epub 不进 FTS，fts.py:110）
+             的域，免得给出一个永远零结果的钮。色点用全库通行的 "--dh=色相数字"，暗色在 searchoverlay.css 翻。 #}
+          {% for k, lab in LABELS.items() if k not in SEARCH_HIDDEN %}<button type="button" class="kb-scope-chip" data-scope="{{ k }}"><span class="dh" style="--dh:{{ HUES.get(k, 158) }}"></span>{{ lab }}</button>
+          {% endfor %}
+          <button type="button" class="kb-scope-chip" data-scope="fav">仅收藏</button>
+          <button type="button" class="kb-scope-chip" data-scope="unmastered">仅未掌握</button>
+        </div>
+      </div>
+      <div class="kb-search-main">
+        <div class="kb-search-body" id="kb-so-body"></div>
+      </div>
+    </div>
+  </div>
+</div>
+{% block scripts %}{% endblock %}
+</body>
+</html>

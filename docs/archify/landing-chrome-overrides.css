@@ -1,0 +1,960 @@
+/* ============================================================================
+   知库 landing 对 archify 交付件的本地定制 —— 可重放副本
+   static/archify/zhiku-pipeline.html 由 `archify deliver` 生成，重新交付会**整文件覆盖**，
+   所以这里存一份。重放 = A 的 DOM 搬移 + B 的 CSS + C 的 JS + D 的浮层，四步都要做。
+   行号会漂：本文件由 .qa/regen_overrides.mjs 按标记自动抽取，接手时重跑一次即可。
+   作用域：几乎全部是 html:not([data-embed="true"])，即**演示态与阅读态共用同一套版式**
+   （2026-09-25 定稿：两态必须同宽同位，否则按 Esc 退出演示时底行整排按钮会横跳）。
+   嵌入态 ?embed=1 全部不适用，父页 iframe 里看到的仍是 archify 原样。
+
+A0. head 里的两段本地脚本（原文照抄在下面 headJs 段；必须在 archify 自己的脚本之前，
+    所以放在 <head> 里）
+    · 包一层 window.matchMedia：凡问 prefers-reduced-motion 的一律返回不匹配
+      （这台机器开了系统"减少动效"，否则动效按钮与播放故事永久 disabled）；
+    · 检测 window.top !== window.self → 给 <html> 打 data-kb-framed="true"，
+      知库首页取景框据此去掉灰底与 margin（首帧前打标记，不闪）。
+
+A. DOM 搬移
+   1) 新建 <div class="kb-dock"></div>，放在 .diagram-container **之后**（.cards 原位只
+      留一条注释，见文末）。
+   2) <div class="toolbar">…</div>  从 <body> 直接子层 → 搬进 .kb-dock
+      <div class="guided-views">…</div> 留在 .container 原位，只是被 dock 包住。
+      <nav class="guided-view-index">（01/02/03 三个切章按钮）从 .guided-views 内
+      → 搬进 .kb-dock、紧跟在 .kb-guide-btn 之后（archify 取它是文档级
+      getElementById，换父安全；不搬的话切章要先展开弹窗，多点一次）。
+   3) <div class="header">…</div>（标题 +「结论」按钮）→ 搬进 .diagram-container，
+      做**面板左上角**（B 段用绝对定位贴 top/left）。可以搬：archify 取它是
+      `shell.querySelector('.header')`（shell = .container，13113 行），后代查询。
+   4) ✋ <div class="diagram-nav">…</div> 必须**留在 .diagram-container 内**。
+      archify 有 4 处 `container.querySelector('.diagram-nav')`（13286 / 14131 / 15744 /
+      16472），搬出去 Archify.view 初始化就抛 TypeError（13593 行）并反复重试 = 页面狂闪。
+      它的右下角观感完全靠 B 段的 position:fixed 实现。
+   5) 三张 .card 连同 <div class="cards"> 一起搬到 </body> 前（见 D），并给它**追加
+      kb-cards-pop 类**。为什么搬出 .container：阅读态的自适应版心宽度会
+      outerHeight(cards)（13282 行 fixedHeight），浮层一开一合就把高度喂给宽度算法 →
+      版心变窄 → 按钮跑位 → :hover 丢 → 又变宽 → 循环 = 闪。
+      为什么仍带 cards 类：archify 用 shell.querySelector('.cards')（只查 .container
+      后代）→ 搬到容器外取不到、高度恒 0；知库首页 landing.html 的 harvestCards 用
+      文档级 '.cards > *' → 带 cards 类才能继续把三张卡搬进左栏，父页一行都不用改。
+   6) 新建 <button class="kb-info-btn" type="button" title="悬浮展开三张结论卡片">结论</button>
+      插在 .header 内 .header-row 之后；
+      新建 <button class="kb-guide-btn" …>引导视图 <span class="kb-guide-count"></span></button>
+      插在 .kb-dock 内 .toolbar 之后（问题6 / Q4 方案乙的唯一入口）。
+   搬完用 html.parser 校验跨层闭合异常为 0，并**再数一遍子节点个数**：
+   container(3) > diagram-container(4) > header/diagram-nav(5)；kb-dock(4) 与
+   guided-views/toolbar/kb-guide-btn(5)；.kb-cards-pop 里必须正好 3 个 .card。
+   ⚠ 2026-09-25 踩过：用脚本搬 .card 时多带一个未闭合的 <div class="card">，被浮层自己的
+     </div> 吃掉，html.parser 照样 0 异常，但三张卡变成嵌套、浮层塌成一列 416px。
+
+B. CSS 块（贴进 present-mode 规则区之前；当前行号见上面打印的区间）
+   含：两态统一版式（body / .container / .diagram-container / svg）、取景框态去灰底圆角
+   （data-kb-framed）、.kb-dock 横排、工具组 position:relative + top/right 归零（否则整组
+   往左下跑 16px）、经典与导出菜单改成朝上开（问题2+5）、导航胶囊 fixed + --kb-nav-w 留白
+   + --kb-nav-bottom 与底行同轴、章节卡 flex 改 0 1 auto、面板左上角标题、结论浮层贴按钮
+   往下开、引导视图入口 + 弹窗（问题6，宽度按内容收）、
+   **字号分档块（102 个选择器 / 8 档）—— 这块是 .qa/gen_tiers.py 扫描生成的，
+   改过 archify 字号或重跑 deliver 之后先跑那个脚本再回来，别手改、更别改回 zoom。**
+   ==========================================================================*/
+
+  <script>
+    /* [本地定制 · 知库 landing] 问题3+7（2026-09-25）：这台机器开了系统级"减少动效"，
+       archify 有 8 处 matchMedia('(prefers-reduced-motion: reduce)') 判定，一旦命中就
+       把动效按钮 disabled（title 变成"已根据减少动态效果偏好暂停动效"）、播放故事永久灰、
+       动效 CSS 全停 —— 用户看到的"静态按钮一直是灰色、点了没反应"就是这么来的。
+       用户明确选择"本交付件忽略系统偏好"，所以在 archify 的脚本跑起来之前先包一层
+       matchMedia：凡是问 prefers-reduced-motion 的，转成一个恒不匹配的合法查询再返回
+       （其余查询原样转发）。上面那两条 @media 块用同样口径废掉。 */
+    (function () {
+      if (!window.matchMedia) return;
+      var real = window.matchMedia.bind(window);
+      window.matchMedia = function (q) {
+        if (String(q).indexOf('prefers-reduced-motion') === -1) return real(q);
+        var dead = real('(min-width: 100000px)');
+        try {
+          Object.defineProperty(dead, 'matches', {
+            get: function () { return false; }, configurable: true
+          });
+        } catch (_) { }
+        return dead;
+      };
+    })();
+  </script>
+  <script>
+    /* [本地定制 · 知库 landing] 标记"本页正被别的页面用 iframe 嵌着"（知库首页右栏的取景框）。
+       判据用 window.top !== window.self，而不是 ?embed=1：取景框走的是 ?present=1
+       （?embed=1 会把工具组/引导视图/导航胶囊全藏掉，那是裸画布，不是我们要的样子）。
+       首帧前就打标记，所以不会闪。 */
+    (function () {
+      try {
+        if (window.top !== window.self) document.documentElement.setAttribute('data-kb-framed', 'true');
+      } catch (_) { }
+    })();
+  </script>
+
+    /* [本地定制 · 知库 landing] 两态统一版式（2026-09-25 第三版）。
+       archify 只在 present 态用"视口钉死 + 满宽"，阅读态走另一套（body padding 6/32、
+       .container max-width 由自适应运行时算、面板按 viewBox 比例定高）。我把 chrome 收进
+       一条横排 dock 后，两态的版心一个 1968 一个 1440、左边距一个 16 一个 280，
+       底行整排按钮横向位置跟着跳（用户原话："退出演示后按钮被挤到上面去了"）。
+       做法：把 archify 那四条 present 版式规则原样搬到"非嵌入态"，两态共用一套；
+       max-width 用 !important 压住自适应运行时写在 html 上的内联自定义属性（13249 行），
+       顺带 body{overflow:hidden} 让溢出恒为 0 —— 自适应宽度极限环（1440×900 实测
+       两态来回跳 1344↔1295、1280×720 四态循环 = 上一轮的"狂闪"）从此没有燃料。
+       副本见 docs/archify/landing-chrome-overrides.css。 */
+    html:not([data-embed="true"]) body {
+      height: 100dvh;
+      min-height: 0;
+      padding: 1rem;
+      overflow: hidden;
+    }
+
+    html:not([data-embed="true"]) .container {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      width: 100%;
+      max-width: none !important;
+      height: calc(100dvh - 2rem);
+      position: relative;
+    }
+
+    html:not([data-embed="true"]) .diagram-container {
+      --archify-nav-reserve: 0px !important;
+      display: flex;
+      flex: 1 1 auto;
+      align-items: center;
+      justify-content: center;
+      min-height: 0;
+      padding: 0.75rem;
+      padding-bottom: calc(0.75rem + var(--archify-nav-reserve));
+    }
+
+    html:not([data-embed="true"]) .diagram-container>svg {
+      flex: 1 1 auto;
+      height: 100%;
+      min-height: 0;
+      width: 100%;
+      min-width: 0;
+    }
+
+    /* [本地定制 · 知库 landing] 被首页取景框嵌入时，把外面那圈灰底和 margin 去掉、
+       让画布尽量撑大（用户 2026-09-25 圈图："外面的灰色背景去掉，就是 margin 也去掉，
+       尽量撑大"）。只作用于 data-kb-framed（见 head 里那段判据），所以单独打开这个
+       html 时仍是"白面板压在浅灰底上"的原始样子，两边互不影响。
+       面板描边与圆角一并去掉，否则撑到边之后框里还套一圈线。 */
+    html[data-kb-framed="true"]:not([data-embed="true"]) body {
+      padding: 0.5rem;
+      background: var(--panel);
+    }
+
+    html[data-kb-framed="true"]:not([data-embed="true"]) .container {
+      height: calc(100dvh - 1rem);
+      /* 用户 09-25 圈整块区域："这个区域你给加个圆角边框" —— 灰底和 margin 已去掉，
+         但整片方角贴在取景框上不好看，所以把描边与圆角从面板移到最外层容器，
+         连底行一起包成一张圆角卡片。 */
+      border: 1px solid var(--panel-border);
+      border-radius: 0.75rem;
+      overflow: hidden;
+    }
+
+    html[data-kb-framed="true"]:not([data-embed="true"]) .diagram-container {
+      border: 0;
+      border-radius: 0;
+    }
+
+    /* 底行按钮别贴着卡片边，留半格；右侧仍按 --kb-nav-w 给导航胶囊留白 */
+    html[data-kb-framed="true"]:not([data-embed="true"]) .kb-dock {
+      padding-left: 0.5rem;
+    }
+
+    /* [本地定制 · 知库 landing] 任务3+4：右上四枚按钮（浅色/经典/静态/导出）与章节条
+       合并成面板下方的同一行 —— 两者已被包进 .kb-dock（章节条留在 .container 原位、
+       工具组从 body 搬进来）。 */
+    html:not([data-embed="true"]) .kb-dock {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      margin-top: 0.75rem;
+    }
+
+    html:not([data-embed="true"]) .kb-dock>.toolbar {
+      /* 必须是 relative 而不是 static：archify 的两个下拉菜单是 .toolbar 的绝对定位
+         后代（.toolbar .preset-menu / .export-menu），工具组原本 position:fixed 自带
+         定位上下文；我把它改成 static 后菜单失去锚点，会去贴 .container ——
+         实测点「经典」菜单落在 left=-110（跑出屏幕左边），并把文档撑到 1164 > 视口 920，
+         浏览器自动滚了 244px = 用户说的"把整个界面顶出去了"。 */
+      position: relative;
+      /* archify 的 .toolbar 还带着 top:1rem / right:1rem —— 那两条只在 fixed 下有意义，
+         换成 relative 后它们变成"往左下各偏移 16px"（实测工具组从 16/856 跑到 0/872，
+         左边贴到屏幕外），必须一起清成 auto。 */
+      top: auto;
+      right: auto;
+      gap: 0.5rem;
+      order: -1;
+      flex: none;
+    }
+
+    /* [本地定制 · 知库 landing] 问题2+5：菜单改成**朝上开**、限高在视口内滚动。
+       往上开不会增加文档滚动高度（绝对定位只向右/向下溢出才算溢出），所以"顶出去"
+       这一条从根上没了。锚点是各自按钮外面的 .preset-wrap / .export-wrap（不是
+       .toolbar），所以「风格」菜单要改成左对齐（它那颗按钮在工具组最左，右对齐会把
+       296px 宽的菜单甩到屏幕外，实测 left=-126），「导出」菜单在右端、保持右对齐。
+       transform-origin 跟着翻，否则展开动画朝反方向弹。 */
+    html:not([data-embed="true"]) .toolbar .preset-menu,
+    html:not([data-embed="true"]) .toolbar .export-menu {
+      top: auto;
+      bottom: calc(100% + 0.375rem);
+      max-height: calc(100dvh - 8rem);
+      overflow-y: auto;
+    }
+
+    html:not([data-embed="true"]) .toolbar .preset-menu {
+      left: 0;
+      right: auto;
+    }
+
+    html:not([data-embed="true"]) .toolbar .export-menu {
+      right: 0;
+    }
+
+    html:not([data-embed="true"]) .toolbar .preset-menu.open {
+      transform-origin: bottom left;
+    }
+
+    html:not([data-embed="true"]) .toolbar .export-menu.open {
+      transform-origin: bottom right;
+    }
+
+    /* [本地定制 · 知库 landing] 任务6：操作条（路径/地图/透镜/查找/缩放）挪到页面
+       右下角，与底部那一行同带；按钮度量同步成 .toolbar button 那一套，
+       否则并排会矮一截。面板给它预留的 --archify-nav-reserve 已在上面统一版式里清零。
+       导航条必须留在 .diagram-container 内：archify 有 4 处
+       container.querySelector('.diagram-nav')（13286/14131/15744/16472），搬出去
+       Archify.view 直接抛 TypeError 并反复重试 = 页面狂闪。所以只能靠定位搬视觉。 */
+    html:not([data-embed="true"]) .diagram-nav {
+      position: fixed;
+      right: 1rem;
+      /* 用户圈图："位置不对，跑到上面大概十来个px了" —— 写死 bottom:1rem 时胶囊中心
+         比底行那一排按钮的中心高了约 10px。改成由末尾脚本算出的 --kb-nav-bottom，
+         让胶囊与底行按钮**垂直同轴**（dock 换行、窗口缩放都自动跟）。 */
+      bottom: var(--kb-nav-bottom, 1rem);
+      left: auto;
+      z-index: 120;
+      padding: 0.15rem 0.25rem;
+      border-radius: 0.75rem;
+    }
+
+    html:not([data-embed="true"]) .diagram-nav button {
+      min-width: 2.75rem;
+      height: auto;
+      min-height: 2.5rem;
+      padding: 0.5rem 0.625rem;
+      border-radius: 0.625rem;
+      font-size: 0.75rem;
+      font-weight: 500;
+      color: var(--toolbar-text);
+    }
+
+    /* [本地定制 · 知库 landing] 任务6 的收尾：胶囊是 fixed 的、脱离文档流，
+       不腾地方就会直接压在章节条上（实测 2000px 视口下胶囊占 1625..1984，
+       把「03 公开面」整张卡盖死）。胶囊宽度要看按钮渲染完才知道，
+       所以由文件末尾那段脚本量出来写进 --kb-nav-w，这里等宽留白 + 1rem 间隙。 */
+    html:not([data-embed="true"]) .kb-dock {
+      padding-right: calc(var(--kb-nav-w, 0px) + 1rem);
+    }
+
+    html:not([data-embed="true"]) .kb-dock>.guided-views {
+      /* !important 是被迫的：archify 自带的
+         html[data-present="true"]:not([data-embed="true"]) .guided-views{flex:none}
+         排在更后面且特异性相同（0,3,1），不压住它这条就不生效，
+         章节条会变成不可收缩的 773px 把底行撑出视口。 */
+      flex: 1 1 auto !important;
+      min-width: 0;
+      margin: 0;
+      /* [本地定制 · 知库 landing] 任务5：去掉章节条的外边框（含蓝图预设的投影），
+         只留四张卡片各自的描边。 */
+      border: 0;
+      box-shadow: none;
+    }
+
+    /* [本地定制 · 知库 landing] 章节卡宽度改成"按内容自适应、可缩到最小宽度"。
+       archify 原样是 li{flex:1 1 0}：三章在剩余空间里等分撑满（实测各 311px，
+       内容其实只要 200px 出头），于是把左边的播放按钮和工具组一起挤开。
+       改成 flex:0 1 auto 后卡片只占内容宽，空间不够时才收缩到 9.5rem 最小宽，
+       再不够就靠 .guided-view-chapters 自己的 overflow-x 滚（用户 2026-09-25 定的口径）。 */
+    html:not([data-embed="true"]) .guided-view-chapters li {
+      flex: 0 1 auto;
+    }
+
+    /* [本地定制 · 知库 landing] 问题6 / Q4 方案乙：引导视图整块改成"底行一颗入口 + 弹窗"。
+       底行原来要塞下 [标题][工具组][引导视图 x/3 + 当前章节标题/说明 + 01/02/03 + 三颗故事按钮]，
+       窄一点就换行、章节卡还会把别的挤开。现在：
+         · 底行只留 .kb-guide-btn（引导视图）；
+         · .guided-views 改成 fixed 弹窗，贴着入口按钮往下开（--kb-guide-bottom 由末尾脚本量）；
+         · 弹窗第一行 = 引导视图 x/3 + 主标题 + 副标题，**一行显示**，主次靠字号；
+         · x/3 右边那条进度横线（.guided-view-progress）删掉；
+         · 第二行 = 01/02/03 圆圈数字；
+         · 播放故事 / 复制此刻 / 显示全部 三颗只在选中某章之后出现（archify 会写
+           data-active-view，没选中时该属性不存在）；
+         · 点弹窗外空白 / 按 Esc 一次性关掉（见末尾那段 JS）。
+       ⚠ 弹窗期间 .guided-views 变成 fixed、脱离底行的流，所以 dock 改成 flex-start
+       左对齐，不再 space-between（否则入口按钮会被推到导航胶囊那条留白里）。 */
+    html:not([data-embed="true"]) .kb-dock {
+      justify-content: flex-start;
+    }
+
+    html:not([data-embed="true"]) .kb-guide-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      min-height: 2.5rem;
+      padding: 0.5rem 0.875rem;
+      border: 1px solid var(--toolbar-border);
+      border-radius: 0.625rem;
+      background: var(--toolbar-bg);
+      color: var(--toolbar-text);
+      font: inherit;
+      font-size: 0.75rem;
+      font-weight: 500;
+      cursor: pointer;
+    }
+
+    html:not([data-embed="true"]) .kb-guide-btn[aria-expanded="true"] {
+      border-color: var(--frontend-stroke);
+      color: var(--frontend-stroke);
+    }
+
+    html:not([data-embed="true"]) .kb-guide-count {
+      color: var(--text-muted);
+      font-size: 0.68rem;
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* 静置：整个引导视图不占版面（archify 自己会在没有视图时加 hidden，这条兜底） */
+    html:not([data-embed="true"]) .guided-views {
+      display: none;
+    }
+
+    /* 那条进度横线：用户原话"这条线留着干锤子？" */
+    html:not([data-embed="true"]) .guided-view-progress {
+      display: none;
+    }
+
+    html:not([data-embed="true"])[data-kb-guide="open"] .guided-views {
+      display: block !important;
+      position: fixed;
+      left: 1rem;
+      /* 问题6 追加（用户圈图"！！宽度太宽"）：原来 left+right 双向拉满整屏，
+         里面只有两三行字、右边一大片空白。改成按内容收宽，上限 46rem，
+         并且不超过"视口 - 左右留白 - 导航胶囊留白"。 */
+      width: max-content;
+      max-width: min(46rem, calc(100vw - 2rem - var(--kb-nav-w, 0px)));
+      /* 入口在底行 → 弹窗往上开（实测往下开时 top=910px，整块掉到视口外） */
+      top: auto;
+      bottom: var(--kb-guide-top, 5rem);
+      z-index: 130;
+      margin: 0;
+      padding: 1rem;
+      border: 1px solid var(--panel-border);
+      border-radius: 1rem;
+      background: var(--panel);
+      box-shadow: 0 14px 34px rgba(15, 23, 42, 0.14);
+    }
+
+    /* 第一行：meta | 主标题 | 副标题 同排；轨迹与节点字幕另占整行（第二层） */
+    html:not([data-embed="true"])[data-kb-guide="open"] .guided-view-copy {
+      display: grid;
+      grid-template-columns: auto auto minmax(0, 1fr);
+      align-items: baseline;
+      gap: 0.35rem 0.75rem;
+    }
+
+    html:not([data-embed="true"]) .guided-view-meta {
+      display: inline-flex;
+      align-items: baseline;
+      gap: 0.35rem;
+    }
+
+    html:not([data-embed="true"]) #guided-view-label {
+      font-size: 0.875rem;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    html:not([data-embed="true"]) #guided-view-note {
+      color: var(--text-muted);
+      font-size: 0.75rem;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    html:not([data-embed="true"]) .guided-view-trail,
+    html:not([data-embed="true"]) .guided-story-caption {
+      grid-column: 1 / -1;
+    }
+
+    /* 第二行：01/02/03 —— 2026-09-25 用户看图后改口径，三个切章按钮已从弹窗搬到 .kb-dock
+       常驻（见 DOM 里那条注释），所以这里不再给弹窗内的它加间距；改成给 dock 里它让出
+       一条竖分隔，视觉上与「引导视图」入口成组。 */
+    /* 01/02/03 在底行里就是一个普通 flex 组，别再画分隔框：
+       之前加的 border-left 在 dock 换行时只剩半截，用户原话"只显示一半算啥"。 */
+    html:not([data-embed="true"]) .kb-dock>.guided-view-index {
+      min-width: 0;
+    }
+
+    /* 问题8 附带：导航胶囊里那两枚 mask 图标（查找 / 指南）只有 0.72rem≈11.5px，
+       用户圈图"这俩 svg 图标太小"。整组一起抬到 1rem，免得只有两枚变大不协调。 */
+    html:not([data-embed="true"]) .diagram-nav-icon {
+      width: 1rem;
+      height: 1rem;
+    }
+
+    /* 上一/下一枚 ← → 在弹窗里会各占一行变成两条游离的箭头（截图实测），
+       弹窗里不需要它们：键盘 [ ] 仍然能切引导视图。 */
+    html:not([data-embed="true"])[data-kb-guide="open"] .guided-views>#guided-view-prev,
+    html:not([data-embed="true"])[data-kb-guide="open"] .guided-views>#guided-view-next {
+      display: none;
+    }
+
+    /* 三颗故事按钮：没选中章节前不出现。
+       ⚠ 选择器必须带上中间的 .guided-views：archify 有条
+       .guided-views[data-active-view="all"] .guided-view-actions{display:block}
+       特异性 (0,3,0)，而加载时 data-active-view 默认就是 "all"，
+       我原来只写 html:not(...) .guided-view-actions (0,2,1) 会被它顶掉。 */
+    html:not([data-embed="true"]) .guided-views .guided-view-actions {
+      display: none;
+    }
+
+    html:not([data-embed="true"])[data-kb-chosen="true"] .guided-views .guided-view-actions {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-top: 0.75rem;
+    }
+
+    /* [本地定制 · 知库 landing] 问题8：正文里所有"点按钮弹出来的面板 + 菜单"字号放大。
+       ⚠ 别改回 zoom：这些面板的位置是 archify 的 JS 按 CSS 像素写的（护照 11241 行
+       chip.style.top=...、雷达 applyPlacement），zoom 会把元素自身尺寸和 JS 写的偏移
+       按不同比例放大，实测就是用户圈图的三条：面板初始化后自己往下跳、边框只露一半、
+       光标显示能拖其实拖不动。rem 只跟根字号挂钩，所以只能逐条覆盖 font-size。
+       下面这份清单由脚本从 <style> 里扫出来（全仓 92 处 <0.75rem + 面板内 0.75~1.0rem
+       一起分档），排除嵌入态、伪元素与预设徽章，改 archify 字号时重跑生成脚本即可。 */
+    html:not([data-embed="true"]) :is(
+      .diagram-guide kbd,
+      .diagram-guide-action small,
+      .diagram-guide-eyebrow,
+      .diagram-guide-feedback,
+      .diagram-guide-index,
+      .diagram-guide-shortcuts,
+      .diagram-nav-detail,
+      .guided-view-chapter-count,
+      .guided-view-chapter-delta,
+      .guided-view-chapter-index,
+      .guided-view-handoff,
+      .node-finder[data-context^="route-"] .node-finder-result em,
+      .overview-map-copy small,
+      .overview-map-expand,
+      .overview-map-feedback,
+      .overview-map-hint,
+      .preset-menu-heading span:last-child,
+      .relationship-lens-direction,
+      .relationship-lens-eyebrow,
+      .relationship-lens-group-title,
+      .route-probe-eyebrow,
+      .route-probe-status,
+      .semantic-lens-eyebrow,
+      .semantic-passport-evidence-status,
+      .semantic-passport-meta span, .semantic-passport-meta code,
+      .semantic-passport-reach-label,
+      .semantic-passport-repository,
+      .semantic-passport-source code,
+      .semantic-passport-source small,
+      .share-chapter-copy small,
+      .share-chapter-count,
+      .share-chapter-route,
+      .share-chapter-state) {
+      font-size: 0.7rem;
+    }
+
+    html:not([data-embed="true"]) :is(
+      .diagram-guide-stats,
+      .diagram-nav button,
+      .diagram-nav-percent,
+      .export-item-copy small,
+      .export-menu-header kbd,
+      .export-menu-header span,
+      .export-menu-heading,
+      .guided-story-caption small,
+      .guided-story-caption-index,
+      .guided-view-beat-link,
+      .guided-view-meta,
+      .guided-view-trail .guided-view-stop,
+      .node-finder kbd,
+      .node-finder-result small,
+      .node-finder-status,
+      .preset-menu-heading,
+      .relationship-lens-row small,
+      .relationship-lens-summary,
+      .route-journey-controls button,
+      .route-probe-node, .route-probe button.route-probe-node,
+      .route-probe-placeholder,
+      .semantic-lens-actions button,
+      .semantic-lens-instruction,
+      .semantic-lens-kind em,
+      .semantic-lens-status,
+      .semantic-passport-reach-status,
+      .semantic-passport-source strong,
+      .share-chapter-route,
+      .toolbar .export-menu .hint) {
+      font-size: 0.78rem;
+    }
+
+    html:not([data-embed="true"]) :is(
+      .focus-chip button,
+      .guided-view-all,
+      .guided-view-chapter-title,
+      .guided-view-copy small,
+      .guided-view-play,
+      .node-finder-result em,
+      .overview-map-copy strong,
+      .preset-option-copy small,
+      .relationship-lens-empty,
+      .semantic-lens-kind strong,
+      .semantic-passport-detail,
+      .semantic-passport-reach-actions strong,
+      /* Route Probe answers a reader question over the compiled semantic graph: choose two stable nodes and reveal the shortest authored directed route. The receipt and signal live entirely in the viewer layer. */ .route-probe,
+      /* Semantic Radar is a deliberately simplified, viewer-only overview. It uses authored node bounds and the live camera viewport rather than cloning the canonical SVG, so IDs, filters, animation, and export state stay singular and deterministic. */ .overview-map) {
+      font-size: 0.85rem;
+    }
+
+    html:not([data-embed="true"]) :is(
+      .diagram-guide-action strong,
+      .focus-chip,
+      .guided-story-caption strong,
+      .node-finder-empty,
+      .node-finder-head strong,
+      .relationship-lens-row strong,
+      .route-probe-arrow,
+      .share-chapter-copy strong) {
+      font-size: 0.9rem;
+    }
+
+    html:not([data-embed="true"]) :is(
+      .export-item-copy strong,
+      .export-menu-header strong,
+      .guided-view-copy strong,
+      .guided-views button,
+      .node-finder-input,
+      .node-finder-result strong,
+      .overview-map[data-compact="true"] .overview-map-close,
+      .preset-option-copy strong,
+      .route-probe-title) {
+      font-size: 0.95rem;
+    }
+
+    html:not([data-embed="true"]) :is(
+      .diagram-guide-title,
+      .node-finder-search>span,
+      .relationship-lens-title,
+      .semantic-lens-title) {
+      font-size: 1rem;
+    }
+
+    html:not([data-embed="true"]) :is(
+      .overview-map-close) {
+      font-size: 1.08rem;
+    }
+
+    html:not([data-embed="true"]) :is(
+      .diagram-guide-close,
+      .node-finder-close,
+      .relationship-lens-actions #btn-focus-clear,
+      .semantic-lens-close) {
+      font-size: 1.15rem;
+    }
+
+    html:not([data-embed="true"]) .overview-map {
+      top: auto !important;
+      bottom: calc(var(--kb-dock-h, 53px) + 1.5rem) !important;
+    }
+    html:not([data-embed="true"]) .overview-map {
+      top: auto !important;
+      bottom: calc(var(--kb-dock-h, 53px) + 1.5rem) !important;
+    }
+
+    /* [本地定制 · 知库 landing] 标题 +「结论」按钮挪到正文大卡片的**左上角**
+       （2026-09-25 用户改口径，此前是"底行最左"）。DOM 上 .header 已搬进
+       .diagram-container，这里用绝对定位贴在面板左上；面板是 position:relative，
+       且它的 padding 就是 0.75rem，所以 top/left 与面板内边距对齐，不压边框。
+       ⚠ .header 可以搬进面板：archify 取它是 shell.querySelector('.header')
+       （shell = .container，13113 行），后代查询，换层不影响。 */
+    html:not([data-embed="true"]) .diagram-container>.header {
+      position: absolute;
+      top: 0.75rem;
+      left: 1rem;
+      z-index: 5;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      flex: none;
+      min-width: 0;
+      margin: 0;
+      padding: 0;
+    }
+
+    html:not([data-embed="true"]) .diagram-container>.header h1 {
+      font-size: 0.8rem;
+      white-space: nowrap;
+    }
+
+    html:not([data-embed="true"]) .subtitle {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    /* [本地定制 · 知库 landing] 方案②（2026-09-25）：三张结论卡片（唯一事实源 / 纯派生
+       缓存 / 公开边界）不再常驻版面 —— 改成标题右侧一枚「结论」按钮，悬浮或键盘聚焦时
+       以浮层展开，指针移进浮层仍然保持展开（.kb-cards-pop:hover 那条）。
+       用 :has() 而非兄弟选择器：触发点是面板左上角的 .kb-info-btn、浮层在 .container 之外。
+       ⚠ 浮层必须搬出 .container，并且**同时带 cards 类**：archify 的自适应阅读宽度会
+       outerHeight(cards)（13283 行），浮层一开一合就把高度喂给宽度算法 → 容器变窄 →
+       按钮跑位 → :hover 丢失 → 又变宽 → 循环 = 页面狂闪。而 archify 取 cards 用的是
+       shell.querySelector('.cards')（只查 .container 后代），搬到容器外它就取不到、
+       高度恒 0；知库首页的 harvestCards 用的是文档级 '.cards > *'，带上 cards 类才能
+       继续把三张卡搬进左栏。一次改动同时满足两边，且不用动 landing.html。
+       浮层底边让开"底行顶到视口底的距离"--kb-dock-gap，右侧让开 fixed 导航胶囊
+       --kb-nav-w 再加 4rem 余量。两个变量由末尾脚本实测写入。 */
+    html:not([data-embed="true"]) .kb-cards-pop {
+      display: none;
+    }
+
+    html:not([data-embed="true"]) .kb-info-btn {
+      display: inline-flex;
+      align-items: center;
+      min-height: 2rem;
+      padding: 0.25rem 0.625rem;
+      border: 1px solid var(--toolbar-border);
+      border-radius: 0.625rem;
+      background: var(--toolbar-bg);
+      color: var(--toolbar-text);
+      font: inherit;
+      font-size: 0.75rem;
+      font-weight: 500;
+      cursor: pointer;
+    }
+
+    html:not([data-embed="true"]) .kb-info-btn:hover,
+    html:not([data-embed="true"]) .kb-info-btn:focus-visible {
+      border-color: var(--frontend-stroke);
+      color: var(--frontend-stroke);
+    }
+
+    html:not([data-embed="true"]):has(.kb-info-btn:hover) .kb-cards-pop,
+    html:not([data-embed="true"]):has(.kb-info-btn:focus-visible) .kb-cards-pop,
+    html:not([data-embed="true"]) .kb-cards-pop:hover {
+      /* !important 是被迫的：浮层现在也带 cards 类，archify 自己的
+         html[data-present="true"]:not([data-embed="true"]) .cards{display:none}
+         特异性同为 (0,3,1) 且排在后面，不压住它演示态就永远展不开。 */
+      display: grid !important;
+      position: fixed;
+      left: 1rem;
+      /* 问题1（Q1 采纳）：贴着「结论」按钮**往下**展开，不再钉屏幕底部。
+         按钮位置由末尾脚本量进 --kb-info-bottom（= 按钮下沿 + 0.5rem 间隙），
+         因为标题在面板左上角、面板内边距会随模式/换行变，写死像素迟早错位。 */
+      top: var(--kb-info-bottom, 4.5rem);
+      bottom: auto;
+      right: calc(var(--kb-nav-w, 0px) + 4rem);
+      z-index: 130;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 1rem;
+      max-height: min(58vh, 26rem);
+      overflow: auto;
+      margin: 0;
+      padding: 1rem;
+      background: var(--panel);
+      border: 1px solid var(--panel-border);
+      border-radius: 1rem;
+      box-shadow: 0 14px 34px rgba(15, 23, 42, 0.14);
+    }
+
+/* ============================================================================
+C. JS 块（贴到 </body> 前，共三段：测量 / 引导视图弹窗交互 / 语义护照拖拽）
+   第一段：把运行时才知道的几何量写进 --kb-nav-w / --kb-dock-h / --kb-dock-gap /
+     --kb-info-bottom / --kb-guide-top（导航胶囊留白、两块浮层的锚点都靠它）。
+     ResizeObserver + scroll 持续跟，且只在数值变了才写样式。
+   第二段：引导视图弹窗的交互 —— 点入口开、点空白关、Esc 关并**吃掉按键**
+     （archify 把 Esc 绑在"退出演示"上，弹窗开着时不该顺手退出演示）；
+     点了 01/02/03 才写 html[data-kb-chosen="true"] 放出让三颗故事按钮
+     —— 不能用 archify 的 data-active-view 当门，它加载时就指向首章。
+   第三段：语义护照拖拽 —— archify 把护照位置按选中节点写成 inline top（11241 行），
+     且画布平移逻辑明确排除 .focus-chip（14447 行），所以光标显示能拖其实拖不动；
+     这段把它的标题条做成真正的把手（用 offsetLeft/Top + 指针增量，避开
+     padding box 与 border box 两套坐标混用）。
+   ==========================================================================*/
+
+  <script>
+    /* [本地定制 · 知库 landing] 把运行时才知道的几何量写进 CSS 自定义属性：
+       --kb-nav-w        fixed 导航胶囊宽度 → .kb-dock 右侧留白（不然胶囊压住章节条）
+       --kb-dock-h       底行高度（窄屏会换行、高度翻倍）
+       --kb-dock-gap     底行顶到视口底的距离
+       --kb-info-bottom  「结论」按钮下沿 → 结论浮层贴着它往下展开（问题1 / Q1）
+       --kb-guide-top    「引导视图」入口在**底行**，弹窗往上开 → 按钮顶边到视口底的距离 + 8px
+       这些都随换行/滚动/按钮数变化，所以 ResizeObserver + scroll 都要跟；
+       只在数值真的变了才写样式，避免每帧触发一次无谓重排。 */
+    (function () {
+      function watch() {
+        var root = document.documentElement.style;
+        var targets = [
+          ['--kb-nav-w', '.diagram-nav', 'w'],
+          ['--kb-dock-h', '.kb-dock', 'h'],
+          ['--kb-dock-gap', '.kb-dock', 'gap'],
+          ['--kb-info-bottom', '.kb-info-btn', 'bottom'],
+          ['--kb-info-bottom', '.kb-info-btn', 'bottom'],
+          ['--kb-guide-top', '.kb-guide-btn', 'above']
+        ];
+        var last = '';
+        function val(kind, r) {
+          if (!r) return 0;
+          if (kind === 'w') return r.width > 0 ? Math.round(r.width) : 0;
+          if (kind === 'h') return r.height > 0 ? Math.round(r.height) : 0;
+          if (kind === 'gap') return r.top > 0 ? Math.round(innerHeight - r.top) : 0;
+          // 'above'：入口在底行，弹窗要**往上开** —— 返回"按钮顶边到视口底的距离 + 8px 间隙"
+          if (kind === 'above') return Math.round(innerHeight - r.top + 8);
+          return Math.round(r.bottom + 8);
+        }
+        function sync() {
+          var out = [], key = [];
+          for (var i = 0; i < targets.length; i++) {
+            var el = document.querySelector(targets[i][1]);
+            var v = val(targets[i][2], el ? el.getBoundingClientRect() : null);
+            out.push([targets[i][0], v]);
+            key.push(v);
+          }
+          // 导航胶囊与底行按钮垂直同轴：胶囊底边到视口底的距离
+          //   = 视口高 - 底行中心 - 胶囊半高。（第一版把符号写反，实测中心差 46px）
+          var navEl = document.querySelector('.diagram-nav');
+          var dockEl = document.querySelector('.kb-dock');
+          if (navEl && dockEl) {
+            var dr = dockEl.getBoundingClientRect(), nr = navEl.getBoundingClientRect();
+            var nb = Math.round(innerHeight - (dr.top + dr.height / 2) - nr.height / 2);
+            if (nb > 0) { out.push(['--kb-nav-bottom', nb]); key.push(nb); }
+          }
+          var k = key.join('/');
+          if (k === last) return;
+          last = k;
+          for (var j = 0; j < out.length; j++) root.setProperty(out[j][0], out[j][1] + 'px');
+        }
+        if (window.ResizeObserver) {
+          var ro = new ResizeObserver(sync);
+          for (var t = 0; t < targets.length; t++) {
+            var e = document.querySelector(targets[t][1]);
+            if (e) ro.observe(e);
+          }
+        }
+        window.addEventListener('resize', sync);
+        window.addEventListener('scroll', sync, { passive: true });
+        sync();
+      }
+      if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', watch);
+      else watch();
+    })();
+  </script>
+  <script>
+    /* [本地定制 · 知库 landing] 问题6 / Q4 方案乙的交互层：
+       · 点「引导视图」→ html[data-kb-guide="open"]，CSS 就把 .guided-views 摆成弹窗；
+       · 点弹窗与入口以外的任何地方 → 关闭；
+       · Esc 关闭，并且**吃掉这次按键**：archify 自己把 Esc 绑在"退出演示"上，
+         弹窗开着时按 Esc 应该只关弹窗，不该顺手把演示也退出（捕获阶段先拦）。
+       状态只挂在一个属性上，弹窗本体仍是 archify 的 .guided-views，
+       所以章节切换、播放、复制链接全部照原逻辑走，我们不碰它的内部状态。 */
+    (function () {
+      function init() {
+        var btn = document.querySelector('.kb-guide-btn');
+        var gv = document.querySelector('.guided-views');
+        var count = document.getElementById('kb-guide-count');
+        var src = document.getElementById('guided-view-count');
+        if (!btn || !gv) return;
+        function open(v) {
+          if (v) document.documentElement.setAttribute('data-kb-guide', 'open');
+          else document.documentElement.removeAttribute('data-kb-guide');
+          btn.setAttribute('aria-expanded', v ? 'true' : 'false');
+        }
+        function isOpen() { return document.documentElement.getAttribute('data-kb-guide') === 'open'; }
+        btn.addEventListener('click', function (e) {
+          e.stopPropagation();
+          open(!isOpen());
+        });
+        /* 选中某章（01/02/03）才把播放故事 / 复制此刻 / 显示全部 三颗放出来。
+           不能用 archify 的 data-active-view 当门：它在加载时就指向首章了。 */
+        // 01/02/03 已搬到 dock（见 DOM 注释），所以监听挂在 document 上按目标判断，
+        // 不能再挂 gv 上 —— 挂 gv 上永远收不到，三颗故事按钮就再也不会出现。
+        document.addEventListener('click', function (e) {
+          if (e.target.closest && e.target.closest('.guided-view-chapter')) {
+            document.documentElement.setAttribute('data-kb-chosen', 'true');
+          }
+        });
+        document.addEventListener('click', function (e) {
+          if (!isOpen()) return;
+          // dock 里的 01/02/03 也算"弹窗相关"：它们只是换了位置的同一组切章按钮，
+          // 点它们不该把弹窗关掉（实测会被当空白处、弹窗当场自己关闭）。
+          var idx = document.getElementById('guided-view-index');
+          if (gv.contains(e.target) || btn.contains(e.target) || (idx && idx.contains(e.target))) return;
+          open(false);
+        });
+        document.addEventListener('keydown', function (e) {
+          if (e.key !== 'Escape' || !isOpen()) return;
+          e.stopPropagation();
+          e.preventDefault();
+          open(false);
+        }, true);
+        if (count && src) {
+          var mirror = function () { count.textContent = src.textContent || ''; };
+          mirror();
+          if (window.MutationObserver) new MutationObserver(mirror).observe(src, { childList: true, characterData: true, subtree: true });
+        }
+      }
+      if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
+      else init();
+    })();
+  </script>
+  <script>
+    /* [本地定制 · 知库 landing] 给语义护照加拖拽。
+       用户两条圈图："语义护照跑下面去了，还不能移动" / "鼠标显示了移动的样式，但是却无法移动"。
+       原因：护照的位置是 archify 的 JS 按被选中节点算出来直接写 inline top（11241 行），
+       落在画布上就压住图；而那个"能拖"的光标来自画布的 .is-pannable，archify 的平移逻辑
+       又明确把 .focus-chip 排除在外（14447 行），所以光标说能拖、实际拖不动。
+       这里把它的标题条做成真正的拖拽把手：按住可在正文面板内摆放，光标同时改成
+       grab / grabbing，让 affordance 名副其实；再点别的节点时 archify 会重新定位（预期行为）。
+       位移一律用 offsetLeft/offsetTop + 指针增量算，避免 absolute 的包含块（padding box）
+       与 getBoundingClientRect（border box）两套坐标混用带来的偏差。 */
+    (function () {
+      function init() {
+        var chip = document.getElementById('focus-chip');
+        var head = chip && chip.querySelector('.relationship-lens-head');
+        var panel = document.querySelector('.diagram-container');
+        if (!chip || !head || !panel) return;
+        var drag = null;
+        head.style.cursor = 'grab';
+        head.addEventListener('pointerdown', function (e) {
+          if (e.button !== 0 || (e.target.closest && e.target.closest('button, a'))) return;
+          drag = { x: e.clientX, y: e.clientY, left: chip.offsetLeft, top: chip.offsetTop };
+          try { head.setPointerCapture(e.pointerId); } catch (_) { }
+          head.style.cursor = 'grabbing';
+          e.preventDefault(); e.stopPropagation();
+        });
+        head.addEventListener('pointermove', function (e) {
+          if (!drag) return;
+          var maxL = Math.max(4, panel.clientWidth - chip.offsetWidth - 4);
+          var maxT = Math.max(4, panel.clientHeight - chip.offsetHeight - 4);
+          var clamp = function (v, hi) { return Math.max(4, Math.min(v, hi)); };
+          chip.style.left = Math.round(clamp(drag.left + e.clientX - drag.x, maxL)) + 'px';
+          chip.style.top = Math.round(clamp(drag.top + e.clientY - drag.y, maxT)) + 'px';
+          e.preventDefault(); e.stopPropagation();
+        });
+        function end(e) {
+          if (!drag) return;
+          drag = null;
+          head.style.cursor = 'grab';
+          try { head.releasePointerCapture(e.pointerId); } catch (_) { }
+        }
+        head.addEventListener('pointerup', end);
+        head.addEventListener('pointercancel', end);
+      }
+      if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
+      else init();
+    })();
+  </script>
+
+/* ============================================================================
+D. 结论卡片浮层（贴到 </body> 前、C 段之后）
+   与留在 .container 里的那条说明注释配套（原文照抄在下面）：
+   ==========================================================================*/
+
+  <!-- [本地定制 · 知库 landing] 方案②：三张结论卡片改为悬浮浮层（标题右侧「结论」按钮）。
+       必须在 .container 之外：archify 的自适应阅读宽度会量 .cards 的高度，
+       一被量到就会随悬浮开合来回改宽度 = 页面闪动。 -->
+  <div class="kb-cards-pop cards" role="dialog" aria-label="结论卡片">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-dot cyan"></div>
+            <h3>唯一事实源</h3>
+          </div>
+          <ul>
+            <li>&bull; content/ 下 md/html 不可再生</li>
+            <li>&bull; 新语料一律走 _inbox；编辑直接写回文件系统</li>
+          </ul>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <div class="card-dot emerald"></div>
+            <h3>纯派生缓存</h3>
+          </div>
+          <ul>
+            <li>&bull; index.db / rag.db 可随时删除重建</li>
+            <li>&bull; 切块或嵌入逻辑变更递增 RAG_CODE_VERSION</li>
+          </ul>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <div class="card-dot rose"></div>
+            <h3>公开边界</h3>
+          </div>
+          <ul>
+            <li>&bull; 发布走白名单同步，非默认全量</li>
+            <li>&bull; 小说（盗版书库）/ 漫画 / projects 永不外发</li>
+          </ul>
+        </div>
+  </div>
+
+/* ============================================================================
+   验收口径（2026-09-25 实测，全部用仓库自带 CDP 工具 + .qa 下的一次性采样脚本）
+     · 闪烁三处成因全部收口：① 导航条搬出面板 → Archify.view 抛 TypeError 反复重试；
+       ② 阅读态自适应版心极限环（1440×900 两态来回跳 1344↔1295、1280×720 四态循环）
+       —— body{overflow:hidden} + max-width:none !important 抽掉两条腿；
+       ③ 被 archify 量到高度的悬浮层。
+     · 3 种模式 × 视口 2000×920 / 1440×900 / 1280×720 各 10s 高频几何采样（约 602 帧）
+       全部 states=1、0 JS 报错。
+     · 两态同位（2000×920）：container 16/16/1968×888 · panel 16/16/1968×811 ·
+       dock 16/851/1968 · nav 胶囊 1625/857/359 · header 33/29/176×32；
+       两态截图 imgdiff 0% 只剩 AE=288（就是「演示/退出」那颗按钮的字形差）。
+     · 菜单（问题2+5）：改朝上开后 经典 99/591/296×258、导出（字号放大后）120/187/304×662，
+       两态实测 left>=0 且 bottom<=vh，文档高度恒 920、scrollTop 0（改前是
+       left=-126、文档撑到 1164、自动滚 244px）。
+     · 动效（问题3+7）：包一层 matchMedia 忽略 prefers-reduced-motion 之后
+       btn-motion.disabled=false（label 动态/静态可切，title 变"暂停动效"）、
+       播放故事 disabled=false 且点击后 data-playing=true、running 动画数 1。
+     · 引导视图弹窗（问题6 + 09-25 追加"宽度太宽"）：静置 .guided-views display:none；
+       点入口 → 弹窗按内容收宽（实测 16/791/245×57，上限 min(46rem, 视口-留白-胶囊)）；
+       01/02/03 已搬到 .kb-dock 常驻（实测 577 起、三张各 152px），弹窗内不再有它们；
+       进度横线 0×0；
+       章节标题与说明同一行（top 差 <6px）；三颗故事按钮只有点了某章之后才出现
+       （监听必须挂 document：章节按钮搬出 .guided-views 后，挂在 gv 上的老写法收不到事件）；
+       导航胶囊与底行同轴：--kb-nav-bottom 第一版符号写反（中心差 46px），修正后实测 877 vs 876；
+       点空白关闭且 data-present 仍为 true（不会误退出演示）。
+     · 面板字号（问题8）：zoom 方案已彻底撤掉（全文 zoom: 出现次数 = 0），改成
+       .qa/gen_tiers.py 扫出来的 102 个选择器 / 8 档 font-size 覆盖。2000×920 实测：
+       护照 eyebrow 8px→11.2、detail 10px→13.6、meta 8px→11.2、关系行 11→14.4；
+       导出菜单 heading 9→12.5、条目 11.2→15.2、hint 8.8→12.5；
+       导航胶囊标签 9→12.5、mask 图标 11.5px→16px。
+       撤 zoom 的硬证据：护照 inline top 由 archify 的 JS 写（11241 行），带 zoom 时
+       面板"初始化后自己往下跳一段"；现在同一节点间隔 1.5s 连测两次 top 恒为 278（drift 0）。
+       语义雷达仍单独贴底锚定（它的 top 同样是 JS 写的像素值，会压住底行）。
+     · 父页回归网：/ 首页 #land-cards 实测 childElementCount=3、标题仍是
+       唯一事实源 / 纯派生缓存 / 公开边界，overflowX=false（landing.html 未改动）。
+   采样脚本（.qa 不进 git）：measure_dock.mjs + flicker-probe.js + frames.mjs +
+   hover_shot.mjs（KB_FORCE=1 走 CSS.forcePseudoState，KB_STABLE_MS 悬浮态连续采样）
+   + guideshot.mjs（跑任意步骤脚本后截图）+ gen_tiers.py + tier-verify.js + final-probe.js +
+   size-probe.js + panel-probe.js + guide-probe.js +
+   menu3-probe.js + btn-probe.js + cmp-probe.js + land-probe.js
+   ==========================================================================*/
+    <!-- [本地定制] 三张结论卡片已整体搬到 </body> 前的 .kb-cards-pop.cards，这里不再留壳：
+         archify 的 shell.querySelector('.cards') 只查 .container 后代，搬到容器外就取不到
+         （outerHeight 恒 0）；而知库首页 harvestCards 用文档级 '.cards > *' 仍能拿到三张卡
+         搬进左栏 —— 一个改动同时满足两边。 -->

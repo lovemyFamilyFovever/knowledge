@@ -1,0 +1,63 @@
+# _inbox 是可重建的暂存区，归档进 taxonomy 后才入库
+content/_inbox/
+__pycache__/
+*.pyc
+# 派生索引（FTS/向量），由 scripts 重建
+indexes/
+
+# Obsidian 会话状态（每次启动都变，不跟踪）
+content/.obsidian/workspace.json
+
+# 阅读器软删除的回收站（瞬态）
+content/_trash/
+
+# 本地私有环境变量（AI key 等，绝不入库）
+_local_env.bat
+# AI 出站配置（设置抽屉写这个：含 api_key，明文只存本机 —— AGENTS 不变量 9 ③）
+.ai-config.json
+
+# 便携 Python 运行时与本地嵌入模型（机器本地，可重建）
+.python/
+app/rag_models/
+# reading.db 本地滚动备份（复习进度是用户数据，但二进制不入 git；由 daily_backup 每日滚动）
+backups/
+
+# ---------- Agent / 工作流产物（不入库）----------
+# QwenWork Canvas 会话工作区（含设计稿、doT.min.js、.design.json、.canvas-meta.json 等）
+qwenwork/
+# 上一代 QoderWork 客户端本地配置（mcp.json 等）
+.qoder-cn/
+# Cowork / Agent 会话临时目录
+.cowork-temp/
+# Box-Agent 会话产物（任务注册表等）
+.box-agent/
+# 日期戳 + 哈希的一次性 agent 会话目录（例如 2026-09-10-428af70d/）
+20??-??-??-*/
+
+/.qa
+/node_modules
+scripts/codemirror-vendor/node_modules/
+
+# ---------- 仓库根临时产物（非语料，不跟踪；bug-assessment 2026-09-17 P3）----------
+# 会话随手丢在仓库根的截图（正常应落到 content/_assets/）
+/image*.png
+# Agent 工作流会话产物
+/output/
+/.spark/
+/.qoder-credits
+# shell 重定向事故（未加引号的 `>`）把内容碎片误丢到仓库根：名为 -/file 的空文件、工具误输出
+/-
+/file
+/top_ip.txt
+
+# ---------- 公开面硬边界（2026-10-07 泄露处置后新增）----------
+# 本仓库自 2026-10-07 起是**公网仓库**：任何被跟踪的文件都等于公开。
+# 这三棵树按 publish_site.py 的发布契约永不公开，如今升级为 git 层排除——
+# 排除项一旦失守没有任何第二重保险可救（旧 history 已在泄露处置中重置为单提交）。
+# projects/ 内含业务内部文档与飞书记据，且被测试以合成语料引用，排除不影响 CI。
+content/projects/
+content/小说/
+content/漫画/
+# 简历母版与个人基线档案含真实手机号/邮箱：本地保留、阅读器照常可见，仅退出公开面
+content/interview/AI金项目面试/resume-master.md
+content/interview/AI金项目面试/profile-baseline.md

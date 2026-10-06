@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block title %}收件箱 · 知库{% endblock %}
+{% block head %}<link rel="stylesheet" href="/static/pages/misc.css?v={{ av('pages/misc.css') }}">{% endblock %}
+{% block body %}
+<main class="single">
+  <section class="panel page-panel">
+    <div class="crumb"><b>收件箱</b><span class="sep">·</span>{{ items|length }} 篇待归档<span class="spacer"></span><a class="iconbtn" href="/"><svg class="i i-12"><use href="#i-chev-left"/></svg>返回阅读</a></div>
+    <div class="page-body">
+      {% if items %}
+      <div class="inbox-toolbar">
+        <label class="ib-selall"><input type="checkbox" id="ib-all"> 全选</label>
+        <span class="ib-count" id="ib-count">未选择</span>
+        <span class="spacer"></span>
+        <button class="iconbtn primary" id="ib-go" disabled><svg class="i i-12"><use href="#i-archive-box"/></svg>批量归档…</button>
+      </div>
+      <div class="kanban" id="inbox-kanban" data-reveal>
+        <div class="kan-col" data-col="todo">
+          <div class="kh"><span class="dot"></span>待读<span class="n">0</span></div>
+          {% for it in items %}
+          <div class="kan-item" draggable="true" data-col="todo" data-rel="{{ it.rel }}">
+            <div class="head">
+              <input type="checkbox" class="ib-check" aria-label="选择 {{ it.title|e }}">
+              <span class="t">{{ it.title }}</span>
+            </div>
+            <div class="meta"><span class="src">inbox</span><span>{{ it.rel }} · {{ it.size }}</span></div>
+            <div class="acts">
+              <a class="mini-act" href="/raw/{{ it.rel }}" target="_blank"><svg class="i i-11" aria-hidden="true"><use href="#i-preview-eye"/></svg>阅读</a>
+              <button type="button" class="mini-act" data-act="move"><svg class="i i-11" aria-hidden="true"><use href="#i-swap"/></svg>归档 / 移动…</button>
+              <button type="button" class="mini-act" data-act="ignore" title="此类文件是开发产物：忽略整个来源目录，以后也不再出现在待归档"><svg class="i i-11" aria-hidden="true"><use href="#i-eye-off"/></svg>忽略目录</button>
+              <button type="button" class="mini-act danger" data-act="del"><svg class="i i-11" aria-hidden="true"><use href="#i-trash-outline"/></svg>丢弃</button>
+              <button type="button" class="mini-act danger" data-act="purge" title="直接从磁盘删除，不进回收站、不可恢复（仅限收件箱文件）"><svg class="i i-11" aria-hidden="true"><use href="#i-cancel-x"/></svg>彻底删除</button>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+        <div class="kan-col" data-col="staged">
+          <div class="kh"><span class="dot"></span>归档中<span class="n">0</span></div>
+        </div>
+        <div class="kan-col" data-col="done">
+          <div class="kh"><span class="dot"></span>已归档 · 最近<span class="n">0</span></div>
+          <div class="kan-empty">暂无归档记录</div>
+        </div>
+      </div>
+      <div class="hint-note">勾选或把卡片拖入「归档中」即暂存；<b>批量移动会级联更新 FTS / 双链 / 向量索引，不支持回滚</b>。单篇归档/移动弹窗确认后写盘。</div>
+      {% else %}
+      <div class="empty">
+        <div class="e-title">收件箱已清空</div>
+        <div class="e-desc">所有内容都已归档进对应域。新的摘录、文章、AI 产出先放进 <span class="mono">content/_inbox/</span>，这里就会出现待办。</div>
+        <a class="e-action" href="/stats"><svg class="i i-11"><use href="#i-stats-chart"/></svg>去看看月度统计</a>
+      </div>
+      {% endif %}
+    </div>
+  </section>
+</main>
+{% endblock %}
+{% block scripts %}
+<script defer src="/static/pages/misc.js?v={{ av('pages/misc.js') }}"></script>
+{% endblock %}

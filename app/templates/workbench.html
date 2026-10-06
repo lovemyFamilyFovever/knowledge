@@ -1,0 +1,129 @@
+{% extends "base.html" %}
+{% block title %}知库 · {{ sub_label }}{% endblock %}
+{% block head %}<link rel="stylesheet" href="/static/pages/workbench.css?v={{ av('pages/workbench.css') }}"><link rel="stylesheet" href="/static/pages/tagedit.css?v={{ av('pages/tagedit.css') }}"><link rel="stylesheet" href="/static/pages/novel.css?v={{ av('pages/novel.css') }}">{% endblock %}
+{% block body %}
+<main>
+  <section class="panel wb-panel" id="p-left" data-reveal data-reveal-y="14">
+    <div class="panel-h">分类目录<span class="cnt" id="tree-total">{{ n_md }}</span><button class="fold" onclick="togglePanel('left')" title="收起左栏" aria-label="收起左栏"><svg class="i i-12"><use href="#i-fold-l"/></svg></button></div>
+    <nav class="tree" id="tree" aria-label="分类目录">
+      {% for d in domains %}
+      <div class="dom" style="--dh:{{ HUES[d.id] }}" data-dom="{{ d.id }}">
+        <a class="dom-head {% if cur.domain == d.id %}active{% endif %}" href="/browse/{{ d.id }}/{{ d.subs[0].id }}" role="button" aria-expanded="false" title="{{ d.label }} · 点击展开/收起">
+          <span class="dom-glyph"><svg><use href="#i-{{ d.id }}"/></svg></span>
+          <span class="dom-name" title="{{ d.label }}">{{ d.label }}</span><span class="dom-n">{{ d.n }}</span>
+        </a>
+        <div class="subs">
+          {% for s in d.subs %}
+          <a class="sub {% if cur.domain == d.id and cur.sub == s.id %}active{% endif %}" href="/browse/{{ d.id }}/{{ s.id }}" title="{{ s.label }} · 点击展开/收起" role="button"><span class="sub-ic" title="子目录"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="#i-folder"/></svg></span><span class="sub-t">{{ s.label }}</span><span class="n">{{ s.n }}</span></a>
+          {% endfor %}
+        </div>
+      </div>
+      {% endfor %}
+    </nav>
+    {% if false %}{# 需求 #8：左下角四入口删除——收藏/标签移至顶栏；收件箱/月度统计在顶栏与导航已有入口 #}
+    <div class="tree-foot">
+      <span class="tf-row" title="待归档暂存区"><svg class="i i-14"><use href="#i-inbox-tray"/></svg>收件箱（待归档）<span class="badge">{{ inbox_n }}</span></span>
+      <a class="tf-row" href="/favorites"><svg class="i i-14"><use href="#i-favorite-heart"/></svg>收藏<span class="badge ok">{{ n_fav }}</span></a>
+      <a class="tf-row" href="/tags"><svg class="i i-14"><use href="#i-tag-outline"/></svg>标签管理</a>
+      <a class="tf-row" href="/stats"><svg class="i i-14"><use href="#i-stats-chart"/></svg>月度统计</a>
+    </div>
+    {% endif %}
+    <button class="unfold" onclick="togglePanel('left')" title="展开左栏" aria-label="展开左栏"><svg class="i"><use href="#i-fold-r"/></svg></button>
+  </section>
+
+    {% if false %}{# 需求 #11：第二列文档列表移除 —— 文档内联进左侧树（当前 sub 的文档直接展开在子域下） #}
+    <section class="panel wb-panel" id="p-list" data-reveal data-reveal-y="14">
+      <div class="panel-h" id="list-title">{{ sub_label }}<span class="cnt">{{ docs|length }}</span></div>
+    </section>
+    {% endif %}
+
+    {% set is_lib = doc.name.endswith(('.txt', '.pdf', '.xlsx', '.epub', '.mobi')) %}
+  <section class="panel article-wrap{% if is_lib %} nv-mode{% endif %}" id="p-article" data-reveal data-reveal-y="14">
+    {# ============ 读数头（方案 B，2026-09-20 用户拍板：次级动作合并进白底分段药丸组，
+       收藏独立为主按钮；标签 chips 由 JS renderHeadChips 填 #crumb-tags） ============ #}
+    {% if not is_lib %}<div class="crumb" id="crumb">
+      <span class="crumb-tags" id="crumb-tags"></span>
+      <span class="spacer"></span>
+      <span class="seg-group">
+      {% if doc.has_html and not doc.is_html %}<button class="seg-btn" id="kb-md-src-btn" onclick="toggleMdSource()" title="在美化版 / Markdown 源之间切换"><svg class="i i-12"><use href="#i-file-md"/></svg> Markdown 源</button>{% endif %}
+      {% if doc.has_html %}<a class="seg-btn" href="/raw/{{ doc.html_rel }}" target="_blank" title="新标签页打开美化版"><svg class="i i-12"><use href="#i-external-link"/></svg> 新标签页</a>{% endif %}
+      {% if not doc.is_html %}<button class="seg-btn" onclick="openEditor()"><svg class="i i-12"><use href="#i-edit-pencil"/></svg> 编辑</button>
+      <button class="seg-btn danger" onclick="deleteDoc()" title="移入 content/_trash/"><svg class="i i-12"><use href="#i-trash-outline"/></svg> 删除</button>
+      <button class="seg-btn" onclick="jumpToTagEdit()" title="编辑本篇标签（右栏信息·标签页）"><svg class="i i-12"><use href="#i-tag-outline"/></svg> 标签</button>{% endif %}
+      </span>
+      {% if not is_lib %}<button class="iconbtn primary{% if doc.favorite %} faved{% endif %}" id="fav-btn" onclick="toggleFav()"><svg class="i i-12"><use href="#i-star"/></svg> {% if doc.favorite %}已收藏{% else %}收藏{% endif %}</button>{% endif %}
+    </div>{% endif %}
+    <div class="article"><div class="article-inner" id="article"></div></div>
+    <div class="editor" id="editor" role="dialog" aria-label="Markdown 编辑器">
+      <div class="bar">
+        <svg class="i i-12 i-acc"><use href="#i-git-commit"/></svg>
+        <span class="path" id="ed-path">{{ doc.rel }}</span>
+        <span class="ed-note mono-sm">写回即 git 可追溯</span>
+        <button class="iconbtn" onclick="tryCloseEditor()"><svg class="i i-12"><use href="#i-cancel-x"/></svg> 取消</button>
+        <button class="iconbtn" id="ed-del" onclick="deleteDoc()" title="移入 content/_trash/"><svg class="i i-12"><use href="#i-trash-outline"/></svg> 删除</button>
+        <button class="iconbtn primary" onclick="saveDoc()"><svg class="i i-12"><use href="#i-save-write"/></svg> 保存写回</button>
+      </div>
+      <div class="hint editor-hint" id="ed-hint" style="display:none">
+        <svg class="i i-14"><use href="#ill-key-mini"/></svg>
+        <div>上方 <b>---</b> 包裹的是 frontmatter（文档元数据）：<b>title</b> 标题 · <b>tags</b> 标签列表 · <b>status</b> 状态（inbox/stable）· <b>favorite</b> 收藏。只改值，不要动字段名和 <b>---</b> 分隔线。下方正文区直接写 Markdown。</div>
+      </div>
+      <textarea id="ed-text" spellcheck="false" aria-label="Markdown 源码"></textarea>
+    </div>
+  </section>
+
+  <section class="panel rail" id="p-rail" data-reveal data-reveal-y="14">
+    {% set n_tags = (doc.fm.tags or [])|length %}
+    <div class="rtabs" role="tablist" aria-label="文档信息面板">
+      <button type="button" class="rtab{% if not doc.has_html %} active{% endif %}" data-pane="toc" role="tab" aria-selected="{% if doc.has_html %}false{% else %}true{% endif %}" tabindex="0" onclick="tab('toc',this)"><svg class="i i-12"><use href="#i-toc-list"/></svg>目录</button>
+      <button type="button" class="rtab{% if doc.has_html %} active{% endif %}" data-pane="info" role="tab" aria-selected="{% if doc.has_html %}true{% else %}false{% endif %}" tabindex="0" onclick="tab('info',this)"><svg class="i i-12"><use href="#i-tag-outline"/></svg>标签<span class="rt-n" id="rt-n-tags">{{ n_tags or "" }}</span></button>
+      <button type="button" class="rtab" data-pane="notes" role="tab" aria-selected="false" tabindex="0" onclick="tab('notes',this)"><svg class="i i-12"><use href="#i-note-pen"/></svg>备注<span class="rt-n" id="rt-n-notes">{{ doc.notes|length or "" }}</span></button>
+      <button type="button" class="rtab" data-pane="links" role="tab" aria-selected="false" tabindex="0" onclick="tab('links',this)"><svg class="i i-12"><use href="#i-backlink-graph"/></svg>双链<span class="rt-n" id="rt-n-links"></span></button>
+    </div>
+    <div class="rpane active toc" id="pane-toc" role="tabpanel"></div>
+    <div class="rpane" id="pane-info" role="tabpanel">
+      {% set tags = doc.fm.tags or [] %}
+      <div class="tag-edit{% if doc.is_html %} readonly{% endif %}">
+        <div class="tag-edit-h"><svg class="i i-12"><use href="#i-tag-outline"/></svg> 标签{% if tags %}<span class="tag-edit-cnt">{{ tags|length }}</span>{% endif %}</div>
+        <div class="tag-chips" id="tag-chips">
+          {% for t in tags %}
+          <span class="tagchip" data-tag="{{ t }}"><span class="tagchip-name">{{ t }}</span>{% if not doc.is_html %}<button type="button" class="tagchip-x" title="移除标签「{{ t }}」" aria-label="移除标签 {{ t }}" onclick="removeTag(this.parentElement)"><svg class="i i-12"><use href="#i-cancel-x"/></svg></button>{% endif %}</span>
+          {% else %}
+          <span class="tag-empty">{% if doc.is_html %}美化版不支持在线编辑标签{% else %}还没有标签{% endif %}</span>
+          {% endfor %}
+        </div>
+        {% if not doc.is_html %}<button type="button" class="tag-addbar" id="tag-add-btn" title="添加标签"><svg class="i i-12"><use href="#i-plus-circle"/></svg> 添加标签（逗号可批量）</button>{% endif %}
+        <div class="tag-inputrow" id="tag-inputrow" hidden>
+          <input id="tag-in" placeholder="输入标签，逗号可批量，回车确认" maxlength="64" autocomplete="off">
+        </div>
+      </div>
+      <div class="rp-card">
+        <div class="rp-ch"><svg class="i i-12"><use href="#i-info-circle"/></svg> 元信息</div>
+        {% for k, v in info_rows %}
+        <div class="kv"><span class="k">{{ k }}</span><span class="v">{{ v }}</span></div>
+        {% endfor %}
+      </div>
+    </div>
+    <div class="rpane" id="pane-links" role="tabpanel">
+      <div class="lk-empty">打开本标签时自动加载。</div>
+    </div>
+    <div class="rpane" id="pane-notes" role="tabpanel">
+      <div class="notes-flow">
+        {% for n in doc.notes %}
+        <div class="note-item"><div class="note-when"><span class="dt">{{ n.when }}</span></div><p>{{ n.text }}</p></div>
+        {% else %}<div class="note-empty">还没有批注。读到值得记一笔的地方，写在下面。</div>{% endfor %}
+      </div>
+      <div class="note-input"><input id="ni" placeholder="追加批注，回车保存…" aria-label="追加批注"><button onclick="addNote()"><svg class="i i-12"><use href="#i-plus-circle"/></svg> 记录</button></div>
+    </div>
+  </section>
+</main>
+{% endblock %}
+
+{% block scripts %}
+<script id="doc-data" type="application/json">{{ doc_json|safe }}</script>
+<script src="/static/vendor/chart.umd.js?v={{ av('vendor/chart.umd.js') }}" defer></script>
+<script src="/static/vendor/codemirror.bundle.js?v={{ av('vendor/codemirror.bundle.js') }}" defer></script>
+<script src="/static/pages/cm-editor.js?v={{ av('pages/cm-editor.js') }}" defer></script>
+<script src="/static/pages/workbench.js?v={{ av('pages/workbench.js') }}" defer></script>
+<script src="/static/pages/tag-suggest.js?v={{ av('pages/tag-suggest.js') }}" defer></script>
+<script src="/static/pages/wikilink-suggest.js?v={{ av('pages/wikilink-suggest.js') }}" defer></script>
+{% endblock %}

@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block title %}标签 · 知库{% endblock %}
+{% block head %}<link rel="stylesheet" href="/static/pages/misc.css?v={{ av('pages/misc.css') }}">{% endblock %}
+{% block body %}
+<main class="single">
+  <section class="panel page-panel">
+    <div class="crumb"><b>标签管理</b><span class="sep">·</span>{{ tags|length }} 个标签<span class="spacer"></span><a class="iconbtn" href="/"><svg class="i i-12"><use href="#i-chev-left"/></svg>返回阅读</a></div>
+    <div class="page-body">
+      {% if tags %}
+      {% set maxn = tags[0][1]|length %}
+      <div class="t5-sec" data-reveal>
+        <div class="sub-h">标签云<span class="n">字号 = 文档数（big / md / sm / xs 四档） · 高亮 = 高频标签</span></div>
+        <div class="tcloud" id="tag-cloud">
+          {% for tag, docs in tags %}
+          {% set n = docs|length %}
+          <span class="t {{ 'big' if n >= maxn * 0.55 else ('md' if n >= maxn * 0.25 else ('sm' if n >= maxn * 0.06 else 'xs')) }}{{ ' hot' if loop.index <= 3 }}" data-tag="{{ tag|e }}" data-count="{{ n }}" title="{{ n }} 篇文档">
+            <input type="checkbox" class="t-check" aria-label="选择标签 {{ tag|e }}">
+            <span class="t-name">{{ tag }}</span>
+            <span class="n">{{ n }}</span>
+            <button type="button" class="t-merge" title="把这个标签并入另一个标签" data-merge="{{ tag|e }}"><svg class="i i-11" aria-hidden="true"><use href="#i-move-arrow"/></svg></button>
+          </span>
+          {% endfor %}
+        </div>
+      </div>
+      <div class="t5-sec" id="sugg-sec" hidden data-reveal>
+        <div class="sub-h">相似标签建议<span class="n">仅页面预览 · 实际合并走两段确认；批量治理可先跑 scripts/govern_tags.py --dry-run</span></div>
+        <div class="merge-grid" id="merge-suggest"></div>
+      </div>
+      <div class="t5-sec" id="tag-drawer" hidden>
+        <div class="sub-h" id="drawer-h"></div>
+        <div class="results" id="drawer-docs"></div>
+      </div>
+      <div class="tag-selbar" id="tag-selbar" hidden>
+        <span id="tag-sel-count">未选择标签</span>
+        <span class="spacer"></span>
+        <button class="iconbtn" id="tag-clear">清除</button>
+        <button class="iconbtn primary" id="tag-merge-sel" disabled><svg class="i i-12"><use href="#i-commit"/></svg>合并到…</button>
+      </div>
+      {% else %}
+      <div class="empty">
+        <div class="e-title">还没有任何标签</div>
+        <div class="e-desc">编辑文档 frontmatter 添加 <span class="mono">tags: [标签1, 标签2]</span>，标签会自动出现在这里。</div>
+        <a class="e-action" href="/"><svg class="i i-11"><use href="#i-chev-left"/></svg>返回阅读，给文档打上第一个标签</a>
+      </div>
+      {% endif %}
+    </div>
+  </section>
+</main>
+{% endblock %}
+{% block scripts %}
+<script defer src="/static/pages/misc.js?v={{ av('pages/misc.js') }}"></script>
+<script type="application/json" id="tags-data">[{% for tag, docs in tags %}{"t":{{ tag|tojson }},"n":{{ docs|length }},"docs":[{% for d in docs %}{"u":{{ ('/doc/' ~ d.domain ~ '/' ~ d.sub ~ '/' ~ d.name)|tojson }},"t":{{ d.title|tojson }},"p":{{ ((d.domain_label ~ ' / ' ~ d.sub_label) if d.domain_label is defined else (d.domain ~ ' / ' ~ d.sub))|tojson }}}{% if not loop.last %},{% endif %}{% endfor %}]}{% if not loop.last %},{% endif %}{% endfor %}]</script>
+{% endblock %}
