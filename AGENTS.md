@@ -13,7 +13,7 @@
 3. `indexes/`（index.db / rag.db）是纯派生缓存：可随时删除重建；禁止手改、禁止 git 跟踪。
 4. 删除必须走软删除（→ `content/_trash/`，`/api/delete`）。~~git 历史是第二重保险~~ —— **此保险已于 2026-10-07 失效**：因远端公开且历史含已退场的盗版书库（`content/小说/`，127 blob / 363.7MB），经用户授权把 main 重置为单提交（`b4cda2e`），724 个旧提交不可恢复。自此**软删除只剩 `_trash/` 一层**，`/api/delete` 之外不得再指望 `git show <旧提交>` 取回任何东西。
 5. 分类学（域 / 子域 / 来源 / 状态 / 色相）的权威是 `content/_meta/taxonomy.json`；代码里的字典只是缺省回退。改分类先改 JSON，不改代码。域条目可选 `"search": false` = 该域不进搜索浮层的筛选钮（小说域全是 `.txt/.epub`、FTS 只收 `.md/.html`，给了钮就是恒 0 结果）；可选 `"ai": false` = 该域正文**永不出站**给 AI（见不变量 9，与 `search` 同一口径：开关写在 JSON 里，模板与代码不许再抄一份域名单）。模板与 CSS 一律**不许再抄一份域名单**（浮层钮由 `LABELS` 派生，色点用 `--dh=色相数字`）。
-6. frontmatter 只存身世与元数据（title/source/collected/tags/favorite/status），不存阅读统计等高频运行时数据——阅读统计走 app/reading.py（indexes/reading.db 事件制：open/read_minute/finish 只追加，语料零污染），标签治理/重命名一律先 dry-run（scripts/govern_tags.py）。
+6. frontmatter 只存身世与元数据（title/source/collected/tags/favorite/status），不存阅读统计等高频运行时数据——阅读统计走 app/reading.py（indexes/reading.db 事件制：open/read_minute/finish 只追加，语料零污染）。
 7. 嵌入 / 分词 / 切块逻辑变更必须递增 `app/rag.py::RAG_CODE_VERSION`，并用 `tokenizers` 库做逐 token 交叉验证后再提交。**递增之后的重嵌是逐篇续跑的**：每篇跑完就在 `files.embed_ver` 落自己的章（`upsert_file` 一事务），中途被 kill 下次只补没盖章的那些，不再从第 0 篇重来（轮次 51 之前是全库一次性提交，实测一趟 1126 篇 / 22006 块 / 约 38 分钟，中断等于整趟白跑）。版本判据**只活在 `files.embed_ver` 一处** —— `sync_rag` 不再读 `meta.code_version` 决定是否全量（同一规则两份实现是台账 §6 第 87 行点过名的坑，`rag_status` 里那个 `stale` 就是剩余量）。旧库缺这一列时打开即迁移，但**只有** `meta.code_version` 相符**且**向量行数与元数据一致才补章（`stamp_legacy`），来历不明就留 NULL 重嵌。**这条现在有断言在管**：`tests/test_rag.py::test_tokenizer_cross_validated_against_library()` 每次跑都拿参考库逐 id 比对，`test_predicates.py` 另有不依赖模型文件的合成 `tokenizer.json` 断言（轮次 49 第一次真跑就抓到一条真偏差：正文里字面的 `[CLS]` 被拆成三块碎片，而参考实现当它是一个 special token → 新增 `HFTokenizer._split_specials()` 并递增到 v4）。
 8. 阅读器同时支持 `start.bat`（任意 Python）与便携运行时（`.python\`）；`python app\app.py` 直启时项目根会自动补进 sys.path，不要依赖 cwd。
 9. ~~**AI 出站三禁**~~ —— **已于 2026-09-30（轮次 54）整体撤销**：用户判定「为了查一个词等半分钟、还要配 key 花钱」不划算，改为**手动复制到网页端问**。`app/{routes_ai,ai_config,ai_usage,ai_qa}.py`、`static/pages/{ai-ask.js,aiask.css}`、设置抽屉的「AI」页签、`/api/ai/*` 与 `/api/ask*` 全部删除，`tests/test_ai_{config,qa}.py` 两套随之删除（不变量门禁回到 I1~I9）。
@@ -25,22 +25,19 @@
 ```sh
 start.bat                                      # 唯一启动入口（--dev 开发模式；自动探测 .python / 系统 Python）
 start.bat --dev                                # 开发模式（py/模板改动自动热重载）
-python tests\test_reader.py                    # 阅读器 smoke（82 断言）
+python tests\test_reader.py                    # 阅读器 smoke（80 断言）
 python tests\test_new_project.py               # 脚手架 smoke（9 断言）
-python tests\test_learn.py                     # 学习系统 smoke（255 断言）
-python tests\test_predicates.py                # 判定谓词层 smoke（109 断言 · 合成 tokenizer.json 钉分词 special 字面量 · rag 续跑判据 plan_sync/stamp_legacy 真值表 · P6 存活清单回填）
-python tests\test_properties.py                # 性质测试（15 条 · 每条 240 个随机样本，固定种子）
+python tests\test_predicates.py                # 判定谓词层 smoke（73 断言 · 合成 tokenizer.json 钉分词 special 字面量 · rag 续跑判据 plan_sync/stamp_legacy 真值表 · P6 存活清单回填）
+python tests\test_properties.py                # 性质测试（14 条 · 每条 240 个随机样本，固定种子）
 python tests\test_invariants.py                # 不变量门禁 I1~I9（71 断言 · 对 AGENTS 1-8；I10 随 AI 出站链路于轮次 54 删除）
-python tests\test_e2e_smoke.py                 # 端到端 smoke（206 断言 · 打满 56 条路由；/api/ai/* 与 /api/ask* 只测「已下线 → 404」）
+python tests\test_e2e_smoke.py                 # 端到端 smoke（169 断言 · 打满 39 条业务路由；/api/ai/* 与 /api/ask* 只测「已下线 → 404」）
 python tests\test_watch_ci.py                  # Agent 工具自身（38 断言 · watch_ci 的四类"读不到"分开点名 + 代理不通自动直连；打本进程假 GitHub，零外网；GBK/UTF-8 两档都要绿——第一次进钩子就是被 GBK 档抓红的）
-python tests\test_js_props.py                  # 浏览器侧书库解析性质测试（47 断言；缺 node/Chrome 自动 SKIP）
-python tests\test_ui_regress.py                # 视觉回归批处理（P5：22 张截图 vs tests/ui-baselines/ 基线 + 10 条顶栏几何断言）
+python tests\test_ui_regress.py                # 视觉回归批处理（P5：11 张截图 vs tests/ui-baselines/ 基线 + 10 条顶栏几何断言）
 python tests\test_ui_regress.py --stability    #   只验"两次截图逐像素相同"（改矩阵/环境后先跑这个）；并把历轮每镜头最大 AE 累计进 tests/ui-baselines/floor.json（跟踪文件，阈值 AE≤2 的实测出处）
 python tests\test_ui_regress.py --update       #   确认改动无误后，用本次截图刷新基线
-python tests\test_ui_behavior.py               # UI 行为回归（430 断言 · 台账 §2 已升 E2E 的控件"点了到底有没有反应"；轮次 33 提速：一台 Chrome 跑完整套（会话档），~200s/趟，作业间自动清存储保隔离；回退一次一档 `set KB_BEHAVIOR_SESSION=0`；缺 node/Chrome 自动 SKIP）
+python tests\test_ui_behavior.py               # UI 行为回归（210 断言 · 台账 §2 已升 E2E 的控件"点了到底有没有反应"；轮次 33 提速：一台 Chrome 跑完整套（会话档），~100s/趟，作业间自动清存储保隔离；回退一次一档 `set KB_BEHAVIOR_SESSION=0`；缺 node/Chrome 自动 SKIP）
 python tests\test_rag.py                       # RAG smoke（含**与 Rust tokenizers 逐 token 交叉验证**，以及**续跑三证**：中断后只重嵌剩余篇 + 旧库迁移相符才盖章；缺库/缺模型才 SKIP，本机跑通才是提交口径）
 python scripts\rag_search.py "查询" --json     # 语义检索 CLI / Agent 入口
-python scripts\govern_tags.py census|similar|merge|rename-sub   # 标签治理（merge/rename-sub 先预览后 --apply；详见 --help）
 python scripts\check_ledger_counts.py             # 台账对账：§0 数字必须等于按 §1~§5 状态列重算的数（已入 pre-commit + CI）
 python scripts\publish_site.py [--dry-run]   # 发布管线：白名单同步 content/ → 本地 Quartz 站仓（E:\GitHub\knowledge-site），排除 漫画/projects/小说
 python scripts\check_frontmatter.py [--all]  # frontmatter 严格 YAML 门禁（公开站 Quartz 不容错、本地阅读器容错；已入 pre-commit 与 publish_site.py 前置）
@@ -79,8 +76,8 @@ Agent 的**常驻工具脚本**统一收在 `scripts/agent/`（2026-09-18 从旧
 两个 scan 脚本的扫描根默认按脚本位置推导到仓库根下的 `content/`（不再写死盘符），传 argv[1] 可覆盖。
 
 **UI 回归纪律（2026-09-18 起，ImageMagick 已装；2026-09-24 起有截图矩阵基线）**：改动 UI（css/js 模板/渲染逻辑）后，除 smoke 截图外，对受影响页面执行
-0. **首选一条命令**：`python tests\test_ui_regress.py` —— 合成语料的临时实例 + 22 张「页面 × 主题 × 点击态」截图，与 `tests/ui-baselines/` **逐像素**比对（阈值 AE ≤ 2 像素；实测两次截图的噪声地板 0~1 像素），外加 **10 条顶栏几何断言**（7 档宽度量矩形）。pre-commit 在本次提交含 css/js/模板文件时**自动跑它**。刷新基线用 `--update`（改完确认无误后），动矩阵/换环境先跑 `--stability` 证明截图本身是确定的。
-   **几何断言不是多余的**：像素基线的口径是"和上次一样吗"，重叠/贴脸/溢出这类布局缺陷是**稳定地错**，比对永远绿（台账 §6 第 29 行：顶栏压字在 22 张基线里安稳躺了很久）。要判"两块矩形相不相交"就用 `scripts/agent/geom.mjs`，判据表达式由测试侧传。
+0. **首选一条命令**：`python tests\test_ui_regress.py` —— 合成语料的临时实例 + 11 张「页面 × 主题 × 点击态」截图，与 `tests/ui-baselines/` **逐像素**比对（阈值 AE ≤ 2 像素；实测两次截图的噪声地板 0~1 像素），外加 **10 条顶栏几何断言**（7 档宽度量矩形）。pre-commit 在本次提交含 css/js/模板文件时**自动跑它**。刷新基线用 `--update`（改完确认无误后），动矩阵/换环境先跑 `--stability` 证明截图本身是确定的。
+   **几何断言不是多余的**：像素基线的口径是"和上次一样吗"，重叠/贴脸/溢出这类布局缺陷是**稳定地错**，比对永远绿（台账 §6 第 29 行：顶栏压字在当时的 22 张基线里安稳躺了很久）。要判"两块矩形相不相交"就用 `scripts/agent/geom.mjs`，判据表达式由测试侧传。
 1. 改前基线已留在 `.qa/qa-shots/` 时：`node scripts/agent/imgdiff.mjs 基线.png 新.png`（**默认 2% 容差只适合肉眼复核**；作判定用请传 `0%` 并按差异像素数看，实测 2% 会把真回归读成绿，见第 3 条）；
 2. 无基线则先 `shot.mjs` 补拍明暗两态入档；
 3. 差异热图里出现**不该变的区域变红** = 改 A 崩 B，修完再交。**不要用"调大 fuzz"去压噪点**（旧版本这条写的是 `imgdiff a b 5%`，2026-09-24 撤销）：实测 2% 容差 + "差异占比"会把一次真实的模板改字读成绿（AE 只有 75 像素），噪点该靠"钉死动态内容"消除（见 `test_ui_regress.py` 的 FREEZE 与 `clickWait`），而不是靠放大容差。
@@ -103,10 +100,15 @@ app/store.py        语料层：frontmatter、扫描、分类树、备注、taxo
 app/fts.py          FTS5 全文索引 + [[双链]]解析（派生）
 app/reading.py      月度阅读统计（reading.db 派生，事件制：open/read_minute/finish 只追加）
 app/rag.py          语义检索：切块/嵌入/sqlite-vec（派生，RAG_CODE_VERSION 管版本）
+app/wikilink.py     [[双链]]补全候选池 / 打分 / 断链检查（2026-10-07 自 learn.py 拆出）
+app/palette.py      命令面板索引（2026-10-07 自 learn.py 拆出）
 （轮次 54 删除：app/routes_ai.py、app/ai_config.py、app/ai_usage.py、app/ai_qa.py —— 项目不再有任何出站）
+（轮次 57 瘦身删除：app/learn.py、app/cards.py、app/sm2.py、app/routes_learn.py、scripts/govern_tags.py
+  —— 复习/刷题/术语/标签治理整栈退场；书库引擎 static/kb-novel.js 与 novel.css 同批删除。
+  功能入口从 7 项收成 3 项：阅读 / 统计 / 收藏）
 scripts/            迁移与维护脚本（rag_search.py 是 Agent 检索入口；agent/ 存跨会话常驻工具）
 requirements/       依赖清单（requirements.txt 核心 / -rag.txt 语义检索 / -lock.txt 便携环境重建锁）
-.githooks/          pre-commit：静态层（ruff/台账对账/悬空令牌/RAG 版本）串行 → 12 条纯 Python 套件**并行**（KB_GATE_PARALLEL 默认 4，=1 串行；动了语料再加一条 frontmatter 闸）→ 浏览器三套与 RAG 串行（缺依赖自动 SKIP）
+.githooks/          pre-commit：静态层（ruff/台账对账/悬空令牌/RAG 版本）串行 → 10 条纯 Python 套件**并行**（KB_GATE_PARALLEL 默认 4，=1 串行；动了语料再加一条 frontmatter 闸）→ 浏览器两套与 RAG 串行（缺依赖自动 SKIP）
 .github/workflows/  CI（GitHub Actions；windows runner 作业级 PYTHONIOENCODING=utf-8）
                       跑/SKIP/失败/崩溃四类状态都会打成 annotation（tests/_ci.py），
                       用 `python scripts/agent/watch_ci.py <sha>` 读回，无需登录就能判断"这一步真跑了没"
@@ -153,6 +155,6 @@ requirements/       依赖清单（requirements.txt 核心 / -rag.txt 语义检�
   所以"不读正文、不拿真书库跑脚本"照旧生效。书库**处理逻辑**留在仓库里
   （`static/kb-novel.js` 等，配套测试用合成样本），并留存成 `docs/note-library-reader.md`。
   这条边界是用户 2026-09-24 明确定的（里面有成人向书籍）：所有测试与自动化的样本一律**合成**
-  （现造在 `tempfile` 里，见 `tests/test_js_props.py` 的畸形 zip/txt、`tests/test_ui_regress.py` 的
+  （现造在 `tempfile` 里，见 `tests/test_ui_regress.py` 的
   `content/ui-r` + 三章假小说）。不因"只读不写""本地不外传"而放宽，也**不要再提议**
   "拿真实书库跑一遍解析器/坏书清单"这类事。

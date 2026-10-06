@@ -231,7 +231,6 @@ AUDIT_ALLOWED = {
     # 之所以单独走 unlink 而不是 NamedTemporaryFile(delete=True)：Windows 上那个句柄
     # 不能被 curl 子进程二次打开，必须显式收掉。
     ("scripts/agent/watch_ci.py", "os_unlink"): 1,
-    ("tests/test_learn.py", "unlink"): 2,              # 临时语料 / 派生库自清理
     ("tests/test_reader.py", "unlink"): 2,             # 临时语料：模拟外部删除 + 探针清理
     # 切片 1（AI 配置层）：删的是 tempfile 临时根里的 taxonomy.json，
     # 用来验"分类学缺失时代码下界照样拦"；删除目标是自造文件，与真实语料无关。
@@ -240,7 +239,6 @@ AUDIT_ALLOWED = {
     # P3-B JS 性质测试：删的是 tempfile.mkdtemp 起的临时 KB_ROOT（内含自建的 content/ 与
     # 从仓库复制过去的 static/ 副本），且尾部有一条断言亲自证明"删除目标在系统临时目录下、
     # 仓库 content/ 完好"，不是随手一把梭。
-    ("tests/test_js_props.py", "rmtree"): 1,
     # P5 视觉回归：两处 —— ① .qa/p5/actual* 截图目录重截前清空（.qa 不进 git、非语料）；
     # ② tempfile.mkdtemp 的临时 KB_ROOT 自清理（同 test_js_props 的判定，尾部同样有断言）。
     ("tests/test_ui_regress.py", "rmtree"): 2,

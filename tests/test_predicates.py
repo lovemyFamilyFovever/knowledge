@@ -6,7 +6,7 @@
 来历：P6 变异测试（覆盖台账 §10）把这层的断言空白量化了出来——`app/store.py` 与 `app/fts.py`
 的判定性变异各 13 条存活，存活原因几乎全是「那行判定 8 套 smoke 一次都没执行到」。
 本文件按那 26 条存活体逐条回填（台账 §10.10），每条断言都注明它焊住哪个变异（文件:行 + 算子 +
-变异体编号），复跑命令见 §10.10 末。轮次 9 又补进 `learn.py`（重扫判据）与 `cards.py`（抽卡边界）。
+变异体编号），复跑命令见 §10.10 末。轮次 9 曾补进 learn.py/cards.py，2026-10-07 随复习与抽卡子系统下线。
 
 全程只读真实 `content/`：语料一律在 `tempfile.TemporaryDirectory()` 里现造，
 不写、不删任何真实文件（AGENTS 不变量 1/4）。
@@ -24,13 +24,9 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from app import cards, store  # noqa: E402
-from app.cards import (CARDS_PARSER_VERSION, _collect_following, _MIN_DEF_LEN,  # noqa: E402
-                       _next_heading_at_most, parse_file)
+from app import store  # noqa: E402
 from app.fts import (_clean_snippet, build_index, index_is_stale, open_db,  # noqa: E402
                      resolve_maps_from_db, resolve_wikilink)
-from app.learn import (META_FILE_COUNT, META_PARSER, META_SYNCED_AT, CorpusEmpty,  # noqa: E402
-                       LearnStore, _note_if_locked, _tag_list)
 from app.store import (add_inbox_ignore, inbox_count, inbox_ignore_rules,  # noqa: E402
                        inbox_iter, load_taxonomy, md_files, obsidian_vault_connected,
                        parse_frontmatter, prepend_original_fm, set_fm_scalar)
@@ -451,254 +447,6 @@ def _baike_md(term: str, def_len: int = 20, traps=()) -> str:
             f"**一句话定义：** {'定' * def_len}\n{tail}")
 
 
-def test_ensure_synced_criteria() -> None:
-    """`ensure_synced` 的「什么时候该重扫」四条判据 + `sync` 的空语料守卫 + 两个小工具函数。
-
-    P6 实测这四条判据全裸（#106/#114/#115/#116 存活），而名义上守卫它的
-    `test_learn.py::test_parser_version_bumped` 只断言常量 `CARDS_PARSER_VERSION >= 2`
-    ——读常量不等于跑行为，把判据整个取反都不会红。这里逐条跑行为，
-    **该重扫时必须重扫，不该重扫时绝不能重扫**，两侧都测。
-    """
-    with tempfile.TemporaryDirectory() as td:
-        root = Path(td)
-        content, idx = root / "content", root / "indexes"
-        d = content / "baike" / "algorithms"
-        d.mkdir(parents=True)
-        a = mk(d, "a.md", _baike_md("甲"))
-        ls = LearnStore(idx, content)
-        try:
-            check("首次 ensure_synced 会建库（库为空 → 必须重扫）",
-                  ls.ensure_synced(content) is not None)
-            check("什么都没改时**不**重扫（四条判据反向都不能成立）",
-                  ls.ensure_synced(content) is None)
-
-            # #116 `newest > float(synced_at)` → `>=`：mtime 恰等于同步时刻就被判过期
-            # → 每次打开复习页都全量重扫（语料上千篇就是几秒白等）
-            ls.meta_set(META_SYNCED_AT, str(a.stat().st_mtime))
-            check("重扫判据：newest 恰等于 synced_at → 判新鲜（用 > 不用 >=）",
-                  ls.ensure_synced(content) is None)
-            bump_mtime(a, 900.0)
-            check("重扫判据：文档 mtime 真的前进了 → 重扫",
-                  ls.ensure_synced(content) is not None)
-
-            def _mark_fresh():
-                """把 synced_at 推到未来，隔离出「只测这一条判据」的干净现场
-                （上一轮的 bump_mtime 会让 newest 一直大于 now，不先归零就没法测反向）。"""
-                ls.meta_set(META_SYNCED_AT, str(time.time() + 10_000))
-
-            # #115 篇数判据（只看 mtime 感知不到「删除」，这是 mtime 判据的盲区补位）
-            _mark_fresh()
-            mk(d, "b.md", _baike_md("乙"))
-            check("重扫判据：新增一篇（篇数变了）→ 重扫",
-                  ls.ensure_synced(content) is not None)
-            _mark_fresh()
-            check("重扫判据：篇数一致时不重扫（`!=` 不能被写成 `==`）",
-                  ls.ensure_synced(content) is None)
-
-            # #114 解析器版本判据
-            _mark_fresh()
-            ls.meta_set(META_PARSER, str(CARDS_PARSER_VERSION - 1))
-            check("重扫判据：解析器版本落后 → 必须重扫（否则旧卡永不更新）",
-                  ls.ensure_synced(content) is not None)
-            _mark_fresh()   # 重扫会把 synced_at 写回 now，先归零才谈得上「版本一致 → 不重扫」
-            check("重扫判据：版本一致时不重扫（`!=` 取反后这条会红）",
-                  ls.ensure_synced(content) is None)
-
-            # #106 `total == 0`：活跃卡被掏空时即使同步时刻很新也要重建
-            _mark_fresh()
-            ls.con.execute("UPDATE cards SET active=0")
-            ls.con.commit()
-            check("重扫判据：活跃卡为 0（库被掏空）→ 重扫",
-                  ls.ensure_synced(content) is not None)
-
-            # #119 `_candidate_files`：`not parts or parts[0] not in (baike, interview)` → `and`
-            # → articles/projects 也会被抽卡（统计口径与"哪些域参与复习"全错）
-            mk(content / "articles" / "css", "note.md",
-               "---\ntitle: CSS 笔记\n---\n\n## 定义\n\n**一句话定义：** " + "定" * 20 + "\n")
-            cands = sorted(r for _, r in ls._candidate_files(content))
-            check("_candidate_files：只有 baike/interview 参与抽卡（其它域不入 coverage）",
-                  cands and all(r.startswith(("baike/", "interview/")) for r in cands),
-                  f"got {cands}")
-            n_before = len(cands)
-            check("_candidate_files：`_` 前缀目录不参与（不变量 2）",
-                  all("_" not in r.split("/")[1:2] for r in cands), f"got {cands}")
-
-            # #120 `content is None or not content.is_dir()` → `and`：语料目录不在时应报
-            # CorpusEmpty，而不是继续往下走去 walk 一个不存在的路径
-            try:
-                ls.sync(content / "不存在")
-                check("sync：语料目录不存在 → 抛 CorpusEmpty", False, "没抛错")
-            except CorpusEmpty:
-                check("sync：语料目录不存在 → 抛 CorpusEmpty（不静默扫空）", True)
-            check("_candidate_files 仍按域过滤（新增非候选域后候选数不变）",
-                  len(ls._candidate_files(content)) == n_before)
-
-            # 轮次 10：原先 `content = Path(content or self.content)` + `content is None or
-            # not content.is_dir()` 是一个**永不可达**的守卫 —— 两者都为 None 时 Path(None)
-            # 先抛 TypeError（接口层面就是一个 500），而不为 None 时该判据恒假。
-            # 简化成两个独立分支后，这两条断言才有得可断。
-            ls.meta_set(META_SYNCED_AT, str(time.time() + 10_000))
-            try:
-                ls.sync(content / "不存在")
-                check("sync：目录不存在 → CorpusEmpty（而不是往下走去扫空）", False, "没抛错")
-            except CorpusEmpty as e:
-                check("sync：目录不存在 → CorpusEmpty", "不存在" in str(e), f"got {e}")
-            except TypeError as e:
-                check("sync：目录不存在 → CorpusEmpty（不是 TypeError）", False, f"TypeError: {e}")
-
-                        # #110 `_tag_list` 的 `str(raw or "")` → `and`：任何非空 tags 都会被切成空列表
-            check("_tag_list：逗号分隔正常拆开（`raw or \"\"` 改成 `and` 后这里会变空列表）",
-                  _tag_list("AI,Agent") == ["AI", "Agent"], f"got {_tag_list('AI,Agent')}")
-            check("_tag_list：None / 空串 → 空列表（不抛、不产出 \"None\"）",
-                  _tag_list(None) == [] and _tag_list("") == [], f"got {_tag_list(None)!r}")
-
-            # #109 `_note_if_locked` 的 `or`→`and`：只有「locked 且 busy」才留痕 →
-            # 真撞锁时日志里什么都没有，事后查不到是谁卡死了写锁
-            recs: list = []
-            h = _logging.Handler()
-            h.emit = lambda rec: recs.append(rec.getMessage())  # type: ignore[method-assign]
-            log = sys.modules["app.learn"]._LOG
-            log.addHandler(h)
-            try:
-                _note_if_locked("写卡片库", _sq.OperationalError("database is locked"))
-                _note_if_locked("写复习状态", _sq.OperationalError("database table is busy"))
-            finally:
-                log.removeHandler(h)
-            check("_note_if_locked：locked 与 busy 两种措辞都要留痕（or 不是 and）",
-                  len(recs) == 2 and "写卡片库" in recs[0] and "写复习状态" in recs[1],
-                  f"got {recs}")
-        finally:
-            ls.close()
-
-
-def test_learn_meta_roundtrip() -> None:
-    """#107 `meta_get` 的 `row[0] if row else None`：读不存在的键必须给 None 而不是崩。"""
-    with tempfile.TemporaryDirectory() as td:
-        root = Path(td)
-        content = root / "content"
-        (content / "baike" / "algorithms").mkdir(parents=True)
-        mk(content / "baike" / "algorithms", "a.md", _baike_md("甲"))
-        ls = LearnStore(root / "indexes", content)
-        try:
-            ls.ensure_synced(content)
-            check("meta_get：写进去的键能原样读回",
-                  ls.meta_get(META_FILE_COUNT) == str(len(ls._candidate_files(content))),
-                  f"got {ls.meta_get(META_FILE_COUNT)!r}")
-            check("meta_get：不存在的键 → None（不是 IndexError / 空串）",
-                  ls.meta_get("没这个键") is None)
-        finally:
-            ls.close()
-
-
-def test_no_content_and_retired_counter() -> None:
-    """轮次 10 的两处简化：① 未指定语料目录时的分支现在真的能走到；
-    ② `retired = max(cur.rowcount, 0)` 取代了被 `and` 短路吃掉的冗余判据。"""
-    with tempfile.TemporaryDirectory() as td:
-        root = Path(td)
-        idx = root / "indexes"
-        bare = LearnStore(idx, None)          # 构造时就没给语料目录
-        try:
-            try:
-                bare.sync()
-                check("sync()：从未指定语料目录 → CorpusEmpty（旧写法在这里抛 TypeError→500）",
-                      False, "没抛错")
-            except CorpusEmpty:
-                check("sync()：从未指定语料目录 → CorpusEmpty（旧写法在这里抛 TypeError→500）", True)
-            except TypeError as e:
-                check("sync()：从未指定语料目录 → CorpusEmpty（旧写法在这里抛 TypeError→500）",
-                      False, f"TypeError: {e}")
-            check("ensure_synced()：未指定语料目录 → 返回 None 而不炸（读接口不该 500）",
-                  bare.ensure_synced() is None)
-        finally:
-            bare.close()
-
-    with tempfile.TemporaryDirectory() as td:
-        root = Path(td)
-        content, idx = root / "content", root / "indexes"
-        d = content / "baike" / "algorithms"
-        d.mkdir(parents=True)
-        mk(d, "a.md", _baike_md("甲"))
-        ls = LearnStore(idx, content)
-        try:
-            r1 = ls.sync(content)
-            check("首次 sync：没有旧卡可下线 → retired == 0（`max(rowcount, 0)` 的下界）",
-                  r1["retired"] == 0, f"got {r1['retired']}")
-            r2 = ls.sync(content)
-            check("连续第二次 sync：语料没变 → retired 仍为 0（不能是 -1 / 1 这类噪声）",
-                  r2["retired"] == 0, f"got {r2['retired']}")
-            # 造一次真下线：把某篇卡从语料里去掉后重扫
-            mk(d, "b.md", _baike_md("乙"))
-            ls.sync(content)
-            n_before = int(ls.con.execute("SELECT count(*) FROM cards WHERE active=1")
-                           .fetchone()[0])
-            mk(content / "baike" / "algorithms", "b.md",
-               _baike_md("乙改", 20))          # 换内容 → 旧 card_id 不再被 touch
-            r3 = ls.sync(content)
-            n_after = int(ls.con.execute("SELECT count(*) FROM cards WHERE active=1")
-                          .fetchone()[0])
-            check("真有卡下线时 retired 计数正确（上界也能测）",
-                  r3["retired"] >= 1 and n_after <= n_before,
-                  f"retired={r3['retired']} n {n_before}->{n_after}")
-        finally:
-            ls.close()
-
-
-
-# ---------------------------------------------------------------- cards：抽卡切块的边界
-def test_cards_boundaries() -> None:
-    """`_MIN_DEF_LEN` / 误区条目长度 / 12 行上限 / 停止标记 / 列表项开关 / 标题级别。"""
-    # #133 `len(def_val) < _MIN_DEF_LEN` → `<=`：恰好达标的定义被判"太短"→ 整篇不成卡
-    ok = parse_file("baike/algorithms/kmp.md", _baike_md("KMP 算法", _MIN_DEF_LEN))
-    short = parse_file("baike/algorithms/kmp.md", _baike_md("KMP 算法", _MIN_DEF_LEN - 1))
-    check(f"定义恰好 {_MIN_DEF_LEN} 字 → 成卡（边界含等号在「够长」这一侧）",
-          any(c.kind == "baike_def" for c in ok), f"got {[c.kind for c in ok]}")
-    check(f"定义 {_MIN_DEF_LEN - 1} 字 → 缺定义不成卡",
-          not any(c.kind == "baike_def" for c in short), f"got {[c.kind for c in short]}")
-
-    # #134 `len(item) < 4` → `<=`：恰好 4 字的误区条目被丢掉
-    kinds = [(c.kind, c.front) for c in parse_file(
-        "baike/algorithms/kmp.md", _baike_md("KMP 算法", 20, ["四字误区", "三字错"]))]
-    traps = [f for k, f in kinds if k == "baike_trap"]
-    check("误区条目恰好 4 字 → 收；3 字 → 丢（边界在 4 这一侧）",
-          len(traps) == 1 and "四字误区" in traps[0], f"got {traps}")
-
-    # #122 `_next_heading_at_most` 的 `<= level` → `<`：`###` 块不再止于下一个 `###`，
-    # 而是连同下一题一起吃进上一题的答案（抽卡把两题并成一题）
-    body = "### Q1\n正文\n#### 子标题\n还是正文\n### Q2\n尾巴\n"
-    cut = _next_heading_at_most(body, 7, 3)
-    check("I-4 切块：`###` 止于下一个 `###`，而 `####` 属于答案内部不截断",
-          body[cut:].startswith("### Q2"), f"cut={cut} got {body[cut:cut + 8]!r}")
-
-    # #123 `len(out) >= 12` → `>`：第 13 行也被收走（答案无限膨胀）
-    got = _collect_following([f"第{i}行" for i in range(20)], 0)
-    check("答案采集封顶 12 行（`>= 12` 不能写成 `> 12`）",
-          len(got.split(" ")) == 12, f"got {len(got.split(' '))}")
-
-    # #127 停止标记 `or` → `and`：要四种前缀同时命中才停 → 标题/围栏/表格被当成答案正文
-    check("采集遇标题即止（不是四种标记全命中才止）",
-          _collect_following(["正文一", "# 下一节", "正文二"], 0) == "正文一")
-    check("采集遇表格即止",
-          _collect_following(["正文一", "| 列 | 列 |", "正文二"], 0) == "正文一")
-    check("采集遇代码围栏即止",
-          _collect_following(["正文一", "```py", "正文二"], 0) == "正文一")
-
-    # #130 `not allow_bullets` → `allow_bullets`：开关整个反向
-    check("allow_bullets=False 时列表项截断采集",
-          _collect_following(["甲", "- 子项"], 0) == "甲")
-    check("allow_bullets=True 时列表项并入答案",
-          _collect_following(["甲", "- 子项"], 0, allow_bullets=True) == "甲 - 子项")
-
-    check("CARDS_PARSER_VERSION 是整数且 ≥ 2（I-4 属破坏性解析变更）",
-          isinstance(CARDS_PARSER_VERSION, int) and CARDS_PARSER_VERSION >= 2,
-          f"got {CARDS_PARSER_VERSION}")
-    check("同一篇语料两次解析结果一致（card_id 稳定，重扫不产生重复卡）",
-          [c.card_id for c in parse_file("baike/algorithms/kmp.md",
-                                         _baike_md("KMP 算法", 20, ["误区一二三四五"]))]
-          == [c.card_id for c in parse_file("baike/algorithms/kmp.md",
-                                            _baike_md("KMP 算法", 20, ["误区一二三四五"]))])
-
-
-# ---------------------------------------------------------------- rag：切块与分词的纯函数边界
 def test_rag_pure_helpers() -> None:
     """`_is_cjk` 的码点区间边界与 `_merge_short` 的「前块无标题才补标题」判据。
 
@@ -835,20 +583,12 @@ def main() -> int:
     test_index_is_stale_boundary()
     print("== fts：命中片段 wiki 别名 ==")
     test_snippet_wiki_alias()
-    print("== learn：卡片库重扫判据 ==")
-    test_ensure_synced_criteria()
-    print("== learn：meta_get 读写 ==")
-    test_learn_meta_roundtrip()
-    print("== learn：未指定语料与 retired 计数 ==")
-    test_no_content_and_retired_counter()
     print("== rag：切块与分词纯函数 ==")
     test_rag_pure_helpers()
     print("== rag：全量重建的逐篇续跑判据 ==")
     test_rag_resume_plan()
     print("== rag：tokenizer 配置与写盘 ==")
     test_rag_cfg_and_stream()
-    print("== cards：抽卡切块边界 ==")
-    test_cards_boundaries()
     print(f"\n{passed} passed, {failed} failed")
     return 1 if failed else 0
 

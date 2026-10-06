@@ -60,13 +60,11 @@ jobs:
         run: python tests/test_properties.py
       - name: Scaffolder smoke
         run: python tests/test_new_project.py
-      - name: Learn/review smoke
-        run: python tests/test_learn.py
-      - name: Govern/stats smoke
-        run: python tests/test_govern.py
-      - name: Invariants gate (AGENTS 不变量 1-9 · 本文件 I1~I10)
+      # 轮次 57 瘦身：复习/学习/术语、标签治理两套子系统整体下线，
+      # `test_learn.py` 与 `test_govern.py` 随功能同批删除（连同 js_props 的书库解析线）。
+      - name: Invariants gate (AGENTS 不变量 1-9 · 本文件 I1~I9)
         run: python tests/test_invariants.py
-      - name: E2E endpoint smoke (62 routes, tempfile corpus)
+      - name: E2E endpoint smoke (39 business routes, tempfile corpus)
         run: python tests/test_e2e_smoke.py
       # 轮次 54：AI 出站链路（配置层 / 选词问 / 查漏 / 批量 / 问吧）整体下线，
       # 对应的两个 CI 步骤与两套测试同批删除。项目自此**没有任何出站请求**（见 AGENTS 不变量）。
@@ -76,15 +74,13 @@ jobs:
       # 打的是本进程假 GitHub（现挑端口），零外网 —— 所以在 runner 上没有配额与出口 IP 依赖。
       - name: watch_ci tool regression (fake in-process GitHub; no network)
         run: python tests/test_watch_ci.py
-      # 彻查 P3-B：浏览器侧书库解析性质测试。脚本自己探测 node/Chrome，
-      # 缺任一个就打 SKIP 返回 0 —— 挂进来只为满足"CI 覆盖面不得小于本地钩子"。
-      - name: JS property tests in real browser (SKIP without node/Chrome)
-        run: python tests/test_js_props.py
-      # 彻查轮次 24：UI 行为回归（台账 §2 那 9 行"点了有没有反应"）。同样自探测，
+      # 轮次 57 瘦身：书库解析线（epub/txt 章节切分）随书库引擎整体下线，
+      # `test_js_props.py` 同批删除 —— 浏览器侧只剩 P5 视觉回归与本套 UI 行为回归两套。
+      # 彻查轮次 24：UI 行为回归（台账 §2 那些"点了有没有反应"的控件）。同样自探测，
       # 缺 node/Chrome 就 SKIP —— 挂着是为了"CI 覆盖面不得小于本地钩子"这条口径。
-      # 轮次 37 实测：runner 带 node 与 Chrome，annotations 里是 `js_props STARTED` /
-      # `ui_behavior STARTED`（不是 SKIP），所以这两套在 CI 上真跑。
-      - name: UI behavior regression (9 controls; SKIP without node/Chrome)
+      # 轮次 37 实测：runner 带 node 与 Chrome，annotations 里是 `ui_behavior STARTED`
+      # （不是 SKIP），所以这一套在 CI 上真跑。
+      - name: UI behavior regression (SKIP without node/Chrome)
         run: python tests/test_ui_behavior.py
       # 覆盖面如实登记（轮次 37 §6 第 50 行）：CI 没有 94MB 权重，`test_rag` 里
       # 「tokenizer 逐 token 对齐」与「端到端语义检索」两条以权重存在为前提，在 CI 上恒 SKIP

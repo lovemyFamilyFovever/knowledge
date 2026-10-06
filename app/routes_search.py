@@ -1,8 +1,11 @@
 # -*- coding: utf-8 -*-
-"""搜索增强 + 术语门户 路由 —— 命令面板索引、双链补全、术语百科、统一检索。
+"""搜索增强路由 —— 命令面板索引、双链补全/检查、统一检索。
 
-依赖注入方式同 routes_learn.py：一切通过 flask.current_app.config，
+依赖注入方式同其余 routes_*：一切通过 flask.current_app.config，
 严禁 from app.app import（循环导入）。
+
+2026-10-07 瘦身：术语门户（/glossary 与 /api/glossary）随复习/术语子系统下线；
+双链与命令面板的实现搬到 app/wikilink.py 与 app/palette.py，本模块只做 HTTP 层。
 """
 import re
 import time
@@ -13,8 +16,33 @@ from urllib.parse import quote
 from flask import Blueprint, current_app, jsonify, render_template, request
 
 from app import fts
+from app import palette
+from app import wikilink
 from app.fts import _clean_snippet
-from app.learn import BadParam, BadQuery, LearnError, LearnStore
+
+
+class SearchError(Exception):
+    """参数类错误翻译成统一错误信封（原语义与拆出前的 LearnError 一致）。"""
+
+    code = "BAD_PARAM"
+    http = 400
+
+    def __init__(self, detail: str = "", code: str | None = None, http: int | None = None):
+        super().__init__(detail)
+        self.detail = detail
+        if code:
+            self.code = code
+        if http:
+            self.http = http
+
+
+class BadParam(SearchError):
+    code, http = "BAD_PARAM", 400
+
+
+class BadQuery(SearchError):
+    code, http = "BAD_Q", 400
+
 
 try:  # RAG 是可选依赖：缺失时语义检索降级为 FTS / 命令面板照常工作
     from app.rag import query_rag
@@ -46,7 +74,7 @@ def _guard(fn):
     def wrapper(*args, **kwargs):
         try:
             return fn(*args, **kwargs)
-        except LearnError as e:
+        except SearchError as e:
             return jsonify({"ok": False, "error": e.code, "detail": e.detail}), e.http
         except Exception as e:  # pragma: no cover - 兜底
             current_app.logger.warning("search route failed: %s", e, exc_info=True)
@@ -166,11 +194,7 @@ def api_wikilink_suggest():
     except (TypeError, ValueError):
         pass
     exclude = request.args.get("exclude") or None
-    ls = LearnStore(_indexes(), _content())
-    try:
-        items = ls.wikilink_suggest(q, exclude=exclude, limit=limit)
-    finally:
-        ls.close()
+    items = wikilink.wikilink_suggest(_indexes(), _content(), q, exclude=exclude, limit=limit)
     return jsonify({"ok": True, "items": items, "q": q})
 
 
@@ -193,11 +217,7 @@ def api_wikilink_check():
             safe_rel(path)
         except Exception as e:
             raise BadParam(f"path 越出了 content/：{e}") from None
-    ls = LearnStore(_indexes(), _content())
-    try:
-        r = ls.wikilink_check(body)
-    finally:
-        ls.close()
+    r = wikilink.wikilink_check(_indexes(), body)
     if path:
         # 自指（文档链自己）不算断链：改名后 [[旧标题]] 解析不到自己是预期内的噪音，
         # 不该出现在「顺手修掉断链」的提示里。旧实现这行是 `if True` 占位死代码。
@@ -214,50 +234,8 @@ def api_wikilink_check():
 def api_palette_index():
     """命令面板索引。sig 与语料指纹一致时返回 {"ok":true,"fresh":true}，前端可跳过重绘。"""
     sig = request.args.get("sig") or None
-    ls = LearnStore(_indexes(), _content())
-    try:
-        r = ls.palette_index(sig, _content(), _hooks())
-    finally:
-        ls.close()
+    r = palette.palette_index(_indexes(), _content(), sig, _hooks())
     return jsonify({"ok": True, **r})
-
-
-# ---------------- 术语门户 ----------------
-@search_bp.get("/api/glossary")
-@_guard
-def api_glossary():
-    """术语百科：A–Z 分桶 + 按子域分组。无 pypinyin 依赖（离线是硬约束）。"""
-    domain = request.args.get("domain") or "baike"
-    sub = request.args.get("sub") or None
-    letter = request.args.get("letter") or None
-    sort = request.args.get("sort") or "alpha"
-    q = request.args.get("q") or None
-    ls = LearnStore(_indexes(), _content())
-    try:
-        ls.ensure_synced(_content())
-        r = ls.glossary(domain=domain, sub=sub, letter=letter, sort=sort, q=q)
-    finally:
-        ls.close()
-
-    def _enrich(item: dict) -> dict:
-        row = dict(item)
-        row["url"] = doc_url(row.get("source_rel") or "")
-        row.pop("back", None)
-        return row
-
-    for g in r["groups"]:
-        g["items"] = [_enrich(x) for x in g["items"]]
-    r["items_flat"] = [_enrich(x) for x in r["items_flat"]]
-    r.pop("back", None)
-    return jsonify({"ok": True, **r})
-
-
-@search_bp.get("/glossary")
-def page_glossary():
-    from app.store import inbox_count, md_files
-    return render_template("glossary.html", page="glossary",
-                           inbox_n=inbox_count(_content()),
-                           n_md=sum(1 for _ in md_files(_content())))
 
 
 # ---------------- 统一检索 ----------------

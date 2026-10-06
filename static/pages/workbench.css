@@ -109,20 +109,6 @@
 /* ---- [8] 面板 reveal 微调：三栏不同步起跳（stagger 由 data-reveal 顺序决定） ---- */
 html.motion-ready .wb-panel{will-change:transform}
 
-/* ---- [10] v1.1 追加：双链面板「→ 加入串学」（需求4，pages/workbench.js 注入）
-   2026-09-22 三 tab 重构：行变紧凑后串学入口改为 hover 浮层，零高度不占行。 ---- */
-.lk-roam{display:flex;justify-content:flex-end;align-items:center;height:0;position:relative;top:-26px;z-index:2;
-  opacity:0;pointer-events:none;transition:opacity var(--dur-1)}
-.lk-row:hover + .lk-roam,.lk-roam:focus-within{opacity:1;pointer-events:auto}
-.kb-roam-link{
-  display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:var(--rd-pill);
-  border:1px dashed var(--acc-line);background:var(--c-panel);color:var(--c-acc);
-  font-size:10.5px;text-decoration:none;transition:background .15s,border-color .15s;
-}
-.kb-roam-link svg{width:11px;height:11px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
-.kb-roam-link:hover{background:var(--acc-soft);border-style:solid}
-@media (max-width:480px){.kb-roam-link{min-height:36px;padding:6px 12px;font-size:11.5px}}
-
 
 /* ---- [11] 编辑器 [[ 双链补全下拉（Story 1，pages/wikilink-suggest.js 注入）
    观感对齐原生下拉：小圆角（--rd-ctl）+ 轻阴影 + 紧凑行高，配色全部走项目

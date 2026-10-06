@@ -15,7 +15,7 @@
     ③b 整域改名（rename_domain）：同上，另断旁挂/媒体随目录走、taxonomy 键与 scoped subs 前缀跟着迁移
     ④ fts 双链与 CJK 空格：任意文本不抛异常；围栏/行内 code 里的 [[...]] 不算链接；cjk_clean 可逆
     ⑤ rag 切块：任意输入不崩、块长不越界、正文不丢字（缺依赖时整条 SKIP）
-    ⑥ sm2 排程：任意评分序列不出现负数/NaN/越界，非法评分必须被拒
+    ⑥ （2026-10-07 随复习系统下线，原 sm2 排程不变量）
     ⑦ 一致性：`md_files()` 与 `is_visible_doc()` 两份独立实现对同一棵树必须给同一个答案
 
 全程只读写 `tempfile.TemporaryDirectory()`，绝不碰真实 `content/`（AGENTS 不变量 1/4）。
@@ -34,8 +34,6 @@ import json
 from app import fts  # noqa: E402
 from app.app import create_app  # noqa: E402
 from app.fts import FENCE_RE, INLINE_CODE_RE
-from app.sm2 import (EF_MAX, EF_MIN, MAX_INTERVAL, DEFAULT_STATE,  # noqa: E402
-                     is_mastered, schedule)
 from app.store import (SKIP_DIRS, dump_frontmatter, is_visible_doc, md_files,  # noqa: E402
                        parse_frontmatter, rename_domain, rename_sub)
 
@@ -446,57 +444,6 @@ def check_md_split(case):
     return True, ""
 
 
-# ---------------------------------------------------------------- ⑥ sm2 排程
-def gen_qseq(i):
-    rng = random.Random(SEED + i * 65537)
-    n = rng.randint(1, 12)
-    seq = []
-    for _ in range(n):
-        r = rng.random()
-        if r < .82:
-            seq.append(rng.randint(0, 5))
-        elif r < .88:
-            seq.append(rng.choice([-1, 6, 99, -100]))
-        elif r < .94:
-            seq.append(rng.choice(["4", None, 3.0, True, False, [], {}]))
-        else:
-            seq.append(rng.randint(0, 5))
-    return seq
-
-
-def check_schedule(case):
-    sch = schedule
-    st = dict(DEFAULT_STATE)
-    now = 1727000000.0
-    for k, q in enumerate(case):
-        try:
-            nxt = sch(st, q, now)
-        except ValueError:
-            if isinstance(q, int) and not isinstance(q, bool) and 0 <= q <= 5:
-                return False, f"合法评分 {q!r} 被拒（第 {k} 步）"
-            continue
-        except Exception as e:                                    # noqa: BLE001
-            return False, f"非法评分 {q!r} 抛的不是 ValueError：{type(e).__name__}: {e}"
-        iv, reps, lapses, ef = nxt["interval"], nxt["reps"], nxt["lapses"], nxt["ef"]
-        if not isinstance(iv, int) or iv < 1:
-            return False, f"q={q!r} 后 interval={iv!r}（必须是 ≥1 的整数）"
-        if iv > MAX_INTERVAL:
-            return False, f"q={q!r} 后 interval={iv} 超上限 {MAX_INTERVAL}"
-        if not isinstance(reps, int) or reps < 0 or not isinstance(lapses, int) or lapses < 0:
-            return False, f"q={q!r} 后 reps/lapses={reps}/{lapses}"
-        if not (EF_MIN <= ef <= EF_MAX) or ef != ef:
-            return False, f"q={q!r} 后 ef={ef!r} 越界或 NaN"
-        if nxt["due_ts"] < now - 86400 * 2:
-            return False, f"q={q!r} 后 due_ts={nxt['due_ts']} 早于今天"
-        if not isinstance(nxt["mastered"], int) or nxt["mastered"] not in (0, 1):
-            return False, f"mastered 非 0/1：{nxt['mastered']!r}"
-        if nxt["mastered"] != is_mastered(nxt):
-            return False, f"mastered 与 is_mastered 分叉：{nxt}"
-        st = {kk: nxt[kk] for kk in ("ef", "interval", "reps", "lapses")}
-    return True, ""
-
-
-
 # ---------------------------------------------------------------- ⑦ 两份实现一致性
 def gen_tree(i):
     rng = random.Random(SEED + i * 2654435761)
@@ -608,8 +555,6 @@ def main():
         prop("⑤ markdown_split 不崩不越界不丢块", gen_md, check_md_split)
     except Exception as e:                                        # noqa: BLE001
         skip("⑤ rag 切块", f"依赖不可用：{e}")
-    print("== ⑥ sm2 排程 ==")
-    prop("⑥ schedule 任意评分序列的不变量", gen_qseq, check_schedule)
     print("== ⑦ md_files 与 is_visible_doc 一致性 ==")
     prop("⑦ 两份实现同答案", gen_tree, check_consistency)
     print("== ⑧ 已固化反例 ==")

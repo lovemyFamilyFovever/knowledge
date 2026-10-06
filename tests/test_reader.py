@@ -118,11 +118,6 @@ def main() -> int:
         r = c.get("/favorites")
         check("/favorites 列出 favorite 文档", "职业笔记B" in r.get_data(as_text=True))
 
-        r = c.get("/tags")
-        tags_body = r.get_data(as_text=True)
-        check("/tags 页面可访问", r.status_code == 200)
-        check("/tags 列出标签", "AI" in tags_body and "Agent" in tags_body)
-
         r = c.get("/raw/ai/llm-and-agents/A.html")
         check("/raw 直通美化版", r.status_code == 200 and "美化版A" in r.get_data(as_text=True))
 

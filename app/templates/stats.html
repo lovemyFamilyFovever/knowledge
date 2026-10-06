@@ -27,7 +27,7 @@
            块顺序决定 —— 跨列挪动就搬 DOM 块，同列换序就改块顺序。
            挪动请说「把 cN 挪到 Lx / R1」；新增卡片顺延 c8、c9…，不复用旧号。
         ──────────────────────────────────────────────────────────────── #}
-        {# ── 两列分工：.st-col-kpi=左列（c1~c4 一行一张 + c6 + c7），
+        {# ── 两列分工：.st-col-kpi=左列（c1~c4 一行一张 + c6），
              .st-col-charts=右列（只放 c5 文档榜）；两列各自独立堆叠，行高互不牵制 ── #}
         <div class="st-cols">
         <div class="st-col-kpi">
@@ -85,16 +85,6 @@
           {% endif %}
         </div>
 
-        {# ── C3-B2：复习卡覆盖 · 阶段分布（learn 库只读派生，7 域骨架） ── #}
-        <section class="st-mastery" id="stMastery" data-st-card="c7" aria-label="复习卡覆盖与阶段分布">
-          <div class="st-mastery-head">
-            <span class="chart-title">复习卡覆盖 · 阶段分布</span>
-            <span class="st-mastery-sum" id="stMasterySum"></span>
-          </div>
-          <div class="st-mastery-body" id="stMasteryBody">
-            <div class="kb-empty" style="padding:8px 2px">复习库加载中…</div>
-          </div>
-        </section>
         </div>{# /st-col-kpi #}
 
         <div class="st-col-charts">

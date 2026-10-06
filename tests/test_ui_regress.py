@@ -149,19 +149,6 @@ title: 排版约定样本 的备注
 但它会渲染在正文下方的备注区，所以画面里必须能看到它。
 """
 
-NOVEL_TXT = """第一章 长夜将尽
-城市的尽头有一片灯火，灯火下面是一条走了很多年的路。
-路上的人不多，每个人都带着自己的影子。
-
-第二章 来时路
-他记得出发那天早上雾很大，大到看不见前面的山。
-于是他就近看，看脚下的石子，看石子上的一点青苔。
-
-第三章 天光
-后来雾散了，山还在那里。
-山也带着自己的影子，影子比人长。
-"""
-
 DOC_FAV = """---
 title: 收藏样本
 source: knowledge
@@ -192,12 +179,9 @@ collected: 2026-01-08
 躺在 `content/_inbox/` 里等归档的一条，用来渲染收件箱列表行（含大小与"归档/删除"动作位）。
 """
 
-# I-5 编号标题式（`### N. 题干｜难度`）—— cards.py 只对 baike/interview 抽卡，
-# 没有这篇的话 `/quiz` 永远停在空态，那个镜头就白拍。
-#
-# **只能有一道题**：`learn.py::due_slate` 对新卡是 `ORDER BY RANDOM()`（新卡随机抽是有意的产品行为），
-# 两张以上新卡时"第一张卡是谁"每次都不一样，镜头必然闪（实测 quiz_card AE=1174，
-# 差异 bbox 正好压在题干那两行）。baike 那份也只出一张卡，才让 review_* 两个镜头稳了 5 轮。
+# I-5 编号标题式（`### N. 题干｜难度`）：渲染层会把它转成难度徽章并在标题前挂一个
+# `#Q{n}` 出流空锚点（app.js::enhanceArticleDOM），是排版锚点回归的靶子。
+# （原注释末尾那段讲的是已下线的抽卡器与 /quiz 镜头，随子系统一起删。）
 DOC_INTERVIEW = """---
 title: 前端面试题样本
 source: knowledge
@@ -241,10 +225,8 @@ CORPUS = {
     "content/ui-r/notes/gamma.md": DOC_FAV,
     "content/ui-r/notes/alpha.md.notes.md": DOC_NOTES_SIDE,
     "content/ui-r/empty-sub/": None,             # None = 只建目录（空子域工作台）
-    "content/nv-r/books/长夜.txt": NOVEL_TXT,
-    # `cards.py` 只对 baike / interview 两个域抽卡（CARD_DOMAINS），所以复习页要出卡
-    # 就必须有一个 baike 词条 —— 没有它，/review 永远停在"暂时没有可学的卡"空态，
-    # 那两张截图测的就不是卡片与记分，而是空态。
+    # 两篇词条/题目样本：给排版权重样本之外的域一点内容，让域分面与全文检索
+    # 有跨域的形状（原注释讲的抽卡理由随 cards 子系统一并下线）。
     "content/baike/term/向量数据库.md": DOC_BAIKE,
     "content/interview/fe/事件循环.md": DOC_INTERVIEW,
     "content/_inbox/待归档条目.md": DOC_INBOX,
@@ -255,9 +237,8 @@ TAXONOMY = {
                 # 书库域全是 .txt（不进 FTS），"search": false → 浮层不给它筛选钮。
                 # 顺带让"派生 + 过滤"这条链路在基线里是**真的被走过**的：
                 # 如果哪天过滤失效，多出来的那颗钮会直接改变 search_overlay 那张截图的像素。
-                "nv-r": {"label": "基线书库", "hue": 200, "search": False},
                 "baike": {"label": "术语", "hue": 30}, "interview": {"label": "面试", "hue": 340}},
-    "subs": {"ui-r/notes": "排版样本", "ui-r/empty-sub": "空子域", "nv-r/books": "长篇",
+    "subs": {"ui-r/notes": "排版样本", "ui-r/empty-sub": "空子域",
              "baike/term": "词条", "interview/fe": "前端"},
     "sources": {"knowledge": "知库自建", "desktop": "桌面"},
     "status": {"stable": "已核对"},
@@ -306,47 +287,18 @@ SHOTS = [
     _shot("doc_tags_pane", "/doc/ui-r/notes/alpha.md", click='.rtab[data-pane="info"]',
           click_wait=2500, why="右侧面板切到标签页（树 + 标签编辑态）"),
     _shot("browse_empty_sub", "/browse/ui-r/empty-sub", why="空子域空态（D1 那次的回归面）"),
-    _shot("novel_txt", "/doc/nv-r/books/%E9%95%BF%E5%A4%9C.txt", why="书库 txt：章节切分与阅读排版"),
-    _shot("novel_txt_prefs", "/doc/nv-r/books/%E9%95%BF%E5%A4%9C.txt", click=".nv-pref-btn",
-          why="小说「排版」抽屉打开态（滑杆/选项）"),
     # —— 第二批：把 §2 里那批"只断言了控件存在"的页面与交互态逐个变成画面基线 ——
     _shot("inbox_list", "/inbox", why="收件箱列表行（归档/删除动作位）"),
     _shot("favorites_page", "/favorites", why="收藏页（favorite:true 那篇渲染出的行）"),
-    _shot("tags_page", "/tags", why="标签页：标签表 + 合并选择条"),
-    _shot("governance_idle", "/governance", why="治理驾驶舱首屏「尚未扫描」空态"),
-    _shot("governance_scanned", "/governance", click="#gov-scan-btn", settle=6500, click_wait=2500,
-          why="点「重新扫描」后的三桶结果页（断链/孤儿/近义标签）"),
-    _shot("governance_orphan_tab", "/governance",
-          click='#gov-scan-btn,.gov-tab[data-bucket="orphans"]', settle=6500, click_wait=2500,
-          why="扫描后切到「孤儿文档」桶（bucket 动作钮）"),
     _shot("search_results", "/search?q=%E6%8F%90%E7%A4%BA%E6%A1%86",
           why="FTS 搜索结果卡片：命中高亮 + 跳转链接"),
-    _shot("review_card", "/review", settle=6500, why="复习页：今日队列 + 卡片正面 + 环形进度"),
-    _shot("review_graded", "/review", click='#kb-reveal,.kb-grade[data-q="3"]', settle=6500,
-          # 记分后副标题会先短暂显示"本轮完成 1 张 · 已全部过完"，随后队列刷新才落到稳定态。
-          # 实测（同一实例连截 3s / 8s / 15s）：3s 与 8s 差 2786 像素，8s 与 15s **AE=0** → 8 秒后已收敛。
-          click_wait=8000,
-          # 曾额外 freeze 过 #kb-learn-sub：`refreshStats` 两个并发请求无序号守卫，
-          # 迟到的旧响应会把这一行覆盖成"到期 0 张…"，同一动作两种结果（§6 第 24 行）。
-          # 2026-09-24 修掉竞态（learn.js 加 seq 守卫 + test_js_props 的"统计竞态"探针锁住）后
-          # freeze 已撤回 —— 这行重新回到基线里，它红就说明竞态回来了。
-          why="显示答案→点「困难」记分后的稳定态（q=3 那条 P6 抓过的边界）"),
     _shot("stats_pinned_month", "/stats?ym=2026-01", settle=6500,
           why="月度报表：ym 钉死在没有阅读数据的过去月，避开跨月与当月漂移"),
-    # —— 第三批：把 §2 剩下的交互控件补完（治理页动作态 / 标签合并选择条 / 出题卡 / 搜索浮层）——
-    _shot("governance_dead_selected", "/governance",
-          click='#gov-scan-btn,#dead-all', settle=6500, click_wait=2500,
-          why="扫描后勾「全选」：断链动作钮（转为纯文本 / 移除链接标记）由 disabled 变可用"),
-    _shot("tags_merge_bar", "/tags", click='.t-check', settle=5000, click_wait=2000,
-          why="标签页勾中一个标签 → 底部合并选择条出现（未选择/清除/合并到…）"),
-    _shot("quiz_card", "/quiz", settle=6500,
-          why="面试题卡（I-5 编号标题式抽出的卡）：题干 + 评分两档 + 侧栏"),
+    # —— 第三批（2026-10-07 瘦身：治理页/标签页/出题卡镜头随子系统删除，此批只剩搜索浮层）——
     _shot("search_overlay", "/doc/ui-r/notes/alpha.md",
           click='#searchbox,.kb-eng-chip[data-eng="hybrid"]', settle=5000, click_wait=2200,
           why="就地搜索浮层打开 + 引擎 chip 切到「混合 Hybrid」的选中态"),
 ]
-
-
 def build_corpus(root: Path):
     for rel, content in CORPUS.items():
         p = root / rel.replace("/", os.sep)
@@ -397,7 +349,8 @@ def capture(tag, shots):
         base = f"http://127.0.0.1:{PORT}"
         check(f"[{tag}] 临时实例起来了", port_open(PORT))
         # 页面可达性各断一条：404/500 会让"截图一致但全是错误页"这种假绿成为可能
-        for path in ("/doc/ui-r/notes/alpha.md", "/browse/ui-r/empty-sub", "/review", "/stats?ym=2026-01"):
+        for path in ("/doc/ui-r/notes/alpha.md", "/browse/ui-r/empty-sub",
+                    "/search?q=%E5%8D%A1%E7%89%87", "/stats?ym=2026-01"):
             code = subprocess.run(["node", "-e",
                                    f"fetch({json.dumps(base + path)}).then(r=>console.log(r.status))"],
                                   capture_output=True, text=True, encoding="utf-8",

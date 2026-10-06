@@ -298,32 +298,6 @@ def favorites():
     return render_template("favorites.html", items=items, **_chrome_counts())
 
 
-@pages_bp.route("/governance")
-def governance():
-    """治理驾驶舱（Story 5/6）：断链 / 孤儿文档 / 近义标签三桶。
-    首屏先给"点击扫描"空态 —— 全库扫描有成本（数百篇语料），
-    不做成进页面就自动跑；用户点按钮 → /api/governance/scan 取数。"""
-    return render_template("governance.html", **_chrome_counts())
-
-
-@pages_bp.route("/tags")
-def tags():
-    domains = _domains_cached()
-    tag_map: dict[str, list[dict]] = {}  # tag -> list of doc info
-    for d in domains:
-        for s in d["subs"]:
-            for doc in s["docs"]:
-                for t in doc.get("tags", []):
-                    tag_map.setdefault(t, []).append({
-                        "domain": d["id"], "domain_label": d["label"],
-                        "sub": s["id"], "sub_label": s["label"],
-                        "name": doc["name"], "title": doc["title"],
-                    })
-    # 按文档数降序排列
-    tags_sorted = sorted(tag_map.items(), key=lambda x: -len(x[1]))
-    return render_template("tags.html", tags=tags_sorted, **_chrome_counts())
-
-
 # ---------------- 搜索页（FTS / 语义） ----------------
 @pages_bp.route("/search")
 def search_route():

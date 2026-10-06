@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """统计类接口：目录聚合树 / 全库统计 / 目录统计 / 单篇统计 / 标签合并 / 阅读上报。
 
-统计只读语料 + 派生索引，写入的仅 /api/tag/merge（复用 store.merge_tag）与
+统计只读语料 + 派生索引，写入的仅
 /api/track（落 indexes/reading.db）。依赖经 flask.current_app.config 注入。
 """
 import re
@@ -275,6 +275,28 @@ def _rel_key(path: str):
     return s
 
 
+@stats_bp.get("/api/recent_read")
+def api_recent_read():
+    """近 N 日阅读篇数（reading.db 只读派生查询；右栏 TOC sparkline 供数）。
+
+    2026-10-07 从 routes_learn.py 迁来：数据源是保留的阅读心跳统计（reading.db），
+    原端点只是寄生在已下线的学习蓝图里。URL 随之从 /api/learn/recent_read 改名。
+    """
+    try:
+        n = int(request.args.get("days", 7))
+    except (TypeError, ValueError):
+        n = 7
+    rs = _hooks().get("ReadingStore")
+    if rs is None:
+        return jsonify({"ok": True, "days": []})
+    rsx = rs(_indexes())
+    try:
+        days = rsx.recent_days(n)
+    finally:
+        rsx.close()
+    return jsonify({"ok": True, "days": days})
+
+
 @stats_bp.get("/api/docmark")
 def api_docmark_get():
     """单篇文档的已读/已掌握标记（存 indexes/reading.db 的 doc_marks，不进 frontmatter）。"""
@@ -312,22 +334,6 @@ def api_docmark_set():
     return jsonify({"ok": True, **m})
 
 
-@stats_bp.post("/api/tag/merge")
-def api_tag_merge():
-    """标签合并（复用 store.merge_tag；apply=true 才写盘并重建 FTS）。
-    返回受影响文档清单供前端确认框展示。"""
-    content = _content()
-    data = request.get_json(force=True)
-    src = str(data.get("src", "")).strip()
-    dst = str(data.get("dst", "")).strip()
-    if not src or not dst:
-        return jsonify({"ok": False, "error": "src/dst required"}), 400
-    r = store.merge_tag(content, src, dst, apply=bool(data.get("apply")))
-    if r["apply"]:
-        build_index(content, _indexes())
-    return jsonify({"ok": True, **r})
-
-
 @stats_bp.post("/api/track")
 def api_track():
     """阅读事件上报；组件缺失/非法入参一律静默成功（统计永不妨碍阅读）。"""
@@ -355,102 +361,6 @@ def api_track():
     finally:
         rs.close()
     return jsonify({"ok": True, "tracked": bool(tracked)})
-
-
-# ---------------- 治理驾驶舱（Story 5/6） ----------------
-# 三桶：断链（FTS links.resolved=0）/ 孤儿文档（无入链且非入口页）/ 近义标签
-# （store.find_similar_tags）。只读扫描；处置复用现有写入路径
-# （/api/tag/merge、/api/save），本模块不引入新的语料写入。
-
-def _governance_links(content: Path, indexes: Path) -> list[dict]:
-    """全库未解析双链（resolved=0），按源文档聚合，附 Top1 建议。
-    与 /api/wikilink_check 同源（同一张 links 表），保证两处数据一致。"""
-    try:
-        con = open_db(indexes)
-    except sqlite3.Error:
-        return []
-    try:
-        rows = con.execute(
-            "SELECT src, raw, src_title FROM links WHERE resolved=0 ORDER BY src"
-        ).fetchall()
-    except sqlite3.Error:
-        return []
-    finally:
-        con.close()
-    # 每条断链给一个 Top1 建议（复用 LearnStore 的候选池与打分，语义与编辑器内一致）
-    from app.learn import LearnStore, _top_suggestion
-    try:
-        ls = LearnStore(indexes, content)
-        try:
-            pool = ls._suggest_pool()
-        finally:
-            ls.close()
-    except Exception:
-        pool = []
-    cache: dict[str, str] = {}
-    out: list[dict] = []
-    for src, raw, src_title in rows:
-        if raw not in cache:
-            try:
-                name, _score = _top_suggestion(raw, pool)
-            except Exception:
-                name = ""
-            cache[raw] = name or ""
-        out.append({"src": src, "src_title": src_title or src,
-                    "raw": raw, "suggest": cache[raw]})
-    return out
-
-
-def _governance_orphans(content: Path, indexes: Path) -> list[dict]:
-    """孤儿文档：FTS 里无任何入链的 md。入口页（index/说明/README/总览 等）默认豁免，
-    否则每个域的入口页都会常驻报警，导致报警疲劳。"""
-    entry_names = {"index", "readme", "说明", "总览", "home", "about"}
-    try:
-        con = open_db(indexes)
-    except sqlite3.Error:
-        return []
-    try:
-        all_docs = con.execute("SELECT path, title FROM docs").fetchall()
-        linked = {r[0] for r in con.execute(
-            "SELECT DISTINCT dst FROM links WHERE resolved=1 AND dst IS NOT NULL"
-        ).fetchall()}
-    except sqlite3.Error:
-        return []
-    finally:
-        con.close()
-    out: list[dict] = []
-    for path, title in all_docs:
-        if path in linked:
-            continue
-        stem = Path(path).stem.lower()
-        if stem in entry_names:
-            continue  # 入口页豁免
-        out.append({"path": path, "title": title or path})
-    return out
-
-
-@stats_bp.get("/api/governance/scan")
-def api_governance_scan():
-    """治理驾驶舱扫描：三桶一次返回。只读，不写盘。
-    返回 {ok, dead_links, orphans, tag_pairs, counts}。"""
-    content = _content()
-    indexes = _indexes()
-    dead = _governance_links(content, indexes)
-    orphans = _governance_orphans(content, indexes)
-    try:
-        census = store.tag_census(content)
-        pairs = store.find_similar_tags(census)
-    except Exception:
-        census, pairs = {}, []
-    tag_pairs = [{"src": s, "dst": d, "score": round(float(sc), 2)} for s, d, sc in pairs]
-    return jsonify({
-        "ok": True,
-        "dead_links": dead,
-        "orphans": orphans,
-        "tag_pairs": tag_pairs,
-        "counts": {"dead_links": len(dead), "orphans": len(orphans),
-                   "tag_pairs": len(tag_pairs)},
-    })
 
 
 def register(app, hooks: dict):

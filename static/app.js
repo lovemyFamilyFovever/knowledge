@@ -226,9 +226,9 @@ async function promptNewDocInDir(dom, sub) {
 }
 window.promptNewDocInDir = promptNewDocInDir;
 
-/* ---------- 需求 #12：书库格式分流渲染（小说引擎见 kb-novel.js） ----------
-   .txt  → KBNOVEL.renderTxt：编码嗅探 + 章节引擎 + 懒渲染 + 搜索/朗读/续读
-   .epub → KBNOVEL.renderEpub：epub.js + 小说排版偏好 + CFI 续读 + spine 搜索
+/* ---------- 书库格式分流渲染（2026-10-07 瘦身：小说引擎已删） ----------
+   .txt  → 直挂 /raw 的 iframe 纯文本视图（编码嗅探/章节/朗读/续读随引擎一起下线）
+   .epub → 不提供在线渲染（去掉 epub.js 后浏览器读不了），给下载与新标签页
    .pdf  → 浏览器原生 PDF 查看器（iframe 直通 /raw/）+ lib-bar 下载
    .xlsx → SheetJS 渲染工作表前 200 行 + lib-bar 下载
    .mobi → 不提供在线渲染（私有格式），给下载与「转 epub」提示 */
@@ -264,8 +264,10 @@ function renderLibraryDoc(el, ext) {
     return;
   }
   if (ext === "epub") {
-    el.innerHTML = `<div class="a-body" id="lib-epub"></div>`;
-    KBNOVEL.renderEpub($("#lib-epub"), rawHref, DOC.rel);
+    el.innerHTML = `<div class="a-body"><div class="lib-mobi-card"><b>EPUB 不在线上阅读</b>（阅读器引擎已下线）。
+      <p style="margin-top:12px"><a class="chip chip-btn" href="${rawHref}" download="${esc(DOC.name || "book.epub")}">${icon("download", 11)} 下载原文件</a>
+      <a class="chip chip-btn" href="${rawHref}" target="_blank" rel="noopener">新标签页打开</a></p></div></div>`;
+    buildToc();
     return;
   }
   if (ext === "xlsx") {
@@ -274,9 +276,9 @@ function renderLibraryDoc(el, ext) {
     buildToc();
     return;
   }
-  // txt：全本阅读引擎（编码嗅探/章节/搜索/朗读均在 kb-novel.js）
-  el.innerHTML = `<div class="a-body" id="lib-txt"></div>`;
-  KBNOVEL.renderTxt($("#lib-txt"), rawHref, DOC.rel, sizeMiB);
+  // txt：无引擎后的最简视图——iframe 直通 /raw（浏览器按纯文本渲染）
+  el.innerHTML = `<div class="a-body">${libBar(rawHref, DOC.name || "file.txt")}<div class="lib-frame-wrap"><iframe class="lib-frame" src="${rawHref}" title="${esc(DOC.title)}"></iframe></div></div>`;
+  buildToc();
 }
 
 let _sheetjsLoading = null;
@@ -308,7 +310,7 @@ async function renderXlsx(url) {
   }
 }
 
-/* EPUB 在线阅读引擎已迁至 kb-novel.js（KBNOVEL.renderEpub，接小说排版偏好） */
+/* EPUB 在线阅读引擎已于 2026-10-07 随书库退场删除（见上方分流注释） */
 window.renderArticle = renderArticle;
 
 /* 美化版 HTML 挂载：作用域片段 → 正文直接内联渲染（非 iframe）；
@@ -693,11 +695,6 @@ let _tocScrollSpy = null; // Shadow 片段目录的滚动高亮监听，重渲�
 function buildToc() {
   const pane = $("#pane-toc"); if (!pane) return;
   if (_tocScrollSpy) { _tocScrollSpy(); _tocScrollSpy = null; }
-  // 小说/书库：章节列表由 KBNOVEL 灌进本面板（阅读器内不再放左目录）
-  if (window.KBNOVEL && DOC && /\.(txt|epub)$/i.test(DOC.name || "") && KBNOVEL.hasPaneToc()) {
-    KBNOVEL.paintPaneToc(pane);
-    return;
-  }
   /* 右栏「目录」空状态：线稿插画 + 结论 + 说明，复用 .kb-empty 组件（三件缺一不可）。
      两处调用点（Shadow DOM 与 Markdown 正文）共用本函数，避免样式与文案再次漂移。 */
   function tocEmptyHTML() {
@@ -891,7 +888,7 @@ function renderTocSpark() {
   tocSparkHost = host;
   const seq = ++tocSparkSeq;
   if (tocSparkDays) { drawTocSpark(host); return; }     // 已有真实数据：直接画，免重取
-  fetch("/api/learn/recent_read")
+  fetch("/api/recent_read")
     .then(r => r.json())
     .then(d => {
       if (seq !== tocSparkSeq) return;                  // 文档已切换，丢弃过期响应
@@ -1169,7 +1166,7 @@ function renderCrumb() {
      （原先只对 interview 域显示）；服务端渲染保持同一套结构。 */
   const canSwitchToMd = DOC.has_html && !DOC.is_html;
   /* 书库格式（txt/pdf/xlsx/epub/mobi）：编辑/删除/标签/收藏与小说阅读无关，
-     全部撤下；下载按钮移入阅读器工具栏（kb-novel.js / libBar）。 */
+     全部撤下；下载按钮移入阅读器工具栏（libBar）。 */
   const isLib = /\.(txt|pdf|xlsx|epub|mobi)$/i.test(DOC.name || "");
   const segs = [];
   if (canSwitchToMd) segs.push(`<button class="seg-btn" id="kb-md-src-btn" onclick="toggleMdSource()" title="在美化版 / Markdown 源之间切换">${MD_SRC_ON ? icon("preview-eye", 13) + " 美化版" : icon("file-md", 13) + " Markdown 源"}</button>`);
@@ -1884,7 +1881,7 @@ window.invalidate = invalidate; // 统一失效入口（pages/*.js 可用；inva
    缓存失效 → 重拉 /api/tree → 重画分类树 + 当前子域列表；当前文档自身被移动时
    由调用方再走 navigate(docUrl(dst)) 客户端跳转。禁止 setTimeout + location.reload——
    此前 6 处 reload 把 toast 随页面一起销毁，900–1600ms 假死还丢反馈。
-   非工作台页（inbox/tags）各自有数据源，只需 invalidate("all") 后做局部 DOM 更新。 */
+   非工作台页（如 inbox）各自有数据源，只需 invalidate("all") 后做局部 DOM 更新。 */
 async function afterMutation() {
   invalidate("all");
   await loadTree();
@@ -3055,10 +3052,7 @@ function soEmptyState() {
   const shortcuts = [
     { icon: "i-inbox-tray", label: "收件箱（待归档）", href: "/inbox" },
     { icon: "i-favorite-heart", label: "我的收藏", href: "/favorites" },
-    { icon: "i-tag-outline", label: "标签管理", href: "/tags" },
     { icon: "i-stats-chart", label: "月度统计", href: "/stats" },
-    { icon: "i-sort-alpha", label: "术语门户（A-Z）", href: "/glossary" },
-    { icon: "i-clock-heartbeat", label: "间隔复习", href: "/review" },
   ];
   return `<div class="kb-sr-group">快速前往</div>
     <div class="kb-sdrop-grid">${shortcuts.map(s =>

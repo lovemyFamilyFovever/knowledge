@@ -4,7 +4,7 @@
 #
 # 【执行拓扑（轮次 36）】分两段，不是"全都并行"：
 #   1) 并行组 —— 纯 Python、语料一律 tempfile 现造、互不写同一份文件的套件；
-#   2) 串行组 —— 三个吃浏览器的套件（js_props / P5 / 第 13 套）与 RAG smoke。
+#   2) 串行组 —— 两个吃浏览器的套件（P5 / 第 13 套）与 RAG smoke。
 # 为什么浏览器那几套不进来：它们判的是**像素与 rAF/IntersectionObserver 时序**，
 # CPU 被抢就会读到"还没更新的状态"（轮次 29 就为此把固定 sleep 改成轮询到收敛），
 # RAG 那条还额外碰 OpenBLAS 内存分配（历史上有过并发 OOM）。
@@ -160,9 +160,6 @@ fi
 
 # ---------------------------------------------------------------- 并行组（纯 Python、临时目录隔离）
 # 入选条件：语料一律在 tempfile 现造、端口现挑、不写仓库里的 indexes/，且不需要浏览器。
-# test_learn 会**扫真实 content/**（不是合成 fixture），它只读不写，与同组其它套件不抢
-# 同一份文件；但**别把它和别的会话的语料分片写盘同时跑** —— 那种顶红与本次提交无关
-# （见跨会话记忆 precommit-learn-smoke-corpus-coupling）。
 if [ -f "tests/test_reader.py" ]; then step reader $PY tests/test_reader.py; fi
 
 # 判定谓词层（P6 变异测试按存活清单回填的断言：store/fts 的布尔与边界判据）
@@ -175,9 +172,8 @@ if [ -f "tests/test_properties.py" ]; then step properties $PY tests/test_proper
 
 if [ -f "tests/test_new_project.py" ]; then step new_project $PY tests/test_new_project.py; fi
 
-if [ -f "tests/test_learn.py" ]; then step learn $PY tests/test_learn.py; fi
-
-if [ -f "tests/test_govern.py" ]; then step govern $PY tests/test_govern.py; fi
+# 轮次 57 瘦身：复习/学习/术语与标签治理两套子系统整体下线，
+# test_learn / test_govern 随功能同批删除 —— 并行组由 12 条收成 10 条。
 
 # 不变量门禁（P2）：AGENTS.md 的 8 条不变量落成可执行断言（tests/test_invariants.py），
 # 与上方 rag-version 静态检查配套 —— 前者管行为（软删/唯一真相/`_` 目录不进索引…），
@@ -235,10 +231,8 @@ fi
 # （临时 KB_ROOT + 临时实例 + CDP）。书库解析线（decodeTxt / normalizeEpubBytes /
 # buildChapters）的三个历史线上 bug 全在这里，Python 侧够不着。
 # 探测留给脚本自己做（缺 node 或 Chrome 就打 SKIP 并返回 0）——钩子挂 = 没有钩子。
-if [ -f "tests/test_js_props.py" ]; then
-  echo "[pre-commit] running JS property tests (browser, SKIP if no node/Chrome)..."
-  $PY tests/test_js_props.py || exit 1
-fi
+# 轮次 57 瘦身：书库解析线（epub/txt 章节切分）随书库引擎整体下线，
+# test_js_props.py 同批删除 —— 浏览器侧只剩 P5 与 UI 行为回归两套。
 
 # 视觉回归批处理（彻查 P5）：只在本次提交真的碰了 CSS/JS/模板时才跑（约 70s，
 # 轮次 34 前是 197s）。每次提交都跑会让人开始 --no-verify。

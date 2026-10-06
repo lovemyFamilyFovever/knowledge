@@ -243,18 +243,13 @@ def main() -> int:
         c = app.test_client()
         content = root / "content"
 
-        # ================================================ A. 页面 GET（13 条）
+        # ================================================ A. 页面 GET（6 条，2026-10-07 瘦身后）
         print("\n[A] 页面路由")
         for rule, needle, nm in [
             ("/", "从一次检索开始", "/ 占位页"),
             ("/home", "个域入口", "/home"),
             ("/favorites", "职业笔记B", "/favorites"),
-            ("/tags", "AI", "/tags"),
-            ("/glossary", None, "/glossary"),
-            ("/governance", None, "/governance"),
             ("/inbox", None, "/inbox"),
-            ("/quiz", None, "/quiz"),
-            ("/review", None, "/review"),
             ("/search?q=量子", "测试文档", "/search 命中"),
             ("/stats", None, "/stats"),
         ]:
@@ -364,10 +359,6 @@ def main() -> int:
         r = c.get("/api/search?q=量子&engine=fts")
         check("GET /api/search engine=fts 200", r.status_code == 200)
 
-        r = c.get("/api/glossary?domain=baike")
-        d = jget(r)
-        check("GET /api/glossary 200 语义可用", r.status_code == 200 and d.get("ok") is not False, str(d)[:120])
-
         r = c.get("/api/palette/index")
         check("GET /api/palette/index 200", r.status_code == 200 and jget(r).get("ok") is not False, str(jget(r))[:120])
 
@@ -378,9 +369,6 @@ def main() -> int:
 
         r = c.get("/api/wikilink/suggest?q=职业")
         check("GET /api/wikilink/suggest 200", r.status_code == 200 and jget(r).get("ok") is not False, str(jget(r))[:120])
-
-        r = c.get("/api/governance/scan")
-        check("GET /api/governance/scan 200", r.status_code == 200 and jget(r).get("ok") is not False, str(jget(r))[:160])
 
         r = c.get("/api/docmark?path=ai/llm-and-agents/A.md")
         check("GET /api/docmark 200", r.status_code == 200 and jget(r).get("ok") is True, str(jget(r))[:120])
@@ -415,34 +403,9 @@ def main() -> int:
         check("AI 端点全下线后，临时根里压根没有 .ai-config.json",
               not (root / ".ai-config.json").exists())
 
-        # ---- learn 只读（先 sync 才有卡）----
-        r = c.post("/api/learn/sync", json={"force": True})
-        check("POST /api/learn/sync ok", r.status_code == 200 and jget(r).get("ok") is True, str(jget(r))[:160])
-
-        cards = jget(c.get("/api/learn/cards")).get("items") or []
-        check("GET /api/learn/cards 有卡", bool(cards), f"n={len(cards)}")
-        card_id = cards[0]["card_id"] if cards else ""
-
-        r = c.get("/api/learn/due")
-        check("GET /api/learn/due 200", r.status_code == 200 and jget(r).get("ok") is True, str(jget(r))[:120])
-
-        r = c.get("/api/learn/mastery")
-        check("GET /api/learn/mastery 200", r.status_code == 200 and jget(r).get("ok") is True, str(jget(r))[:120])
-
-        r = c.get("/api/learn/mock")
-        check("GET /api/learn/mock 200", r.status_code == 200 and jget(r).get("ok") is True, str(jget(r))[:120])
-
-        r = c.get("/api/learn/today")
-        check("GET /api/learn/today 200", r.status_code == 200 and jget(r).get("ok") is True, str(jget(r))[:120])
-
-        r = c.get("/api/learn/recent_read?days=7")
-        check("GET /api/learn/recent_read 200", r.status_code == 200 and jget(r).get("ok") is True, str(jget(r))[:120])
-
-        r = c.get("/api/learn/roam?from=" + "术语甲")
-        check("GET /api/learn/roam 200", r.status_code == 200 and jget(r).get("ok") is True, str(jget(r))[:120])
-
-        r = c.post("/api/learn/review", json={"card_id": card_id, "q": 4, "elapsed_ms": 1200})
-        check("POST /api/learn/review ok", r.status_code == 200 and jget(r).get("ok") is True, str(jget(r))[:160])
+        # 2026-10-07：复习端点整批下线；近七日阅读迁到 /api/recent_read（数据源 reading.db 未变）
+        r = c.get("/api/recent_read?days=7")
+        check("GET /api/recent_read 200", r.status_code == 200 and jget(r).get("ok") is True, str(jget(r))[:120])
 
         r = c.post("/api/wikilink/check", json={"body": "见 [[职业笔记B]] 与 [[没有这个]]。"})
         d = jget(r)
@@ -528,15 +491,6 @@ def main() -> int:
         d = jget(r)
         check("POST /api/move/batch ok", r.status_code == 200 and d.get("ok") is True, str(d)[:160])
         check("POST /api/move/batch 落盘", (content / "ai" / "新建子域" / "E.md").is_file())
-
-        # /api/tag/merge
-        r = c.post("/api/tag/merge", json={"src": "乙", "dst": "AI", "apply": False})
-        d = jget(r)
-        check("POST /api/tag/merge dry-run ok", r.status_code == 200 and d.get("ok") is True, str(d)[:160])
-        r = c.post("/api/tag/merge", json={"src": "乙", "dst": "AI", "apply": True})
-        check("POST /api/tag/merge apply ok", r.status_code == 200 and jget(r).get("ok") is True)
-        check("POST /api/tag/merge 磁盘标签真改写",
-              "乙" not in p.read_text(encoding="utf-8") and "AI" in p.read_text(encoding="utf-8"))
 
         # /api/rename-sub（目录改名 + taxonomy 迁移）
         r = c.post("/api/rename-sub", json={"domain": "ai", "sub": "新建子域", "new": "改名子域"})
@@ -646,10 +600,6 @@ def main() -> int:
             ("/api/tags", {"path": "../../x.md", "tags": ["a"]}),
             ("/api/docmark", {"path": "../../x.md", "mark": "read"}),
             ("/api/docmark", {"path": "ai/llm-and-agents/A.md", "mark": "bogus"}),
-            ("/api/tag/merge", {"src": "", "dst": "x"}),
-            ("/api/learn/review", {"card_id": "", "q": 3}),
-            ("/api/learn/review", {"card_id": "nope", "q": 3}),
-            ("/api/learn/review", {"card_id": "nope"}),
             ("/api/wikilink/check", {"body": ""}),
         ]
         for path, payload in bad_posts:
@@ -660,18 +610,13 @@ def main() -> int:
             "/api/docmark?path=../../x.md",
             "/api/stats?path=../../x.md",
             "/api/links?path=../../x.md",
-            "/api/learn/due?kind=bogus",
-            "/api/learn/due?new_ratio=abc",
-            "/api/learn/due?new_ratio=9",
-            "/api/learn/cards?kind=bogus",
-            "/api/learn/roam",
             "/api/raw/../app/app.py",
         ]
         for path in bad_gets:
             body4xx(f"GET {path}", c.get(path), root)
 
         # 无入参校验但无害的只读端点：断「不 5xx、不泄露路径」而非强求 4xx
-        for path in ("/api/glossary?domain=../", "/api/wikilink/suggest?limit=abc",
+        for path in ("/api/wikilink/suggest?limit=abc",
                      "/api/palette/index?sig=../.."):
             r = c.get(path)
             txt = r.get_data(as_text=True)

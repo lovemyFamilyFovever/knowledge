@@ -10,19 +10,17 @@ Obsidian 与本应用共享同一份语料。
     app/fts.py           FTS5 全文索引 + [[双链]] 解析（派生，外科手术式更新）
     app/rag.py           语义检索：切块 / 嵌入 / sqlite-vec（派生）
     app/reading.py       月度阅读统计（派生，与语料隔离）
-    app/cards.py         baike/interview 抽卡（纯函数）
-    app/learn.py         卡片库与复习状态（派生）
+    app/wikilink.py      双链补全候选池 / 打分 / 断链检查（2026-10-07 自 learn.py 拆出）
+    app/palette.py       命令面板索引（同上，只索引文档+子域+命令）
     app/app.py           本文件：只做装配（配置 / 索引引导 / RAG 惰性接入 /
                          watcher / 缓存门面 / 上下文 / 错误处理 / 蓝图注册）
-    app/routes_pages.py  页面：/ /home /browse /doc /raw /inbox /favorites /tags /search /stats
+    app/routes_pages.py  页面：/ /home /browse /doc /raw /inbox /favorites /search /stats
     app/routes_doc.py    数据：/api/tree /api/doc
     app/routes_edit.py   编辑：/api/save /api/note /api/favorite /api/links
     app/routes_files.py  文件：/api/delete /api/move /api/move/batch
-    app/routes_stats.py  统计：/api/dir/tree /api/globalstats /api/substats /api/stats
-                         /api/tag/merge /api/track
+    app/routes_stats.py  统计：/api/dir/tree /api/globalstats /api/substats /api/stats /api/track
     app/routes_rag.py    语义：/api/rag /api/rag/status
-    app/routes_learn.py  学习/复习/术语门户接口
-    app/routes_search.py 搜索增强（命令面板 / 双链补全 / 术语门户 / 统一检索）
+    app/routes_search.py 搜索增强（命令面板 / 双链补全与检查 / 统一检索）
 
 工厂模式：create_app(root) 便于测试指向临时语料目录。
 依赖注入：业务路由只通过 flask.current_app.config 取依赖（KB_HOOKS / CONTENT /
@@ -80,7 +78,6 @@ from app.routes_edit import register as register_edit
 from app.routes_files import register as register_files
 from app.routes_stats import register as register_stats
 from app.routes_rag import register as register_rag
-from app.routes_learn import register as register_learn
 from app.routes_search import register as register_search
 
 
@@ -267,7 +264,7 @@ def create_app(root: Path | None = None) -> Flask:
         "ReadingStore": ReadingStore,
     }
     for _register in (register_pages, register_doc, register_edit, register_files,
-                      register_stats, register_rag, register_learn, register_search):
+                      register_stats, register_rag, register_search):
         _register(app, _hooks)
 
     return app

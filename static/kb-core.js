@@ -223,16 +223,9 @@
       var base = ERR_TEXT[e.code] || (e.code ? "请求失败（" + e.code + "）" : "请求失败");
       return e.detail ? base + "：" + e.detail : base;
     },
-    sync: function (force) { return request("POST", "/api/learn/sync", { body: { force: !!force } }); },
-    due: function (p) { return request("GET", "/api/learn/due", { params: p }); },
-    review: function (b) { return request("POST", "/api/learn/review", { body: b }); },
-    mastery: function (p) { return request("GET", "/api/learn/mastery", { params: p }); },
-    today: function (p) { return request("GET", "/api/learn/today", { params: p }); },
-    roam: function (p) { return request("GET", "/api/learn/roam", { params: p }); },
     wlSuggest: function (p) { return request("GET", "/api/wikilink/suggest", { params: p }); },
     wlCheck: function (b) { return request("POST", "/api/wikilink/check", { body: b }); },
     palette: function (p) { return request("GET", "/api/palette/index", { params: p }); },
-    glossary: function (p) { return request("GET", "/api/glossary", { params: p }); },
     search: function (p) { return request("GET", "/api/search", { params: p }); }
   });
 
@@ -827,11 +820,9 @@
      [5] keys —— 需求7 键盘导航（单一 keydown 捕获阶段分发器）
      铁律：INPUT / TEXTAREA / contenteditable 聚焦时，除 Esc 与 Ctrl/Cmd+K 外不劫持任何键
      ================================================================== */
-  var keys = (KB.keys = {
-    /** 页面级上下文钩子：learn.js / glossary.js 可注册，返回 true 表示已消费该键 */
-    context: null,
-    setContext: function (fn) { keys.context = fn; }
-  });
+  /* 原 `context` / `setContext` 页面级上下文钩子随 learn.js（复习页翻面 / 评分）一并下线：
+     它唯一的注册方就是那个文件，留着一个永远不会被调用的钩子会误导接手的人。 */
+  var keys = (KB.keys = {});
 
   function docListMove(delta) {
     // 需求 #11：第二列列表移除后，文档在树内 —— 优先 #doclist，回退 #tree .doc
@@ -852,7 +843,7 @@
 
   /* 问题18：快捷键唯一数据源。原 HELP_HTML 只 9 条硬编码，Ctrl+S、右键/菜单键、
      rtab 方向键、Esc 分层语义均缺失——帮助面板与实际行为是两套真相。
-     scope: global 全站 / browse 阅读页 / editor 编辑器 / review 复习页。
+     scope: global 全站 / browse 阅读页 / editor 编辑器。
      新增键位必须登记于此（? 帮助与 palette 快捷键区都从 registry 派生）。 */
   var KEY_REGISTRY = [
     { combo: "Ctrl / ⌘ + K", desc: "命令面板（术语 / 文档 / 子域 / 命令）", scope: "global" },
@@ -865,10 +856,7 @@
     { combo: "Enter", desc: "打开聚焦的文档", scope: "browse" },
     { combo: "Menu / Shift+F10", desc: "对聚焦的文档或目录打开右键菜单", scope: "browse" },
     { combo: "↑ ↓ ← →", desc: "右键菜单与移动弹窗目录树导航", scope: "browse" },
-    { combo: "← →", desc: "右栏标签（目录 / 信息 / 备注 / 双链）切换", scope: "browse" },
-    { combo: "j / k", desc: "上一张 / 下一张卡片", scope: "review" },
-    { combo: "Space", desc: "翻面看答案", scope: "review" },
-    { combo: "1 2 3 4", desc: "评分：重来 / 困难 / 良好 / 简单", scope: "review" }
+    { combo: "← →", desc: "右栏标签（目录 / 信息 / 备注 / 双链）切换", scope: "browse" }
   ];
   var HELP_HTML = KEY_REGISTRY.map(function (k) { return [k.combo, k.desc]; });
   keys.registry = KEY_REGISTRY;
@@ -929,13 +917,11 @@
     if (e.key === "/") { e.preventDefault(); util.focusSearch(); return true; }
     /* ⑤ ? 帮助 */
     if (e.key === "?") { e.preventDefault(); toggleHelp(); return true; }
-    /* ⑥ 页面级上下文（复习翻面 / 评分 / 术语网格等） */
-    if (keys.context) { try { if (keys.context(e) === true) return true; } catch (err) { /* 页面钩子出错不拖垮全局 */ } }
-    /* ⑦ j / k：文档列表导航 */
+    /* ⑥ j / k：文档列表导航 */
     if (e.key === "j" || e.key === "k") {
       if (docListMove(e.key === "j" ? 1 : -1)) { e.preventDefault(); return true; }
     }
-    /* ⑧ ← / →：目录树层级展开/收起（焦点在域头/子域/三级目录头上时生效）
+    /* ⑦ ← / →：目录树层级展开/收起（焦点在域头/子域/三级目录头上时生效）
           ← 收起当前层级；→ 展开当前层级。与点击行为语义一致（纯前端、不导航）。 */
     if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
       if (treeLevelToggle(e.key === "ArrowRight")) { e.preventDefault(); return true; }

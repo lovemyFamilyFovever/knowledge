@@ -68,30 +68,6 @@
     });
   }
 
-  /* ---------- [3] 双链面板：已解析的链接加「→ 加入串学」（需求4） ---------- */
-  /* app.js loadLinks 渲染完成后派发 kb:links-rendered——显式事件挂点，
-     替代原先 observer 对 body 变更的盲目追赶。 */
-  function enhanceRoamLinks() {
-    var pane = document.getElementById("pane-links");
-    if (!pane) return;
-    Array.prototype.forEach.call(pane.querySelectorAll("a.lk-row[href]"), function (a) {
-      if (a.dataset.roamBound) return;
-      a.dataset.roamBound = "1";
-      var t = a.querySelector(".t1");
-      var name = ((t && t.textContent) || "").trim();
-      if (!name) return;
-      var b = document.createElement("a");
-      b.className = "kb-roam-link";
-      b.href = "/glossary?roam=" + encodeURIComponent(name);
-      b.title = "以「" + name + "」为起点做一次串学漫游";
-      b.innerHTML = SVG.replace(":id:", "i-backlink-graph") + "<span>→ 加入串学</span>";
-      var wrap = document.createElement("span");
-      wrap.className = "lk-roam";
-      wrap.appendChild(b);
-      a.parentNode.insertBefore(wrap, a.nextSibling);
-    });
-  }
-  document.addEventListener("kb:links-rendered", enhanceRoamLinks);
 
   /* ---------- [4] 左侧分类目录：任意域可独立收起（不强制保持一个打开） ---------- */
   /* 每个域头部加折叠箭头；点击切换 .open 并持久化，刷新/跳转后保持用户选择。
@@ -155,7 +131,6 @@
   function init() {
     buildDensityToggle();
     bindTabs();
-    enhanceRoamLinks(); // 服务端已渲染双链面板时（首屏直开 links tab 极少），兜底跑一次
     initTreeCollapse(); // [4] 左侧分类目录独立收起
   }
 

@@ -41,7 +41,7 @@ html .article-inner .a-kicker{font-size:calc(11px * var(--kb-fs-scale))}
 
 /* [2b] `hidden` 属性兜底 =====
    UA 样式表的 `[hidden]{display:none}` 只是 (0,1,0)，作者样式里任何一句
-   `.kb-grades{display:grid}` / `.kb-card-hint{display:flex}` 都会把它压过
+   `.kb-pal-box{display:grid}` / `.kb-wl-sug{display:flex}` 都会把它压过
    （同优先级作者表优先），于是「设了 hidden 却照样可见可点」。
    不逐条补 `[hidden]{display:none}`（漏一个就复发），这里用 `html ` 前缀
    把特异性提到 (0,1,1)，一条覆盖全文件 + 各页 CSS。
@@ -49,29 +49,6 @@ html .article-inner .a-kicker{font-size:calc(11px * var(--kb-fs-scale))}
    而它走的是 `.show` 类而非 hidden 属性，不受影响。 */
 html [hidden]{display:none}
 
-/* [3] 通用卡片 / 评分 / 进度条（review / quiz / glossary 共用） ===== */
-.kb-card{
-  position:relative;border:1px solid var(--c-line);border-radius:var(--rd-card);
-  background:var(--c-panel);box-shadow:var(--elev-1);overflow:hidden;
-}
-.kb-card-pad{padding:22px 24px}
-.kb-card-kicker{
-  display:flex;align-items:center;gap:8px;font:500 11px/1 var(--f-mono);
-  letter-spacing:.1em;text-transform:uppercase;color:var(--faint);margin-bottom:12px;
-}
-.kb-card-kicker .kb-dot{width:6px;height:6px;border-radius:50%;background:var(--c-acc)}
-.kb-card-term{font-family:var(--f-disp);font-size:calc(22px * var(--kb-fs-scale));font-weight:600;letter-spacing:-.01em;color:var(--c-ink);line-height:1.35}
-.kb-card-q{font-size:calc(16px * var(--kb-fs-scale));line-height:var(--kb-line);color:var(--c-ink);margin-top:6px}
-.kb-card-a{font-size:calc(15px * var(--kb-fs-scale));line-height:var(--kb-line);color:var(--muted);margin-top:10px;white-space:pre-wrap;word-break:break-word}
-.kb-card-hint{
-  display:flex;gap:9px;margin-top:14px;padding:11px 13px;border-radius:var(--rd-ctl);
-  background:var(--warn-soft);border:1px solid var(--warn-edge);color:var(--muted);
-  font-size:calc(13px * var(--kb-fs-scale));line-height:1.7;
-}
-.kb-card-hint svg{color:var(--warn);flex:none;margin-top:2px}
-.kb-card-hint b{color:var(--warn);font-weight:600}
-
-.kb-tags{display:flex;flex-wrap:wrap;gap:6px;margin-top:14px}
 .kb-tag{
   font:500 10.5px/1 var(--f-mono);letter-spacing:.04em;color:var(--c-acc);
   background:var(--acc-soft);border:1px solid var(--acc-line);border-radius:var(--rd-pill);padding:4px 9px;
@@ -93,45 +70,8 @@ html [hidden]{display:none}
 }
 .kb-btn.ghost{background:transparent;color:var(--muted)}
 
-/* 评分按钮：4 档色 —— 重来 danger / 困难 warn / 良好 acc / 简单 success */
-.kb-grades{display:grid;grid-template-columns:repeat(4,1fr);gap:9px}
-.kb-grades.two{grid-template-columns:repeat(2,1fr)}
-.kb-grade{
-  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
-  min-height:56px;padding:10px 8px;border-radius:var(--rd-card);cursor:pointer;
-  border:1px solid var(--c-line);background:var(--c-panel);color:var(--muted);
-  font-size:13px;transition:transform .16s var(--ease-out),box-shadow .16s,border-color .16s,color .16s;
-}
-.kb-grade .kb-k{
-  font:600 10px/1 var(--f-mono);letter-spacing:.08em;color:var(--faint);
-  border:1px solid var(--c-line);border-radius:4px;padding:2px 5px;
-}
-.kb-grade:hover{transform:translateY(-1px);box-shadow:var(--elev-1);color:var(--c-ink)}
-.kb-grade.q0{border-color:color-mix(in oklab,var(--danger),transparent 62%)}
-.kb-grade.q0:hover{color:var(--danger);background:color-mix(in oklab,var(--danger),transparent 92%)}
-.kb-grade.q3{border-color:color-mix(in oklab,var(--warn),transparent 62%)}
-.kb-grade.q3:hover{color:var(--warn);background:var(--warn-soft)}
-.kb-grade.q4{border-color:var(--acc-line)}
-.kb-grade.q4:hover{color:var(--c-acc);background:var(--acc-soft)}
-.kb-grade.q5{border-color:color-mix(in oklab,var(--success),transparent 55%)}
-.kb-grade.q5:hover{color:var(--success);background:color-mix(in oklab,var(--success),transparent 90%)}
-.kb-grade:disabled{opacity:.45;cursor:not-allowed;transform:none;box-shadow:none}
 
-/* 进度环 */
-.kb-ring{position:relative;width:104px;height:104px;flex:none}
-.kb-ring svg{width:100%;height:100%;transform:rotate(-90deg)}
-.kb-ring .kb-ring-bg{fill:none;stroke:var(--c-line);stroke-width:8}
-.kb-ring .kb-ring-fg{fill:none;stroke:var(--c-acc);stroke-width:8;stroke-linecap:round;transition:stroke-dashoffset .5s var(--ease-out)}
-.kb-ring-txt{
-  position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;
-}
-.kb-ring-txt b{font-family:var(--f-mono);font-size:21px;font-weight:600;color:var(--c-ink);font-variant-numeric:tabular-nums}
-.kb-ring-txt span{font-size:10.5px;color:var(--faint)}
 
-/* 通用进度条 */
-.kb-bar{height:6px;border-radius:6px;background:var(--c-line);overflow:hidden}
-.kb-bar i{display:block;height:100%;border-radius:6px;background:linear-gradient(90deg,var(--c-acc),var(--c-info));transition:width .5s var(--ease-out)}
-.kb-bar.mastered i{background:var(--success)}
 
 /* [4] 命令面板（需求5） ===== */
 #kb-palette{position:fixed;inset:0;z-index:900;display:none}
@@ -249,29 +189,6 @@ html [hidden]{display:none}
 /* AI 页签的全部样式（[5a]）随该功能在轮次 54 一起删除；`.kb-pref-note code` 是通用规则，留下。 */
 .kb-pref-note code{font:500 10.5px/1 var(--f-mono);color:var(--c-acc)}
 
-/* [5b] 小说设置面板（独立「小说」tab） ===== */
-.nv-set{padding-top:2px}
-.nv-grp{margin:0 0 16px}
-.nv-grp-h{display:flex;align-items:center;gap:7px;font:600 11px/1 var(--f-mono);letter-spacing:.08em;
-  text-transform:uppercase;color:var(--muted);padding:12px 0 6px;margin-bottom:2px;border-bottom:1px solid var(--c-line)}
-.nv-grp-h svg{color:var(--c-acc)}
-.nv-row-toggle .nv-switch{justify-self:start}
-.nv-switch{position:relative;display:inline-flex;align-items:center;cursor:pointer}
-.nv-switch input{position:absolute;opacity:0;width:0;height:0}
-.nv-switch-t{width:38px;height:20px;border-radius:11px;background:var(--c-line2);position:relative;transition:background var(--dur-2)}
-.nv-switch-t::after{content:"";position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;
-  background:#fff;box-shadow:0 1px 2px color-mix(in oklab,var(--c-ink),transparent 60%);transition:transform var(--dur-2)}
-.nv-switch input:checked+.nv-switch-t{background:var(--c-acc)}
-.nv-switch input:checked+.nv-switch-t::after{transform:translateX(18px)}
-.nv-theme-grid{padding:7px 0}
-.nv-theme-lb{display:block;font-size:12.5px;color:var(--muted);margin-bottom:8px}
-.nv-theme-row{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
-.nv-theme-btn{height:30px;min-width:44px;padding:0 10px;border-radius:8px;font-size:12px;cursor:pointer;
-  border:1px solid var(--c-line2);background:#fff;color:#222;transition:box-shadow var(--dur-1)}
-.nv-theme-btn.on{outline:2px solid var(--c-acc);outline-offset:1px}
-.nv-theme-custom{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;color:var(--muted);cursor:pointer;
-  border:1px dashed var(--c-line2);border-radius:8px;padding:0 8px;height:30px}
-.nv-theme-custom input[type=color]{width:20px;height:20px;padding:0;border:none;background:none;cursor:pointer}
 
 /* [6] 双链补全 + 断链条（需求6） ===== */
 .kb-wl-bar{
@@ -319,36 +236,6 @@ html [hidden]{display:none}
 .kb-help-row kbd{flex:none;min-width:96px;font:500 10.5px/1 var(--f-mono);color:var(--c-acc);
   background:var(--acc-soft);border:1px solid var(--acc-line);border-radius:4px;padding:5px 7px;text-align:center}
 
-/* [8] 首页「今日」widget（需求3） ===== */
-.kb-today{
-  border:1px solid var(--c-line);border-radius:var(--rd-card);background:var(--c-panel);
-  box-shadow:var(--elev-1);padding:18px 20px;margin:22px 0 6px;
-}
-.kb-today-h{display:flex;align-items:center;gap:9px;margin-bottom:14px}
-.kb-today-h b{font-family:var(--f-disp);font-size:15.5px;font-weight:600;color:var(--c-ink)}
-.kb-today-h svg{color:var(--c-acc)}
-.kb-today-h .kb-today-date{margin-left:auto;font:500 10.5px/1 var(--f-mono);color:var(--faint)}
-.kb-today-grid{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:18px}
-.kb-today-card{border:1px solid var(--c-line);border-radius:var(--rd-card);padding:14px 16px;background:var(--c-panel)}
-.kb-today-lab{font:500 10px/1 var(--f-mono);letter-spacing:.12em;text-transform:uppercase;color:var(--faint)}
-.kb-today-term{font-family:var(--f-disp);font-size:19px;font-weight:600;color:var(--c-ink);margin:8px 0 4px;line-height:1.35}
-.kb-today-sub{font-size:12.5px;color:var(--faint);line-height:1.6}
-.kb-today-def{
-  margin-top:10px;padding:11px 13px;border-radius:var(--rd-ctl);border:1px dashed var(--acc-line);
-  background:var(--acc-soft);font-size:13px;line-height:1.75;color:var(--muted);display:none;white-space:pre-wrap;
-}
-.kb-today-def.show{display:block}
-.kb-today-acts{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
-.kb-today-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px}
-.kb-today-stat{border:1px solid var(--c-line);border-radius:var(--rd-card);padding:10px 12px;text-align:center}
-.kb-today-stat b{display:block;font-family:var(--f-mono);font-size:21px;font-weight:600;color:var(--c-acc);font-variant-numeric:tabular-nums;line-height:1.2}
-.kb-today-stat span{font-size:10.5px;color:var(--faint)}
-.kb-mastery{display:flex;flex-direction:column;gap:9px}
-.kb-mastery-row{display:grid;grid-template-columns:88px minmax(0,1fr) 46px;align-items:center;gap:10px}
-.kb-mastery-row .kb-ml{font-size:12px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.kb-mastery-row .kb-mv{text-align:right;font:500 11px/1 var(--f-mono);color:var(--faint);font-variant-numeric:tabular-nums}
-.kb-mastery-row .kb-bar i{background:linear-gradient(90deg,hsl(var(--dh,150) 55% 45%),hsl(var(--dh,150) 65% 60%))}
-.kb-today-cta{display:flex;flex-wrap:wrap;gap:9px;margin-top:14px}
 
 /* [8b] main.single 的滚动职责 =====
    非 workbench 页面靠 `main.single` 退成 flex column（body 里 flex:1 的高度受限项）。
@@ -360,12 +247,13 @@ html [hidden]{display:none}
    却把面板锁成「内容高度」→ `.page-body` 拿到完整内容高度、内部滚动条永不出现，
    而 main 自身无 overflow，溢出被 `body{overflow:hidden}` 裁掉 →
    /tags /stats /inbox /search /favorites 全部滚不到底。
-   索引条 .kb-gl-buckets 已在 glossary.css 里显式 `flex:none`，无需全局兜底。 */
+   索引条一类的小件当时由各页样式表自己 `flex:none`，无需全局兜底。 */
 main.single > .page-panel{flex:1;min-height:0}
 
-/* [8c] 没有 .page-panel 的 main.single（如术语门户 glossary）由 main 自身滚动 =====
-   glossary 把内容直接摊在 main.single 下（无 page-panel），需要 main 承担滚动，
-   否则同样被 body{overflow:hidden} 裁掉。用 :has() 精确收口，不误伤分栏/面板页。
+/* [8c] 没有 .page-panel 的 main.single 由 main 自身滚动 =====
+   这类页面（术语门户曾是典型）把内容直接摊在 main.single 下、没有 page-panel，
+   需要 main 承担滚动，否则同样被 body{overflow:hidden} 裁掉。
+   用 :has() 精确收口，不误伤分栏/面板页。
    （本库已依赖 color-mix(in oklab) 等特性，运行环境 Chrome ≥111，:has() 可用。） */
 main.single:not(:has(> .page-panel)){overflow-y:auto}
 
@@ -383,11 +271,6 @@ main.single:not(:has(> .page-panel)){overflow-y:auto}
   .editor .bar{flex-wrap:wrap;gap:6px}
   .article{padding:16px 14px 40px}
   html .article-inner{max-width:none}
-  /* 学习页 / 术语页：主辅栏堆叠 */
-  .kb-learn-grid{grid-template-columns:minmax(0,1fr)}
-  .kb-learn-side{order:-1}
-  .kb-today-grid{grid-template-columns:minmax(0,1fr)}
-  .kb-grades{grid-template-columns:repeat(2,1fr)}
   .kb-pal-box{top:6vh;width:calc(100vw - 20px);max-height:80vh}
   .kb-wl-tip{display:none}
 }
@@ -402,22 +285,13 @@ main.single:not(:has(> .page-panel)){overflow-y:auto}
   main>section.rail .rpane{max-height:50vh;overflow-y:auto}
   .searchbox{order:3;flex:1 1 100%;margin:0;width:100%}
   .searchbox input{min-height:36px;font-size:16px}
-  .pill,.iconbtn,.kb-grade,.kb-today-cta a,.kb-today-acts button,.kb-today-acts a{min-height:44px}
-  .kb-grade{min-height:64px;font-size:14px}
-  .kb-today-stats{grid-template-columns:repeat(3,1fr);gap:6px}
-  .kb-today-stat{padding:8px 4px}
-  .kb-today-stat b{font-size:17px}
-  .kb-mastery-row{grid-template-columns:70px minmax(0,1fr) 40px}
   .kb-pal-item{padding:11px 14px}
   .kb-pal-foot span:first-child{display:none}
-  .kb-grades{grid-template-columns:repeat(2,1fr);gap:8px}
 }
 
 /* 无障碍：尊重系统的「减少动效」设置（与 style.css [16] 同一约定） ===== */
 @media (prefers-reduced-motion: reduce){
   html:not(.motion-force) .kb-pal-box{animation:none}
-  html:not(.motion-force) .kb-ring .kb-ring-fg,html:not(.motion-force) .kb-bar i{transition:none}
-  html:not(.motion-force) .kb-grade{transition:none}
 }
 
 /* [B4] 正文 [[双链]] 渲染（app.js decorateWikilinks 产出的 .wikilink） ===== */
