@@ -221,7 +221,9 @@
   var HIDE = [
     '[onclick^="openEditor"]', '[onclick^="deleteDoc"]', '[onclick^="toggleFav"]',
     '[onclick^="jumpToTagEdit"]', '[onclick^="addNote"]', '[onclick^="removeTag"]',
-    '#editor', '#fav-btn', '#ed-del', '[onclick^="purgeInbox"]',
+    '[onclick^="toggleDocMark"]', '[onclick^="purgeInbox"]', '[onclick^="chipsAddToggle"]',
+    '#editor', '#fav-btn', '#ed-del', '#tag-add-btn', '#tag-in', '#tag-inputrow',
+    '.note-input', '#ni', '#global-stats-btn',
     'a[href="/stats"]', 'a[href="/favorites"]', 'a[href="/inbox"]',
   ].join(",");
   function injectReadonly() {
