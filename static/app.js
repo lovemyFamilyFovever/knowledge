@@ -128,7 +128,25 @@ async function loadTree() {
 }
 
 /* ---------- 右栏 tabs ---------- */
+/* 窄屏（≤720，与 kb-core.css 里"右栏变底部工具栏"那条断点同一口径）：
+   页签栏固定在底部，面板默认收起，点页签才从下往上展开；再点当前页签收起。
+   桌面端这个函数行为完全不变（CSS 只在窄屏生效，类加了也没有视觉后果）。 */
+const RAIL_SHEET = () => !!(window.matchMedia && matchMedia("(max-width:720px)").matches);
+function railSheet(open) {
+  const rail = $("#p-rail");
+  if (!rail) return;
+  const sheet = RAIL_SHEET();
+  const on = !!open && sheet;
+  rail.classList.toggle("rail-open", on);
+  // aria-expanded 只在抽屉档有意义：桌面端右栏面板常驻，写 false 是谎话
+  rail.querySelectorAll(".rtab").forEach(t => {
+    if (sheet) t.setAttribute("aria-expanded", on && t.classList.contains("active") ? "true" : "false");
+    else t.removeAttribute("aria-expanded");
+  });
+}
 function tab(id, el) {
+  const wasActive = el.classList.contains("active");
+  const sheetOn = !!$("#p-rail") && $("#p-rail").classList.contains("rail-open");
   $$(".rtab").forEach(t => { t.classList.remove("active"); t.setAttribute("aria-selected", "false"); });
   el.classList.add("active"); el.setAttribute("aria-selected", "true");
   if (!el.id) el.id = "rtab-" + id;
@@ -136,7 +154,36 @@ function tab(id, el) {
   const pane = $("#pane-" + id); pane.classList.add("active");
   pane.setAttribute("aria-labelledby", el.id);
   if (id === "links") loadLinks();
+  if (RAIL_SHEET()) railSheet(!(wasActive && sheetOn));   // 点已经展开的那一个 = 收起
 }
+/* Esc 分层关闭链里的一环（由 kb-core.keys.handle 调用）：抽屉开着就先关抽屉。
+   返回 true 表示这一层吃掉了这次 Esc。 */
+window.railSheetClose = () => {
+  const rail = $("#p-rail");
+  if (!rail || !rail.classList.contains("rail-open")) return false;
+  railSheet(false);
+  return true;
+};
+/* 换文档时收起抽屉：不然新文档上面还压着上一篇的目录/双链 */
+document.addEventListener("kb:article-rendered", () => railSheet(false));
+/* 手机上没有 Esc 键，"点抽屉外面"是唯一的兜底关闭手势（弹层内部的点击不算：
+   那些自己有"点空白关闭"逻辑，别让抽屉抢先把它们连带收掉）。 */
+document.addEventListener("click", (e) => {
+  const rail = $("#p-rail");
+  if (!rail || !rail.classList.contains("rail-open") || !RAIL_SHEET()) return;
+  if (e.target && e.target.closest && e.target.closest("#p-rail, .kbm-ov, #kb-search-ov, .kb-pal-box")) return;
+  railSheet(false);
+}, true);
+/* 跨过断点回桌面：把抽屉态与 aria-expanded 一起清掉 */
+if (window.matchMedia) {
+  const mqSheet = matchMedia("(max-width:720px)");
+  const syncSheet = () => railSheet(false);
+  if (mqSheet.addEventListener) mqSheet.addEventListener("change", syncSheet);
+  else if (mqSheet.addListener) mqSheet.addListener(syncSheet);
+}
+/* 初始就把 aria-expanded 落一遍：窄屏 = 页签全收起（false），桌面 = 面板常驻（属性删掉，
+   不给读屏软件报"可展开"）。不跑这一趟，页签在第一次点击前是"没有状态"的。 */
+railSheet(false);
 
 /* ---------- 正文渲染 ---------- */
 let DOC = null;

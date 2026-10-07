@@ -1322,6 +1322,124 @@ def probe_tree_reveal(base):
           and got.get("doc_in_viewport") is True and got.get("doc_active") is True, got)
 
 
+# ================================================================ 探针 16d：窄屏右栏 = 底部工具栏
+# 用户实拍：手机上"目录/标签/备注/双链"那一坨卡在正文中段（旧写法把它做成流里的
+# sticky 块，面板内联展开）。现在它是**贴底工具栏**，点页签才从下往上展开。
+# 断言口径全部是"他抱怨的那几个像素"：工具栏在不在底部、压不压状态栏、
+# 页签够不够 44px 触控区、收起时有没有残留空壳、四种关闭手势（再点/Esc/点外面/换文档）。
+RAIL_SHEET_JS = PRELUDE + r"""
+  const rect = e => { const b = e && e.getBoundingClientRect(); return b ? {x: Math.round(b.x), y: Math.round(b.y), w: Math.round(b.width), h: Math.round(b.height)} : null; };
+  for (let i = 0; i < 80 && !q('#article h1'); i++) await sleep(150);
+  await sleep(700);
+  const rail = q('#p-rail'), tab0 = q('.rtab');
+  if (!rail || !tab0) { out.fail = 'no rail'; return JSON.stringify(out); }
+  const cs = getComputedStyle(rail);
+  out.pos = cs.position;
+  out.disp = cs.display;
+  out.rail = rect(rail);
+  out.tab0 = rect(tab0);
+  out.tabN = document.querySelectorAll('.rtab').length;
+  out.pane0 = rect(q('.rpane.active'));
+  out.open0 = cls('#p-rail', 'rail-open');
+  out.aria0 = tab0.getAttribute('aria-expanded');
+  out.statusbar = rect(q('.statusbar'));
+  out.hScroll = document.documentElement.scrollWidth > innerWidth + 1;
+  tab0.click(); await sleep(700);
+  out.openPane = rect(q('.rpane.active'));
+  out.openRail = rect(rail);
+  out.open1 = cls('#p-rail', 'rail-open');
+  out.aria1 = tab0.getAttribute('aria-expanded');
+  out.paneScrollH = q('.rpane.active').scrollHeight;
+  out.paneOverflow = getComputedStyle(q('.rpane.active')).overflowY;
+  out.paneMaxH = Math.round(parseFloat(getComputedStyle(q('.rpane.active')).maxHeight) || 0);
+  out.vh = innerHeight;
+  const rr = rail.getBoundingClientRect(), sbr = q('.statusbar') && q('.statusbar').getBoundingClientRect();
+  out.bottomGap = Math.round(innerHeight - rr.bottom);
+  out.fullWidth = Math.round(rr.left) === 0 && Math.round(rr.right) === innerWidth;
+  out.squashStatusbar = !!(sbr && rr.bottom > sbr.top + 1 && rr.top < sbr.bottom - 1);
+  out.paneWithinViewport = rect(q('.rpane.active')).y >= 0;
+  tab0.click(); await sleep(700);
+  out.open2 = cls('#p-rail', 'rail-open');
+  out.pane2 = rect(q('.rpane.active'));
+  tab0.click(); await sleep(700);
+  out.open3 = cls('#p-rail', 'rail-open');
+  (q('#article') || document.body).dispatchEvent(new KeyboardEvent('keydown', {key: 'Escape', bubbles: true, cancelable: true}));
+  await sleep(500);
+  out.open4 = cls('#p-rail', 'rail-open');
+  tab0.click(); await sleep(700);
+  out.open5 = cls('#p-rail', 'rail-open');
+  (q('.article') || q('main')).dispatchEvent(new MouseEvent('click', {bubbles: true, cancelable: true}));
+  await sleep(400);
+  out.open6 = cls('#p-rail', 'rail-open');
+  tab0.click(); await sleep(700);
+  document.dispatchEvent(new CustomEvent('kb:article-rendered'));
+  await sleep(400);
+  out.open7 = cls('#p-rail', 'rail-open');
+  return JSON.stringify(out);
+})()"""
+
+RAIL_DESK_JS = PRELUDE + r"""
+  for (let i = 0; i < 80 && !q('#article h1'); i++) await sleep(150);
+  await sleep(700);
+  const rail = q('#p-rail'), tab0 = q('.rtab');
+  if (!rail || !tab0) { out.fail = 'no rail'; return JSON.stringify(out); }
+  out.pos = getComputedStyle(rail).position;
+  out.open0 = cls('#p-rail', 'rail-open');
+  out.aria0 = tab0.getAttribute('aria-expanded');
+  out.paneH = Math.round(q('.rpane.active').getBoundingClientRect().height);
+  out.railW = Math.round(rail.getBoundingClientRect().width);
+  tab0.click(); await sleep(600);
+  out.open1 = cls('#p-rail', 'rail-open');
+  out.aria1 = tab0.getAttribute('aria-expanded');
+  out.paneH2 = Math.round(q('.rpane.active').getBoundingClientRect().height);
+  rail.classList.add('rail-open');
+  document.dispatchEvent(new CustomEvent('kb:article-rendered'));
+  await sleep(300);
+  out.open2 = cls('#p-rail', 'rail-open');
+  return JSON.stringify(out);
+})()"""
+
+
+def probe_rail_sheet(base):
+    print("== 16d 窄屏右栏 → 贴底工具栏，点页签从下往上展开 ==")
+    url = base + "/doc/ui-r/notes/beta.md"
+    got = run_expr(url, RAIL_SHEET_JS, width=390)
+    check("工具栏脱离文档流贴在底部（position:fixed），四枚页签都在",
+          got.get("pos") == "fixed" and got.get("disp") != "none" and got.get("tabN") == 4, got)
+    check("贴在状态栏正上方：底部留白=状态栏高 28px，且不与状态栏矩形相交",
+          got.get("bottomGap") == 28 and got.get("squashStatusbar") is False
+          and got.get("fullWidth") is True, got)
+    check("页签触控区 ≥44px（手机上点不准的按钮等于没有）",
+          (got.get("tab0") or {}).get("h", 0) >= 44, got)
+    check("默认收起：没有 rail-open，且收起态面板高度真的是 0（不留空壳）",
+          got.get("open0") is False and (got.get("pane0") or {}).get("h") == 0
+          and got.get("aria0") == "false", got)
+    check("点页签从下往上展开：面板按内容起高（上限 60vh）、不超出视口、溢出时自己滚",
+          got.get("open1") is True and (got.get("openPane") or {}).get("h", 0) > 100
+          and (got.get("openRail") or {}).get("y", -1) >= 0
+          and got.get("paneWithinViewport") is True
+          and got.get("paneScrollH", 0) >= (got.get("openPane") or {}).get("h", 0) - 2
+          and got.get("paneOverflow") == "auto" and got.get("aria1") == "true", got)
+    check("展开上限就是 60vh（长目录会被截断，但面板自己滚，不会顶掉整屏正文）",
+          abs((got.get("paneMaxH") or 0) - round((got.get("vh") or 0) * 0.6)) <= 2
+          and got.get("paneOverflow") == "auto", got)
+    check("再点当前页签收起", got.get("open2") is False and (got.get("pane2") or {}).get("h") == 0, got)
+    check("Esc 收起（Esc 分层关闭链里加了这一环）",
+          got.get("open3") is True and got.get("open4") is False, got)
+    check("点抽屉外面收起（手机没有 Esc，这是唯一的兜底手势）",
+          got.get("open5") is True and got.get("open6") is False, got)
+    check("换文档（kb:article-rendered）收起：不然新正文上面还压着上一篇的目录",
+          got.get("open7") is False, got)
+    check("窄屏不产生横向滚动", got.get("hScroll") is False, got)
+    d = run_expr(url, RAIL_DESK_JS, width=1600)
+    check("桌面档零副作用：右栏仍在网格里（relative）、常驻可见，点页签不会长出抽屉态",
+          d.get("pos") == "relative" and d.get("open0") is False and d.get("open1") is False
+          and d.get("aria0") is None and d.get("aria1") is None
+          and d.get("paneH", 0) > 100 and d.get("paneH2", 0) > 100 and d.get("railW", 0) >= 200, d)
+    check("桌面档也吃得下换文档事件（万一带着 rail-open 会被清掉）",
+          d.get("open2") is False, d)
+
+
 # ================================================================ 探针 17：新标签页 /raw + 美化版只读态
 PRETTY_JS = PRELUDE + r"""
   const T = e => ((e && e.textContent) || '').replace(/\s+/g, ' ').trim();
@@ -2112,6 +2230,7 @@ def main() -> int:
         run_probe("chips", probe_head_chips, base)      # 只读：chips / 右栏跳转 / 元信息 / 编辑提示
         run_probe("tree", probe_tree_open, base)        # 只读：点树里的文档真的换页
         run_probe("reveal", probe_tree_reveal, base)    # 只读：深链打开 → 树自动展开并聚焦
+        run_probe("railsheet", probe_rail_sheet, base)  # 只读：窄屏右栏=贴底工具栏，点页签上滑展开
         run_probe("pretty", probe_pretty, base)         # 只读：美化版出口与只读态
         run_probe("finish", probe_finish_bar, base, tmp)  # 写 reading.db 的 doc_marks（不动语料）
         run_probe("spark", probe_toc_spark, base)       # 写 reading.db 的事件（派生库，不动语料）

@@ -902,7 +902,7 @@
     var soOpenState = !!(soOv && soOv.classList.contains("show"));
     var soTarget = soOpenState && (e.target === soOv || !soOv.querySelector(".kb-search-box").contains(e.target));
     if (!soTarget && KB.overlay && KB.overlay.openCount > 0) return false;
-    /* ② Escape：关补全 → 关搜索浮层 → 关设置抽屉 → 关面板 → 关帮助 → 关编辑器（保留 app.js 原有行为） */
+    /* ② Escape：关补全 → 关搜索浮层 → 关设置抽屉 → 关面板 → 关帮助 → 收底部目录抽屉 → 关编辑器（保留 app.js 原有行为） */
     if (e.key === "Escape") {
       if (KB.wl && KB.wl.suggestOpen && KB.wl.suggestOpen()) { KB.wl.hideSuggest(); e.preventDefault(); return true; }
       if (soOpenState) { soOv.classList.remove("show"); soOv.hidden = true; e.preventDefault(); return true; }
@@ -910,6 +910,8 @@
       if (palette.isOpen()) { palEscape(e); e.preventDefault(); return true; }
       var helpEl = document.getElementById("kb-help");
       if (helpEl && helpEl.classList.contains("show")) { toggleHelp(false); e.preventDefault(); return true; }
+      // 移动端（≤720）右栏变成贴底抽屉：Esc 先收抽屉，再轮到编辑器（关编辑器可能弹「未保存」，比收抽屉重）
+      if (typeof window.railSheetClose === "function" && window.railSheetClose()) { e.preventDefault(); return true; }
       if (typeof window.tryCloseEditor === "function") window.tryCloseEditor();
       else if (typeof window.closeEditor === "function") window.closeEditor();
       return false;

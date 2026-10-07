@@ -260,13 +260,32 @@ main.single:not(:has(> .page-panel)){overflow-y:auto}
 /* [9] 响应式断点（需求10）：只新增 <720 / <480，不动已有 1280/820/640/440 ===== */
 @media (max-width:720px){
   /* workbench 三栏 → 单栏：左树 / 文档列表收成可滚动抽屉，正文置顶 */
-  main{display:flex;flex-direction:column;overflow-y:auto}
+  main{display:flex;flex-direction:column;overflow-y:auto;padding-bottom:104px}
   main>section.panel{flex:none;overflow-y:auto}
   main>section.panel#p-left{max-height:30vh}
   main>section.panel#p-list{max-height:38vh}
   main>section.article-wrap{flex:1 1 auto;order:-1;min-height:60vh;max-height:none}
-  main>section.rail{flex:none}
-  main>section.rail .rpane{max-height:none}
+  /* 右栏在窄屏不再是"流里的一块"（旧写法 position:sticky + 面板内联展开，
+     结果是整块卡在正文中段 —— 用户实拍就是这个）。
+     现在：tabs 固定成底部工具栏，面板默认收起，点页签才从下往上展开（app.js railSheet）。
+     状态栏（28px，flex:none 在 body 末尾）仍在最底下，所以工具栏压在它上面。 */
+  main>section.rail{
+    display:flex;position:fixed;left:0;right:0;bottom:28px;top:auto;order:initial;z-index:60;
+    flex-direction:column;max-height:none;margin:0;border-radius:0;
+    background:var(--c-panel);border-top:1px solid var(--c-line);
+    box-shadow:0 -10px 28px rgba(0,0,0,.16);padding-bottom:env(safe-area-inset-bottom)
+  }
+  main>section.rail .rtabs{flex-wrap:nowrap;overflow-x:auto;min-height:48px;align-items:stretch}
+  main>section.rail .rtab{min-height:44px;flex:1 0 auto;justify-content:center}
+  /* 面板：收起时 0 高（style.css 的 .rpane 有 padding-top:10px，这里必须一起归零，
+     否则收起态工具栏下还挂着 10px 空壳），展开时最高 60vh 自己滚 */
+  main>section.rail .rpane{
+    max-height:0;padding:0;overflow:hidden;border-top:0;
+    transition:max-height var(--dur-3) var(--ease-inout)
+  }
+  main>section.rail.rail-open .rpane.active{
+    max-height:60vh;overflow-y:auto;border-top:1px solid var(--c-line);padding:10px 12px 14px
+  }
   .editor textarea{min-height:44vh}
   .editor .bar{flex-wrap:wrap;gap:6px}
   .article{padding:16px 14px 40px}
@@ -275,14 +294,6 @@ main.single:not(:has(> .page-panel)){overflow-y:auto}
   .kb-wl-tip{display:none}
 }
 @media (max-width:480px){
-  /* .rail 变底部 tab bar（覆盖 style.css @820 的 display:none）；搜索框全宽；按钮触控区 ≥44px */
-  main>section.rail{
-    display:block;position:sticky;bottom:0;top:auto;order:9;z-index:25;flex:none;max-height:none;
-    background:var(--c-panel);border-top:1px solid var(--c-line);
-  }
-  main>section.rail .rtabs{flex-wrap:nowrap;overflow-x:auto}
-  main>section.rail .rtab{min-height:44px;flex:none}
-  main>section.rail .rpane{max-height:50vh;overflow-y:auto}
   .searchbox{order:3;flex:1 1 100%;margin:0;width:100%}
   .searchbox input{min-height:36px;font-size:16px}
   .kb-pal-item{padding:11px 14px}
