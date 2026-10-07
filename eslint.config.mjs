@@ -43,25 +43,18 @@ export default [
         icon: "readonly",
         loadScript: "readonly",
         buildToc: "readonly",
-        // kb-novel.js 暴露：小说/书库阅读引擎（app.js 分流调用）
-        KBNOVEL: "readonly",
         // Story 1/2：编辑器桥接层与双链补全的跨脚本全局
         // KBCM = vendor/codemirror.bundle.js 暴露；KBED = pages/cm-editor.js 暴露
         KBCM: "readonly",
         KBED: "readonly",
         // Story 4：标签补全浮层（pages/tag-suggest.js 暴露）
         TagSuggest: "readonly",
-        // 切片 2：选词问 AI（pages/ai-ask.js 暴露，app.js 换文档时通知它）
-        KBAI: "readonly",
         // base.html / vendor 库暴露：
         DOMPurify: "readonly",
         marked: "readonly",
         hljs: "readonly",
         HUES: "readonly",
         mermaid: "readonly",
-        echarts: "readonly",
-        // 知识库模板注入：
-        TAXONOMY: "readonly",
       },
     },
     rules: {
@@ -91,6 +84,20 @@ export default [
     files: ["static/app.js"],
     rules: {
       "no-redeclare": "off",
+    },
+  },
+
+  {
+    // 公网只读档的 Service Worker：上下文里没有 window/document，只有 self/caches/clients。
+    // 上一块（static/**）把 browser 全局也塞进来了，这里不与之冲突——只是额外补上 SW 侧的。
+    files: ["static/kb-sw.js"],
+    languageOptions: {
+      ecmaVersion: 2022,
+      sourceType: "script",
+      globals: {
+        ...globals.serviceworker,
+        ...globals.es2022,
+      },
     },
   },
 ];

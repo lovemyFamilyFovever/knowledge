@@ -1514,9 +1514,13 @@ async function openDoc(domain, sub, name) {
     <i style="width:62%"></i><i style="width:93%"></i><i style="width:78%"></i></div>`;
   const r = await fetch(`/api/doc?domain=${encodeURIComponent(domain)}&sub=${encodeURIComponent(sub)}&name=${encodeURIComponent(name)}`);
   if (!r.ok) {
+    // 503 只有公网只读档会给（kb-static：SW 判死的离线请求 + 这篇没缓存过）。
+    // 它必须和 404 分开说 —— 说"文档可能已被删除"是谎话，语料好端端在服务器上。
+    const why = r.status === 503 ? "离线，而这一篇还没缓存过：联网后再打开就行。"
+      : r.status === 404 ? "文档不存在（可能已被删除或移动）。" : "加载失败 " + r.status + "。";
     if (artEl) artEl.innerHTML = `<div class="a-kicker">无法打开</div><h1 class="a-title">${esc(name)}</h1>
-      <div class="a-rule"></div><div class="a-body"><p>${r.status === 404 ? "文档不存在（可能已被删除或移动）。" : "加载失败 " + r.status + "。"}</p></div>`;
-    toast(r.status === 404 ? "文档不存在（可能已被删除）" : "加载失败 " + r.status);
+      <div class="a-rule"></div><div class="a-body"><p>${why}</p></div>`;
+    toast(why);
     // 第三轮 #10：404 = 树缓存陈旧（文档已删/已移）→ 失效重拉树自愈，右侧列表同步消失
     if (r.status === 404) { invalidate("tree"); await loadTree(); renderTree();
       if (CUR) { const s2 = findSub(CUR.domain, CUR.sub); if (s2) renderDocList(s2.docs, s2.label, null); } }

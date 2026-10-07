@@ -45,7 +45,7 @@ python scripts\check_ledger_counts.py          # 台账对账：§0 数字必须
 | `test_properties.py` | 14 | 性质测试（每条 240 个随机样本，固定种子） |
 | `test_invariants.py` | 71 | AGENTS 不变量门禁 I1~I9（含 I4 物理删除调用点白名单） |
 | `test_e2e_smoke.py` | 170 | 端到端：逐条打满 40 条路由 |
-| `test_export_static.py` | 106 | 公网只读档契约（导出同构 / 只读裁剪 / KB_BASE 口径 / 公网文案与首页） |
+| `test_export_static.py` | 132 | 公网只读档契约（导出同构 / 只读裁剪 / KB_BASE 口径 / 公网文案与首页 / PWA 清单） |
 | `test_known_defects.py` | 6 | 已登记缺陷不回退 |
 | `test_watch_ci.py` | 38 | Agent 工具自身（四类"读不到"分开点名；GBK/UTF-8 两档都要绿） |
 | `test_ui_regress.py` | 31 | P5 视觉回归：11 张截图逐像素 vs `tests/ui-baselines/` + 10 条顶栏几何 |
@@ -80,8 +80,16 @@ app/palette.py      命令面板索引
 static/app.js       阅读器主逻辑；static/kb-core.js = KB 内核（overlay / 设置 / 命令面板 / 快捷键）
 static/kb-static.js 只读适配器（只在导出产物里加载）：fetch 分诊（读→data/*.json、写→READ_ONLY、
                     裁剪端点→NOT_IN_STATIC）、KB_BASE 链接与路由桥、只读裁剪 CSS、
-                    公网状态栏与 <title> 口径、根路径的「公网首页」态
+                    公网状态栏与 <title> 口径、根路径的「公网首页」态；
+                    /api/doc 被 SW 判死（离线且没缓存过）时回 **503 OFFLINE**，app.js 对 503 单独
+                    说一句人话——不许拿 404 顶它，那等于对读者宣称"这篇被删了"
 scripts/export_static.py  导出器：公开白名单语料 staging → 复用读端点产 payload → site/ 落盘
+static/kb-sw.js       公网档的 Service Worker **源**（占位符 KB_BASE / KB_BUILD / PRECACHE 由导出器
+                    替换后落到 site/sw.js；产物里不留第二份）。缓存三档：导航=网络优先断了回壳、
+                    data/*.json=网络优先并落缓存、static+raw=缓存优先；预热只装壳引用到的 30 件
+                    资源（1.5MB），语料一条不预热。本地阅读器不注册它（热重载不该再叠一层缓存）
+static/kb-pwa.js      SW 注册件，同样只由导出器写进 <head>；判据仍是 KB_STATIC.readonly
+static/icons/         PWA 图标四件套（由 .qa 一次性从 base.html 的品牌标渲染，改标要重出）
 app/templates/landing_panel.html  首页那一屏的唯一一份标记：本地 include 渲染（收件箱 / 本月统计 /
                     取景框全在），导出器以 home_readonly=True 再渲染一次成 data/home.html
                     （只留「搜索」+「继续上次阅读」）。改首页只改这一处，不许复制第二份

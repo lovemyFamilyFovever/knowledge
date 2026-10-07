@@ -102,6 +102,8 @@
       var qp = paramsOf(input);
       var key = (qp.get("domain") || "") + "/" + (qp.get("sub") || "") + "/"
         + (qp.get("name") || "");
+      // catch 挂在最外层：loadDocIndex() 自己也可能被判死（离线且 doc/index.json 没缓存过，
+      // 这正是"第一次离线打开某篇"的常态），只兜内层会漏成整块空白。
       return loadDocIndex().then(function (idx) {
         var rel = idx[key];
         if (!rel) return jsonResponse({ error: "not found" }, 404);
@@ -109,6 +111,10 @@
           if (!r.ok) return jsonResponse({ error: "not found" }, 404);
           return r.json().then(function (j) { return jsonResponse(j); });
         });
+      }).catch(function () {
+        // 走到这里 = 请求被 SW 判死（离线且这一串数据没缓存过）。别回 404：
+        // 那会让阅读器报"文档可能已被删除"，而它好端端在服务器上，只是这次没网。
+        return jsonResponse({ error: "OFFLINE" }, 503);
       });
     }
     if (p === "/api/links") {

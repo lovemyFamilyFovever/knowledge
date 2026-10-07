@@ -218,6 +218,112 @@ _DOC_DATA_RE = re.compile(r'<script[^>]*id="doc-data"[^>]*>.*?</script>', re.S)
 _ATTR_RE = re.compile(r'\b(href|src|action)=(["\'])/(static|raw|doc|browse)/')
 _CSS_URL_RE = re.compile(r'url\(\s*(["\']?)/(static|raw)/')
 
+# ---------------- PWA（只属于导出产物；本地阅读器一个字节都不加载） ----------------
+# 颜色取自 style.css 基准皮肤「玄青」的原始值：亮态普鲁士蓝主色 #1f4e8c、白底，
+# 暗态底 #0e0f10。theme-color 两条 media 分开写，Chrome 会跟着系统深浅切换。
+PWA_NAME = "知库 · 公网只读档"
+PWA_SHORT = "知库"
+PWA_THEME_LIGHT = "#1f4e8c"
+PWA_BG_LIGHT = "#ffffff"
+PWA_BG_DARK = "#0e0f10"
+PWA_ICONS = ("icon-192.png", "icon-512.png", "icon-maskable-512.png", "apple-touch-icon.png")
+
+
+def pwa_head(base: str) -> str:
+    """注进 <head> 的那几行。href 自带 base，因此不会再被 prefix_html 改第二遍
+    （它的正则只吃 `="/static|raw|doc|browse/`，`="/knowledge/static/` 不匹配）。"""
+    return (
+        f'<meta name="theme-color" content="{PWA_THEME_LIGHT}" media="(prefers-color-scheme: light)">\n'
+        f'<meta name="theme-color" content="{PWA_BG_DARK}" media="(prefers-color-scheme: dark)">\n'
+        '<meta name="mobile-web-app-capable" content="yes">\n'
+        f'<meta name="apple-mobile-web-app-title" content="{PWA_SHORT}">\n'
+        f'<link rel="apple-touch-icon" href="{base}/static/icons/apple-touch-icon.png">\n'
+        f'<link rel="manifest" href="{base}/manifest.webmanifest">\n'
+    )
+
+
+def build_stamp(root: Path, out: Path) -> str:
+    """缓存版本号：优先 git sha（CI 就在推送后的提交上跑，语义即"这次部署"），
+    拿不到再用产物内容哈希。版本号一变，sw 的 activate 会把旧库整批改名删掉。"""
+    try:
+        r = subprocess.run(["git", "-C", str(root), "rev-parse", "--short", "HEAD"],
+                           capture_output=True, timeout=10)
+        sha = r.stdout.decode("ascii", "replace").strip()
+        if r.returncode == 0 and sha:
+            return sha
+    except (OSError, subprocess.SubprocessError):
+        pass
+    h = hashlib.sha1()
+    for rel in ("index.html", "data/tree.json", "static/app.js", "static/kb-static.js"):
+        p = out / rel
+        if p.is_file():
+            h.update(p.read_bytes())
+    return h.hexdigest()[:12]
+
+
+def write_pwa(root: Path, out: Path, base: str) -> dict:
+    """落 manifest.webmanifest + 站根 sw.js，并把 copytree 顺带拷进 static/ 的那份
+    sw 源文件删掉 —— sw.js 必须待在站根（作用域由它的 URL 决定），产物里不留第二份。"""
+    icons = []
+    for name, sizes, purpose in (
+        ("icon-192.png", "192x192", None),
+        ("icon-512.png", "512x512", None),
+        ("icon-maskable-512.png", "512x512", "maskable"),
+    ):
+        item = {"src": f"{base}/static/icons/{name}", "sizes": sizes, "type": "image/png"}
+        if purpose:
+            item["purpose"] = purpose
+        icons.append(item)
+    missing = [n for n in PWA_ICONS if not (root / "static" / "icons" / n).is_file()]
+    if missing:
+        raise SystemExit(f"缺图标 {missing}：manifest 会指向 404，先把 static/icons/ 补齐")
+    manifest = {
+        "name": PWA_NAME,
+        "short_name": PWA_SHORT,
+        "description": "个人知识库的公网只读档：Markdown 唯一事实源，看过的篇章离线可读。",
+        "lang": "zh-CN",
+        "id": f"{base}/",
+        "start_url": f"{base}/",
+        "scope": f"{base}/",
+        "display": "standalone",
+        "background_color": PWA_BG_LIGHT,
+        "theme_color": PWA_THEME_LIGHT,
+        "icons": icons,
+    }
+    mp = out / "manifest.webmanifest"
+    mp.write_text(json.dumps(manifest, ensure_ascii=False, indent=1), encoding="utf-8")
+    stamp = build_stamp(root, out)
+    # 预热清单 = 产物壳里真正引用到的 static 资源（含 ?v= 查询，缓存键要逐字对上）。
+    # 从产物扫而不是写死名单：模板加一个资源就自动进清单，也不会留下一串已不存在的旧路径。
+    shell = (out / "index.html").read_text(encoding="utf-8")
+    refs = re.findall(r'(?:href|src)="(' + re.escape(base) + r'/static/[^"]+)"', shell)
+    want = sorted({r for r in refs if not r.endswith(".html")}
+                  | {f"{base}/static/icons/icon-192.png",
+                     f"{base}/static/icons/icon-maskable-512.png"})
+    precache, dropped = [], []
+    for u in want:
+        f = out / u[len(base) + 1:].split("?")[0]
+        (precache if f.is_file() else dropped).append(u)
+    if dropped:
+        # 不致命（少一条只是那一样资源离线拿不到），但必须响：模板指到不存在的文件，
+        # 在本地是被 Flask 的 404 静默吃掉，在这条线上是"离线白屏"的根因。
+        print(f"  ! 预热清单里 {len(dropped)} 条在产物中不存在：{dropped[:6]}", file=sys.stderr)
+    sw_src = root / "static" / "kb-sw.js"
+    sw = sw_src.read_text(encoding="utf-8")
+    for tok in ("__KB_BASE__", "__KB_BUILD__", "__KB_PRECACHE__"):
+        assert tok in sw, f"kb-sw.js 的占位符 {tok} 被改掉了"
+    sw = (sw.replace("__KB_BASE__", base)
+            .replace("__KB_BUILD__", stamp)
+            .replace("__KB_PRECACHE__", json.dumps(precache, ensure_ascii=False)))
+    (out / "sw.js").write_text(sw, encoding="utf-8")
+    dup = out / "static" / "kb-sw.js"
+    if dup.is_file():
+        dup.unlink()
+    return {"build": stamp, "bytes": mp.stat().st_size + (out / "sw.js").stat().st_size,
+            "manifest": str(mp.relative_to(out)), "scope": manifest["scope"],
+            "precache": len(precache), "dropped": dropped}
+
+
 
 def prefix_html(text: str, base: str) -> str:
     """把 HTML 里的绝对资源/站内路径加上 KB_BASE 前缀。
@@ -482,10 +588,17 @@ def export_site(root: Path, out: Path, base: str = KB_BASE_DEFAULT,
         inject = (
             '<script>window.KB_STATIC=%s;</script>\n'
             '<script src="%s/static/kb-static.js" defer></script>\n'
-            % (json.dumps({"readonly": True, "base": base}, separators=(",", ":")), base)
+            '<script src="%s/static/kb-pwa.js" defer></script>\n'
+            % (json.dumps({"readonly": True, "base": base}, separators=(",", ":")), base, base)
         )
         # 注入点：紧接 <head>（在任何 defer 脚本之前，保证 kb-static 先于 app.js 执行）
         shell = shell.replace("<head>", "<head>\n" + inject, 1)
+        # PWA 那几行单独排在 <meta charset> **之后**：它们带中文（apple-mobile-web-app-title），
+        # 而 charset 之前声明的内容按 Windows-1252 解 —— 排前面就成了 mojibake。
+        anchor = '<meta charset="UTF-8">'
+        if anchor not in shell:
+            raise SystemExit("模板里找不到 <meta charset=\"UTF-8\">，PWA 注入点不成立")
+        shell = shell.replace(anchor, anchor + "\n" + pwa_head(base), 1)
         shell = prefix_html(shell, base)
         (out / "index.html").write_text(shell, encoding="utf-8")
         (out / "404.html").write_text(shell, encoding="utf-8")   # 深链兜底（§4.1 / §5-1）
@@ -525,6 +638,12 @@ def export_site(root: Path, out: Path, base: str = KB_BASE_DEFAULT,
                 for css in dst_static.rglob("*.css"):
                     css.write_text(prefix_css(css.read_text(encoding="utf-8"), base),
                                    encoding="utf-8")
+
+        # ---------------- PWA：manifest.webmanifest + 站根 sw.js ----------------
+        # 只存在于导出产物里：本地阅读器不注册 SW（热重载开发 + 一个缓存层 = 天天调试"为什么没变"）。
+        pwa = write_pwa(root, out, base)
+        b["manifest.webmanifest+sw.js"] = pwa["bytes"]
+        summary["pwa"] = pwa
 
         summary["bytes_total"] = sum(b.values())
         return summary

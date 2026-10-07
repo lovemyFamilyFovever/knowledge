@@ -373,9 +373,6 @@
         '  <button type="button" class="mbtn ghost" id="kb-pref-reset">恢复默认</button>' +
         '  <span class="kb-pref-note">偏好存 localStorage，不写语料文件</span>' +
         "</div>" +
-        "</section>" +
-        '<section class="kb-set-sec" data-sec="novel" hidden>' +
-        '<div id="nv-panel-host">' + (window.KBNOVEL ? KBNOVEL.panelHTML() : "") + "</div>" +
         "</section>";
     },
     /** 绑定面板内控件（每次显示面板时调用一次，幂等） */
@@ -458,7 +455,6 @@
         var ha = root.querySelector("#kb-pref-halign"); if (ha) ha.value = d.halign;
         util.toast("阅读偏好已恢复默认");
       });
-      if (window.KBNOVEL) KBNOVEL.bindPanel(root);
     }
   });
 
@@ -781,7 +777,6 @@
       tabs.innerHTML =
         '<button type="button" role="tab" class="on" data-sec="look" aria-selected="true">外观</button>' +
         '<button type="button" role="tab" data-sec="type" aria-selected="false">排版</button>' +
-        '<button type="button" role="tab" data-sec="novel" aria-selected="false">小说</button>' +
         '<button type="button" role="tab" data-sec="keys" aria-selected="false">快捷键</button>';
       if (!tabs.dataset.wired) {
         tabs.dataset.wired = "1";

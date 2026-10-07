@@ -11,6 +11,7 @@
 """
 import json
 import re
+import shutil
 import sys
 import tempfile
 from pathlib import Path
@@ -81,6 +82,10 @@ def seed(root: Path) -> None:
     real_kbs = ROOT / "static" / "kb-static.js"
     if real_kbs.is_file():
         (st / "kb-static.js").write_text(real_kbs.read_text(encoding="utf-8"), encoding="utf-8")
+    # PWA 三件：sw 源 + 注册件 + 图标（临时根照抄真实仓，否则测的是"缺件"而不是契约）
+    # 整个 static/ 都照抄：预热清单是**从产物壳扫出来的**，缺了 style.css 就只会测到"丢了"，
+    # 测不到"一条不丢"这条真正要守的不变量。
+    shutil.copytree(ROOT / "static", st, dirs_exist_ok=True)
 
 
 passed = failed = 0
@@ -336,6 +341,99 @@ def main() -> int:
               and "setTreeOpen(CUR.domain, true)" in appjs)
         check("树展开态的读取函数只有一份定义（曾复制成两个同名 treeOpenSet）",
               appjs.count("function treeOpenSet()") == 1)
+        # 窄屏右栏 = 贴底工具栏（用户实拍：旧写法把那一坨卡在正文中段）
+        kbc_css = (ROOT / "static" / "kb-core.css").read_text(encoding="utf-8")
+        check("窄屏工具栏固定在底部并压在状态栏之上，面板默认 0 高",
+              "position:fixed;left:0;right:0;bottom:28px" in kbc_css
+              and "max-height:0;padding:0;overflow:hidden" in kbc_css
+              and "main>section.rail.rail-open .rpane.active" in kbc_css)
+        check("抽屉的开合只在 app.js 一处实现（railSheet），Esc 链引用它",
+              appjs.count("function railSheet(") == 1
+              and "window.railSheetClose" in appjs
+              and "window.railSheetClose === \"function\"" in kbc)
+
+        # ---------------- ⑦ PWA：manifest + 站根 sw（只属于导出产物） ----------------
+        man_p = out / "manifest.webmanifest"
+        sw_p = out / "sw.js"
+        check("产物有 manifest.webmanifest 与站根 sw.js",
+              man_p.is_file() and sw_p.is_file())
+        check("sw 源文件不在 static/ 里留第二份（作用域由 URL 决定，只能待站根）",
+              not (out / "static" / "kb-sw.js").is_file()
+              and (ROOT / "static" / "kb-sw.js").is_file())
+        man = json.loads(man_p.read_text(encoding="utf-8"))
+        check("manifest 的 id/start_url/scope 三者同为站根（空前缀档）",
+              man.get("id") == "/" and man.get("start_url") == "/" and man.get("scope") == "/")
+        check("manifest 是可安装的：standalone + 有 512 图标 + 有主题色",
+              man.get("display") == "standalone"
+              and any(i["sizes"] == "512x512" for i in man["icons"])
+              and str(man.get("theme_color", "")).startswith("#"))
+        check("manifest 里每个图标都真在产物里（清单指向 404 就是装不上）",
+              all((out / i["src"].lstrip("/")).is_file() for i in man["icons"]),
+              str([i["src"] for i in man["icons"]]))
+        check("maskable 图标单独标 purpose（Android 蒙版会裁掉边缘）",
+              any(i.get("purpose") == "maskable" for i in man["icons"]))
+        sw = sw_p.read_text(encoding="utf-8")
+        check("sw 的三个占位符都被替换（漏一个就是整站白屏级事故）",
+              not re.search(r"__KB_[A-Z]+__", sw), sw[:200])
+        check("sw 空前缀档的 KB_BASE 是空串", 'var KB_BASE = "";' in sw)
+        check("sw 缓存名带构建号（换版本靠它清旧库）",
+              re.search(r'var CACHE_SHELL = "zhiku-shell-" \+ KB_BUILD;', sw) is not None
+              and re.search(r'var KB_BUILD = "[^"]+";', sw) is not None)
+        _pc = re.search(r"var PRECACHE = (\[[^\n]*\]);", sw)
+        precache = json.loads(_pc.group(1)) if _pc else []
+        check("预热清单来自产物壳（style.css / app.js 都在，且带 ?v= 查询以对上缓存键）",
+              any("style.css" in u for u in precache) and any("app.js" in u for u in precache)
+              and any(u.startswith("/static/") for u in precache), str(precache[:4]))
+        check("预热清单里每一条都真在产物里（清单指向 404 = 离线照样白屏）",
+              all((out / u.lstrip("/").split("?")[0]).is_file() for u in precache),
+              str([u for u in precache if not (out / u.lstrip("/").split("?")[0]).is_file()]))
+        check("预热清单不含语料与图片（只 1.5MB 的壳，不是 32MB 的 data）",
+              not any("/data/doc" in u or "/raw/" in u for u in precache), str(precache[:4]))
+        check("一条都没丢（模板指到不存在的资源 = 离线白屏的根因，这里必须为 0）",
+              summary["pwa"]["dropped"] == [], str(summary["pwa"]["dropped"][:6]))
+        _inst = sw[sw.find('"install"'):sw.find('"activate"')]
+        check("install 只预热壳 + 首页片段 + 那份清单（不 addAll 语料）",
+              len(_inst) > 0 and _inst.count(".add(") == 3 and "addAll" not in _inst
+              and "PRECACHE.forEach" in _inst and "c.add(HOME)" in _inst
+              and 'var HOME = KB_BASE + "/data/home.html"' in sw
+              and "data/doc" not in _inst, _inst)
+        check("sw 对跨源请求一律放行（本仓零出站，不给例外开门）",
+              "if (!underBase(u)) return;" in sw)
+        kbhtml = (out / "index.html").read_text(encoding="utf-8")
+        check("壳里注了 manifest 链接、主题色与注册脚本",
+              'rel="manifest"' in kbhtml and 'name="theme-color"' in kbhtml
+              and "/static/kb-pwa.js" in kbhtml)
+        check("PWA 那几行排在 <meta charset> 之后（排前面会按 Windows-1252 解中文）",
+              kbhtml.find('<meta charset="UTF-8">') < kbhtml.find('rel="manifest"'))
+        check("404.html 与 index.html 同壳（离线深链回落到同一份）",
+              (out / "404.html").read_text(encoding="utf-8") == kbhtml)
+        kbhtml2 = (with_base / "index.html").read_text(encoding="utf-8")
+        man2 = json.loads((with_base / "manifest.webmanifest").read_text(encoding="utf-8"))
+        check("带前缀档：manifest 的 scope/start_url 与图标 src 都带 /kb",
+              man2["scope"] == "/kb/" and man2["start_url"] == "/kb/"
+              and all(i["src"].startswith("/kb/static/icons/") for i in man2["icons"]),
+              str(man2["scope"]))
+        check("带前缀档：href 不被 prefix_html 二次加前缀",
+              'href="/kb/manifest.webmanifest"' in kbhtml2 and "/kb/kb/" not in kbhtml2)
+        check("带前缀档：sw 里的 KB_BASE 与构建号都替换成 /kb",
+              'var KB_BASE = "/kb";' in (with_base / "sw.js").read_text(encoding="utf-8"))
+        local_tpl = (ROOT / "app" / "templates" / "base.html").read_text(encoding="utf-8")
+        check("本地阅读器不加载 PWA（模板里没有 manifest / sw.js / kb-pwa）",
+              "manifest" not in local_tpl and "sw.js" not in local_tpl
+              and "kb-pwa" not in local_tpl)
+        check("注册件只认只读档（KB_STATIC.readonly 为假就直接返回）",
+              "if (!S || !S.readonly) return;" in (ROOT / "static" / "kb-pwa.js").read_text(encoding="utf-8"))
+        # 负向：图标缺件必须响亮失败，而不是产出一个装不上的 manifest
+        noicon = root / "site-noicon"
+        (root / "static" / "icons").rename(root / "icons-off")
+        try:
+            export_site(root, noicon, base="", tracked_only=False, include_search=False)
+            refused_ok = False
+        except SystemExit:
+            refused_ok = True
+        finally:
+            (root / "icons-off").rename(root / "static" / "icons")
+        check("负向：static/icons 缺件时导出直接拒绝（不产出指向 404 的 manifest）", refused_ok)
 
         literals = _api_literals(out / "static")
         unknown = sorted(l for l in literals if l not in ENDPOINT_TRIAGE)
