@@ -1331,14 +1331,15 @@ RAIL_SHEET_JS = PRELUDE + r"""
   const rect = e => { const b = e && e.getBoundingClientRect(); return b ? {x: Math.round(b.x), y: Math.round(b.y), w: Math.round(b.width), h: Math.round(b.height)} : null; };
   for (let i = 0; i < 80 && !q('#article h1'); i++) await sleep(150);
   await sleep(700);
-  const rail = q('#p-rail'), tab0 = q('.rtab');
+  // tab0 = 第一枚**右栏面板**页签；工具栏最前面那颗「分类」是另一个抽屉，不能拿它当样本
+  const rail = q('#p-rail'), tab0 = q('.rtab[data-pane]');
   if (!rail || !tab0) { out.fail = 'no rail'; return JSON.stringify(out); }
   const cs = getComputedStyle(rail);
   out.pos = cs.position;
   out.disp = cs.display;
   out.rail = rect(rail);
   out.tab0 = rect(tab0);
-  out.tabN = document.querySelectorAll('.rtab').length;
+  out.tabN = document.querySelectorAll('.rtab[data-pane]').length;
   out.pane0 = rect(q('.rpane.active'));
   out.open0 = cls('#p-rail', 'rail-open');
   out.aria0 = tab0.getAttribute('aria-expanded');
@@ -1381,7 +1382,7 @@ RAIL_SHEET_JS = PRELUDE + r"""
 RAIL_DESK_JS = PRELUDE + r"""
   for (let i = 0; i < 80 && !q('#article h1'); i++) await sleep(150);
   await sleep(700);
-  const rail = q('#p-rail'), tab0 = q('.rtab');
+  const rail = q('#p-rail'), tab0 = q('.rtab[data-pane]');
   if (!rail || !tab0) { out.fail = 'no rail'; return JSON.stringify(out); }
   out.pos = getComputedStyle(rail).position;
   out.open0 = cls('#p-rail', 'rail-open');
@@ -1396,6 +1397,63 @@ RAIL_DESK_JS = PRELUDE + r"""
   document.dispatchEvent(new CustomEvent('kb:article-rendered'));
   await sleep(300);
   out.open2 = cls('#p-rail', 'rail-open');
+  out.navTabDisp = getComputedStyle(q('#kb-nav-tab')).display;
+  out.leftDisp = getComputedStyle(q('#p-left')).display;
+  out.navOn = cls('main', 'kb-nav-on');
+  q('#kb-nav-tab').click(); await sleep(500);
+  out.navOnAfterClick = cls('main', 'kb-nav-on');
+  return JSON.stringify(out);
+})()"""
+
+# 「分类」抽屉：style.css 在 ≤860 把左树整块 display:none，窄屏原本**没有任何**翻目录的路径
+# （用户报的"移动端 pwa 没有目录结构的按钮"）。工具栏第一颗页签就是那条路径。
+NAV_SHEET_JS = PRELUDE + r"""
+  const rect = e => { const b = e && e.getBoundingClientRect(); return b ? {x: Math.round(b.x), y: Math.round(b.y), w: Math.round(b.width), h: Math.round(b.height)} : null; };
+  for (let i = 0; i < 80 && !q('#article h1'); i++) await sleep(150);
+  await sleep(700);
+  const navTab = q('#kb-nav-tab'), left = q('#p-left'), m = q('main'), rail = q('#p-rail');
+  if (!navTab || !left || !m) { out.fail = 'no nav tab'; return JSON.stringify(out); }
+  out.vw = innerWidth;
+  out.tabIsFirst = document.querySelector('.rtab') === navTab;
+  out.tabDisp = getComputedStyle(navTab).display;
+  out.tabRect = rect(navTab);
+  out.leftDisp0 = getComputedStyle(left).display;
+  out.navOn0 = m.classList.contains('kb-nav-on');
+  navTab.click(); await sleep(700);
+  out.navOn1 = m.classList.contains('kb-nav-on');
+  out.leftDisp1 = getComputedStyle(left).display;
+  out.leftRect = rect(left);
+  out.treeItems = document.querySelectorAll('#tree .dom').length;
+  out.treeFirstH = rect(q('#tree .dom')).h;
+  out.ariaNav1 = navTab.getAttribute('aria-expanded');
+  out.railOpenWhenNav = rail.classList.contains('rail-open');
+  out.navAboveToolbar = rail ? (left.getBoundingClientRect().bottom
+    <= rail.getBoundingClientRect().top + 0.5) : null;   // 用原始浮点比：两个各自取整的数相加会假红
+  out.navInViewport = rect(left).y >= 0;
+  out.navScrolls = getComputedStyle(left).overflowY;
+  out.navMaxH = Math.round(parseFloat(getComputedStyle(left).maxHeight) || 0);
+  // 原始浮点 + 两侧 CSS 值：这条断言差 1px 就会红，不留下证据下一轮只能瞎猜
+  out.raw = { lBottom: left.getBoundingClientRect().bottom, rTop: rail.getBoundingClientRect().top,
+              railH: rail.getBoundingClientRect().height, rtabsH: q('.rtabs').getBoundingClientRect().height,
+              lBottomCss: getComputedStyle(left).bottom, sbTop: q('.statusbar').getBoundingClientRect().top };
+  navTab.click(); await sleep(700);
+  out.navOn2 = m.classList.contains('kb-nav-on');
+  out.leftDisp2 = getComputedStyle(left).display;
+  navTab.click(); await sleep(700);
+  (q('#article') || document.body).dispatchEvent(new KeyboardEvent('keydown', {key: 'Escape', bubbles: true, cancelable: true}));
+  await sleep(500);
+  out.navOn3 = m.classList.contains('kb-nav-on');
+  navTab.click(); await sleep(700);
+  q('.rtab[data-pane]').click(); await sleep(700);
+  out.mutux = { navOn: m.classList.contains('kb-nav-on'), railOpen: rail.classList.contains('rail-open') };
+  navTab.click(); await sleep(700);
+  (q('.article') || q('main')).dispatchEvent(new MouseEvent('click', {bubbles: true, cancelable: true}));
+  await sleep(400);
+  out.navOn4 = m.classList.contains('kb-nav-on');
+  navTab.click(); await sleep(700);
+  document.dispatchEvent(new CustomEvent('kb:article-rendered'));
+  await sleep(400);
+  out.navOn5 = m.classList.contains('kb-nav-on');
   return JSON.stringify(out);
 })()"""
 
@@ -1436,6 +1494,33 @@ def probe_rail_sheet(base):
           d.get("pos") == "relative" and d.get("open0") is False and d.get("open1") is False
           and d.get("aria0") is None and d.get("aria1") is None
           and d.get("paneH", 0) > 100 and d.get("paneH2", 0) > 100 and d.get("railW", 0) >= 200, d)
+    check("桌面档那颗「分类」页签不存在（左树常驻，多一个钮等于假入口）",
+          d.get("navTabDisp") == "none" and d.get("leftDisp") != "none"
+          and d.get("navOn") is False and d.get("navOnAfterClick") is False, d)
+    # ---- 「分类」抽屉：窄屏原本没有翻目录的路径（style.css ≤860 把左树整块隐藏）----
+    for w in (390, 800):
+        n = run_expr(url, NAV_SHEET_JS, width=w)
+        tag = f"{w}px 档"
+        check(f"{tag}「分类」页签在工具栏最前面、可见、触控区 ≥44px",
+              n.get("tabIsFirst") is True and n.get("tabDisp") not in (None, "none")
+              and (n.get("tabRect") or {}).get("h", 0) >= 44, n)
+        check(f"{tag}默认不占位：没有 kb-nav-on，左树仍是 display:none",
+              n.get("navOn0") is False and n.get("leftDisp0") == "none", n)
+        check(f"{tag}点一下左树从下往上顶出来：有高度、在视口内、压在工具栏之上、自己滚",
+              n.get("navOn1") is True and n.get("leftDisp1") == "flex"
+              and (n.get("leftRect") or {}).get("h", 0) > 100
+              and n.get("navInViewport") is True and n.get("navAboveToolbar") is True
+              and n.get("navScrolls") == "auto" and n.get("ariaNav1") == "true", n)
+        check(f"{tag}树真的在里面且域可见（不是空壳面板）",
+              n.get("treeItems", 0) >= 1 and (n.get("treeFirstH") or 0) > 8, n)
+        check(f"{tag}与右栏抽屉互斥：分类开着时右栏抽屉不会同时展开",
+              n.get("railOpenWhenNav") is False, n)
+        check(f"{tag}再点一次收起", n.get("navOn2") is False and n.get("leftDisp2") == "none", n)
+        check(f"{tag}Esc 收起", n.get("navOn3") is False, n)
+        check(f"{tag}点右栏页签 → 分类让位、右栏抽屉展开",
+              n.get("mutux") == {"navOn": False, "railOpen": True}, n)
+        check(f"{tag}点抽屉外面收起", n.get("navOn4") is False, n)
+        check(f"{tag}换文档收起", n.get("navOn5") is False, n)
     check("桌面档也吃得下换文档事件（万一带着 rail-open 会被清掉）",
           d.get("open2") is False, d)
 

@@ -128,18 +128,20 @@ async function loadTree() {
 }
 
 /* ---------- 右栏 tabs ---------- */
-/* 窄屏（≤720，与 kb-core.css 里"右栏变底部工具栏"那条断点同一口径）：
+/* 窄屏（≤860，与 style.css 隐藏左树那条断点、kb-core.css"右栏变底部工具栏"那条同一口径）：
    页签栏固定在底部，面板默认收起，点页签才从下往上展开；再点当前页签收起。
-   桌面端这个函数行为完全不变（CSS 只在窄屏生效，类加了也没有视觉后果）。 */
-const RAIL_SHEET = () => !!(window.matchMedia && matchMedia("(max-width:720px)").matches);
+   桌面端这些函数行为完全不变（CSS 只在窄屏生效，类加了也没有视觉后果）。 */
+const RAIL_SHEET = () => !!(window.matchMedia && matchMedia("(max-width:860px)").matches);
+const NAV_SHEET = RAIL_SHEET;   // 同一个断点：左树在 ≤860 被整块隐藏，唤出它也只在窄屏有意义
 function railSheet(open) {
   const rail = $("#p-rail");
   if (!rail) return;
   const sheet = RAIL_SHEET();
   const on = !!open && sheet;
   rail.classList.toggle("rail-open", on);
-  // aria-expanded 只在抽屉档有意义：桌面端右栏面板常驻，写 false 是谎话
-  rail.querySelectorAll(".rtab").forEach(t => {
+  // aria-expanded 只在抽屉档有意义：桌面端右栏面板常驻，写 false 是谎话。
+  // 「分类」页签自己管自己（它是另一个抽屉），别被这个循环顺手刷掉。
+  rail.querySelectorAll(".rtab:not(.kb-nav-tab)").forEach(t => {
     if (sheet) t.setAttribute("aria-expanded", on && t.classList.contains("active") ? "true" : "false");
     else t.removeAttribute("aria-expanded");
   });
@@ -154,30 +156,64 @@ function tab(id, el) {
   const pane = $("#pane-" + id); pane.classList.add("active");
   pane.setAttribute("aria-labelledby", el.id);
   if (id === "links") loadLinks();
-  if (RAIL_SHEET()) railSheet(!(wasActive && sheetOn));   // 点已经展开的那一个 = 收起
+  if (RAIL_SHEET()) { navSheet(false); railSheet(!(wasActive && sheetOn)); }   // 点已展开的那个 = 收起
 }
-/* Esc 分层关闭链里的一环（由 kb-core.keys.handle 调用）：抽屉开着就先关抽屉。
+/* ---------- 「分类」抽屉：唤出窄屏被隐藏的左树 ----------
+   style.css 在 ≤860 把 `main > section.wb-panel` 整块 display:none（左树与文档列表），
+   窄屏于是完全没有"翻目录"的路径 —— 用户报的"移动端没有目录结构的按钮"就是这个洞。
+   底部工具栏第一个页签负责把它顶出来，开合手势与右栏抽屉同一套。 */
+function navSheet(open) {
+  const m = document.querySelector("main");
+  const left = $("#p-left");
+  if (!m || !left) return;
+  const on = !!open && NAV_SHEET();
+  m.classList.toggle("kb-nav-on", on);
+  const btn = $("#kb-nav-tab");
+  if (btn) {
+    btn.classList.toggle("active", on);
+    btn.setAttribute("aria-selected", on ? "true" : "false");
+    if (NAV_SHEET()) btn.setAttribute("aria-expanded", on ? "true" : "false");
+    else btn.removeAttribute("aria-expanded");
+  }
+  if (on) railSheet(false);            // 两个抽屉互斥：同时开着只会互相压
+}
+function navSheetToggle() {
+  const m = document.querySelector("main");
+  navSheet(!(m && m.classList.contains("kb-nav-on")));
+}
+/* Esc 分层关闭链里的两环（由 kb-core.keys.handle 调用）：抽屉开着就先关抽屉。
    返回 true 表示这一层吃掉了这次 Esc。 */
+window.navSheetToggle = navSheetToggle;
 window.railSheetClose = () => {
   const rail = $("#p-rail");
   if (!rail || !rail.classList.contains("rail-open")) return false;
   railSheet(false);
   return true;
 };
-/* 换文档时收起抽屉：不然新文档上面还压着上一篇的目录/双链 */
-document.addEventListener("kb:article-rendered", () => railSheet(false));
+window.navSheetClose = () => {
+  const m = document.querySelector("main");
+  if (!m || !m.classList.contains("kb-nav-on")) return false;
+  navSheet(false);
+  return true;
+};
+/* 换文档时收起两个抽屉：不然新正文上面还压着上一篇的目录/双链，
+   或者压着一颗刚点中的树节点 */
+document.addEventListener("kb:article-rendered", () => { railSheet(false); navSheet(false); });
 /* 手机上没有 Esc 键，"点抽屉外面"是唯一的兜底关闭手势（弹层内部的点击不算：
    那些自己有"点空白关闭"逻辑，别让抽屉抢先把它们连带收掉）。 */
 document.addEventListener("click", (e) => {
+  const m = document.querySelector("main");
   const rail = $("#p-rail");
-  if (!rail || !rail.classList.contains("rail-open") || !RAIL_SHEET()) return;
-  if (e.target && e.target.closest && e.target.closest("#p-rail, .kbm-ov, #kb-search-ov, .kb-pal-box")) return;
-  railSheet(false);
+  const anyOpen = (m && m.classList.contains("kb-nav-on")) || !!(rail && rail.classList.contains("rail-open"));
+  if (!anyOpen || !RAIL_SHEET()) return;
+  if (e.target && e.target.closest &&
+      e.target.closest("#p-rail, #p-left, .kbm-ov, #kb-search-ov, .kb-pal-box")) return;
+  railSheet(false); navSheet(false);
 }, true);
 /* 跨过断点回桌面：把抽屉态与 aria-expanded 一起清掉 */
 if (window.matchMedia) {
-  const mqSheet = matchMedia("(max-width:720px)");
-  const syncSheet = () => railSheet(false);
+  const mqSheet = matchMedia("(max-width:860px)");
+  const syncSheet = () => { railSheet(false); navSheet(false); };
   if (mqSheet.addEventListener) mqSheet.addEventListener("change", syncSheet);
   else if (mqSheet.addListener) mqSheet.addListener(syncSheet);
 }

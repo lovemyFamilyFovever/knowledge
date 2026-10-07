@@ -45,11 +45,11 @@ python scripts\check_ledger_counts.py          # 台账对账：§0 数字必须
 | `test_properties.py` | 14 | 性质测试（每条 240 个随机样本，固定种子） |
 | `test_invariants.py` | 71 | AGENTS 不变量门禁 I1~I9（含 I4 物理删除调用点白名单） |
 | `test_e2e_smoke.py` | 170 | 端到端：逐条打满 40 条路由 |
-| `test_export_static.py` | 132 | 公网只读档契约（导出同构 / 只读裁剪 / KB_BASE 口径 / 公网文案与首页 / PWA 清单） |
+| `test_export_static.py` | 135 | 公网只读档契约（导出同构 / 只读裁剪 / KB_BASE 口径 / 公网文案与首页 / PWA 清单） |
 | `test_known_defects.py` | 6 | 已登记缺陷不回退 |
 | `test_watch_ci.py` | 38 | Agent 工具自身（四类"读不到"分开点名；GBK/UTF-8 两档都要绿） |
 | `test_ui_regress.py` | 31 | P5 视觉回归：11 张截图逐像素 vs `tests/ui-baselines/` + 10 条顶栏几何 |
-| `test_ui_behavior.py` | 226 | UI 行为回归：真点每个控件，看它到底有没有反应 |
+| `test_ui_behavior.py` | 247 | UI 行为回归：真点每个控件，看它到底有没有反应 |
 | `test_rag.py` | — | RAG（与 Rust tokenizers 逐 token 交叉验证 + 续跑三证；缺依赖/缺模型才 SKIP） |
 
 `--stability` 只验"两次截图逐像素相同"（改矩阵或换环境后先跑它）；`--update` 在确认改动无误后刷新基线。
@@ -78,6 +78,10 @@ app/rag.py          语义检索：切块/嵌入/sqlite-vec（派生，RAG_CODE_
 app/wikilink.py     [[双链]]补全候选池 / 打分 / 断链检查
 app/palette.py      命令面板索引
 static/app.js       阅读器主逻辑；static/kb-core.js = KB 内核（overlay / 设置 / 命令面板 / 快捷键）
+                    窄屏（≤860，与 style.css 隐藏 `main > section.wb-panel` 同一档）两坨抽屉：
+                    底部工具栏（railSheet：分类 / 目录 / 标签 / 备注 / 双链，点页签从下往上展开）
+                    与「分类」抽屉（navSheet，唤出被隐藏的左树）；两者互斥，
+                    关闭手势四条齐全（再点当前页签 / Esc / 点抽屉外 / 换文档）
 static/kb-static.js 只读适配器（只在导出产物里加载）：fetch 分诊（读→data/*.json、写→READ_ONLY、
                     裁剪端点→NOT_IN_STATIC）、KB_BASE 链接与路由桥、只读裁剪 CSS、
                     公网状态栏与 <title> 口径、根路径的「公网首页」态；

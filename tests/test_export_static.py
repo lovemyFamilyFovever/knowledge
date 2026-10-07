@@ -351,6 +351,20 @@ def main() -> int:
               appjs.count("function railSheet(") == 1
               and "window.railSheetClose" in appjs
               and "window.railSheetClose === \"function\"" in kbc)
+        # 窄屏左树入口：style.css ≤860 把左树整块隐藏，工具栏第一颗「分类」是唯一的翻目录路径
+        wb_tpl = (ROOT / "app" / "templates" / "workbench.html").read_text(encoding="utf-8")
+        check("「分类」页签只有一份标记，且排在四枚面板页签之前",
+              wb_tpl.count('id="kb-nav-tab"') == 1
+              and wb_tpl.find('kb-nav-tab') < wb_tpl.find('data-pane="toc"'))
+        check("抽屉与页签的实现各只有一处，Esc 链两环都在",
+              appjs.count("function navSheet(") == 1 and "window.navSheetClose" in appjs
+              and "window.navSheetClose === \"function\"" in kbc)
+        check("唤出左树的规则与隐藏它的是同一档断点（860），且抽屉压在工具栏之上",
+              "@media (max-width:860px)" in kbc_css
+              and ".rtab.kb-nav-tab{display:inline-flex}" in kbc_css
+              and "main.kb-nav-on>section.panel#p-left" in kbc_css
+              and "bottom:calc(28px + var(--kb-bar) + 1px" in kbc_css
+              and "@media (min-width:861px){\n  .rtab.kb-nav-tab{display:none}" in kbc_css)
 
         # ---------------- ⑦ PWA：manifest + 站根 sw（只属于导出产物） ----------------
         man_p = out / "manifest.webmanifest"

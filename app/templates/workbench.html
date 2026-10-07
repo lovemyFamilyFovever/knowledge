@@ -73,6 +73,9 @@
   <section class="panel rail" id="p-rail" data-reveal data-reveal-y="14">
     {% set n_tags = (doc.fm.tags or [])|length %}
     <div class="rtabs" role="tablist" aria-label="文档信息面板">
+      {# 「分类」唤出左树：≤860 时 style.css 把左树整块隐藏（窄屏没有别的路径能翻目录），
+         这个页签就是那条路径。桌面端 CSS 里 display:none —— 左树常驻，多一个钮等于假入口。 #}
+      <button type="button" class="rtab kb-nav-tab" id="kb-nav-tab" role="tab" aria-controls="p-left" aria-selected="false" tabindex="0" onclick="navSheetToggle()" title="分类目录：域 / 子域 / 文档"><svg class="i i-12"><use href="#i-folder"/></svg>分类</button>
       <button type="button" class="rtab{% if not doc.has_html %} active{% endif %}" data-pane="toc" role="tab" aria-selected="{% if doc.has_html %}false{% else %}true{% endif %}" tabindex="0" onclick="tab('toc',this)"><svg class="i i-12"><use href="#i-toc-list"/></svg>目录</button>
       <button type="button" class="rtab{% if doc.has_html %} active{% endif %}" data-pane="info" role="tab" aria-selected="{% if doc.has_html %}true{% else %}false{% endif %}" tabindex="0" onclick="tab('info',this)"><svg class="i i-12"><use href="#i-tag-outline"/></svg>标签<span class="rt-n" id="rt-n-tags">{{ n_tags or "" }}</span></button>
       <button type="button" class="rtab" data-pane="notes" role="tab" aria-selected="false" tabindex="0" onclick="tab('notes',this)"><svg class="i i-12"><use href="#i-note-pen"/></svg>备注<span class="rt-n" id="rt-n-notes">{{ doc.notes|length or "" }}</span></button>
