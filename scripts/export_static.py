@@ -50,7 +50,7 @@ from app.app import create_app  # noqa: E402
 from app.routes_search import doc_url  # noqa: E402  （与 app.js docUrl 同源的唯一实现）
 from app.store import LIBRARY_EXTS, load_taxonomy  # noqa: E402
 
-# ---------------- 公开面契约（沿用 scripts/publish_site.py 的排除清单） ----------------
+# ---------------- 公开面契约（唯一的排除名单在这里；AGENTS 不变量 10 的公开面） ----------------
 EXCLUDE_DIRS = {"漫画", "projects", "小说"}
 PUBLISH_SUFFIXES = {".md", ".html"}
 IMAGE_EXTS = {".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg", ".ico", ".bmp", ".avif"}
@@ -162,7 +162,7 @@ def git_tracked_public(root: Path) -> set[str] | None:
 
 
 def assert_gate(rel: str) -> None:
-    """排除断言（与 publish_site.py 同契约）：排除目录 / `_` 前缀一律不许出现。"""
+    """排除断言：排除目录 / `_` 前缀一律不许出现在产物里。"""
     parts = rel.split("/")
     if not parts or parts[0] in EXCLUDE_DIRS or any(p.startswith("_") for p in parts):
         raise RuntimeError(f"排除断言触发，禁止导出: {rel}")

@@ -1,97 +1,70 @@
 # AGENTS.md — AI 协作契约
 
-> 任何 AI（TRAE / AutoClaw / 其他）在本仓库工作前必读。违反不变量的改动一律回退。
+> 任何 AI 在本仓库工作前必读。违反不变量的改动一律回退。
 
 ## 项目一句话
 
-个人知识库单一入口：全部语料以 **Markdown 文件为唯一事实源**，仓库提供迁移管线、本地阅读器（Flask）与本地语义检索（RAG）。**不依赖任何外部 API、语料不出网**（曾有的「选词问 AI」于 2026-09-30 按用户要求整体下线，见不变量 9 的撤销注记）。
+个人知识库单一入口：全部语料以 **Markdown 文件为唯一事实源**，仓库提供本地阅读器（Flask）、本地语义检索（RAG），并导出一份 **GitHub Pages 静态只读档**（<https://lovemyfamilyfovever.github.io/knowledge/>）。**没有任何出站请求，语料只进不出。**
 
 ## 不变量（违反 = 破坏性改动）
 
 1. `content/` 下的 md/html 是唯一事实源；编辑、收藏、备注必须写回文件系统（frontmatter / sidecar `.notes.md`），禁止引入第二真相（数据库 / 云端同步）。
 2. 新知识只从 `content/_inbox/` 进；`_` 前缀目录（`_inbox/_assets/_trash/_meta/_unfiled`）不进分类树、不进任何索引。
-3. `indexes/`（index.db / rag.db）是纯派生缓存：可随时删除重建；禁止手改、禁止 git 跟踪。
-4. 删除必须走软删除（→ `content/_trash/`，`/api/delete`）。~~git 历史是第二重保险~~ —— **此保险已于 2026-10-07 失效**：因远端公开且历史含已退场的盗版书库（`content/小说/`，127 blob / 363.7MB），经用户授权把 main 重置为单提交（`b4cda2e`），724 个旧提交不可恢复。自此**软删除只剩 `_trash/` 一层**，`/api/delete` 之外不得再指望 `git show <旧提交>` 取回任何东西。
-5. 分类学（域 / 子域 / 来源 / 状态 / 色相）的权威是 `content/_meta/taxonomy.json`；代码里的字典只是缺省回退。改分类先改 JSON，不改代码。域条目可选 `"search": false` = 该域不进搜索浮层的筛选钮（小说域全是 `.txt/.epub`、FTS 只收 `.md/.html`，给了钮就是恒 0 结果）；可选 `"ai": false` = 该域正文**永不出站**给 AI（见不变量 9，与 `search` 同一口径：开关写在 JSON 里，模板与代码不许再抄一份域名单）。模板与 CSS 一律**不许再抄一份域名单**（浮层钮由 `LABELS` 派生，色点用 `--dh=色相数字`）。
-6. frontmatter 只存身世与元数据（title/source/collected/tags/favorite/status），不存阅读统计等高频运行时数据——阅读统计走 app/reading.py（indexes/reading.db 事件制：open/read_minute/finish 只追加，语料零污染）。
-7. 嵌入 / 分词 / 切块逻辑变更必须递增 `app/rag.py::RAG_CODE_VERSION`，并用 `tokenizers` 库做逐 token 交叉验证后再提交。**递增之后的重嵌是逐篇续跑的**：每篇跑完就在 `files.embed_ver` 落自己的章（`upsert_file` 一事务），中途被 kill 下次只补没盖章的那些，不再从第 0 篇重来（轮次 51 之前是全库一次性提交，实测一趟 1126 篇 / 22006 块 / 约 38 分钟，中断等于整趟白跑）。版本判据**只活在 `files.embed_ver` 一处** —— `sync_rag` 不再读 `meta.code_version` 决定是否全量（同一规则两份实现是台账 §6 第 87 行点过名的坑，`rag_status` 里那个 `stale` 就是剩余量）。旧库缺这一列时打开即迁移，但**只有** `meta.code_version` 相符**且**向量行数与元数据一致才补章（`stamp_legacy`），来历不明就留 NULL 重嵌。**这条现在有断言在管**：`tests/test_rag.py::test_tokenizer_cross_validated_against_library()` 每次跑都拿参考库逐 id 比对，`test_predicates.py` 另有不依赖模型文件的合成 `tokenizer.json` 断言（轮次 49 第一次真跑就抓到一条真偏差：正文里字面的 `[CLS]` 被拆成三块碎片，而参考实现当它是一个 special token → 新增 `HFTokenizer._split_specials()` 并递增到 v4）。
+3. `indexes/`（index.db / rag.db）、`site/`（公网档导出产物）是纯派生缓存：可随时删除重建；禁止手改、禁止 git 跟踪。
+4. 删除必须走软删除（→ `content/_trash/`，`/api/delete`）。**git 历史不是第二重保险**（main 曾在泄露处置中重置，旧提交不可恢复）。软删除只有 `_trash/` 一层，别指望从 git 里 `show` 回来。
+5. 分类学（域 / 子域 / 来源 / 状态 / 色相）的权威是 `content/_meta/taxonomy.json`；代码里的字典只是缺省回退。改分类先改 JSON，不改代码。域条目可选 `"search": false` = 该域不进搜索浮层的筛选钮（给了一个点了恒 0 结果的钮不如不给）。模板与 CSS 一律**不许再抄一份域名单**：浮层钮由 `LABELS` 派生，色点用 `--dh=色相数字`。
+6. frontmatter 只存身世与元数据（title/source/collected/tags/favorite/status），不存阅读统计等高频运行时数据 —— 阅读统计走 `app/reading.py`（`indexes/reading.db` 事件制：open/read_minute/finish 只追加，语料零污染）。
+7. 嵌入 / 分词 / 切块逻辑变更必须递增 `app/rag.py::RAG_CODE_VERSION`，并用 `tokenizers` 库做逐 token 交叉验证后再提交。**递增之后的重嵌是逐篇续跑的**：每篇跑完就在 `files.embed_ver` 落自己的章（一事务），中途被 kill 下次只补没盖章的那些。版本判据**只活在 `files.embed_ver` 一处**，不许有第二道闸门（`rag_status` 里那个 `stale` 就是剩余量）。旧库缺这一列时打开即迁移，但只有 `meta.code_version` 相符**且**向量行数与元数据一致才补章（`stamp_legacy`），来历不明就留 NULL 重嵌。这条有断言在管：`tests/test_rag.py::test_tokenizer_cross_validated_against_library()` 每次跑都拿参考库逐 id 比对，`tests/test_predicates.py` 另有不依赖模型文件的合成 `tokenizer.json` 断言。
 8. 阅读器同时支持 `start.bat`（任意 Python）与便携运行时（`.python\`）；`python app\app.py` 直启时项目根会自动补进 sys.path，不要依赖 cwd。
-9. ~~**AI 出站三禁**~~ —— **已于 2026-09-30（轮次 54）整体撤销**：用户判定「为了查一个词等半分钟、还要配 key 花钱」不划算，改为**手动复制到网页端问**。`app/{routes_ai,ai_config,ai_usage,ai_qa}.py`、`static/pages/{ai-ask.js,aiask.css}`、设置抽屉的「AI」页签、`/api/ai/*` 与 `/api/ask*` 全部删除，`tests/test_ai_{config,qa}.py` 两套随之删除（不变量门禁回到 I1~I9）。
-   **这条编号保留是为了防止有人把它加回来**：项目自此**没有任何出站请求**，语料只进不出；要重新引入必须先与用户确认（他已两次明确要求做减法）。旧设计与实现细节见 `docs/spec-ai-assistant.md` 顶部注记与 git 历史（切片 1~5、轮次 53 的极简版都在里面）。
-10. **被跟踪即公开**（2026-10-07 起，泄露事故后新增）：本仓库的远端就是 GitHub 仓库，任何进入 git 跟踪的文件等于对外发布，**没有第二层拦截**。公开面的权威是 `.gitignore` 的「公开面硬边界」段，当前名单为 `content/projects/`、`content/小说/`、`content/漫画/`、`content/interview/AI金项目面试/resume-master.md`、`content/interview/AI金项目面试/profile-baseline.md`。判据与代价：`projects/` 内曾有真实形态飞书 App ID（`cli_` + 十六进制）与 32 位 AppSecret 字面量，两个 PII 文件含真实手机号与个人邮箱——**新语料含内部业务文档 / 凭据 / 真实身份信息时，必须先加进边界名单再 commit**。这条**目前没有门禁断言**（`tests/test_invariants.py` 只到 I1~I9），提交前人工复核入口是 `git ls-files -z | xargs -0 grep -laE "(cli_[0-9a-f]{12,}|(app_?secret|password|token)[\"' ]{0,3}[:=][\" ]{0,2}[0-9A-Za-z]{20,})"`，命中须逐个判真伪后处置。
+9. **本项目不做任何出站请求**（不配 API key、不调任何 AI / 云 API）。曾有的「选词问 AI」已整体下线，用户两次明确要求做减法。要重新引入任何出站能力，必须先与用户确认。编号占住是为了防止有人顺手加回来。
+10. **被跟踪即公开**：本仓库远端就是公开 GitHub 仓库，任何进入 git 跟踪的文件等于对外发布，**没有第二层拦截**。公开面的权威是 `.gitignore` 的「公开面硬边界」段 + `scripts/export_static.py` 的 `EXCLUDE_DIRS`，当前名单为 `content/projects/`、`content/小说/`、`content/漫画/`、`content/interview/AI金项目面试/resume-master.md`、`content/interview/AI金项目面试/profile-baseline.md`。**新语料含内部业务文档 / 凭据 / 真实身份信息时，必须先加进边界名单再 commit。** 这条没有门禁断言（I1~I9），提交前人工复核：
+
+    ```sh
+    git ls-files -z | xargs -0 grep -laE "(cli_[0-9a-f]{12,}|(app_?secret|password|token)[\"' ]{0,3}[:=][\" ]{0,2}[0-9A-Za-z]{20,})"
+    ```
+
+    命中须逐个判真伪后处置。注意两点实测：`xargs -0` 必须配 `-z` 的 NUL 分隔输入（用换行会把整串当一个文件名 → **假"0 命中"**）；`tests/test_export_static.py` 里有合成假凭据 `cli_abcdef012345`，**永久命中**，不是泄漏。
 
 ## 常用命令
 
 ```sh
 start.bat                                      # 唯一启动入口（--dev 开发模式；自动探测 .python / 系统 Python）
 start.bat --dev                                # 开发模式（py/模板改动自动热重载）
-python tests\test_reader.py                    # 阅读器 smoke（80 断言）
-python tests\test_new_project.py               # 脚手架 smoke（9 断言）
-python tests\test_predicates.py                # 判定谓词层 smoke（73 断言 · 合成 tokenizer.json 钉分词 special 字面量 · rag 续跑判据 plan_sync/stamp_legacy 真值表 · P6 存活清单回填）
-python tests\test_properties.py                # 性质测试（14 条 · 每条 240 个随机样本，固定种子）
-python tests\test_invariants.py                # 不变量门禁 I1~I9（71 断言 · 对 AGENTS 1-8；I10 随 AI 出站链路于轮次 54 删除）
-python tests\test_e2e_smoke.py                 # 端到端 smoke（169 断言 · 打满 39 条业务路由；/api/ai/* 与 /api/ask* 只测「已下线 → 404」）
-python tests\test_watch_ci.py                  # Agent 工具自身（38 断言 · watch_ci 的四类"读不到"分开点名 + 代理不通自动直连；打本进程假 GitHub，零外网；GBK/UTF-8 两档都要绿——第一次进钩子就是被 GBK 档抓红的）
-python tests\test_ui_regress.py                # 视觉回归批处理（P5：11 张截图 vs tests/ui-baselines/ 基线 + 10 条顶栏几何断言）
-python tests\test_ui_regress.py --stability    #   只验"两次截图逐像素相同"（改矩阵/环境后先跑这个）；并把历轮每镜头最大 AE 累计进 tests/ui-baselines/floor.json（跟踪文件，阈值 AE≤2 的实测出处）
-python tests\test_ui_regress.py --update       #   确认改动无误后，用本次截图刷新基线
-python tests\test_ui_behavior.py               # UI 行为回归（210 断言 · 台账 §2 已升 E2E 的控件"点了到底有没有反应"；轮次 33 提速：一台 Chrome 跑完整套（会话档），~100s/趟，作业间自动清存储保隔离；回退一次一档 `set KB_BEHAVIOR_SESSION=0`；缺 node/Chrome 自动 SKIP）
-python tests\test_rag.py                       # RAG smoke（含**与 Rust tokenizers 逐 token 交叉验证**，以及**续跑三证**：中断后只重嵌剩余篇 + 旧库迁移相符才盖章；缺库/缺模型才 SKIP，本机跑通才是提交口径）
+python scripts\export_static.py --out site --base /knowledge   # 导出公网只读档 → site/（见下方 MSYS 警告）
 python scripts\rag_search.py "查询" --json     # 语义检索 CLI / Agent 入口
-python scripts\check_ledger_counts.py             # 台账对账：§0 数字必须等于按 §1~§5 状态列重算的数（已入 pre-commit + CI）
-python scripts\export_static.py --out site --base /knowledge   # 公网只读档导出器：公开白名单语料 → site/（与 Flask 读端点逐字段同构的静态 JSON；产物是派生缓存，site/ 已 gitignore）
-python scripts\publish_site.py [--dry-run]   # 【已停用 · 2026-10-07】旧 Quartz 站仓同步管线，目标 E:\GitHub\knowledge-site 已删除；公开面改由 export_static + GitHub Pages 承担（见 .github/workflows/pages.yml），跑它只会报路径不存在
-python scripts\check_frontmatter.py [--all]  # frontmatter 严格 YAML 门禁（公开站 Quartz 不容错、本地阅读器容错；已入 pre-commit 与 publish_site.py 前置）
+python scripts\check_ledger_counts.py          # 台账对账：§0 数字必须等于按 §1~§5 状态列重算的数
 ```
 
-> **导出器在 Git Bash 里必须加 `MSYS_NO_PATHCONV=1`**：`--base /knowledge` 会被 MSYS 在交给 Windows 版 Python 之前改写成 `C:/Program Files/Git/knowledge`，整站链接与 404 兜底就此指到本机目录树（线上是 Linux runner 所以没中招，本机复现必踩）。现在 `export_static.check_base()` 会直接拒绝带盘符/反斜杠的 KB_BASE，不再静默产出坏站；cmd 与 PowerShell 下无需该变量。
-> 只读档本地预览：`py -3 scripts\export_static.py --out site --base /knowledge` 之后，把 `site/` 放进 `<某根>/knowledge/` 再起静态服务（`.qa/serve404.py` 会顺带模拟 GH Pages 的 404 回落，深链才验得准）。直接 `python -m http.server -d site` 只能验空前缀那一种口径。
+测试（`python tests\X.py`，无 pytest，各自可独立执行）：
 
-> 历史脚本 `start-rag.bat` / `start-dev.bat` 已于 2026-09-13 并入 `start.bat`
+| 套件 | 断言 | 管什么 |
+|---|---|---|
+| `test_reader.py` | 80 | 阅读器行为 + 启动路径 `--import-check` |
+| `test_new_project.py` | 9 | 脚手架 |
+| `test_predicates.py` | 73 | 判定谓词层（合成 tokenizer.json 钉分词 special 字面量 · rag 续跑判据真值表） |
+| `test_properties.py` | 14 | 性质测试（每条 240 个随机样本，固定种子） |
+| `test_invariants.py` | 71 | AGENTS 不变量门禁 I1~I9（含 I4 物理删除调用点白名单） |
+| `test_e2e_smoke.py` | 170 | 端到端：逐条打满 40 条路由 |
+| `test_export_static.py` | 106 | 公网只读档契约（导出同构 / 只读裁剪 / KB_BASE 口径 / 公网文案与首页） |
+| `test_known_defects.py` | 6 | 已登记缺陷不回退 |
+| `test_watch_ci.py` | 38 | Agent 工具自身（四类"读不到"分开点名；GBK/UTF-8 两档都要绿） |
+| `test_ui_regress.py` | 31 | P5 视觉回归：11 张截图逐像素 vs `tests/ui-baselines/` + 10 条顶栏几何 |
+| `test_ui_behavior.py` | 213 | UI 行为回归：真点每个控件，看它到底有没有反应 |
+| `test_rag.py` | — | RAG（与 Rust tokenizers 逐 token 交叉验证 + 续跑三证；缺依赖/缺模型才 SKIP） |
 
-## 正文排版约定（markdown 渲染层消费 · 2026-09-18 定稿）
+`--stability` 只验"两次截图逐像素相同"（改矩阵或换环境后先跑它）；`--update` 在确认改动无误后刷新基线。
 
-`.a-body` 渲染由 CSS + `app.js::enhanceArticleDOM` 后处理，作者侧零负担约定：
+> **导出器在 Git Bash 里必须加 `MSYS_NO_PATHCONV=1`**：`--base /knowledge` 会被 MSYS 在交给 Windows 版 Python 之前改写成 `C:/Program Files/Git/knowledge`，整站链接与 404 兜底就此指到本机目录树（线上是 Linux runner 所以没中招）。`export_static.check_base()` 现在会直接拒绝带盘符/反斜杠的 KB_BASE，不再静默产出坏站；cmd 与 PowerShell 下无需该变量。
+> 只读档本地预览：导出后把 `site/` 放进 `<某根>/knowledge/` 再起静态服务。直接 `python -m http.server -d site` 只能验空前缀那一种口径，深链的 404 回落验不到。
+
+## 正文排版约定（markdown 渲染层消费）
+
+`.a-body` 渲染由 CSS + `app.js::enhanceArticleDOM` 后处理，作者侧零负担：
 
 - 大节写 `## 小节名`（自动包成 .sec-card 卡片，标题 hash 定渐变色）；题干写 `### N. 题干｜初级|中级|高级`（尾部难度自动转徽章）。
 - 提示框用引用首行标记：`> 💡` 提示、`> ⚠️/❗` 警告、`> 🎯`/`关键要点` 关键点、`> 🔍`/`追问` 追问。
 - 代码用围栏（hljs 克制单色高亮、随明暗主题翻转）；对比内容用表格。
-- 设计基准与决策：渐变条按标题 hash 稳定取色、代码浅底+单色高亮、`##` 分组（原 docs 渲染重构落地方案已执行完毕并删除，决策记录在本节与 git 历史）。
-> （RAG 依赖装进哪个解释器，哪个解释器启动就带语义检索；开发模式走 `--dev` 参数）。
-
-## 工具与临时产物（`scripts/agent/` 进 git；`.qa/` 不进 git）
-
-Agent 的**常驻工具脚本**统一收在 `scripts/agent/`（2026-09-18 从旧临时目录收编，进 git、跨机器复用；旧 handoff 里出现的 `.workbuddy/shot.mjs` 等路径一律按新位置理解）。`.qa/`（2026-09-20 由 `.workbuddy/` 改名——旧名带别家产品色彩，用户要求中性命名）只放**一次性诊断产物与 QA 存档**，不进 git，一次性 txt 用完即删（约定：验证类脚本不要落盘 txt 输出，直接看 stdout）。
-
-| 常驻工具 | 用途 |
-|------|------|
-| `scripts/agent/shot.mjs` | 零依赖 CDP 截图：`node scripts/agent/shot.mjs <url> <out.png> [w] [h] [clickSel]`，`clickSel` 传 CSS 选择器可先点击再截图（验证按钮交互态）；`node scripts/agent/shot.mjs --batch manifest.json` 批量截（一个 Chrome、多标签页，清单里可带 `init`=页面脚本前注入的 JS，用来钉死主题等确定态；`clickWait`=每次点击后**最多**等待的毫秒数（轮次 34 起 `shot.mjs`/`geom.mjs` 共用 `scripts/agent/quiesce.mjs`：字体就绪 + 在途 fetch 归零 + DOM 连续 320ms 无变化就提前走，声明值只是上限）—— 别靠加大睡眠来“保险”，实测去掉等待红回来的正是点击重绘那几张） |
-| `scripts/agent/imgdiff.mjs` | 截图像素对比：`node scripts/agent/imgdiff.mjs <a.png> <b.png> [ignoreRegions]`，产出差异热图并输出差异占比；UI 改动后**必须**跑（见下方 UI 回归纪律） |
-| `scripts/agent/evalcdp.mjs` | CDP 执行任意 JS 并回显返回值 + console 报错：`node scripts/agent/evalcdp.mjs <url> "<js表达式>"`，查"改了没生效"类问题利器 |
-| `scripts/agent/geom.mjs` | **多视口几何探针**：`node scripts/agent/geom.mjs <url> <w1,w2,...> <expr@文件>`，一个 Chrome 逐档 `setDeviceMetricsOverride` 求值（支持 async 表达式，`awaitPromise`）、每档回一行 JSON。两个用途：① 顶栏压字这类"像素基线永远绿"的重叠问题（台账 §6 第 28/29 行）；② 当行为测试的驱动器 —— **evalcdp 的视口只有 ~764px 宽**，右栏在那一档没布局、`focus()` 也无效，凡是依赖侧栏/浮层定位的前端行为断言都用本脚本钉一个桌面宽度。**表达式必须一次求值取全部矩形**——每个字段各自 `getBoundingClientRect()` 会在过渡中读出三套数 |
-| `scripts/agent/verifyall.mjs` | 双阶段全状态断言模板（同页两阶段 evaluate，如 pretty/md 视图切换），按需改表达式复用 |
-| `scripts/agent/watch_ci.py` | 盯 GitHub Actions 到结论：`python scripts/agent/watch_ci.py <sha 前缀> [等待秒=420]`。回 run 状态 + 逐步 conclusion + **annotations**（`::notice::STARTED` / `::warning::SKIPPED`，见 `tests/_ci.py`）—— 匿名 API 读不到日志正文，只有这三样能证明**这一步真跑了没**。匿名配额 60 次/小时按出口 IP 算，别裸轮询。**四类"读不到"分开报、绝不混成一句**：够不着 API=退出 4 / 403 限流=退出 3（带配额恢复时刻）/ API 正常但列表里没这个 sha=退出 5 / HTTP 200 但正文不是 JSON=退出 6（CONNECT 代理的隧道应答会混进正文，旧写法把响应头指到 `-` 时解析失败、直接崩栈 —— 2026-09-29 推完第一次实跑撞的就是它）；**代理 `127.0.0.1:10810` 不通时自动改直连重试一次**（2026-09-29 实测：代理客户端没起来而直连 1.16 秒通），判据 `tests/test_watch_ci.py`（38 条，假 GitHub 起在本进程，`KB_CI_API`/`KB_CI_PROXY` 是指针） |
-| `scripts/agent/scan_fm.py` | frontmatter 污染扫描：`python scripts/agent/scan_fm.py [扫描根]`，正文前 400 字符内又出现完整 fm 块 = 污染（baike 提质时沉淀） |
-| `scripts/agent/scan_dup.py` | 抓取残留副本扫描：`python scripts/agent/scan_dup.py [扫描根]`，`xxx-<数字>.md` 与 `xxx.md` 同名共存即残留 |
-| `scripts/agent/pinproxy.py` | GitHub 连通性应急隧道（2026-10-07 加，本机 DNS 常把 `github.com` 解到不通的边缘 IP）：**先探后拨** —— `for ip in 140.82.112.4 140.82.114.3 140.82.113.3; do curl -s -o /dev/null -m 20 --resolve github.com:443:$ip -w "%{http_code}\n" https://github.com/; done`，取返回 200 的那个（实测三个的可用性会互换，同一 IP 上一分钟通、下一分钟 TLS 被掐，不要写死默认值）。起法 `KB_GH_IP=<可用IP> python scripts/agent/pinproxy.py`，只绑 127.0.0.1、只放行 `github.com:443` 的 CONNECT、TLS 不解密；推送 `git -c http.proxy=http://127.0.0.1:18080 -c http.version=HTTP/1.1 push`（**必须带 `-c`**，不落配置，进程一杀就没）。踩过的坑： CONNECT 之后必须 `settimeout(None)`，否则建隧道后空闲超 20 秒就被本脚本掐断，git 报 `SSL_read: unexpected eof`，而快速 curl 因数据一直在流会掩盖它。**不改 hosts、不写任何 git 配置。** |
-
-两个 scan 脚本的扫描根默认按脚本位置推导到仓库根下的 `content/`（不再写死盘符），传 argv[1] 可覆盖。
-
-**UI 回归纪律（2026-09-18 起，ImageMagick 已装；2026-09-24 起有截图矩阵基线）**：改动 UI（css/js 模板/渲染逻辑）后，除 smoke 截图外，对受影响页面执行
-0. **首选一条命令**：`python tests\test_ui_regress.py` —— 合成语料的临时实例 + 11 张「页面 × 主题 × 点击态」截图，与 `tests/ui-baselines/` **逐像素**比对（阈值 AE ≤ 2 像素；实测两次截图的噪声地板 0~1 像素），外加 **10 条顶栏几何断言**（7 档宽度量矩形）。pre-commit 在本次提交含 css/js/模板文件时**自动跑它**。刷新基线用 `--update`（改完确认无误后），动矩阵/换环境先跑 `--stability` 证明截图本身是确定的。
-   **几何断言不是多余的**：像素基线的口径是"和上次一样吗"，重叠/贴脸/溢出这类布局缺陷是**稳定地错**，比对永远绿（台账 §6 第 29 行：顶栏压字在当时的 22 张基线里安稳躺了很久）。要判"两块矩形相不相交"就用 `scripts/agent/geom.mjs`，判据表达式由测试侧传。
-1. 改前基线已留在 `.qa/qa-shots/` 时：`node scripts/agent/imgdiff.mjs 基线.png 新.png`（**默认 2% 容差只适合肉眼复核**；作判定用请传 `0%` 并按差异像素数看，实测 2% 会把真回归读成绿，见第 3 条）；
-2. 无基线则先 `shot.mjs` 补拍明暗两态入档；
-3. 差异热图里出现**不该变的区域变红** = 改 A 崩 B，修完再交。**不要用"调大 fuzz"去压噪点**（旧版本这条写的是 `imgdiff a b 5%`，2026-09-24 撤销）：实测 2% 容差 + "差异占比"会把一次真实的模板改字读成绿（AE 只有 75 像素），噪点该靠"钉死动态内容"消除（见 `test_ui_regress.py` 的 FREEZE 与 `clickWait`），而不是靠放大容差。
-4. **CSS 受严格 lint 管**（轮次 40 起）：`npm run lint:css` 打开着 `no-duplicate-selectors` 与 `block-no-empty`。同选择器分块写（皮肤 token 层 vs 风格层、`--ed-*` 令牌段、截图微调组）是刻意的，可以放行，但**必须就地写一条带理由的 `stylelint-disable` 注释**；无理由放行视为回退。空规则块按缺陷删掉（历史上 `[data-magnetic]:hover{}` 那类壳会误导接手的人）。唯一生效的配置是 `.stylelintrc.json`（`stylelint.config.mjs` 从未生效、已删）。
-
-| 临时产物（`.qa/`） | 用途 |
-|------|------|
-| `.qa/qa-shots/` | QA 截图存档（编号递增，对照 UI 改动历史） |
-| `.qa/ui-demo/` | UI 改版多方案 demo 稿（HTML 可交互 + 整页截图） |
-| `.qa/memory/` | 跨会话工作日志：日期命名的坑与结论，接手前先读最新一篇 |
-
-注意：**bat 脚本一律全英文**（cmd 对 UTF-8 中文 rem/echo 会切碎执行）；**测 bat 必须用干净 PowerShell**，Agent 的 bash shim 会污染 PATH 导致误判。
+- 设计基准：渐变条按标题 hash 稳定取色、代码浅底 + 单色高亮、`##` 分组。
 
 ## 架构地图
 
@@ -100,69 +73,86 @@ content/            语料（唯一不可再生资产）；_meta/taxonomy.json =
 app/app.py          路由与请求编排（create_app / watcher / RAG 惰性接入）
 app/store.py        语料层：frontmatter、扫描、分类树、备注、taxonomy 装载
 app/fts.py          FTS5 全文索引 + [[双链]]解析（派生）
-app/reading.py      月度阅读统计（reading.db 派生，事件制：open/read_minute/finish 只追加）
+app/reading.py      阅读统计（reading.db 派生，事件制）
 app/rag.py          语义检索：切块/嵌入/sqlite-vec（派生，RAG_CODE_VERSION 管版本）
-app/wikilink.py     [[双链]]补全候选池 / 打分 / 断链检查（2026-10-07 自 learn.py 拆出）
-app/palette.py      命令面板索引（2026-10-07 自 learn.py 拆出）
-（轮次 54 删除：app/routes_ai.py、app/ai_config.py、app/ai_usage.py、app/ai_qa.py —— 项目不再有任何出站）
-（轮次 57 瘦身删除：app/learn.py、app/cards.py、app/sm2.py、app/routes_learn.py、scripts/govern_tags.py
-  —— 复习/刷题/术语/标签治理整栈退场；书库引擎 static/kb-novel.js 与 novel.css 同批删除。
-  功能入口从 7 项收成 3 项：阅读 / 统计 / 收藏）
-scripts/            迁移与维护脚本（rag_search.py 是 Agent 检索入口；agent/ 存跨会话常驻工具）
-scripts/export_static.py  公网只读档导出器（合并方案 §4.1）：公开白名单语料 staging → 复用读端点产 payload → site/ 落盘
-static/kb-static.js       只读适配器（§4.2/§4.3，只有导出产物加载）：fetch 分诊（读→data/*.json、写→READ_ONLY、裁剪端点→NOT_IN_STATIC）、KB_BASE 链接与路由桥、只读裁剪 CSS、公网状态栏与 <title> 口径、根路径的「公网首页」态（注入 data/home.html + pages/landing.css）
-app/templates/landing_panel.html  首页那一屏（「从一次检索开始」）的**唯一一份**标记：本地 landing 用 {% include %} 渲染它（收件箱 / 本月统计 / 架构图取景框全在），导出器以 home_readonly=True 再渲染一次成 data/home.html 供公网用（只留「搜索」+「继续上次阅读」）。改首页只改这一处，不许复制第二份
-static/app.js / kb-core.js  的 `KB_READ_ONLY`（判据 = 注入的 window.KB_STATIC.readonly）是**动态写入口**的单点开关：右键菜单项靠 roHide 标记被摘掉、拖拽移动与近 7 日阅读图不接线、编辑器快捷键不进帮助。静态写入口才归 kb-static.js 那份选择器清单——两层不许互相抄
-.github/workflows/pages.yml  push main → export_static --base /knowledge → deploy-pages（线上 https://lovemyFamilyFovever.github.io/knowledge/，仓库即公开面）
-requirements/       依赖清单（requirements.txt 核心 / -rag.txt 语义检索 / -lock.txt 便携环境重建锁）
-.githooks/          pre-commit：静态层（ruff/台账对账/悬空令牌/RAG 版本）串行 → 10 条纯 Python 套件**并行**（KB_GATE_PARALLEL 默认 4，=1 串行；动了语料再加一条 frontmatter 闸）→ 浏览器两套与 RAG 串行（缺依赖自动 SKIP）
-.github/workflows/  CI（GitHub Actions；windows runner 作业级 PYTHONIOENCODING=utf-8）
-                      跑/SKIP/失败/崩溃四类状态都会打成 annotation（tests/_ci.py），
-                      用 `python scripts/agent/watch_ci.py <sha>` 读回，无需登录就能判断"这一步真跑了没"
+app/wikilink.py     [[双链]]补全候选池 / 打分 / 断链检查
+app/palette.py      命令面板索引
+static/app.js       阅读器主逻辑；static/kb-core.js = KB 内核（overlay / 设置 / 命令面板 / 快捷键）
+static/kb-static.js 只读适配器（只在导出产物里加载）：fetch 分诊（读→data/*.json、写→READ_ONLY、
+                    裁剪端点→NOT_IN_STATIC）、KB_BASE 链接与路由桥、只读裁剪 CSS、
+                    公网状态栏与 <title> 口径、根路径的「公网首页」态
+scripts/export_static.py  导出器：公开白名单语料 staging → 复用读端点产 payload → site/ 落盘
+app/templates/landing_panel.html  首页那一屏的唯一一份标记：本地 include 渲染（收件箱 / 本月统计 /
+                    取景框全在），导出器以 home_readonly=True 再渲染一次成 data/home.html
+                    （只留「搜索」+「继续上次阅读」）。改首页只改这一处，不许复制第二份
+.github/workflows/pages.yml  push main → export_static → deploy-pages（线上即本仓 Pages）
+.github/workflows/ci.yml     push → 静态层 + 上表全部套件（windows runner）
+.githooks/pre-commit         静态层（ruff / 台账对账 / 悬空令牌 / RAG 版本）串行 → 纯 Python 套件
+                             并行（KB_GATE_PARALLEL 默认 4，=1 串行）→ 动了语料加一道 frontmatter 闸
+                             → 浏览器两套与 RAG 串行（缺依赖自动 SKIP）
+requirements/       依赖清单（requirements.txt 核心 / -rag.txt 语义检索 / -lock.txt 便携环境锁）
+测试文件/覆盖台账.md  覆盖率台账：§0 轮次汇总、§1~§5 格子清单、§6 发现台账、§7 门禁现状
 ```
+
+**只读档的两层裁剪分工（不许互相抄）**：静态存在的写入口（按钮、页签、导航链接、引擎钮）归 `kb-static.js` 里那份 CSS 隐藏清单；运行时才生成的写入口（右键菜单项、拖拽、动态图、快捷键帮助）归 `app.js` / `kb-core.js` 里的 `KB_READ_ONLY`（判据 = 注入的 `window.KB_STATIC.readonly`），菜单项打 `roHide: true` 由 `openCtxMenu` 单点过滤、空菜单不弹。**CSS 清单挡不住动态节点，别指望加选择器解决。**
+
+## 工具与临时产物（`scripts/agent/` 进 git；`.qa/` 不进 git）
+
+Agent 的**常驻工具**统一收在 `scripts/agent/`（进 git、跨机器复用）。`.qa/` 只放**一次性诊断产物**，不进 git：验证类脚本不要落盘 txt，直接看 stdout；**任务收工后 `.qa/` 里自己产生的东西要清掉**，别留给下一个人排雷。
+
+| 常驻工具 | 用途 |
+|---|---|
+| `shot.mjs` | 零依赖 CDP 截图：`node scripts/agent/shot.mjs <url> <out.png> [w] [h] [clickSel]`；`--batch manifest.json` 批量截（一个 Chrome 多标签，清单形如 `{"shots":[{url,out,w,h,init,clickWait}]}`，`init` 是页面任何脚本前注入的 JS，用来钉死主题/动画等确定态）。`clickWait` 是**上限**不是睡眠：字体就绪 + 在途 fetch 归零 + DOM 连续 320ms 无变化就提前走 |
+| `imgdiff.mjs` | 像素对比：`node scripts/agent/imgdiff.mjs <a.png> <b.png> [fuzz%]`，回差异像素数 AE 与占比 + 热图。**没有 ignoreRegions 参数** —— 要排除动画区域就先用 `magick <img> -crop WxH+X+Y +repage out.png` 裁开再比 |
+| `evalcdp.mjs` | CDP 执行任意 JS 并回显返回值 + console 报错：`node scripts/agent/evalcdp.mjs <url> "<js>"`（表达式以 `@` 开头时按文件读取，长载荷塞不进 argv） |
+| `geom.mjs` | 多视口几何探针：`node scripts/agent/geom.mjs <url> <w1,w2,...> <expr@文件>`，逐档设宽求值、每档回一行 JSON。用途：① 顶栏压字这类"像素基线永远绿"的重叠问题 ② 当行为测试的驱动器 —— **evalcdp 的视口只有 ~764px**，依赖侧栏/浮层定位的断言都得用它钉桌面宽度。**表达式必须一次求值取全部矩形**，逐字段各自 `getBoundingClientRect()` 会在过渡中读出三套数 |
+| `verifyall.mjs` | 同页两阶段 evaluate 模板（如 pretty/md 切换），按需改表达式复用 |
+| `watch_ci.py` | 盯 GitHub Actions 到结论：`python scripts/agent/watch_ci.py <sha 前缀> [等待秒=420]`。回 run 状态 + 逐步 conclusion + **annotations**（`::notice::STARTED` / `::warning::SKIPPED`，见 `tests/_ci.py`）—— 匿名 API 读不到日志正文，只有这三样能证明某一步真跑了。四类"读不到"分开报：够不着 API=4 / 限流=3 / 列表里没这个 sha=5 / 200 但正文不是 JSON=6。网络飘时设 `KB_CI_PROXY=http://127.0.0.1:7897` |
+| `scan_fm.py` | frontmatter 污染扫描：正文前 400 字符内又出现完整 fm 块 = 污染 |
+| `scan_dup.py` | 抓取残留副本扫描：`xxx-<数字>.md` 与 `xxx.md` 同名共存即残留 |
+
+两个 scan 脚本的扫描根默认按脚本位置推导到仓库根下的 `content/`，传 argv[1] 可覆盖。
+
+**UI 回归纪律**：改动 UI（css/js/模板/渲染逻辑）后
+
+0. **首选一条命令**：`python tests\test_ui_regress.py`（合成语料的临时实例 + 11 张截图逐像素 + 10 条顶栏几何）。pre-commit 在提交含 css/js/模板时自动跑它。刷新基线用 `--update`，动矩阵/换环境先跑 `--stability` 证明截图本身是确定的。
+1. 几何断言不是多余的：像素基线的口径是"和上次一样吗"，重叠/贴脸/溢出是**稳定地错**，比对永远绿。判"两块矩形相不相交"用 `geom.mjs`。
+2. 手工对比用 `imgdiff.mjs a.png b.png 0%` 并按**差异像素数**判 —— 默认 2% 容差只适合肉眼复核，实测会把真回归读成绿。**不要用放大 fuzz 压噪点**：噪点靠钉死动态内容消除（截图清单的 `init` / `clickWait`），或者先测噪声地板（同页截两次比一次）。
+3. 热图里出现**不该变的区域变红** = 改 A 崩 B，修完再交。`--update` 会顺手刷新别的镜头：字节变了而 AE=0 是 PNG 编码噪声，退回 HEAD 不入提交。
+4. CSS 受严格 lint 管：`npm run lint:css` 开着 `no-duplicate-selectors` 与 `block-no-empty`。同选择器分块写是刻意的，但**必须就地写一条带理由的 `stylelint-disable`**；无理由放行视为回退。空规则块按缺陷删掉。唯一生效的配置是 `.stylelintrc.json`。
+
+注意：**bat 脚本一律全英文**（cmd 对 UTF-8 中文 rem/echo 会切碎执行）；**测 bat 必须用干净 PowerShell**，Agent 的 bash shim 会污染 PATH 导致误判。
 
 ## 提交纪律
 
-- 适时提交：每完成一个逻辑独立的开发单元（一个功能、一次修复、一次重构等），自行判断并执行 git commit，不要等全部结束才提交。消息说人话（feat/fix/docs/test + 中文或英文摘要）。
-- 提交前跑上面三套测试——pre-commit 钩子会自动跑（`git config core.hooksPath .githooks` 已设置）。
-- push 目前需手动执行：`scripts/daily_backup.ps1` 是为「每日自动 commit+push」准备的脚本，但**尚未注册任何 Windows 计划任务**（历史曾有的自建维护计划任务已于 2026-09-18 全部删除）。要启用自动备份须由用户在场时用脚本注释里的 `schtasks /Create` 命令注册。
-- **只提交自己改过的文件**：commit 一律用显式 pathspec（如 `git commit -F msg -- app/templates/workbench.html static/style.css`），绝不要用 `git add -A` / `git add .` 一把梭。未跟踪文件要先 `git add -- <file>` 再 pathspec 提交（pathspec 不会自动 add 未跟踪文件，否则整次提交会 abort）。
-- **绝不用 `git reset` / `git checkout` / `git restore` 去动别的 agent（或别的会话）改过的文件**：多会话并发时，其他会话的暂存/未提交改动只会被你的 `git reset HEAD -- <file>` 之类命令误带出/误回退。碰了就立刻 `git add` 原样恢复其状态，已提交/已改动的内容一律不碰。
-- **改代码前先 `git status` 看清工作区归属**：自己改的才提交，别人的保持原状；无法判断归属时宁可只提交明确属于自己的文件。
+- 适时提交：每完成一个逻辑独立的开发单元就 commit，不要等全部结束。消息说人话（feat/fix/docs/test + 中文摘要），并把"为什么"写清楚。
+- **只提交自己改过的文件**：一律用显式 pathspec（`git commit -F msg -- <files>`），绝不用 `git add -A` / `git add .`。未跟踪文件先 `git add -- <file>` 再 pathspec 提交（否则整次提交会 abort）。
+- **绝不用 `git reset` / `git checkout` / `git restore` 去动别的会话改过的文件**：多会话并发时会被误带出/误回退。碰了就立刻 `git add` 原样恢复其状态。改代码前先 `git status` 看清工作区归属。
+- 宣称"已提交"之前必须核实落地：`git commit ... | tail` 之后的 `$?` 是 `tail` 的，后台任务通知里的 "exit code 0" 也不能证明提交成功 —— 紧跟 `echo "git rc=$?"` 或复查 `git log -1`。
+- push 需手动执行（`scripts/daily_backup.ps1` 是为自动 commit+push 准备的，**未注册任何计划任务**；要启用须用户在场时用脚本注释里的 `schtasks` 命令注册）。
 
 ## 工作交接（Handoff）
 
-- 交接文档统一放在 `docs/`，命名规则 **`handoff-YYYYMMDDNN.md`**（`handoff-` 前缀 + 年月日 + 两位当日序号），如 `handoff-2026091201.md` = 2026-09-12 当天第 1 份；同日多份序号递增（`…02`、`…03`）。加 `handoff-` 前缀是为日后一眼认出用途，避免只剩一串日期看不懂是什么文件。
-- 不再使用无日期的 `HANDOFF.md`；每次交接**新建**一份「前缀+日期」文件，旧的原样保留归档（历史交接即 `docs/handoff-*.md`，如 `docs/handoff-2026091101.md`）。
-- 每份 handoff **必含五节，缺内容写「无」不省略**：① 我们在做什么任务 ② 已经完成了什么 ③ 当前卡在哪 ④ 下一步计划 ⑤ 踩过的坑（绝对不要再踩）。建议另附「项目速览 / 关键约定 / 相关文件索引 / 给新会话的第一句话」。
-- 面向**完全没有上下文**的新会话：先读最新 handoff，再读本 `AGENTS.md`，即可接手；接手第一步 `git log --oneline` 确认 HEAD、`git status` 看工作区。
+- 交接文档放 `docs/`，命名 **`handoff-YYYYMMDDNN.md`**（年月日 + 当日两位序号），如 `handoff-2026100801.md`。
+- **只留最新一份**：新建下一份时把上一份删掉，不堆归档。历史信息由 git 与台账承载。
+- 每份 handoff **必含五节，缺内容写「无」不省略**：① 我们在做什么任务 ② 已经完成了什么 ③ 当前卡在哪 ④ 下一步计划 ⑤ 踩过的坑（绝对不要再踩）。
+- 接手第一步：读 `AGENTS.md` → 读最新 handoff → `git log --oneline` 确认 HEAD、`git status` 看工作区。
 
 ## 跨机器坑备忘
 
-- git 输出含中文文件名时默认转义为带引号的八进制串（如 `"\347\231\276….md"`），行尾多出的引号使 `\.md$` 类正则大面积漏计（实测 baike 目录 245 个文件只命中 9 个）。统计/匹配 git 路径输出一律加 `-c core.quotepath=false`。
-- PowerShell 5.1 读无 BOM 的 UTF-8 脚本按 GBK 解码：若文件还是 LF-only，行尾中文的 UTF-8 末字节（0x80-0xBF，合法 GBK 首字节）会把换行符吞进非法双字节序列，下一行代码被并入注释静默失效（实测 daily_backup.ps1 的 $root 赋值被吞，Join-Path 报 null）。仓库 .ps1 一律 UTF-8 BOM + CRLF（.gitattributes 已强制 `*.ps1 text eol=crlf`）。
-- 测试全绿 ≠ 启动路径可用：tests 从项目根导入 `app`，start.bat 脚本直启走另一条解析路径（sys.path[0]=app/ 目录）；2026-09-09 实测 app/ 缺 __init__.py 时直启崩、测试全绿。回归入口：`python app\app.py --import-check`（已入 tests/test_reader.py 断言与 pre-commit 链）。
-- **`NO_PROXY` 会让 pre-commit 永久假红**：本机系统环境变量 `NO_PROXY=localhost,127.0.0.1,::1` 使 `curl` 跳过 `tests/test_watch_ci.py` 自建的假代理，"代理不通→改直连"分支永不触发 → A2/H1 两条固定失败（实测同一份代码：带 `NO_PROXY` 36 passed / 2 failed，去掉后 **38 passed / 0 failed**）。钩子继承同一个变量，所以**本仓库每次提交都要 `env -u NO_PROXY -u no_proxy git commit ...`**。这是清理执行环境，**不是 `--no-verify` 绕闸**，门禁照常全跑。根治办法是让测试自己剥掉 `NO_PROXY`，属测试环境隔离缺陷，另案。
-- **`github.com` 解析到不可达边缘 IP**：本机 DNS 常返回 `20.205.243.166`（实测 TCP 握手超时 / TLS 被 RST），而 `140.82.113.3`、`140.82.112.4` 可达；`api.github.com` 走另一段所以看着正常 —— 症状就是 push/ls-remote 时通时不通。正解是临时隧道而非改 hosts：`python scripts\agent\pinproxy.py`（仅监听 127.0.0.1，只转发 `github.com:443` 的 CONNECT，TLS 端到端不解密），再 `git -c http.proxy=http://127.0.0.1:18080 push`，`-c` 不落配置、进程一杀就没。**判仓库是否真被删除**：`git ls-remote` 必须同时探一个已知公共仓做对照——443 超时/Connection reset 只代表线路问题，只有服务器实回 `remote: Repository not found` 才算删成；且本机 git 存有凭据助手，"匿名 ls-remote 成功"并不等于该仓公开。
-- **本机推 github 的可行路线（2026-10-07 实测）**：直连 `github.com` 时通时不通，走本机代理最稳——先探活 `curl.exe -s -o NUL -w "%{http_code}" --proxy http://127.0.0.1:7897 https://github.com/`（应回 `200`），再 `git -c http.proxy=http://127.0.0.1:7897 -c http.version=HTTP/1.1 -c http.postBuffer=524288000 push origin main`（`-c` 不落任何配置，进程一停就没了）。代理客户端没起来时退回上面的 pinproxy 隧道（`127.0.0.1:18080`）作备胎；仓库已公开，`watch_ci.py` 现在匿名即可读本仓 Actions（网络飘时可设 `KB_CI_PROXY=http://127.0.0.1:7897`）。
-- **洗历史的操作顺序与三个静默失效点**：① 先抽取"只存在于历史里的元数据"（每文件首次/末次提交日期等）**再** `reflog expire + gc`，顺序反了就是不可逆丢失（`git log` 默认新→旧，用 `setdefault` 取 first 会把时间线整个抽反，须 `--reverse`）；② `git gc --prune=now` 会**返回 0 却什么都不删**——`.git/objects/pack/*.promisor` 侧车标记让 `repack -A -d` 整包跳过（`git config --unset remote.origin.partialclonefilter` **不清侧车文件**），而 `.git/ORIG_HEAD` 是 `git prune` 认的合法可达根，一个旧提交就能钉住整条旧历史；③ `git fetch --filter=blob:none <按 SHA 取>` 在 GitHub 上不保证生效（实测把 1528 blob / 393.9MB 全拉回本地），宣称省流量前先用 `git verify-pack -v .git/objects/pack/*.idx | awk '$2=="blob"{s+=$3}END{print s}'` 量一遍。另注：`git commit ... | tail -40` 的 `$?` 是 `tail` 的，管道后的 exit code 与后台任务通知里的 "exit code 0" 都**不能**证明提交成功，须 `echo "git rc=$?"` 紧跟 git 本身或复查 `git log -1`。
+- git 输出含中文文件名时默认转义成带引号的八进制串，行尾多出的引号会让 `\.md$` 类正则大面积漏计（实测 245 个文件只命中 9 个）。统计/匹配 git 路径一律加 `-c core.quotepath=false`。
+- PowerShell 5.1 读无 BOM 的 UTF-8 脚本按 GBK 解码：若文件还是 LF-only，行尾中文的 UTF-8 末字节会把换行吞进非法双字节序列，下一行代码被并入注释**静默失效**。仓库 `.ps1` 一律 UTF-8 BOM + CRLF（`.gitattributes` 已强制），且脚本内容**只用 ASCII**。
+- 测试全绿 ≠ 启动路径可用：tests 从项目根 import `app`，而 `start.bat` 直启走另一条解析路径。回归入口：`python app\app.py --import-check`（已入 test_reader 与 pre-commit 链）。
+- **`NO_PROXY` 会让 pre-commit 永久假红**：本机系统变量 `NO_PROXY=localhost,127.0.0.1,::1` 使 `curl` 跳过 `test_watch_ci.py` 自建的假代理，两条分支永不触发 → 固定红（实测带它 36/2、去掉 **38/0**）。所以**本仓库每次提交都要 `env -u NO_PROXY -u no_proxy git commit ...`**。这是清理执行环境，不是 `--no-verify` 绕闸。
+- **推 GitHub 的可行路线**：直连时通时不通，先探活 `curl.exe -s -o NUL -w "%{http_code}" --proxy http://127.0.0.1:7897 https://github.com/`（应回 200），再 `git -c http.proxy=http://127.0.0.1:7897 -c http.version=HTTP/1.1 push origin main`（`-c` 不落配置）。代理没起来时**别直接下"推不出去"的结论**：清空 proxy 覆盖用一条只读 `git ls-remote` 实测直连，通了就直连推。哪条通要看**这一次**实测，别把上一小时的结论当这一小时的用。
+- **判仓库是否真被删除**：`git ls-remote` 必须同时探一个已知公共仓做对照 —— 超时/reset 只代表线路问题，只有服务器实回 `remote: Repository not found` 才算删成；而本机存有凭据助手，**匿名 not-found 也可能只是"私有"**，别拿它当"已删"定论。同理 `git status` 干净、`log --not --remotes` 为空都不能证明远端还在 —— 它比的是本地那份可能已陈旧的 remote-tracking ref。
 
 ## 禁区
 
-- 禁止 `git push -f`、禁止改写 main 历史。**唯一例外**：2026-10-07 因远端公开且历史含盗版书库，经用户明确授权以 orphan 单提交重置 main（`b4cda2e`），旧 724 提交随之不可恢复。该例外**不通用、不可复用**——再次改写历史必须由用户重新逐次授权，且必须先做完「抽取历史独有元数据」这一步（见跨机器坑最后一条，本次顺序做错导致每文件提交时间线一度不可恢复，靠已删远端的 blobless fetch 才救回，成品已落盘进 git —— `docs/history-dates-20261007.json`，1446 条，已剔除 projects/小说/漫画 与两个 PII 文件的路径）。
-- 禁止把语料衍生物、模型权重、虚拟机运行时提交进 git（`.python/`、`app/rag_models/`、`indexes/` 已忽略）。
+- 禁止 `git push -f`、禁止改写 main 历史。要改写必须由用户逐次重新授权，且**必须先抽取"只存在于历史里的元数据"**再 `gc`（顺序反了就是不可逆丢失）。
+- 禁止把语料衍生物、模型权重、虚拟机运行时提交进 git（`.python/`、`app/rag_models/`、`indexes/`、`site/` 已忽略）。
 - 禁止在 `content/` 根目录散放文件；一切新语料走 `_inbox`。
 - 不要移除或绕过「写回文件系统」的任何一条路径（api_save / api_note / api_favorite / api_move / api_delete）。
 - 不要在没有跑测试的情况下宣称"完成"。
-- **不要去读书库正文，也不要写任何以真实书库为输入的脚本**。**书库已从本仓库彻底退场**：
-  `content/小说/`（366MB epub/txt）与 `content/漫画/` 先于 2026-09-30 移出到 `E:\GitHub\library-archive/`，
-  次日（2026-10-01）按用户要求**连归档目录一起删除**（用户本地另有备份，清单留档在
-  `.qa/library-archive-manifest.json`：128 个文件 / 365.6MB）。用户另开了项目负责阅读，本仓库不再显示也不再接收这两棵树。
-  **但这条边界不因此作废**：git 历史里那些文件仍然永远取得回来（`git show <旧提交>:content/小说/...`，
-  `.git` 至今约 318MB、其中 265MB 是书库包），
-  所以"不读正文、不拿真书库跑脚本"照旧生效。书库**处理逻辑**留在仓库里
-  （`static/kb-novel.js` 等，配套测试用合成样本），并留存成 `docs/note-library-reader.md`。
-  这条边界是用户 2026-09-24 明确定的（里面有成人向书籍）：所有测试与自动化的样本一律**合成**
-  （现造在 `tempfile` 里，见 `tests/test_ui_regress.py` 的
-  `content/ui-r` + 三章假小说）。不因"只读不写""本地不外传"而放宽，也**不要再提议**
-  "拿真实书库跑一遍解析器/坏书清单"这类事。
+- **不读书库正文、不写任何以真实书库为输入的脚本**：`小说/` `漫画/` 两棵树已彻底退场（归档目录也删了），公开面仍按不变量 10 排除它们。所有测试与自动化的样本一律**合成**（现造在 `tempfile` 里，见 `tests/test_ui_regress.py` 的 `content/ui-r`）。不因"只读不写""本地不外传"而放宽，也**不要再提议**"拿真实书库跑一遍解析器/坏书清单"这类事。
+- 批量删除前先立物证：清单 + 校验和 + 可恢复路径（bundle / 副本）确认能还原，再动手；`gitignore` 里的东西要单独判定"是否可再生"，不可再生的未跟踪文件必须一并备份。

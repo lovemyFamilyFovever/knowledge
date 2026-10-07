@@ -3,7 +3,7 @@
 生效 2026-09-19。**增量修订**：本文只写与 v1.1 不同的部分，未提及条目一律沿用 `docs/writing-spec-v1.1.md` 与 `docs/writing-spec-v1.0.md`。
 适用：`content/baike/` 二期串行拆分与新建词条。抽卡契约仍对齐 `app/cards.py` v3。
 
-来源：二期首篇打样（`programming-languages/软件测试完全指南.md` → 枢纽页 + 2 子词条）暴露的 5 类规范歧义，逐条定案。背景见 `docs/handoff-2026091901.md` 与 `docs/refactor/split-candidates.md` 重叠去重队列第 1、6 对。
+来源：二期首篇打样（`programming-languages/软件测试完全指南.md` → 枢纽页 + 2 子词条）暴露的 5 类规范歧义，逐条定案。背景见 `docs/refactor/split-candidates.md` 重叠去重队列第 1、6 对。
 
 ## 修订摘要
 
@@ -150,7 +150,9 @@ v1.1 §9 的两条盲区（⑦ 对已提交文件空转、⑧ 朴素正则误报
 
 **本轮唯一被 ⑨ 打破的金样已修**：`ESB 与服务网格` 的 🎯 由 206 字压到 139 字（**只改该行**，其余字节未动；🎯 内的 `[[服务网格]]` 双链去掉，该双链在「相关术语」节仍在）。金样必须在新门下继续 PASS，否则 few-shot 会教出超标稿。
 
-**二期打样三篇（v1.2 门全绿）**：`programming-languages/软件测试完全指南.md` 2825/3400（①表8行 ②a=4）、`testing/E2E 测试.md` 2197/2200、`testing/Playwright 与 Cypress.md` 2190/2200；三篇 `check_cards.py` 均 1 def + 2 trap，0 warning（无悬空双链）。
+**二期打样三篇（v1.2 门全绿）**：`programming-languages/软件测试完全指南.md` 2825/3400（①表8行 ②a=4）、`testing/E2E 测试.md` 2197/2200、`testing/Playwright 与 Cypress.md` 2190/2200；三篇抽卡自检均为 1 def + 2 trap、0 warning（无悬空双链）。
+（当时的自检脚本 `scripts/agent/check_cards.py` 随复习/闪卡子系统一并下线，
+现在这类检查由 `scripts/agent/check_rewrite.py` 承担。）
 
 ## 8. 信息不重复承载 + 双链核对（修订 v1.0 §4 篇幅预算）
 

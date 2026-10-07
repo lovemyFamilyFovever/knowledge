@@ -54,7 +54,7 @@ scripts/codemirror-vendor/node_modules/
 
 # ---------- 公开面硬边界（2026-10-07 泄露处置后新增）----------
 # 本仓库自 2026-10-07 起是**公网仓库**：任何被跟踪的文件都等于公开。
-# 这三棵树按 publish_site.py 的发布契约永不公开，如今升级为 git 层排除——
+# 这三棵树按公开面契约永不公开（判据活在 scripts/export_static.py 的 EXCLUDE_DIRS）——
 # 排除项一旦失守没有任何第二重保险可救（旧 history 已在泄露处置中重置为单提交）。
 # projects/ 内含业务内部文档与飞书记据，且被测试以合成语料引用，排除不影响 CI。
 content/projects/

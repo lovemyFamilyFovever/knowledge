@@ -29,7 +29,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 SRC = ROOT / "content"
-# 与 scripts/publish_site.py 的发布契约保持一致
+# 公开面契约：与 scripts/export_static.py 的排除清单同一口径
 EXCLUDE_DIRS = {"漫画", "projects", "小说"}
 PUBLISH_SUFFIXES = {".md", ".html"}
 

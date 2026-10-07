@@ -202,10 +202,10 @@ if [ -f "tests/test_known_defects.py" ]; then step known_defects $PY tests/test_
 # （现挑端口、零外网）—— 别为了"顺手"把它改成跑真 API，那会让门禁依赖配额与出口 IP。
 if [ -f "tests/test_watch_ci.py" ]; then step watch_ci $PY tests/test_watch_ci.py; fi
 
-# frontmatter 结构门禁（2026-09-25 发布事故）：公开站 Quartz 用 js-yaml 严格解析，
-# 本地阅读器的手写解析器却容错 —— `title:"x"`（冒号后缺空格）能正常显示、能过所有
-# 测试，只在 npx quartz build 时把整站构建打挂。这里提前拦：只在本次提交动了语料时跑。
-# 发布侧 scripts/publish_site.py 另有同一道闸。
+# frontmatter 结构门禁（2026-09-25 起因发布事故加，2026-10-08 随 Quartz 管线作废改口径）：
+# 阅读器的手写解析器容错 —— `title:"x"`（冒号后缺空格）能正常显示、能过所有测试，
+# 坏 frontmatter 只会静默丢字段（公网只读档同样吃这份 frontmatter）。
+# 这里提前拦：只在本次提交动了语料时跑。
 FM_STAGED=$(git diff --cached --name-only --diff-filter=ACMR -- 'content/*.md' | head -1)
 if [ -n "$FM_STAGED" ]; then
   step frontmatter $PY scripts/check_frontmatter.py

@@ -129,6 +129,6 @@
 
 ## 9. 与其它文档的关系
 
-- 本规格上线后，`docs/spec-site-reading-ui.md`（2026-09-30 旧站对齐评估）不再需要执行；其素材留作 §7-2 决策参考。
-- 引用：`docs/superpowers/specs/2026-10-07-slim-down-design.md`（瘦身前提）、`docs/history-dates-20261007.json`（日期兜底）、`AGENTS.md`（不变量 1 / 3 / 10）。
+- 引用：`docs/history-dates-20261007.json`（日期兜底）、`AGENTS.md`（不变量 1 / 3 / 10）。
+- 本规格落地后，被它取代的旧文档（旧 Quartz 站仓的对齐评估与瘦身设计稿）已随管线一并删除。
 - 下一步技能产物：获批后另出实施计划（`superpowers-writing-plans`）。

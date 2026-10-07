@@ -60,8 +60,6 @@ jobs:
         run: python tests/test_properties.py
       - name: Scaffolder smoke
         run: python tests/test_new_project.py
-      # 轮次 57 瘦身：复习/学习/术语、标签治理两套子系统整体下线，
-      # `test_learn.py` 与 `test_govern.py` 随功能同批删除（连同 js_props 的书库解析线）。
       - name: Invariants gate (AGENTS 不变量 1-9 · 本文件 I1~I9)
         run: python tests/test_invariants.py
       - name: E2E endpoint smoke (39 business routes, tempfile corpus)

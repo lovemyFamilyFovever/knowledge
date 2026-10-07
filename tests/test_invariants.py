@@ -219,16 +219,11 @@ AUDIT_ALLOWED = {
     ("app/routes_files.py", "unlink"): 1,              # api_inbox_purge：仅 _inbox/（resolve 后双重前缀校验）
     ("app/routes_files.py", "move"): 1,                # api_rmdir：整树搬进 _trash（软删）
     ("app/store.py", "move"): 1,                       # rename_domain/rename_sub：content/ 内迁移，非删除
-    # 不变量 9 ③：清除 AI 配置只允许删「仓库根那一个 gitignored JSON」——
-    # 路径是 config_path(root) 拼出来的常量文件名，既不在 content/ 也不接受任何入参。
     ("scripts/backup_reading.py", "unlink"): 1,        # 轮转删旧备份（backups/reading/ 下，非语料）
     ("scripts/clean_inbox_clones.py", "rmtree"): 1,    # _inbox/repos 副本，原件目录存在才删
-    ("scripts/file_inbox_batch1.py", "unlink"): 1,     # 入库成功后删桌面源文件（content/ 外）
-    ("scripts/publish_site.py", "unlink"): 1,          # prune 站仓（dest）里已不在白名单的文件；有"缺 quartz.config 即中止"的守卫
     # 合并方案 §4.1 静态导出器：两处 rmtree 都不碰真实语料 —— ① 重建派生产物 site/（.gitignore
     # 忽略、可删可重建，与不变量 3 同口径）；② 收尾清理 tempfile.mkdtemp 起的 staging 语料根。
     ("scripts/export_static.py", "rmtree"): 2,
-    ("scripts/remap_taxonomy.py", "move"): 1,          # taxonomy 重映射搬目录
     # 轮次 52（watch_ci 的第 ④ 类读不到）：删的是本脚本自己 tempfile.mkstemp 出来的
     # curl 响应头临时文件（路径由 mkstemp 生成、不接受任何入参、不在 content/ 下）。
     # 之所以单独走 unlink 而不是 NamedTemporaryFile(delete=True)：Windows 上那个句柄
