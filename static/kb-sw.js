@@ -19,9 +19,9 @@ var KB_BUILD = "__KB_BUILD__";  // 导出器替换：本次导出的 git sha
 var SHELL = KB_BASE + "/";
 var HOME = KB_BASE + "/data/home.html";   // 首页片段：不预热的话离线打开站根会露出壳里烤死的那篇
 /* 壳引用到的 static 资源清单，由导出器从产物 index.html 里扫出来原样写在这里
-   （实测 28 件 / 1.5MB）。为什么不让 SW 自己去抓一遍：首屏那趟加载发生在 SW 还没接管
-   的时候，CSS/JS 根本没进缓存；等第二次导航才补，中间那次离线就会拿到整页裸 HTML
-   —— 本机实测就是这个形状（style.css / app.js 全 ERR_FAILED）。
+   （当前实测 30 件 / 1.5MB，条数随模板走，不手写名单）。为什么不让 SW 自己去抓一遍：
+   首屏那趟加载发生在 SW 还没接管的时候，CSS/JS 根本没进缓存；等第二次导航才补，
+   中间那次离线就会拿到整页裸 HTML —— 本机实测就是这个形状（style.css / app.js 全 ERR_FAILED）。
    清单从产物扫，不写死：模板加了资源也不会漏，也不会漂移出一份过时的名单。 */
 var PRECACHE = __KB_PRECACHE__;  // eslint-disable-line no-undef -- 导出器把这一个 token 换成 JSON 数组
 var CACHE_SHELL = "zhiku-shell-" + KB_BUILD;
