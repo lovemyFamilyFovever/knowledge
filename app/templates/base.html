@@ -266,8 +266,8 @@
              的域，免得给出一个永远零结果的钮。色点用全库通行的 "--dh=色相数字"，暗色在 searchoverlay.css 翻。 #}
           {% for k, lab in LABELS.items() if k not in SEARCH_HIDDEN %}<button type="button" class="kb-scope-chip" data-scope="{{ k }}"><span class="dh" style="--dh:{{ HUES.get(k, 158) }}"></span>{{ lab }}</button>
           {% endfor %}
-          <button type="button" class="kb-scope-chip" data-scope="fav">仅收藏</button>
-          <button type="button" class="kb-scope-chip" data-scope="unmastered">仅未掌握</button>
+          {# 2026-10-07 删掉「仅收藏」「仅未掌握」两颗：它们把 SO.scope 直接置空（点了只是清掉域筛选重跑一遍），
+             而"未掌握"指向的复习/掌握系统轮次 57 就随 cards 一起下线了 —— 空转钮留在浮层里只会骗人点。 #}
         </div>
       </div>
       <div class="kb-search-main">

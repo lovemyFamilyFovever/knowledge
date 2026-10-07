@@ -1,0 +1,43 @@
+{# 首页中段（「从一次检索开始」那一屏）—— 本地 landing 与公网只读档**共用这一份**。
+   导出器 scripts/export_static.py 以 home_readonly=True 把它渲染成 data/home.html，
+   由 static/kb-static.js 注入到公网根路径；本地渲染时该变量缺席 → 三行入口与架构图全在。
+   公网只留「搜索」和「继续上次阅读」：收件箱、本月统计、架构图取景框都是本机才成立的东西。 #}
+<section class="panel land-panel{% if home_readonly %} kb-home-frag{% endif %}" id="p-land" data-reveal data-reveal-y="14">
+  <div class="land-grid">
+    <div class="land-side">
+      <div class="land-kicker"><span class="land-dot"></span>未打开文档</div>
+      <h1 class="land-title">从一次检索开始</h1>
+      {% if home_readonly %}
+      {# 公网没有 /search 那一页（服务端渲染的搜索结果页），表单不发请求：
+         回车由 kb-static.js 接过去开现成的检索浮层，输入原样带进浮层。 #}
+      <form class="land-box" role="search">
+      {% else %}
+      <form class="land-box" action="/search" method="get" role="search">
+      {% endif %}
+        <svg class="i i-16"><use href="#i-search-magnifier"/></svg>
+        <input name="q" placeholder="检索标题 / 正文 / 标签…" autocomplete="off" aria-label="检索知识库">
+        <kbd>↵</kbd>
+      </form>
+      <div class="land-list">
+        {# 继续上次阅读：数据源是 app.js 每次成功打开文档时写的 localStorage kb-last-doc，
+           公网档同样成立（纯本浏览器，不出站、换设备不同步）。 #}
+        <a href="#" id="land-continue" hidden><svg class="i i-13"><use href="#i-history-clock"/></svg>继续上次阅读</a>
+        {% if not home_readonly %}
+        <a href="/inbox"><svg class="i i-13"><use href="#i-inbox-tray"/></svg>进入收件箱<span class="land-li-meta">{{ inbox_n }} 条待归档</span></a>
+        <a href="/stats"><svg class="i i-13"><use href="#i-stats-chart"/></svg>本月阅读统计<span class="land-li-meta">{{ month }}</span></a>
+        {% endif %}
+      </div>
+      <div class="land-keys"><kbd>/</kbd> 搜索 <kbd>?</kbd> 快捷键</div>
+      <div class="land-cards" id="land-cards"></div>
+    </div>
+    {% if not home_readonly %}
+    <div class="land-view">
+      <div class="land-frame">
+        {# present=1 由 archify 自己的 head 脚本落地，比父页 load 后再补属性稳；
+           父页 sync() 仍会兜底设一次，防止有人直接改 src。 #}
+        <iframe src="/static/archify/zhiku-pipeline.html?present=1" title="知库 · 单机知识管线架构图" loading="lazy"></iframe>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+</section>

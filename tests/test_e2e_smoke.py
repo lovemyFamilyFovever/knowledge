@@ -280,12 +280,17 @@ def main() -> int:
         # ∪ 三个非域钮（全部/收藏/未掌握）。
         from app.store import DOMAIN_LABELS  # noqa: PLC0415
         allowed = ({k for k, v in TAXONOMY["domains"].items() if v.get("search") is not False}
-                   | set(DOMAIN_LABELS) | {"", "fav", "unmastered"})
+                   | set(DOMAIN_LABELS) | {""})
         check("浮层域钮由 taxonomy 派生（search:false 的域不给钮）",
               chip_keys <= allowed and "小说" not in chip_keys
               and {k for k, v in TAXONOMY["domains"].items()
                    if v.get("search") is not False} <= chip_keys,
               f"chip={sorted(chip_keys)} allowed={sorted(allowed)}")
+        # 2026-10-07：「仅收藏」「仅未掌握」是两颗空转钮（SO.scope 被置空、"未掌握"指向的
+        # 系统轮次 57 已下线），删掉后这里钉住"不许长回来"。
+        check("两颗空转筛选钮已删（fav / unmastered 不再出现在浮层）",
+              'data-scope="fav"' not in shell and 'data-scope="unmastered"' not in shell
+              and "仅收藏" not in shell and "仅未掌握" not in shell)
         check("夹具里那个域键 ai 没在模板出现过，照样渲染出了钮（证明是派生不是抄写）",
               'data-scope="ai"' in shell and "人工智能" in shell)
         # 状态栏右端从写死 localhost:5001 改成 request.host：测试客户端的 Host 头是

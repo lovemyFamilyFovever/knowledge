@@ -232,8 +232,12 @@
     '[onclick^="jumpToTagEdit"]', '[onclick^="addNote"]', '[onclick^="removeTag"]',
     '[onclick^="toggleDocMark"]', '[onclick^="purgeInbox"]', '[onclick^="chipsAddToggle"]',
     '#editor', '#fav-btn', '#ed-del', '#tag-add-btn', '#tag-in', '#tag-inputrow',
-    '.note-input', '#ni', '#global-stats-btn',
+    '.note-input', '#ni',
     'a[href$="/stats"]', 'a[href$="/favorites"]', 'a[href$="/inbox"]',
+    /* 「全库快照」按钮 2026-10-07 恢复（用户拍板）：它的数据源 /api/globalstats 早已同构
+       导出，公网拿得到真数字，上一轮属过度裁剪。但面板里两处本地专属跟着挡掉——
+       「月度趋势」跳 /stats（公网没这页），「收件箱待归档」是本机收件箱的状态。 */
+    '.kbm-stats a[href$="/stats"]', '.gs-inbox',
     /* 引擎钮容器是 class 不是 id（轮次 51 写成 #kb-search-engines，选择器从未命中，
        公网实测「语义 RAG」钮照样在、点下去走的是全文）——混合 = 全文+语义，同理不给。 */
     '.kb-search-engines [data-eng="semantic"]', '.kb-search-engines [data-eng="hybrid"]',
@@ -246,7 +250,19 @@
       + "\n.kb-recent{padding:8px 12px 10px;border-bottom:1px solid rgba(128,128,128,.25)}"
       + ".kb-recent-h{font-size:12px;opacity:.55;margin:0 0 6px;letter-spacing:.02em}"
       + ".kb-recent-i{display:block;font-size:13px;line-height:1.55;padding:1px 0;color:inherit;text-decoration:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}"
-      + ".kb-recent-i:hover{color:var(--acc,#0c9a6a)}";
+      + ".kb-recent-i:hover{color:var(--acc,#0c9a6a)}"
+      /* 首页态（方案 B）：中间列换成首页面板，正文列与右栏收起；栅格两档（常规 / 左栏收起）都要给值 */
+      + "\n.kb-home-on main{grid-template-columns:280px minmax(0,1fr) 0!important}"
+      + ".kb-home-on main.left-off{grid-template-columns:46px minmax(0,1fr) 0!important}"
+      + ".kb-home-on #p-article,.kb-home-on #p-rail{display:none!important}"
+      + "#kb-home{min-width:0;overflow:auto;display:flex}"
+      + "#kb-home .land-panel{flex:1;min-width:0}"
+      /* 片段里没有取景框那一列。居中用 grid 的 justify-content，**别用 margin:0 auto** ——
+         .land-grid 是 .land-panel(列 flex) 的 flex item，auto 外边距会让它退化成 fit-content，
+         实测整栏被压到 291px 宽。 */
+      + "#kb-home .land-grid{grid-template-columns:minmax(0,420px);justify-content:center;"
+      + "align-content:start;max-width:none;margin:0;padding:56px 20px}"
+      + "#kb-home .land-cards{display:none}";
     (document.head || document.documentElement).appendChild(st);
   }
   if (document.readyState === "loading") {
@@ -275,14 +291,15 @@
     if (host && location.host) host.textContent = location.host;
   }
   function fixTitle() {
-    var h1 = document.querySelector(".article h1");
+    var onHome = document.documentElement.classList.contains("kb-home-on");
+    var h1 = onHome ? null : document.querySelector(".article h1");
     var t = h1 ? (h1.textContent || "").trim() : "";
     document.title = t ? t.slice(0, 60) + " · 知库" : "知库 · " + RO_TAG;
   }
   /* 域筛选钮：模板按 taxonomy 全量 LABELS 派生（不变量 5），公网语料却是公开白名单，
-     两者不等 —— projects 永不出网，那颗钮点下去恒 0 结果，还顺带告诉访客"这里有个
-     看不见的域"；仅收藏 / 仅未掌握两颗在 app 里本就是空转（SO.scope 置空），
-     公网更没有收藏与掌握。判据用导出树里真实存在的域，不抄第二份名单。 */
+     两者不等 —— projects / handbook 这类没进白名单的域会留一颗恒 0 结果的钮，
+     还顺带告诉访客"这里有个看不见的域"。判据用导出树里真实存在的域，不抄第二份名单。
+     （浮层里原先还有「仅收藏」「仅未掌握」两颗空转钮，2026-10-07 连模板一起删了。） */
   function pruneScopeChips(tree) {
     var ids = {};
     ((tree && tree.domains) || []).forEach(function (d) { ids[d.id] = 1; });
@@ -397,10 +414,99 @@
   var _recentTimer = null;
   function hookRecent() {
     document.addEventListener("kb:article-rendered", function () {
-      fixTitle();                                  // 标题跟着正文走：导出时冻结的 <title> 是构建机那一篇
+      if (!atRoot()) hideHome();                     // 真的打开文档了 → 首页让位（根路径上不动）
+      fixTitle();                                    // 标题跟着正文走：导出时冻结的 <title> 是构建机那一篇
       if (_recentTimer) clearTimeout(_recentTimer);
       _recentTimer = setTimeout(recordVisit, 400);
     });
+  }
+
+  /* ---------- ⑧ 公网首页（方案 B：单壳 + 首页片段） ----------
+     根路径不再停在"导出时恰好烤进来的那一篇"，而是本地首页那一屏。片段来自
+     app/templates/landing_panel.html（导出器以 home_readonly=True 渲染成 data/home.html），
+     与本地 landing 同一份标记，这里不复制第二份模板；公网只留两行能用的：
+     「搜索」= 开现成的检索浮层并带上输入，「继续上次阅读」= app 自己写的 localStorage
+     kb-last-doc（缺席时回退到本适配器的最近阅读首条）。收件箱/本月统计/架构图取景框
+     在片段渲染时就不存在（公网没有 /inbox、/stats，也没有本地 reading.db）。 */
+  var _homeNode = null, _homePromise = null;
+  /* 首页那一屏的样式在 pages/landing.css 里，而阅读壳只带 workbench.css —— 不补这一份，
+     注入进来的片段就是一堆裸元素（实测：搜索框退化成原生 input、卡片边框与药丸全没了）。 */
+  function ensureHomeCss() {
+    if (document.getElementById("kb-home-css")) return;
+    var l = document.createElement("link");
+    l.id = "kb-home-css";
+    l.rel = "stylesheet";
+    l.href = dataUrl("static/pages/landing.css");
+    (document.head || document.documentElement).appendChild(l);
+  }
+  function homeHost() {
+    if (_homeNode && _homeNode.isConnected) return _homeNode;
+    var art = document.getElementById("p-article");
+    if (!art || !art.parentNode) return null;
+    _homeNode = document.createElement("div");
+    _homeNode.id = "kb-home";
+    art.parentNode.insertBefore(_homeNode, art);
+    return _homeNode;
+  }
+  function loadHome() {
+    if (_homePromise) return _homePromise;
+    _homePromise = nativeFetch
+      ? nativeFetch(dataUrl("data/home.html"))
+        .then(function (r) { return r.ok ? r.text() : ""; })
+        .catch(function () { return ""; })
+      : Promise.resolve("");
+    return _homePromise;
+  }
+  /* 「继续上次阅读」每次进首页都要重算 —— 片段只注入一次，若在注入那一刻算，
+     用户读完一篇再点「阅读」回来时链接还是空的（实测踩过：kb-last-doc 已有值但钮仍 hidden）。
+     本地 landing 没这问题，它是整页加载，每次都是新的一次注入。 */
+  function syncContinue(host) {
+    var cont = host && host.querySelector("#land-continue");
+    if (!cont) return;
+    var last = "";
+    try { last = localStorage.getItem("kb-last-doc") || ""; } catch (e) {}
+    if (!last) {
+      var rec = lsGet(RKEY, [])[0];
+      if (rec) last = "/" + rec.k;
+    }
+    if (!last) { cont.hidden = true; return; }
+    cont.setAttribute("href", last.charAt(0) === "/" ? BASE + last : last);
+    cont.hidden = false;
+  }
+  function wireHome(root) {
+    var f = root.querySelector(".land-box");
+    if (f) f.addEventListener("submit", function (e) {
+      e.preventDefault();                            // 公网没有 /search 那一页
+      var q = (f.querySelector("input[name=q]") || {}).value || "";
+      if (typeof window.soOpen !== "function") return;
+      window.soOpen();
+      var so = document.getElementById("kb-so-q");
+      if (so) so.value = q;
+      if (typeof window.soRun === "function" && q) window.soRun();
+    });
+  }
+  function showHome() {
+    var host = homeHost();
+    if (!host) return;
+    ensureHomeCss();
+    loadHome().then(function (html) {
+      if (!html) return;                             // 片段没拿到：留在正文，别把屏幕清空
+      if (!host.childElementCount) {
+        host.innerHTML = html;
+        wireHome(host);
+        fixLinks(host);
+      }
+      syncContinue(host);
+      document.documentElement.classList.add("kb-home-on");
+      fixTitle();
+    });
+  }
+  function hideHome() {
+    document.documentElement.classList.remove("kb-home-on");
+  }
+  function atRoot() {
+    var p = location.pathname.replace(/\/+$/, "");
+    return p === BASE || p === BASE + "/index.html" || p === BASE + "/404.html" || !p;
   }
 
   /* ---------- ③ 客户端路由桥 + 深链兜底（公网专属） ----------
@@ -414,6 +520,15 @@
       var a = e.target && e.target.closest ? e.target.closest("a[href]") : null;
       if (!a || a.target === "_blank" || a.hasAttribute("download")) return;
       var h = a.getAttribute("href") || "";
+      /* 「阅读」与品牌链接指向站根：不整页重载，直接切回首页态 */
+      if (h === BASE || h === BASE + "/" || h === BASE + "/index.html") {
+        e.preventDefault();
+        if (location.pathname.replace(/\/+$/, "") !== BASE) {
+          try { history.pushState(null, "", BASE + "/"); } catch (err) {}
+        }
+        showHome();
+        return;
+      }
       if (h.indexOf(BASE + "/doc/") !== 0 && h.indexOf(BASE + "/browse/") !== 0) return;
       e.preventDefault();
       if (typeof window.navigate === "function") window.navigate(h.slice(BASE.length), true);
@@ -428,7 +543,11 @@
         history.pushState = function (state, title, url) {
           if (typeof url === "string" && url.charAt(0) === "/" && url.charAt(1) !== "/" &&
               BASE && url !== BASE && url.indexOf(BASE + "/") !== 0) url = BASE + url;
-          return _ps.call(history, state, title, url);
+          var r = _ps.call(history, state, title, url);
+          /* app 把地址推到非根（打开文档 / 切子域）→ 首页让位。
+             走 pushState 而不是只靠 kb:article-rendered：/browse 那一屏不发这个事件。 */
+          if (typeof url === "string" && url !== BASE && url !== BASE + "/") hideHome();
+          return r;
         };
       } catch (e) {}
     }
@@ -458,7 +577,10 @@
       return;
     }
     var trimmed = path.replace(/\/+$/, "");
-    if (trimmed === BASE || trimmed === BASE + "/index.html" || trimmed === BASE + "/404.html") return;
+    if (trimmed === BASE || trimmed === BASE + "/index.html" || trimmed === BASE + "/404.html") {
+      showHome();                                    // 根路径 = 首页那一屏（方案 B）
+      return;
+    }
     location.replace(BASE + "/");
   }
   function onReady() {

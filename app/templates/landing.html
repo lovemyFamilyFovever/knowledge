@@ -24,33 +24,7 @@
     <button class="unfold" onclick="togglePanel('left')" title="展开左栏" aria-label="展开左栏"><svg class="i"><use href="#i-fold-r"/></svg></button>
   </section>
 
-  <section class="panel land-panel" id="p-land" data-reveal data-reveal-y="14">
-    <div class="land-grid">
-      <div class="land-side">
-        <div class="land-kicker"><span class="land-dot"></span>未打开文档</div>
-        <h1 class="land-title">从一次检索开始</h1>
-        <form class="land-box" action="/search" method="get" role="search">
-          <svg class="i i-16"><use href="#i-search-magnifier"/></svg>
-          <input name="q" placeholder="检索标题 / 正文 / 标签…" autocomplete="off" aria-label="检索知识库">
-          <kbd>↵</kbd>
-        </form>
-        <div class="land-list">
-          <a href="#" id="land-continue" hidden><svg class="i i-13"><use href="#i-history-clock"/></svg>继续上次阅读</a>
-          <a href="/inbox"><svg class="i i-13"><use href="#i-inbox-tray"/></svg>进入收件箱<span class="land-li-meta">{{ inbox_n }} 条待归档</span></a>
-          <a href="/stats"><svg class="i i-13"><use href="#i-stats-chart"/></svg>本月阅读统计<span class="land-li-meta">{{ month }}</span></a>
-        </div>
-        <div class="land-keys"><kbd>/</kbd> 搜索 <kbd>?</kbd> 快捷键</div>
-        <div class="land-cards" id="land-cards"></div>
-      </div>
-      <div class="land-view">
-        <div class="land-frame">
-          {# present=1 由 archify 自己的 head 脚本落地，比父页 load 后再补属性稳；
-             父页 sync() 仍会兜底设一次，防止有人直接改 src。 #}
-          <iframe src="/static/archify/zhiku-pipeline.html?present=1" title="知库 · 单机知识管线架构图" loading="lazy"></iframe>
-        </div>
-      </div>
-    </div>
-  </section>
+  {% include "landing_panel.html" %}
 </main>
 {% endblock %}
 {% block scripts %}

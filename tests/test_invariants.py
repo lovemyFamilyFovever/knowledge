@@ -378,14 +378,14 @@ def test_i5() -> None:
         # store.DOMAIN_LABELS 之外），键名一漂移点了就是 0 结果 —— 2026-09-24 实测
         # 「AI 资产」发 domain=ai 而 JSON 里的键是 ai-assets（台账 §6 第 27 行）。
         # 2026-09-25 起 base.html 改成 {% for k, lab in LABELS.items() %} 派生，门禁口径跟着换：
-        #   ① 模板里不许再出现"域字面量 data-scope"（只准 {{ k }} 与 fav/unmastered 两个特殊值）；
+        #   ① 模板里不许再出现任何"字面量 data-scope"（2026-10-07 起连 fav/unmastered 也没了：
+        #      那两颗是点了只把 scope 清空的空转钮，随「仅未掌握」指向的复习系统一起清账）；
         #   ② JSON 的 "search": false 必须真被 load_taxonomy 读成 search_hidden ——
         #      否则恒 0 的钮会随派生一起复活（小说域全是 .txt/.epub，FTS 不收）。
         # 只读模板与 taxonomy 元数据，不读任何语料正文。
         tpl = (ROOT / "app" / "templates" / "base.html").read_text(encoding="utf-8")
-        literal = [m for m in re.findall(r'data-scope="([^"{}]*)"', tpl)
-                   if m and m not in {"fav", "unmastered"}]
-        check("I5 浮层域钮无第二份硬编码清单（模板里只准派生 + fav/unmastered）",
+        literal = [m for m in re.findall(r'data-scope="([^"{}]*)"', tpl) if m]
+        check("I5 浮层域钮无第二份硬编码清单（模板里一个字面量 data-scope 都不许有）",
               not literal, f"literal={literal}")
         tax_json = json.loads((ROOT / "content" / "_meta" / "taxonomy.json")
                               .read_text(encoding="utf-8"))

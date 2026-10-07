@@ -293,6 +293,41 @@ def main() -> int:
         check("域筛选钮按导出树裁剪（不抄第二份域名单）",
               "pruneScopeChips" in kbs and "tree.domains" in kbs)
 
+        # ---------------- ⑤ 两颗空转钮清除 + 全库快照恢复（2026-10-07 用户拍板） ----------------
+        check("模板里再无 fav / unmastered 两颗空转钮",
+              'data-scope="fav"' not in base_html and 'data-scope="unmastered"' not in base_html)
+        check("app.js 里为它们留的特判一并删除",
+              'unmastered' not in appjs)
+        check("全库快照按钮不再被只读层隐藏",
+              "#global-stats-btn" not in kbs)
+        check("快照面板内两处本地专属被挡（月度趋势跳 /stats、收件箱待归档）",
+              '.kbm-stats a[href$="/stats"]' in kbs and ".gs-inbox" in kbs
+              and 'class="gs-inbox"' in appjs)
+        check("/api/globalstats 仍走映射（恢复按钮的前提：公网拿得到真数字）",
+              ENDPOINT_TRIAGE["/api/globalstats"][0] == "map")
+
+        # ---------------- ⑥ 公网首页片段（方案 B：与本地 landing 同一份模板） ----------------
+        home = (out / "data" / "home.html").read_text(encoding="utf-8")
+        check("产物含首页片段 data/home.html", (out / "data" / "home.html").is_file())
+        check("片段就是本地那一屏（标题与搜索框在）",
+              "从一次检索开始" in home and 'class="land-box"' in home
+              and 'id="land-continue"' in home)
+        check("片段带只读标记类（适配器靠它收成单列）", "kb-home-frag" in home)
+        check("公网首页不出现本地专属三件：收件箱 / 本月统计 / 架构图取景框",
+              "/inbox" not in home and "/stats" not in home and "land-view" not in home)
+        check("公网首页的搜索框不发 /search（交给适配器开浮层）",
+              'action="/search"' not in home)
+        panel = (ROOT / "app" / "templates" / "landing_panel.html").read_text(encoding="utf-8")
+        check("本地那一屏三件入口仍在（同一份模板，只准 gate 不准删）",
+              all(x in panel for x in ["进入收件箱", "本月阅读统计", "land-view",
+                                       'action="/search"']))
+        check("landing.html 改成 include（不留第二份首页标记）",
+              '{% include "landing_panel.html" %}' in (ROOT / "app" / "templates" / "landing.html")
+              .read_text(encoding="utf-8"))
+        check("适配器在根路径注入首页、开文档时让位",
+              all(x in kbs for x in ["showHome", "hideHome", "data/home.html",
+                                     "kb-home-on", "kb-last-doc"]))
+
         literals = _api_literals(out / "static")
         unknown = sorted(l for l in literals if l not in ENDPOINT_TRIAGE)
         check("产物 JS 的 /api/ 字面量全部在分诊表内", not unknown, f"未分诊: {unknown}")

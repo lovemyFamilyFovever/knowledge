@@ -2311,7 +2311,7 @@ async function showGlobalStats() {
         <span class="ss-bar"><i style="width:${Math.round(100 * t.n / maxTag)}%"></i></span>
         <span class="ss-tag-n">${t.n}</span></div>`).join("") || `<div class="kbm-li">无标签</div>`}</div>
     <div class="ss-sec">其他</div>
-    <div class="kbm-li">美化版 HTML ${d.n_html} 份 · 收藏 ${d.n_fav} 篇 · 收件箱待归档 ${d.inbox}</div>
+    <div class="kbm-li">美化版 HTML ${d.n_html} 份 · 收藏 ${d.n_fav} 篇<span class="gs-inbox"> · 收件箱待归档 ${d.inbox}</span></div>
     ${L.dead ? `<div class="kbm-li" style="color:var(--rose)">${L.dead} 条死链分布在 ${L.dead_docs} 篇文档中</div>` : ""}`;
 }
 
@@ -3042,8 +3042,10 @@ function soWire() {
   });
   SO.ov.querySelectorAll(".kb-scope-chip").forEach(ch => {
     ch.addEventListener("click", () => {
-      const v = ch.dataset.scope || "";
-      SO.scope = v.startsWith("fav") || v.startsWith("unmastered") ? "" : v;
+      /* 2026-10-07：这里原来有一句特判——scope 以 fav 或「未掌握」开头时把它清成空串，
+         为的是那两颗假筛选钮（点了只是重跑一遍全量，而"未掌握"指向的系统早已下线）。
+         钮随模板删掉，特判跟着删：现在 data-scope 只可能是 ""（全部域）或真实域键。 */
+      SO.scope = ch.dataset.scope || "";
       SO.tag = "";
       SO.ov.querySelectorAll(".kb-scope-chip").forEach(x => x.classList.toggle("on", x === ch));
       soRun();

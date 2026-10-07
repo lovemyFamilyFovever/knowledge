@@ -110,7 +110,8 @@ app/palette.py      命令面板索引（2026-10-07 自 learn.py 拆出）
   功能入口从 7 项收成 3 项：阅读 / 统计 / 收藏）
 scripts/            迁移与维护脚本（rag_search.py 是 Agent 检索入口；agent/ 存跨会话常驻工具）
 scripts/export_static.py  公网只读档导出器（合并方案 §4.1）：公开白名单语料 staging → 复用读端点产 payload → site/ 落盘
-static/kb-static.js       只读适配器（§4.2/§4.3，只有导出产物加载）：fetch 分诊（读→data/*.json、写→READ_ONLY、裁剪端点→NOT_IN_STATIC）、KB_BASE 链接与路由桥、只读裁剪 CSS、公网状态栏与 <title> 口径
+static/kb-static.js       只读适配器（§4.2/§4.3，只有导出产物加载）：fetch 分诊（读→data/*.json、写→READ_ONLY、裁剪端点→NOT_IN_STATIC）、KB_BASE 链接与路由桥、只读裁剪 CSS、公网状态栏与 <title> 口径、根路径的「公网首页」态（注入 data/home.html + pages/landing.css）
+app/templates/landing_panel.html  首页那一屏（「从一次检索开始」）的**唯一一份**标记：本地 landing 用 {% include %} 渲染它（收件箱 / 本月统计 / 架构图取景框全在），导出器以 home_readonly=True 再渲染一次成 data/home.html 供公网用（只留「搜索」+「继续上次阅读」）。改首页只改这一处，不许复制第二份
 static/app.js / kb-core.js  的 `KB_READ_ONLY`（判据 = 注入的 window.KB_STATIC.readonly）是**动态写入口**的单点开关：右键菜单项靠 roHide 标记被摘掉、拖拽移动与近 7 日阅读图不接线、编辑器快捷键不进帮助。静态写入口才归 kb-static.js 那份选择器清单——两层不许互相抄
 .github/workflows/pages.yml  push main → export_static --base /knowledge → deploy-pages（线上 https://lovemyFamilyFovever.github.io/knowledge/，仓库即公开面）
 requirements/       依赖清单（requirements.txt 核心 / -rag.txt 语义检索 / -lock.txt 便携环境重建锁）

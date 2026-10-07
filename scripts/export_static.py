@@ -18,6 +18,7 @@
     site/data/links.json       ← /api/links（逐篇聚合）
     site/data/dir-tree.json    ← /api/dir/tree（单列树 + 内联文档清单）
     site/data/meta.json        ← 分类学标签/HUES + /api/globalstats
+    site/data/home.html        公网首页片段（landing_panel.html 以 home_readonly=True 渲染）
     site/data/palette/index.json ← /api/palette/index
     site/data/search/<域>.json  客户端 CJK bigram 检索索引（分域懒加载）
     site/raw/…                 正文引用的图片（公开白名单内）
@@ -488,6 +489,18 @@ def export_site(root: Path, out: Path, base: str = KB_BASE_DEFAULT,
         shell = prefix_html(shell, base)
         (out / "index.html").write_text(shell, encoding="utf-8")
         (out / "404.html").write_text(shell, encoding="utf-8")   # 深链兜底（§4.1 / §5-1）
+
+        # ---------------- data/home.html（公网首页片段） ----------------
+        # 首页那一屏的**唯一一份**标记在 app/templates/landing_panel.html：本地 landing 用
+        # {% include %} 渲染它（home_readonly 缺席 → 收件箱/本月统计/架构图取景框全在），
+        # 这里以 home_readonly=True 再渲染一次，只留「搜索」+「继续上次阅读」两行可用入口
+        # （公网没有 /inbox、/stats，也没有本地 reading.db；取景框是本机管线图，不外发）。
+        # 由 static/kb-static.js 在根路径注入到阅读壳的中间列 —— 不复制第二份模板。
+        from flask import render_template  # 局部导入：与 create_app 同一 Flask 版本
+        with app.test_request_context("/"):
+            home_html = render_template("landing_panel.html", home_readonly=True)
+        (out / "data" / "home.html").write_text(prefix_html(home_html, base), encoding="utf-8")
+        b["data/home.html"] = len(home_html.encode("utf-8"))
 
         # ---------------- site/raw/…（正文引用的图片） ----------------
         total = 0
