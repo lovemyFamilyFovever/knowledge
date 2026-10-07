@@ -1,0 +1,59 @@
+# 单仓发布：把本地阅读器的只读档导出成静态站，用本仓自带的 GitHub Pages 托管。
+#
+# 依据：docs/superpowers/specs/2026-10-07-merge-publish-design.md
+#   §4.1 导出器 scripts/export_static.py（产物 site/ 是派生缓存，不进 git）
+#   §7-1 已拍板：单仓方案 —— 站点 URL https://lovemyFamilyFovever.github.io/knowledge/
+#         项目页落在子路径 /knowledge/，所以导出必须带 KB_BASE=/knowledge。
+# 纯 Python、无浏览器：只跑导出器，不跑需要 node/Chrome 的套件。
+name: pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# Pages 部署的最小权限：读仓、写 Pages、OIDC 换发部署令牌。
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# 同一时间只允许一个 Pages 部署在跑；不取消进行中的部署（避免半成品上线）。
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      # 导出器会 print 中文与全角标点，钉死输出编码（与 ci.yml 同源口径）。
+      PYTHONIOENCODING: utf-8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Install deps (reader only; export needs just flask)
+        run: python -m pip install -r requirements/requirements.txt
+      - name: Export static site (KB_BASE=/knowledge)
+        run: python scripts/export_static.py --out site --base /knowledge
+      # enablement: true 尝试自动启用 Pages（Source = GitHub Actions）。
+      # 若因权限/仓设置失败，本步骤会红，但 build 产物已生成；此时需人工到
+      # Settings → Pages → Source 选 "GitHub Actions"，见本仓 handoff 说明。
+      - uses: actions/configure-pages@v5
+        with:
+          enablement: true
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
