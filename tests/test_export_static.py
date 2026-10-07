@@ -20,7 +20,7 @@ sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / "scripts"))
 from app.app import create_app  # noqa: E402
 from export_static import (  # noqa: E402
-    ENDPOINT_TRIAGE, TRIAGE_READ_MAP, TRIAGE_WRITE, doc_data_rel, export_site,
+    ENDPOINT_TRIAGE, TRIAGE_READ_MAP, TRIAGE_WRITE, check_base, doc_data_rel, export_site,
 )
 
 DOC_A = """---
@@ -256,6 +256,43 @@ def main() -> int:
         check("适配器改写根相对链接为 KB_BASE 前缀",
               'a[href^="/"]' in kbs)
 
+        # ---------------- ④ 只读裁剪与公网口径（§4.3 · A1+A2） ----------------
+        appjs = (ROOT / "static" / "app.js").read_text(encoding="utf-8")
+        kbc = (ROOT / "static" / "kb-core.js").read_text(encoding="utf-8")
+        base_html = (ROOT / "app" / "templates" / "base.html").read_text(encoding="utf-8")
+        check("只读判据只有一个来源（app.js 读 KB_STATIC.readonly）",
+              "const KB_READ_ONLY = !!(window.KB_STATIC && window.KB_STATIC.readonly);" in appjs)
+        check("右键菜单在 openCtxMenu 单点过滤 roHide，且空菜单不弹",
+              "if (KB_READ_ONLY)" in appjs and "!it.roHide" in appjs
+              and "if (!items.some(it => it !== \"-\")) return;" in appjs)
+        for lab in ["移动到…", "重命名…", "删除…", "在此新建文档…", "新建子目录…",
+                    "导入文档…", "重命名目录…", "删除目录…", "新增二级目录…",
+                    "重命名域…", "删除域…", "统计信息"]:
+            check(f"写操作菜单项「{lab}」带 roHide",
+                  ('label: "' + lab + '", roHide: true') in appjs)
+        check("复制类菜单项不受只读裁剪（公网仍可复制原文/链接）",
+              'label: "复制 Markdown 原文", fn:' in appjs and 'label: "复制域名", fn:' in appjs)
+        check("拖拽移动与近 7 日阅读图在只读档不接线",
+              appjs.count("if (KB_READ_ONLY) return;") >= 2)
+        check("树内文档的 draggable 随只读档关闭",
+              appjs.count('draggable="${KB_READ_ONLY ? "false" : "true"}"') == 2)
+        check("编辑器快捷键在只读档不进帮助（registry 单点过滤）",
+              'scope: "editor", roHide: true' in kbc and "VISIBLE_KEYS" in kbc
+              and "keys.registry = VISIBLE_KEYS;" in kbc)
+        check("引擎钮选择器用 class 不用 id（id 版从未命中，公网实测语义钮照样在）",
+              '#kb-search-engines [data-eng' not in kbs
+              and '.kb-search-engines [data-eng="semantic"]' in kbs
+              and '.kb-search-engines [data-eng="hybrid"]' in kbs)
+        check("状态栏四段各留一个类名钩子供适配器定位",
+              all(c in base_html for c in ["sb-acc", "sb-src", "sb-fts", "sb-host"]))
+        check("钩子类名活到产物里（导出没把它丢掉）",
+              all(c in html for c in ["sb-acc", "sb-src", "sb-fts", "sb-host"]))
+        check("适配器换成公网口径（本地阅读器 / localhost / 冻结标题都不留）",
+              all(x in kbs for x in ["公网只读档", "location.host", ".sb-host",
+                                     "篇可全文检索", "fixTitle"]))
+        check("域筛选钮按导出树裁剪（不抄第二份域名单）",
+              "pruneScopeChips" in kbs and "tree.domains" in kbs)
+
         literals = _api_literals(out / "static")
         unknown = sorted(l for l in literals if l not in ENDPOINT_TRIAGE)
         check("产物 JS 的 /api/ 字面量全部在分诊表内", not unknown, f"未分诊: {unknown}")
@@ -291,8 +328,28 @@ def main() -> int:
         export_site(root, dry, tracked_only=False, dry_run=True)
         check("--dry-run 不落盘", not dry.exists())
 
-        import shutil as _sh
-        _sh.rmtree(corpus, ignore_errors=True)
+    # ---------------- KB_BASE 只认 URL 前缀（Git Bash 会把 /knowledge 改写成盘符路径） ----------------
+    check("check_base 接受空前缀（根路径托管）", check_base("") == "")
+    check("check_base 接受 /knowledge", check_base("/knowledge") == "/knowledge")
+    for bad in ("C:/Program Files/Git/knowledge", "knowledge", "/knowledge/", "/a//b",
+                "D:\\knowledge"):
+        try:
+            check_base(bad)
+            ok = False
+        except SystemExit:
+            ok = True
+        check(f"check_base 拒绝 {bad!r}", ok)
+    refused = corpus / "site-refused"
+    try:
+        export_site(corpus, refused, base="C:/Program Files/Git/knowledge",
+                    tracked_only=False, include_search=False)
+        raised = False
+    except SystemExit:
+        raised = True
+    check("export_site 在落盘之前就拒绝坏 KB_BASE", raised and not refused.exists())
+
+    import shutil as _sh
+    _sh.rmtree(corpus, ignore_errors=True)
 
     print(f"\n{passed} passed, {failed} failed")
     return 1 if failed else 0

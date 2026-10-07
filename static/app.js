@@ -18,6 +18,12 @@ const toast = (m, ms) => {
 const docUrl = rel => KB.util.docUrl(rel);
 const rawUrl = rel => KB.util.rawUrl(rel);
 
+/* 只读档（公网静态产物）判定的唯一入口：导出器注入的 window.KB_STATIC.readonly。
+   本地 Flask 恒为 false，所以本行在本地是常量折叠。
+   一切「写入口 / 需要本地后端的机制」的渲染都问它——禁止在别处再抄一份
+   "哪些算写操作"的清单（合并方案 §4.3；选择器清单只活在 kb-static.js 的兜底层）。 */
+const KB_READ_ONLY = !!(window.KB_STATIC && window.KB_STATIC.readonly);
+
 /* 统一图标：引用 base.html 精灵表 #i-<name>，替代所有彩色 emoji */
 const icon = (n, s = 14) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex:none;display:inline-block;vertical-align:-.15em"><use href="#i-${n}"/></svg>`;
 
@@ -878,6 +884,9 @@ function drawTocSpark(host) {
 }
 
 function renderTocSpark() {
+  /* 只读档：近 7 日阅读取自本机 reading.db（事件制，见不变量 6），公网没有这份数据，
+     /api/recent_read 在适配器里是 no-op 空数组 —— 挂一个永远空的图表比不挂更糊弄。 */
+  if (KB_READ_ONLY) return;
   const pane = $("#pane-toc"); if (!pane) return;
   const host = document.createElement("div");
   host.className = "kb-toc-spark";
@@ -1071,7 +1080,7 @@ function renderTree() {
         const badges = (doc.has_html || doc.is_html)
           ? `<span class="doc-flag" title="${doc.is_html ? "HTML 文档" : "有美化版"}">${icon("external-link", 11)}</span>` : "";
         return `
-        <a class="doc ${isActive ? "active" : ""} ${dir ? "in-subdir" : ""}" data-name="${esc(doc.name)}" data-dom="${esc(d.id)}" data-sub="${esc(s.id)}" draggable="true" style="--deep:${deep}" href="${href}" title="${esc(doc.name)}">
+        <a class="doc ${isActive ? "active" : ""} ${dir ? "in-subdir" : ""}" data-name="${esc(doc.name)}" data-dom="${esc(d.id)}" data-sub="${esc(s.id)}" draggable="${KB_READ_ONLY ? "false" : "true"}" style="--deep:${deep}" href="${href}" title="${esc(doc.name)}">
           <div class="doc-t"><span class="doc-ic" title="${esc(fileIconTitle(doc.name))}">${icon(ic, 11)}</span>${badges}<span class="doc-t-txt">${esc(leaf)}</span></div>
         </a>`;
       };
@@ -1118,7 +1127,7 @@ function renderDocList(docs, subLabel, activeName) {
   /* 问题8：星标 ◈ 直接输出 SVG（原 workbench.js cleanChars 事后清洗的产物），
      href 统一走 docUrl(rel)（原手工拼接是第三份 encode 逻辑）。 */
   list.innerHTML = docs.map(d => `
-    <a class="doc ${d.name === activeName ? "active" : ""}" data-name="${esc(d.name)}" draggable="true" href="${docUrl(`${CUR.domain}/${CUR.sub}/${d.name}.md`)}">
+    <a class="doc ${d.name === activeName ? "active" : ""}" data-name="${esc(d.name)}" draggable="${KB_READ_ONLY ? "false" : "true"}" href="${docUrl(`${CUR.domain}/${CUR.sub}/${d.name}.md`)}">
       <div class="doc-t">${d.has_html ? `<span class="star" title="有美化版">${icon("external-link", 12)}</span>` : ""}${esc(d.title)}</div>
       <div class="doc-meta">
         ${(d.tags && d.tags.length) ? d.tags.map(t => `<span class="mini tag">${esc(t)}</span>`).join("") : `<span class="mini untag">未打标</span>`}
@@ -2064,6 +2073,20 @@ function docRelOf(domain, sub, name) {
 }
 
 function openCtxMenu(x, y, items) {
+  if (KB_READ_ONLY) {
+    /* 只读档：带 roHide 的项（写操作 / 依赖本地后端）在这里单点摘掉。
+       摘完没有可点项就不弹菜单——否则子目录右键会弹出一个空壳。
+       分隔线跟着收拾：不留首尾孤线、不留连续双线。 */
+    const kept = items.filter(it => it === "-" || !it.roHide);
+    const trimmed = [];
+    for (const it of kept) {
+      if (it === "-") { if (trimmed.length) trimmed.push(it); continue; }
+      trimmed.push(it);
+    }
+    while (trimmed.length && trimmed[trimmed.length - 1] === "-") trimmed.pop();
+    items = trimmed.filter((it, i) => it !== "-" || trimmed[i - 1] !== "-");
+    if (!items.some(it => it !== "-")) return;
+  }
   if (CTX_OV) { const o = CTX_OV; CTX_OV = null; o.close("re-open"); }
   const ov = KB.overlay.open({
     className: "ctx-menu",
@@ -2510,6 +2533,9 @@ async function renameDocPrompt(rel) {
 
 /* ---------- 拖拽移动：文档列表 → 左栏目录树 ---------- */
 function wireDragMove() {
+  /* 只读档：拖拽落点会打 /api/move，公网只会回 READ_ONLY —— 与其让人白拖一趟，
+     不如根本不接这条线（配套的 draggable 属性在 renderTree 里也已关掉）。 */
+  if (KB_READ_ONLY) return;
   const list = $("#doclist"), nav = $("#tree");
   if (!nav) return;
   // 需求 #11：列表列已移除，拖拽源改为树内文档（#doclist 存在时兼容旧模板）
@@ -2574,7 +2600,7 @@ function ctxDocItems(docA) {
   const sub = docA.dataset.sub || (CUR && CUR.sub);
   const rel = docRelOf(domain, sub, name);
   return [
-    { icon: icon("trend"), label: "统计信息", fn: () => showStats(rel) },
+    { icon: icon("trend"), label: "统计信息", roHide: true, fn: () => showStats(rel) },
     "-",
     { icon: icon("copy"), label: "复制 Markdown 原文", fn: async () => {
         const r = await fetch(rawUrl(rel));
@@ -2584,9 +2610,9 @@ function ctxDocItems(docA) {
     { icon: icon("copy-link"), label: "复制站内链接", fn: () => copyText(location.origin + docUrl(rel.replace(/\.md$/, "")), "已复制站内链接") },
     { icon: icon("copy-path"), label: "复制相对路径", fn: () => copyText(rel, "已复制路径") },
     "-",
-    { icon: icon("move-arrow"), label: "移动到…", fn: () => moveDocPrompt(rel) },
-    { icon: icon("edit-pencil"), label: "重命名…", fn: () => renameDocPrompt(rel) },
-    { icon: icon("trash"), label: "删除…", danger: true, fn: async () => {
+    { icon: icon("move-arrow"), label: "移动到…", roHide: true, fn: () => moveDocPrompt(rel) },
+    { icon: icon("edit-pencil"), label: "重命名…", roHide: true, fn: () => renameDocPrompt(rel) },
+    { icon: icon("trash"), label: "删除…", roHide: true, danger: true, fn: async () => {
         const s = findSub(CUR.domain, CUR.sub);
         const d = s && s.docs.find(x => x.name === name);
         if (!d) { toast("文档不在当前列表"); return; }
@@ -2662,7 +2688,7 @@ function ctxSubItems(subA) {
   const base = sub === "_root" ? dom : `${dom}/${sub}`;
   // 第三轮 #7：动词优先、危险置底；_root（域根散文件区）不给重命名/删除
   const items = [
-    { icon: icon("new-file"), label: "在此新建文档…", fn: async () => {
+    { icon: icon("new-file"), label: "在此新建文档…", roHide: true, fn: async () => {
         const res = await kbModal({
           title: "新建文档",
           body: `将在 <span class='mono'>${esc(base)}/</span> 下创建 Markdown 文件，首行自动写入标题。`,
@@ -2680,14 +2706,14 @@ function ctxSubItems(subA) {
         }
         else toast("创建失败：" + r.status);
       } },
-    { icon: icon("plus-circle"), label: "新建子目录…", fn: () => promptNewSubdir(dom, sub === "_root" ? "" : sub) },
-    { icon: icon("download"), label: "导入文档…", fn: () => importDocsPrompt(dom, sub === "_root" ? "" : sub) },
+    { icon: icon("plus-circle"), label: "新建子目录…", roHide: true, fn: () => promptNewSubdir(dom, sub === "_root" ? "" : sub) },
+    { icon: icon("download"), label: "导入文档…", roHide: true, fn: () => importDocsPrompt(dom, sub === "_root" ? "" : sub) },
   ];
   if (sub !== "_root") {
     items.push(
       "-",
-      { icon: icon("swap"), label: "重命名目录…", fn: () => renameSubPrompt(dom, sub) },
-      { icon: icon("trash"), label: "删除目录…", danger: true, fn: () => rmdirPrompt(dom, sub) }
+      { icon: icon("swap"), label: "重命名目录…", roHide: true, fn: () => renameSubPrompt(dom, sub) },
+      { icon: icon("trash"), label: "删除目录…", roHide: true, danger: true, fn: () => rmdirPrompt(dom, sub) }
     );
   }
   return items;
@@ -2698,13 +2724,13 @@ function ctxDomItems(domA) {
   const host = domA.closest(".dom") || domA;
   const dom = host.dataset.dom || domA.dataset.dom;
   return [
-    { icon: icon("new-file"), label: "在此新建文档…", fn: () => promptNewDocInDir(dom, "") },
-    { icon: icon("plus-circle"), label: "新增二级目录…", fn: () => promptNewSubdir(dom, "") },
-    { icon: icon("download"), label: "导入文档…", fn: () => importDocsPrompt(dom, "") },
-    { icon: icon("swap"), label: "重命名域…", fn: () => renameDomainPrompt(dom) },
+    { icon: icon("new-file"), label: "在此新建文档…", roHide: true, fn: () => promptNewDocInDir(dom, "") },
+    { icon: icon("plus-circle"), label: "新增二级目录…", roHide: true, fn: () => promptNewSubdir(dom, "") },
+    { icon: icon("download"), label: "导入文档…", roHide: true, fn: () => importDocsPrompt(dom, "") },
+    { icon: icon("swap"), label: "重命名域…", roHide: true, fn: () => renameDomainPrompt(dom) },
     "-",
     { icon: icon("copy"), label: "复制域名", fn: () => copyText(dom, "已复制域名") },
-    { icon: icon("trash"), label: "删除域…", danger: true, fn: () => rmdirPrompt(dom, "") },
+    { icon: icon("trash"), label: "删除域…", roHide: true, danger: true, fn: () => rmdirPrompt(dom, "") },
   ];
 }
 /* 删除目录 / 域：后端整棵子树软删除进 content/_trash/<时间戳>/，非空也可删。
@@ -2846,7 +2872,7 @@ document.addEventListener("contextmenu", e => {
     if (!m) return;
     const [_, dom, firstSub] = m;
     openCtxMenu(e.clientX, e.clientY, [
-      { icon: icon("chart"), label: "统计信息", fn: () => showSubStats(dom, firstSub) },
+      { icon: icon("chart"), label: "统计信息", roHide: true, fn: () => showSubStats(dom, firstSub) },
       { icon: icon("folder"), label: "进入该目录", fn: () => { location.href = dcard.getAttribute("href"); } },
       { icon: icon("copy-path"), label: "复制目录路径", fn: () => copyText(dom, "已复制路径") },
     ]);
@@ -2861,14 +2887,14 @@ document.addEventListener("contextmenu", e => {
     if (!dm) { copyText(rp, "已复制路径"); return; } // _inbox 外链行：只给路径
     const rel = decodeURIComponent(dm[1]) + ".md";
     openCtxMenu(e.clientX, e.clientY, [
-      { icon: icon("trend"), label: "统计信息", fn: () => showStats(rel) },
+      { icon: icon("trend"), label: "统计信息", roHide: true, fn: () => showStats(rel) },
       { icon: icon("copy"), label: "复制 Markdown 原文", fn: async () => {
           const r = await fetch(rawUrl(rel));
           if (!r.ok) { toast("读取原文失败：" + r.status); return; }
           copyText(await r.text(), "已复制 Markdown 原文");
         } },
-      { icon: icon("move-arrow"), label: "移动到…", fn: () => moveDocPrompt(rel) },
-      { icon: icon("edit-pencil"), label: "重命名…", fn: () => renameDocPrompt(rel) },
+      { icon: icon("move-arrow"), label: "移动到…", roHide: true, fn: () => moveDocPrompt(rel) },
+      { icon: icon("edit-pencil"), label: "重命名…", roHide: true, fn: () => renameDocPrompt(rel) },
     ]);
   }
 });

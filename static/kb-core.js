@@ -850,16 +850,21 @@
     { combo: "/", desc: "聚焦顶栏搜索框（? 前缀走语义检索）", scope: "global" },
     { combo: "Esc", desc: "分层关闭：补全 → 弹窗 / 菜单 → 帮助 → 编辑器（未保存先确认）", scope: "global" },
     { combo: "?", desc: "显示本帮助", scope: "global" },
-    { combo: "Ctrl / ⌘ + S", desc: "保存并写回文件系统（编辑器内）", scope: "editor" },
-    { combo: "[[ 输入", desc: "双链补全：↑↓ 选择，Tab / Enter 插入", scope: "editor" },
+    { combo: "Ctrl / ⌘ + S", desc: "保存并写回文件系统（编辑器内）", scope: "editor", roHide: true },
+    { combo: "[[ 输入", desc: "双链补全：↑↓ 选择，Tab / Enter 插入", scope: "editor", roHide: true },
     { combo: "j / k", desc: "文档列表上下移动", scope: "browse" },
     { combo: "Enter", desc: "打开聚焦的文档", scope: "browse" },
     { combo: "Menu / Shift+F10", desc: "对聚焦的文档或目录打开右键菜单", scope: "browse" },
     { combo: "↑ ↓ ← →", desc: "右键菜单与移动弹窗目录树导航", scope: "browse" },
     { combo: "← →", desc: "右栏标签（目录 / 信息 / 备注 / 双链）切换", scope: "browse" }
   ];
-  var HELP_HTML = KEY_REGISTRY.map(function (k) { return [k.combo, k.desc]; });
-  keys.registry = KEY_REGISTRY;
+  /* 只读档（公网静态产物，判据同 app.js 的 KB_READ_ONLY）：编辑器在那里根本不存在，
+     帮助面板与命令面板的快捷键区都不许再列编辑器键位——列了就是骗人去按一个没用的键。 */
+  var VISIBLE_KEYS = KEY_REGISTRY.filter(function (k) {
+    return !(window.KB_STATIC && window.KB_STATIC.readonly && k.roHide);
+  });
+  var HELP_HTML = VISIBLE_KEYS.map(function (k) { return [k.combo, k.desc]; });
+  keys.registry = VISIBLE_KEYS;
 
   function toggleHelp(force) {
     var el = document.getElementById("kb-help");

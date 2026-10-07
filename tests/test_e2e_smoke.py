@@ -291,7 +291,9 @@ def main() -> int:
         # 状态栏右端从写死 localhost:5001 改成 request.host：测试客户端的 Host 头是
         # localhost（无端口），所以正确渲染就是 "localhost"；写死时这里是 "localhost:5001"，
         # 摘掉动态化改动 → 本断言立刻红（变异验证过）。
-        m_host = re.search(r'<span class="right"><span>([^<]+)</span></span>', shell)
+        # 2026-10-07：内层 span 加了 sb-host 类名钩子（公网只读档靠它定位换文案），
+        # 匹配串跟着走，判据不变——渲染值必须等于当前请求的 host。
+        m_host = re.search(r'<span class="right"><span class="sb-host">([^<]+)</span></span>', shell)
         check("状态栏右端渲染的是当前请求的 host（不再写死 5001）",
               m_host is not None and m_host.group(1) == "localhost",
               f"got={m_host.group(1) if m_host else None}")

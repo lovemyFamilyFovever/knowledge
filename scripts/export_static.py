@@ -333,6 +333,7 @@ def export_site(root: Path, out: Path, base: str = KB_BASE_DEFAULT,
     既满足 §4.1 的同构硬约束，又天然不含 gitignore 的 projects/ 等。
     keep_corpus=True 时保留 staging 语料根（供测试用同一语料对账）。
     """
+    base = check_base(base)
     root = Path(root).resolve()
     out = Path(out).resolve()
     tracked = git_tracked_public(root) if tracked_only else None
@@ -517,6 +518,27 @@ def export_site(root: Path, out: Path, base: str = KB_BASE_DEFAULT,
     finally:
         if not keep_corpus:
             shutil.rmtree(stage, ignore_errors=True)
+
+
+def check_base(base: str) -> str:
+    """KB_BASE 是 **URL 前缀**，不是文件系统路径：非法值一律拒绝，不做静默纠正。
+
+    2026-10-07 本机踩坑：Git Bash / MSYS 会把 argv 里的 `/knowledge` 在交给 Windows 版
+    Python 之前改写成 `C:/Program Files/Git/knowledge`，于是这个串被原样烤进产物
+    （实测 index.html 里 96 处，站内链接与 404 兜底全指到本机目录树）。CI 在 Linux 上跑
+    所以线上没受影响，但任何人本机复现都会拿到一个"看着导出成功、点开全是 404"的坏站。
+    正解是调用侧加 `MSYS_NO_PATHCONV=1`；这里的作用是把静默失败变成响亮失败。
+    """
+    b = (base or "").strip()
+    if not b:
+        return ""
+    if (not b.startswith("/")) or "\\" in b or ":" in b or "//" in b or b.endswith("/"):
+        raise SystemExit(
+            f"KB_BASE 非法：{base!r}\n"
+            "  必须是站内路径前缀：以 / 开头、不含盘符与反斜杠、不以 / 结尾（如 /knowledge）。\n"
+            "  从 Git Bash / MSYS 调用请设 MSYS_NO_PATHCONV=1 MSYS2_ARG_CONV_EXCL='*'，\n"
+            "  否则 /knowledge 会被改写成 C:/Program Files/Git/knowledge。")
+    return b
 
 
 # ============================ CLI ============================

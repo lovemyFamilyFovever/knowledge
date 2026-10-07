@@ -39,11 +39,13 @@ python tests\test_ui_behavior.py               # UI 行为回归（210 断言 ·
 python tests\test_rag.py                       # RAG smoke（含**与 Rust tokenizers 逐 token 交叉验证**，以及**续跑三证**：中断后只重嵌剩余篇 + 旧库迁移相符才盖章；缺库/缺模型才 SKIP，本机跑通才是提交口径）
 python scripts\rag_search.py "查询" --json     # 语义检索 CLI / Agent 入口
 python scripts\check_ledger_counts.py             # 台账对账：§0 数字必须等于按 §1~§5 状态列重算的数（已入 pre-commit + CI）
-python scripts\publish_site.py [--dry-run]   # 发布管线：白名单同步 content/ → 本地 Quartz 站仓（E:\GitHub\knowledge-site），排除 漫画/projects/小说
+python scripts\export_static.py --out site --base /knowledge   # 公网只读档导出器：公开白名单语料 → site/（与 Flask 读端点逐字段同构的静态 JSON；产物是派生缓存，site/ 已 gitignore）
+python scripts\publish_site.py [--dry-run]   # 【已停用 · 2026-10-07】旧 Quartz 站仓同步管线，目标 E:\GitHub\knowledge-site 已删除；公开面改由 export_static + GitHub Pages 承担（见 .github/workflows/pages.yml），跑它只会报路径不存在
 python scripts\check_frontmatter.py [--all]  # frontmatter 严格 YAML 门禁（公开站 Quartz 不容错、本地阅读器容错；已入 pre-commit 与 publish_site.py 前置）
 ```
 
-> 站仓本地预览：`cd E:\GitHub\knowledge-site && npx quartz build --serve`；站仓是公开面，动它之前先读 `scripts/publish_site.py` 的排除契约（小说/=盗版书库，永不发布）。
+> **导出器在 Git Bash 里必须加 `MSYS_NO_PATHCONV=1`**：`--base /knowledge` 会被 MSYS 在交给 Windows 版 Python 之前改写成 `C:/Program Files/Git/knowledge`，整站链接与 404 兜底就此指到本机目录树（线上是 Linux runner 所以没中招，本机复现必踩）。现在 `export_static.check_base()` 会直接拒绝带盘符/反斜杠的 KB_BASE，不再静默产出坏站；cmd 与 PowerShell 下无需该变量。
+> 只读档本地预览：`py -3 scripts\export_static.py --out site --base /knowledge` 之后，把 `site/` 放进 `<某根>/knowledge/` 再起静态服务（`.qa/serve404.py` 会顺带模拟 GH Pages 的 404 回落，深链才验得准）。直接 `python -m http.server -d site` 只能验空前缀那一种口径。
 
 > 历史脚本 `start-rag.bat` / `start-dev.bat` 已于 2026-09-13 并入 `start.bat`
 
@@ -107,6 +109,10 @@ app/palette.py      命令面板索引（2026-10-07 自 learn.py 拆出）
   —— 复习/刷题/术语/标签治理整栈退场；书库引擎 static/kb-novel.js 与 novel.css 同批删除。
   功能入口从 7 项收成 3 项：阅读 / 统计 / 收藏）
 scripts/            迁移与维护脚本（rag_search.py 是 Agent 检索入口；agent/ 存跨会话常驻工具）
+scripts/export_static.py  公网只读档导出器（合并方案 §4.1）：公开白名单语料 staging → 复用读端点产 payload → site/ 落盘
+static/kb-static.js       只读适配器（§4.2/§4.3，只有导出产物加载）：fetch 分诊（读→data/*.json、写→READ_ONLY、裁剪端点→NOT_IN_STATIC）、KB_BASE 链接与路由桥、只读裁剪 CSS、公网状态栏与 <title> 口径
+static/app.js / kb-core.js  的 `KB_READ_ONLY`（判据 = 注入的 window.KB_STATIC.readonly）是**动态写入口**的单点开关：右键菜单项靠 roHide 标记被摘掉、拖拽移动与近 7 日阅读图不接线、编辑器快捷键不进帮助。静态写入口才归 kb-static.js 那份选择器清单——两层不许互相抄
+.github/workflows/pages.yml  push main → export_static --base /knowledge → deploy-pages（线上 https://lovemyFamilyFovever.github.io/knowledge/，仓库即公开面）
 requirements/       依赖清单（requirements.txt 核心 / -rag.txt 语义检索 / -lock.txt 便携环境重建锁）
 .githooks/          pre-commit：静态层（ruff/台账对账/悬空令牌/RAG 版本）串行 → 10 条纯 Python 套件**并行**（KB_GATE_PARALLEL 默认 4，=1 串行；动了语料再加一条 frontmatter 闸）→ 浏览器两套与 RAG 串行（缺依赖自动 SKIP）
 .github/workflows/  CI（GitHub Actions；windows runner 作业级 PYTHONIOENCODING=utf-8）

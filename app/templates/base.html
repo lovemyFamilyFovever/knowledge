@@ -226,13 +226,15 @@
 {% block body %}{% endblock %}
 
 <div class="statusbar">
+  {# 这四段各有一个类名钩子：公网只读档要在 kb-static.js 里逐段换成在线口径（合并方案 §4.3）。
+     本地渲染只看类名不看内容，所以加类不改版式、像素基线不动。 #}
   <span class="sb-acc">知库 · 本地阅读器</span>
   <span id="sb-path" class="sb-path" title="当前文档路径"></span>
-  <span>content/ = 唯一事实源 · 索引只是派生缓存</span>
+  <span class="sb-src">content/ = 唯一事实源 · 索引只是派生缓存</span>
   {# 问题12：原顶栏「全文检索已就绪」pill 降级为状态栏文字；B22：计数以索引内篇数 fts_n 为准 #}
-  <span>{{ fts_n|default(n_md)|default(0) }} 篇已入全文索引</span>
+  <span class="sb-fts">{{ fts_n|default(n_md)|default(0) }} 篇已入全文索引</span>
   {# 状态栏右端的地址跟着实例走：写死 localhost:5001 时，换端口/直启/临时实例里这句话就是假的 #}
-  <span class="right"><span>{{ request.host }}</span></span>
+  <span class="right"><span class="sb-host">{{ request.host }}</span></span>
 </div>
 <div id="toast"></div>
 {# 命令面板 / 阅读偏好面板容器（kb-core.js 在首次打开时注入内部结构） #}

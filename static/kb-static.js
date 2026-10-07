@@ -12,8 +12,13 @@
    2) 覆盖 KB.util.docUrl / rawUrl 的单点实现 → 静态路径（带 KB_BASE）
    3) 深链兜底：/doc/… 直链（GH Pages 经 404.html 回落到壳）→ 客户端路由到正确文档；
       其余未知路径（已裁剪入口 /home /stats /favorites /inbox、旧书签）→ 回工作台
-   4) 最小只读裁剪：注入一段 CSS 隐藏写入口
-   5) 界面修正：品牌链接指向工作台；公网文案与可用引擎对齐（全文）
+   4) 只读裁剪（§4.3，两层各司其职）：
+        · 静态写入口 → 本文件注入的 CSS 隐藏清单（按钮、页签、导航链接、引擎钮）
+        · 动态生成的写入口（右键菜单项、拖拽移动、近 7 日阅读图、编辑器快捷键）
+          → app.js / kb-core.js 里的 KB_READ_ONLY 单点关掉，判据是注入的
+            window.KB_STATIC.readonly，不在这里抄第二份清单
+   5) 界面修正：品牌链接指向工作台；状态栏与 <title> 换成公网口径（导出时烤进去的是
+      构建机的「本地阅读器 / localhost / 那一篇的子域名」）；域筛选钮按导出树裁剪
 
    分诊表与 scripts/export_static.py::ENDPOINT_TRIAGE 逐条对应（§4.4 静态审计同源）。
    约束（与本项目技术栈一致）：无构建工具 / 无 ES module / 经典脚本 / 全局作用域。
@@ -229,7 +234,9 @@
     '#editor', '#fav-btn', '#ed-del', '#tag-add-btn', '#tag-in', '#tag-inputrow',
     '.note-input', '#ni', '#global-stats-btn',
     'a[href$="/stats"]', 'a[href$="/favorites"]', 'a[href$="/inbox"]',
-    '#kb-search-engines [data-eng="semantic"]',
+    /* 引擎钮容器是 class 不是 id（轮次 51 写成 #kb-search-engines，选择器从未命中，
+       公网实测「语义 RAG」钮照样在、点下去走的是全文）——混合 = 全文+语义，同理不给。 */
+    '.kb-search-engines [data-eng="semantic"]', '.kb-search-engines [data-eng="hybrid"]',
   ].join(",");
   function injectReadonly() {
     document.documentElement.classList.add("kb-readonly");
@@ -246,7 +253,46 @@
     document.addEventListener("DOMContentLoaded", injectReadonly);
   } else { injectReadonly(); }
 
-  /* ---------- ⑤ 界面修正（公网专属） ---------- */
+  /* ---------- ⑤ 界面修正（公网专属） ----------
+     文案的权威仍是 base.html / app.js 那一份，这里只做"公网该说什么"的替换：
+     导出时烤进产物的字符串是本地实例的口径（statusbar 写「本地阅读器」、右端地址
+     是构建机看到的 localhost、<title> 冻结在导出时那一篇的子域名），照搬上线就是假信息。 */
+  var RO_TAG = "公网只读档";
+  /* 状态栏四段在 375px 档是横向滚动的（.statusbar{overflow-x:auto}），
+     所以公网措辞按"不比本地版更长"来定：本地实测 sb-src 225px / sb-fts 106px，
+     初稿写成「本档为只读快照（编辑与统计在本地阅读器）」把溢出从 105px 顶到 272px。 */
+  function fixCopy() {
+    var acc = document.querySelector(".sb-acc");
+    if (acc) acc.textContent = "知库 · " + RO_TAG;
+    var src = document.querySelector(".sb-src");
+    if (src) src.textContent = "Markdown 唯一事实源 · 本档只读";
+    var fts = document.querySelector(".sb-fts");
+    if (fts) {
+      var m = (fts.textContent || "").match(/\d+/);
+      if (m) fts.textContent = m[0] + " 篇可全文检索";
+    }
+    var host = document.querySelector(".sb-host");
+    if (host && location.host) host.textContent = location.host;
+  }
+  function fixTitle() {
+    var h1 = document.querySelector(".article h1");
+    var t = h1 ? (h1.textContent || "").trim() : "";
+    document.title = t ? t.slice(0, 60) + " · 知库" : "知库 · " + RO_TAG;
+  }
+  /* 域筛选钮：模板按 taxonomy 全量 LABELS 派生（不变量 5），公网语料却是公开白名单，
+     两者不等 —— projects 永不出网，那颗钮点下去恒 0 结果，还顺带告诉访客"这里有个
+     看不见的域"；仅收藏 / 仅未掌握两颗在 app 里本就是空转（SO.scope 置空），
+     公网更没有收藏与掌握。判据用导出树里真实存在的域，不抄第二份名单。 */
+  function pruneScopeChips(tree) {
+    var ids = {};
+    ((tree && tree.domains) || []).forEach(function (d) { ids[d.id] = 1; });
+    var chips = document.querySelectorAll(".kb-scope-chip[data-scope]");
+    for (var i = chips.length - 1; i >= 0; i--) {
+      var s = chips[i].getAttribute("data-scope") || "";
+      if (s === "" || ids[s]) continue;
+      chips[i].parentNode.removeChild(chips[i]);
+    }
+  }
   function fixUI() {
     var b = document.querySelector("a.brand");
     if (b) { b.href = BASE + "/"; b.title = "回到阅读工作台"; }
@@ -254,6 +300,11 @@
     if (se) se.textContent = "全文";
     var qi = document.getElementById("q");
     if (qi) qi.placeholder = "检索（全文）…";
+    var so = document.getElementById("kb-so-q");
+    if (so) so.placeholder = "检索正文 / 标签…";
+    fixCopy();
+    fixTitle();
+    loadTree().then(pruneScopeChips).catch(function () {});
     fixLinks(document);
   }
 
@@ -346,6 +397,7 @@
   var _recentTimer = null;
   function hookRecent() {
     document.addEventListener("kb:article-rendered", function () {
+      fixTitle();                                  // 标题跟着正文走：导出时冻结的 <title> 是构建机那一篇
       if (_recentTimer) clearTimeout(_recentTimer);
       _recentTimer = setTimeout(recordVisit, 400);
     });
