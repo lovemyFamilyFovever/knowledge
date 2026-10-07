@@ -228,7 +228,7 @@
     '[onclick^="toggleDocMark"]', '[onclick^="purgeInbox"]', '[onclick^="chipsAddToggle"]',
     '#editor', '#fav-btn', '#ed-del', '#tag-add-btn', '#tag-in', '#tag-inputrow',
     '.note-input', '#ni', '#global-stats-btn',
-    'a[href="/stats"]', 'a[href="/favorites"]', 'a[href="/inbox"]',
+    'a[href$="/stats"]', 'a[href$="/favorites"]', 'a[href$="/inbox"]',
     '#kb-search-engines [data-eng="semantic"]',
   ].join(",");
   function injectReadonly() {
