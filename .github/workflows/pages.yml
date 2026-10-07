@@ -39,8 +39,9 @@ jobs:
       - name: Export static site (KB_BASE=/knowledge)
         run: python scripts/export_static.py --out site --base /knowledge
       # enablement: true 尝试自动启用 Pages（Source = GitHub Actions）。
-      # 若因权限/仓设置失败，本步骤会红，但 build 产物已生成；此时需人工到
-      # Settings → Pages → Source 选 "GitHub Actions"，见本仓 handoff 说明。
+      # 实测（2026-10-07）：默认令牌创建 Pages 站会报 403 "Resource not accessible
+      # by integration" —— 首次必须由管理员人工到 Settings → Pages → Source 选
+      # "GitHub Actions"（只需一次）；启用后再跑，本步骤只做 GET、不会再碰创建接口。
       - uses: actions/configure-pages@v5
         with:
           enablement: true
