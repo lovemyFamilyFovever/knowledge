@@ -255,7 +255,11 @@
       + "\n.kb-home-on main{grid-template-columns:280px minmax(0,1fr) 0!important}"
       + ".kb-home-on main.left-off{grid-template-columns:46px minmax(0,1fr) 0!important}"
       + ".kb-home-on #p-article,.kb-home-on #p-rail{display:none!important}"
-      + "#kb-home{min-width:0;overflow:auto;display:flex}"
+      /* 首页面板本身也必须跟着首页态开关 —— 它一旦注入就常驻 DOM，
+         只收起正文列/右栏的话，点开文档后它会继续占住中间那一列、把正文挤到右栏
+         （用户实拍就是这个形状）。 */
+      + "#kb-home{display:none;min-width:0;overflow:auto}"
+      + ".kb-home-on #kb-home{display:flex}"
       + "#kb-home .land-panel{flex:1;min-width:0}"
       /* 片段里没有取景框那一列。居中用 grid 的 justify-content，**别用 margin:0 auto** ——
          .land-grid 是 .land-panel(列 flex) 的 flex item，auto 外边距会让它退化成 fit-content，

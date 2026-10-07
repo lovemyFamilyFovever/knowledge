@@ -915,29 +915,24 @@ new MutationObserver(() => drawTocSpark(tocSparkHost))
   .observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
 
 /* ---------- 分类树 / 文档列表（客户端渲染） ---------- */
-/* 与 workbench.html 服务端模板保持一致：每个域带 .dom-caret 折叠箭头，且**默认全部收起**
-   （不再强制当前域 open）。展开状态读/写 workbench.js 共用的 localStorage 钥匙 kb-tree-open，
-   故客户端跳转（navigate）或 afterMutation 重渲染后，用户的折叠选择不会丢。 */
-/* 一级/二级/三级可见性状态：
-   - kb-tree-open        : 一级域展开集合
-   - kb-sub-collapsed    : 二级「手动收起」集合（键 dom/sub）—— 与「默认展开」语义配合
-   - kb-subdir-collapsed : 三级「手动收起」集合（键 dom/sub/dir）
-   二级/三级均为纯前端原地切换：所有子域的文档列表一次性预渲染（数据来自 /api/tree，
-   无额外请求），仅靠 .collapsed 类控制显隐，点击不跳转、不刷新文档列表（用户要求）。 */
+/* 三层可见性共用三把 localStorage 钥匙（与 workbench.js / kb-core.js 的键盘路径同一批，
+   不另立第二份真相）：
+   - kb-tree-open         : 一级域「已展开」集合（.dom.open；默认全部收起）
+   - kb-sub-open          : 二级「已展开」集合（键 dom/sub；默认收起 —— 打开一级不连带展开二级）
+   - kb-subdir-collapsed  : 三级「已收起」集合（键 dom/sub/dir；三级默认展开故记收起）
+   二/三级都是纯前端原地切换：整棵文档列表一次性预渲染（数据来自 /api/tree），
+   只靠 .collapsed 类控制显隐，点击不跳转、不重新拉数据。 */
 function treeOpenSet() {
   try { const raw = localStorage.getItem("kb-tree-open"); if (raw) return new Set(JSON.parse(raw)); } catch (e) {}
   return new Set();
 }
-/* 二级/三级可见性状态（三个独立集合，均为「显式记录」语义，默认收起）：
-   - kb-tree-open        : 一级域「已展开」集合
-   - kb-sub-open         : 二级「已展开」集合（键 dom/sub）
-   - kb-subdir-collapsed : 三级「已收起」集合（键 dom/sub/dir，三级默认展开故用收起集合）
-   二级/三级均为纯前端原地切换：所有子域的文档列表一次性预渲染（数据来自 /api/tree，
-   无额外请求），仅靠 .collapsed 类控制显隐，点击不跳转、不刷新文档列表。 */
-function treeOpenSet() {
-  try { const raw = localStorage.getItem("kb-tree-open"); if (raw) return new Set(JSON.parse(raw)); } catch (e) {}
-  return new Set();
+function setTreeOpen(domId, open) {
+  const set = treeOpenSet();
+  if (open) set.add(domId); else set.delete(domId);
+  try { localStorage.setItem("kb-tree-open", JSON.stringify(Array.from(set))); } catch (e) {}
 }
+/* 域 id / 子域 id / 文件名都要进 querySelector 的属性选择器，中文、引号、斜杠都得转义。 */
+function cssAttr(s) { return CSS.escape(String(s ?? "")); }
 /* 二级「已展开」集合：默认空 → 全部收起（用户要求：打开一级不应默认展开二级）。 */
 function subOpenSet() {
   try { const raw = localStorage.getItem("kb-sub-open"); if (raw) return new Set(JSON.parse(raw)); } catch (e) {}
@@ -1106,6 +1101,49 @@ function renderTree() {
    </div>`;
   }).join("");
   rebindTreeSel();   // 重渲染后按 key 找回选中节点（一级点击会走导航+重渲染）
+  revealCurInTree();  // 打开哪篇，树就展开到那一层并把它送进视野
+}
+
+/* ---------- 打开文档 → 左树展开并聚焦到它所在的层级 ----------
+   从搜索 / 深链 / 最近阅读打开一篇文档时，树里原先只有 .active 高亮、父级还收着 ——
+   等于"亮了一个你看不见的节点"。这里补齐一级/二级/三级展开 + 滚进视野。
+   挂在 renderTree 末尾，所以从哪儿打开都一样生效（从树里点开的本来就是展开态，
+   这里是幂等的）。展开状态沿用同一批 localStorage 钥匙，不另立第二份真相。 */
+function revealCurInTree() {
+  const nav = $("#tree");
+  if (!nav || !CUR) return;
+  if (!window.CSS || !CSS.escape) return;   // 没有转义能力就不猜，直接不动树
+  const domEl = nav.querySelector(`.dom[data-dom="${cssAttr(CUR.domain)}"]`);
+  if (!domEl) return;
+  if (!domEl.classList.contains("open")) {
+    domEl.classList.add("open");
+    const h = domEl.querySelector(".dom-head");
+    if (h) h.setAttribute("aria-expanded", "true");
+    setTreeOpen(CUR.domain, true);
+  }
+  const subA = domEl.querySelector(`.sub[data-sub="${cssAttr(CUR.sub)}"]`);
+  if (subA) {
+    const box = subA.nextElementSibling;
+    const docsBox = box && box.classList.contains("sub-docs") ? box : null;
+    if ((docsBox || subA).classList.contains("collapsed")) {
+      if (docsBox) docsBox.classList.remove("collapsed");
+      subA.classList.remove("collapsed");
+      subA.setAttribute("aria-expanded", "true");
+      setSubOpen(subA.dataset.subKey || `${CUR.domain}/${CUR.sub}`, true);
+    }
+  }
+  const docA = domEl.querySelector(`.doc[data-name="${cssAttr(CUR.name)}"]`);
+  if (!docA) return;
+  const group = docA.closest(".tree-subdir");
+  if (group && group.classList.contains("collapsed")) {
+    group.classList.remove("collapsed");
+    const gh = group.querySelector(".tree-subdir-h");
+    if (gh) gh.setAttribute("aria-expanded", "true");
+    if (group.dataset.dirKey) setDirCollapsed(group.dataset.dirKey, false);
+  }
+  /* 已经在视野里就不动它：否则每次重渲染都会把用户手动滚到的位置拽回来 */
+  const nr = nav.getBoundingClientRect(), dr = docA.getBoundingClientRect();
+  if (dr.top < nr.top + 4 || dr.bottom > nr.bottom - 4) docA.scrollIntoView({ block: "nearest" });
 }
 
 /* ---------- 目录聚合树（移动弹窗 + 目录统计共用；1 分钟缓存） ---------- */

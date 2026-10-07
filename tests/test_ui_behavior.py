@@ -1280,6 +1280,48 @@ def probe_tree_open(base):
           after.get("active_now") == ["beta"], {"active": after.get("active_now")})
 
 
+# 用户报的那条：从搜索 / 深链 / 最近阅读打开一篇文档时，左树只有 .active 高亮、
+# 父级还收着 —— 等于"亮了一个你看不见的节点"。这里从**空存储**（树默认全收起）直接
+# 深链进去，断三级展开 + 那一条真的滚进了树的视野 + 展开态落了盘（刷新后保持）。
+TREE_REVEAL_JS = PRELUDE + r"""
+  const T = e => ((e && e.textContent) || '').replace(/\s+/g, ' ').trim();
+  for (let i = 0; i < 80 && !q('#tree .doc'); i++) await sleep(150);
+  await sleep(700);
+  const nav = q('#tree');
+  const nr = nav.getBoundingClientRect();
+  const dom = q('#tree .dom[data-dom="ui-r"]');
+  const subA = q('#tree .sub[data-dom="ui-r"][data-sub="notes"]');
+  const docsBox = subA ? subA.nextElementSibling : null;
+  const docA = q('#tree .doc[data-name="beta"]');
+  const dr = docA ? docA.getBoundingClientRect() : null;
+  out.ls_open = localStorage.getItem('kb-tree-open');
+  out.ls_sub = localStorage.getItem('kb-sub-open');
+  out.dom_open = !!(dom && dom.classList.contains('open'));
+  out.sub_collapsed = !!(subA && subA.classList.contains('collapsed'));
+  out.docsbox_collapsed = !!(docsBox && docsBox.classList.contains('collapsed'));
+  out.sub_aria = subA ? subA.getAttribute('aria-expanded') : null;
+  out.doc_found = !!docA;
+  out.doc_active = !!(docA && docA.classList.contains('active'));
+  out.doc_in_viewport = !!(dr && nr.height && dr.top >= nr.top - 2 && dr.bottom <= nr.bottom + 2);
+  out.doc_visible = !!(dr && dr.width > 0 && dr.height > 0);
+  out.head = T('#article h1') || T('#article .a-title');
+  return JSON.stringify(out);
+})()"""
+
+
+def probe_tree_reveal(base):
+    print("== 16c 深链打开文档 → 左树自动展开并聚焦到那一条 ==")
+    got = run_expr(base + "/doc/ui-r/notes/beta.md", TREE_REVEAL_JS)
+    check("一级域跟着展开（localStorage 里原本没有它，是打开文档这件事让它展开的）",
+          got.get("dom_open") is True and "ui-r" in (got.get("ls_open") or ""), got)
+    check("二级子域展开：class 与 aria 一起对上（aria 不给就等于读屏软件看不见）",
+          got.get("sub_collapsed") is False and got.get("docsbox_collapsed") is False
+          and got.get("sub_aria") == "true" and "ui-r/notes" in (got.get("ls_sub") or ""), got)
+    check("那一篇在树里既存在又可见，而且就在树的视野内（不是亮在滚出去的地方）",
+          got.get("doc_found") is True and got.get("doc_visible") is True
+          and got.get("doc_in_viewport") is True and got.get("doc_active") is True, got)
+
+
 # ================================================================ 探针 17：新标签页 /raw + 美化版只读态
 PRETTY_JS = PRELUDE + r"""
   const T = e => ((e && e.textContent) || '').replace(/\s+/g, ' ').trim();
@@ -2069,6 +2111,7 @@ def main() -> int:
         run_probe("search", probe_search_facets, base)  # 只读：结果页命中/分面多选/清空/后退
         run_probe("chips", probe_head_chips, base)      # 只读：chips / 右栏跳转 / 元信息 / 编辑提示
         run_probe("tree", probe_tree_open, base)        # 只读：点树里的文档真的换页
+        run_probe("reveal", probe_tree_reveal, base)    # 只读：深链打开 → 树自动展开并聚焦
         run_probe("pretty", probe_pretty, base)         # 只读：美化版出口与只读态
         run_probe("finish", probe_finish_bar, base, tmp)  # 写 reading.db 的 doc_marks（不动语料）
         run_probe("spark", probe_toc_spark, base)       # 写 reading.db 的事件（派生库，不动语料）

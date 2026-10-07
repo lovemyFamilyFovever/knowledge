@@ -327,6 +327,15 @@ def main() -> int:
         check("适配器在根路径注入首页、开文档时让位",
               all(x in kbs for x in ["showHome", "hideHome", "data/home.html",
                                      "kb-home-on", "kb-last-doc"]))
+        # 首页面板自己也必须跟着首页态收起：只收正文列/右栏的话，点开文档后它会继续
+        # 占住中间那一列、把正文挤到右栏去（用户实拍就是这个形状）。
+        check("首页面板本身受首页态控制（不是注入后就常驻）",
+              "#kb-home{display:none" in kbs and ".kb-home-on #kb-home{display:flex}" in kbs)
+        check("打开文档 → 左树自动展开并聚焦（renderTree 末尾单点调用）",
+              "function revealCurInTree()" in appjs and "revealCurInTree();" in appjs
+              and "setTreeOpen(CUR.domain, true)" in appjs)
+        check("树展开态的读取函数只有一份定义（曾复制成两个同名 treeOpenSet）",
+              appjs.count("function treeOpenSet()") == 1)
 
         literals = _api_literals(out / "static")
         unknown = sorted(l for l in literals if l not in ENDPOINT_TRIAGE)
