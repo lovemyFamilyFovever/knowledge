@@ -55,7 +55,7 @@ python scripts\check_ledger_counts.py          # 台账对账：§0 数字必须
 `--stability` 只验"两次截图逐像素相同"（改矩阵或换环境后先跑它）；`--update` 在确认改动无误后刷新基线。
 
 > **导出器在 Git Bash 里必须加 `MSYS_NO_PATHCONV=1`**：`--base /knowledge` 会被 MSYS 在交给 Windows 版 Python 之前改写成 `C:/Program Files/Git/knowledge`，整站链接与 404 兜底就此指到本机目录树（线上是 Linux runner 所以没中招）。`export_static.check_base()` 现在会直接拒绝带盘符/反斜杠的 KB_BASE，不再静默产出坏站；cmd 与 PowerShell 下无需该变量。
-> 只读档本地预览：导出后把 `site/` 放进 `<某根>/knowledge/` 再起静态服务。直接 `python -m http.server -d site` 只能验空前缀那一种口径，深链的 404 回落验不到。
+> 只读档本地预览：`mkdir .qa/serve-root && cmd /c mklink /J .qa\serve-root\knowledge site`，再 `python scripts\agent\serve404.py 8112 .qa/serve-root`，打开 `http://127.0.0.1:8112/knowledge/`。它按 GH Pages 的 SUBDIRECTORY 口径把 `<前缀>/404.html` 当深链回落（所以离线与路由桥才验得准），并**显式把 `.js` 钉成 `application/javascript`** —— Windows 注册表默认报 `text/plain`，Chrome 会拒绝执行，PWA 看着像做坏了。直接 `python -m http.server -d site` 只能验空前缀那一种口径，深链的 404 回落验不到。
 
 ## 正文排版约定（markdown 渲染层消费）
 
@@ -118,6 +118,7 @@ Agent 的**常驻工具**统一收在 `scripts/agent/`（进 git、跨机器复�
 | `watch_ci.py` | 盯 GitHub Actions 到结论：`python scripts/agent/watch_ci.py <sha 前缀> [等待秒=420]`。回 run 状态 + 逐步 conclusion + **annotations**（`::notice::STARTED` / `::warning::SKIPPED`，见 `tests/_ci.py`）—— 匿名 API 读不到日志正文，只有这三样能证明某一步真跑了。四类"读不到"分开报：够不着 API=4 / 限流=3 / 列表里没这个 sha=5 / 200 但正文不是 JSON=6。网络飘时设 `KB_CI_PROXY=http://127.0.0.1:7897` |
 | `scan_fm.py` | frontmatter 污染扫描：正文前 400 字符内又出现完整 fm 块 = 污染 |
 | `scan_dup.py` | 抓取残留副本扫描：`xxx-<数字>.md` 与 `xxx.md` 同名共存即残留 |
+| `serve404.py` | GitHub Pages 本机模拟器：`python scripts/agent/serve404.py <端口> <文档根>`。文档根下必须放成 `<前缀>/…`（junction 到 `site/` 即可），404 走该前缀的 `404.html`（GH Pages 的 SUBDIRECTORY 行为），并显式钉 `.js`/`.webmanifest` 的 content-type（Windows 默认把 `.js` 报成 `text/plain`，Chrome 拒绝执行 → PWA 看着像坏的） |
 
 两个 scan 脚本的扫描根默认按脚本位置推导到仓库根下的 `content/`，传 argv[1] 可覆盖。
 
