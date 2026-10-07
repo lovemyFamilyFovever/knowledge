@@ -249,6 +249,12 @@ def main() -> int:
         kbs = (out / "static" / "kb-static.js").read_text(encoding="utf-8")
         check("适配器把写端点归为 READ_ONLY", 'READ_ONLY' in kbs and 'WRITE' in kbs)
         check("适配器单点覆盖 docUrl/rawUrl", "KB.util.docUrl" in kbs and "KB.util.rawUrl" in kbs)
+        check("适配器含本机阅读进度（kb-recent + localStorage 键）",
+              "kb-recent" in kbs and "kb-static:recent" in kbs)
+        check("适配器含路由桥（bridgeClicks/bridgeRouting）",
+              "bridgeClicks" in kbs and "bridgeRouting" in kbs)
+        check("适配器改写根相对链接为 KB_BASE 前缀",
+              'a[href^="/"]' in kbs)
 
         literals = _api_literals(out / "static")
         unknown = sorted(l for l in literals if l not in ENDPOINT_TRIAGE)

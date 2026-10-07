@@ -67,6 +67,8 @@
   - 写端点 → 一律返回 `{ok:false, error:"READ_ONLY"}`，走现成错误通道（toast/KB.api.msg），不静默。
   - `/api/track` → 静默 no-op；`/api/recent_read`（侧栏「近 7 日阅读」）→ UI 按开关隐藏 + fetch no-op。
 - `kb-core.util` 的 `docUrl/rawUrl`（唯一实现处）→ 覆盖为静态路径。
+- **壳内链接改写**：公网页壳里的根绝对链接（`/`、`/doc/…`、`/browse/…`）在运行时统一改写为 `KB_BASE` 前缀（MutationObserver 覆盖动态渲染），防止点击/中键/刷新跳出子路径（否则落到站外 404）。
+- **本机阅读进度（2026-10-07 用户增补）**：左栏顶部「最近阅读」列表 + 逐篇滚动位置恢复；仅写浏览器 localStorage（不碰语料、不出站；换设备不同步、清浏览器数据会丢）。
 - 残余风险（书面化）：非 fetch 的资源引用（`<img src="/raw/…">`、PDF iframe、`location.href` 直跳、CSS `url()`）不经过拦截器——**全部进导出器测试的显式断言清单**，不靠肉眼。
 - 起步用方案 (a)（拦截）；「先把散落 fetch 收口进 KB.api.request」的 (b) 重构**不作为上线前置**，发布后单独立项（见 §7-4）。
 

@@ -235,7 +235,11 @@
     document.documentElement.classList.add("kb-readonly");
     var st = document.createElement("style");
     st.id = "kb-static-readonly";
-    st.textContent = ".kb-readonly " + HIDE.split(",").join(",.kb-readonly ") + "{display:none!important}";
+    st.textContent = ".kb-readonly " + HIDE.split(",").join(",.kb-readonly ") + "{display:none!important}"
+      + "\n.kb-recent{padding:8px 12px 10px;border-bottom:1px solid rgba(128,128,128,.25)}"
+      + ".kb-recent-h{font-size:12px;opacity:.55;margin:0 0 6px;letter-spacing:.02em}"
+      + ".kb-recent-i{display:block;font-size:13px;line-height:1.55;padding:1px 0;color:inherit;text-decoration:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}"
+      + ".kb-recent-i:hover{color:var(--acc,#0c9a6a)}";
     (document.head || document.documentElement).appendChild(st);
   }
   if (document.readyState === "loading") {
@@ -250,27 +254,174 @@
     if (se) se.textContent = "全文";
     var qi = document.getElementById("q");
     if (qi) qi.placeholder = "检索（全文）…";
+    fixLinks(document);
   }
 
-  /* ---------- ③ 深链兜底 + 失效路径回工作台 ---------- */
-  function deepLink() {
-    patchUrls();
-    fixUI();
+  /* ---------- ⑥ 链接改写：根绝对路径 → KB_BASE 前缀 ----------
+     本地壳里 href 多为 "/"、"/doc/…"、"/browse/…"；公网档若原样点击/中键打开
+     会跳出 /knowledge/ 子路径（GH Pages 落站外 → 404）。统一改写；MutationObserver
+     覆盖动态渲染（目录树、浮层）—— 用户能点到的链接在渲染后 200ms 内已带前缀。 */
+  var _linkTimer = null;
+  function fixLinks(root) {
+    if (!BASE) return;
+    var scope = root || document;
+    if (!scope.querySelectorAll) return;
+    var as = scope.querySelectorAll('a[href^="/"]');
+    for (var i = 0; i < as.length; i++) {
+      var h = as[i].getAttribute("href") || "";
+      if (h.charAt(1) === "/") continue;                       // "//host" 协议相对，放过
+      if (h === BASE || h.indexOf(BASE + "/") === 0) continue; // 已带前缀
+      as[i].setAttribute("href", BASE + h);
+    }
+  }
+  function watchLinks() {
+    fixLinks(document);
+    if (typeof MutationObserver !== "function") return;
+    var obs = new MutationObserver(function () {
+      if (_linkTimer) return;
+      _linkTimer = setTimeout(function () { _linkTimer = null; fixLinks(document); }, 200);
+    });
+    obs.observe(document.documentElement, { childList: true, subtree: true });
+  }
+
+  /* ---------- ⑦ 本机阅读进度（仅浏览器本地：最近阅读列表） ----------
+     2026-10-07 用户增补：公网档要能「接着上次读」。滚动位置跳过/恢复由 app 自带的
+     kb-readpos 负责（监听 .article 滚动容器）；这里只补公网档缺失的入口——
+     左栏顶部「最近阅读」列表。只写 localStorage，不碰语料、不出站；换设备不同步。 */
+  var RKEY = "kb-static:recent";
+  function lsGet(k, d) { try { return JSON.parse(localStorage.getItem(k)) || d; } catch (e) { return d; } }
+  function lsSet(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+  function docKeyNow() {
+    var p = location.pathname;
+    if (BASE && p.indexOf(BASE + "/doc/") === 0) return p.slice(BASE.length + 1);
+    if (!BASE && p.indexOf("/doc/") === 0) return p.slice(1);
+    return null;
+  }
+  function recentTitle() {
+    var now = String(location.pathname || "").replace(/\.md$/, "");
+    var links = document.querySelectorAll(".tree a[href]");
+    for (var i = 0; i < links.length; i++) {
+      if ((links[i].getAttribute("href") || "") === now) {
+        var t = (links[i].textContent || "").trim();
+        if (t) return t.slice(0, 60);
+      }
+    }
+    var h = document.querySelector(".article h1");
+    if (h && (h.textContent || "").trim()) return h.textContent.trim().slice(0, 60);
+    return now.split("/").filter(Boolean).slice(-1)[0] || "";
+  }
+  function recordVisit() {
+    var k = docKeyNow(); if (!k) return;
+    var list = lsGet(RKEY, []).filter(function (x) { return x.k !== k; });
+    list.unshift({ k: k, t: recentTitle(), ts: Date.now() });
+    lsSet(RKEY, list.slice(0, 20));
+    renderRecent();
+  }
+  function renderRecent() {
+    var host = document.getElementById("kb-recent");
+    if (!host) {
+      var left = document.getElementById("p-left") || document.querySelector(".panel");
+      if (!left) return;
+      host = document.createElement("div");
+      host.id = "kb-recent"; host.className = "kb-recent";
+      var tree = left.querySelector(".tree");
+      if (tree) left.insertBefore(host, tree); else left.appendChild(host);
+    }
+    var list = lsGet(RKEY, []).slice(0, 8);
+    while (host.firstChild) host.removeChild(host.firstChild);
+    if (!list.length) { host.style.display = "none"; return; }
+    host.style.display = "";
+    var hd = document.createElement("div");
+    hd.className = "kb-recent-h"; hd.textContent = "最近阅读（本机）";
+    host.appendChild(hd);
+    for (var i = 0; i < list.length; i++) {
+      var a = document.createElement("a");
+      a.className = "kb-recent-i";
+      a.setAttribute("href", BASE + "/" + list[i].k);
+      a.textContent = list[i].t || list[i].k;
+      a.title = list[i].t || list[i].k;
+      host.appendChild(a);
+    }
+  }
+  var _recentTimer = null;
+  function hookRecent() {
+    document.addEventListener("kb:article-rendered", function () {
+      if (_recentTimer) clearTimeout(_recentTimer);
+      _recentTimer = setTimeout(recordVisit, 400);
+    });
+  }
+
+  /* ---------- ③ 客户端路由桥 + 深链兜底（公网专属） ----------
+     app 的点击拦截正则只认裸路径（/^\/(doc|browse)\//）。壳里链接已带 KB_BASE 前缀
+     （中键/刷新可用），这里用捕获监听把带前缀的点击翻译回裸路径交给 app；再给
+     pushState 补前缀、给 navigate 去前缀，保证地址栏始终留在 /knowledge/ 内。 */
+  var _clicksBridged = false;
+  function bridgeClicks() {
+    document.addEventListener("click", function (e) {
+      if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+      var a = e.target && e.target.closest ? e.target.closest("a[href]") : null;
+      if (!a || a.target === "_blank" || a.hasAttribute("download")) return;
+      var h = a.getAttribute("href") || "";
+      if (h.indexOf(BASE + "/doc/") !== 0 && h.indexOf(BASE + "/browse/") !== 0) return;
+      e.preventDefault();
+      if (typeof window.navigate === "function") window.navigate(h.slice(BASE.length), true);
+    }, true);
+  }
+  var _psBridged = false, _navBridged = false;
+  function bridgeRouting() {
+    if (!_psBridged) {
+      _psBridged = true;
+      try {
+        var _ps = history.pushState;
+        history.pushState = function (state, title, url) {
+          if (typeof url === "string" && url.charAt(0) === "/" && url.charAt(1) !== "/" &&
+              BASE && url !== BASE && url.indexOf(BASE + "/") !== 0) url = BASE + url;
+          return _ps.call(history, state, title, url);
+        };
+      } catch (e) {}
+    }
+    if (!_navBridged && typeof window.navigate === "function") {
+      _navBridged = true;
+      var _nav = window.navigate;
+      window.navigate = function (url, push) {
+        if (typeof url === "string" && BASE && url.indexOf(BASE + "/") === 0) {
+          var raw = url.slice(BASE.length);
+          if (/^\/(doc|browse)\//.test(raw)) url = raw;
+        }
+        return _nav.call(window, url, push);
+      };
+    }
+  }
+
+  /* ---------- 启动编排（幂等；先跑一次，DOMContentLoaded/load 再补跑） ---------- */
+  var _linksWatched = false, _recentHooked = false, _routed = false;
+  function routeNow() {
     var path = location.pathname;
     var m = path.match(/\/doc\/([^/]+)\/([^/]+)\/(.+)$/);
     if (m) {
-      if (typeof window.navigate === "function") {
-        window.navigate(path.replace(/\.md$/, ""), false);
-      }
+      if (typeof window.navigate !== "function") return;   // app 未就绪：留给下一次
+      if (_routed) return;
+      _routed = true;
+      window.navigate(path.replace(/\.md$/, ""), false);
       return;
     }
-    // 非 /doc/ 落点：根路径 / index / 404 自身放行；其余（已裁剪入口、旧书签、乱入路径）
-    // 一律回工作台 —— 否则用户会停在"点了但没反应"的壳上。
     var trimmed = path.replace(/\/+$/, "");
     if (trimmed === BASE || trimmed === BASE + "/index.html" || trimmed === BASE + "/404.html") return;
     location.replace(BASE + "/");
   }
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", deepLink);
-  } else { deepLink(); }
+  function onReady() {
+    patchUrls();
+    fixUI();
+    if (!_linksWatched) { _linksWatched = true; watchLinks(); }
+    if (!_clicksBridged) { _clicksBridged = true; bridgeClicks(); }
+    bridgeRouting();
+    if (!_recentHooked) { _recentHooked = true; hookRecent(); }
+    renderRecent();
+    routeNow();
+  }
+  onReady();
+  if (document.readyState !== "complete") {
+    document.addEventListener("DOMContentLoaded", onReady);
+    window.addEventListener("load", onReady);
+  }
 })();
