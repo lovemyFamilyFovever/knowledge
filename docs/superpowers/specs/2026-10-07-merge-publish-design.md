@@ -112,7 +112,7 @@
 
 ## 7. 待拍板 / 未决
 
-1. **产物仓库名与接线方式**。推荐：新建公共产物仓（建议名 `knowledge-site`，取代退役概念；URL 形如 `https://lovemyfamilyfovever.github.io/knowledge-site/`）；或 `<user>.github.io` 用户页仓（根 URL 最干净，但占用账号主页仓）。接线推荐「产物仓跑工作流 + 只读部署密钥 checkout 私仓构建」，无需在公网仓留任何产物副本。一次性设置需要你在 GitHub 上操作（或照我给的单子执行）。原设计稿的 `/knowledge/` 路径与私仓同名互斥，勿用。
+1. **产物仓库与接线方式（已拍板 2026-10-07：走根域）**：`<user>.github.io` 用户页仓——`lovemyFamilyFovever.github.io`，站点根 URL `https://lovemyfamilyfovever.github.io/`；接线（只读部署密钥 + 工作流，公网仓不留产物副本）于阶段 3 落地。**待办（用户）**：在 GitHub 新建 `lovemyFamilyFovever.github.io`（Public、空仓、不勾初始化文件）。原 `knowledge-site` 命名与 `/knowledge/` 子路径方案作废。
 2. **knowledge-site（原 garden 仓）处置**：其 Quartz 双栏 UI 是约 10 个提交的手写成果（不可再生）。保留归档 / 留作视觉参考 / 删除，三选一；「恢复旧站」与否一并定。（未获指令前不碰该目录。）
 3. **interview 底料复核**：仅当未来要把 knowledge 转公开才需要（当前路线保持私仓，无需）；转公开前必过这一关。
 4. 附：「fetch 收口 (b)」重构不在上线前置，发布后单独立项。
