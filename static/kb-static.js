@@ -127,7 +127,7 @@
   }
   function loadDomainIndex(d) {
     if (_idx[d]) return Promise.resolve(_idx[d]);
-    return nativeFetch(dataUrl("data/search/" + enc(d) + ".json"))
+    return nativeFetch(dataUrl("data/search/" + d + ".json"))
       .then(function (r) { return r.ok ? r.json() : null; })
       .then(function (j) { _idx[d] = j; return j; })
       .catch(function () { return null; });

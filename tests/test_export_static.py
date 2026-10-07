@@ -211,6 +211,10 @@ def main() -> int:
         check("doc/index.json 把 domain/sub/name 映射到数据文件",
               doc_index.get("ai/llm-and-agents/A") == doc_data_rel("ai", "llm-and-agents", "A")
               and len(doc_index) == 2, str(doc_index))
+        check("doc_data_rel 不在产物路径里写百分号编码（否则 GH Pages 解码后 404）",
+              "%" not in doc_data_rel("ai", "提示词", "X"))
+        check("产物 data/ 下不存在百分号编码文件名",
+              not any("%" in p.name for p in (out / "data").rglob("*")))
 
         # ---------------- 检索索引（CJK bigram、分域懒加载） ----------------
         sp = out / "data" / "search" / "ai.json"

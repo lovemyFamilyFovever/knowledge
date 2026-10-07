@@ -121,10 +121,14 @@ def doc_data_rel(domain: str, sub: str, name: str) -> str:
     用 sha1(key)[:16] 做文件名：**不把文档名写进路径**。原因：Windows MAX_PATH 260，
     中文文档名经百分号编码后膨胀 3 倍（实测 `interview/ai-agent/AI Agent 技术面试题库…`
     直接超长 FileNotFoundError）。前端经 `data/doc/index.json`（key → 路径）查表。
+
+    目录段（domain/sub）保持原样、**不做百分号编码**：写 %-编码的目录名时，
+    GH Pages / http.server 都会先把请求路径解码再找文件（%E6%… → 提示词），
+    与 %-字面量目录名对不上 —— 2026-10-07 线上实测 404（148/1002 篇中文子目录文档受影响）。
+    浏览器端请求时自动做百分号编码，磁盘端保持原文即可（sub 目录名本身是合法文件名）。
     """
     h = hashlib.sha1(doc_key(domain, sub, name).encode("utf-8")).hexdigest()[:16]
-    return (f"data/doc/{quote(domain, safe=_QUOTE_SAFE)}/"
-            f"{quote(sub, safe=_QUOTE_SAFE)}/{h}.json")
+    return f"data/doc/{domain}/{sub}/{h}.json"
 
 
 # ============================ 公开白名单 ============================
@@ -453,7 +457,7 @@ def export_site(root: Path, out: Path, base: str = KB_BASE_DEFAULT,
                         })
                 idx = build_domain_search_index(did, docs)
                 total += _write_json(
-                    out / "data" / "search" / f"{quote(did, safe=_QUOTE_SAFE)}.json", idx)
+                    out / "data" / "search" / f"{did}.json", idx)
             b["search/*.json"] = total
 
         # ---------------- 阅读器壳 index.html / 404.html ----------------
