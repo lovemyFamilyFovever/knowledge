@@ -10,8 +10,10 @@
         · /api/track、/api/recent_read → 静默 no-op
         · 只读档裁剪掉的端点 → {ok:false,error:"NOT_IN_STATIC"}（404）
    2) 覆盖 KB.util.docUrl / rawUrl 的单点实现 → 静态路径（带 KB_BASE）
-   3) 深链兜底：/doc/… 直链（GH Pages 经 404.html 回落到壳）→ 客户端路由到正确文档
+   3) 深链兜底：/doc/… 直链（GH Pages 经 404.html 回落到壳）→ 客户端路由到正确文档；
+      其余未知路径（已裁剪入口 /home /stats /favorites /inbox、旧书签）→ 回工作台
    4) 最小只读裁剪：注入一段 CSS 隐藏写入口
+   5) 界面修正：品牌链接指向工作台；公网文案与可用引擎对齐（全文）
 
    分诊表与 scripts/export_static.py::ENDPOINT_TRIAGE 逐条对应（§4.4 静态审计同源）。
    约束（与本项目技术栈一致）：无构建工具 / 无 ES module / 经典脚本 / 全局作用域。
@@ -30,7 +32,7 @@
     "/api/rename-domain", "/api/import", "/api/inbox/ignore", "/api/inbox/purge",
     "/api/wikilink/check"];
   var NOOP = ["/api/track", "/api/recent_read", "/api/docmark"];
-  var CUT = ["/api/stats", "/api/substats", "/api/dir/tree", "/api/wikilink/suggest"];
+  var CUT = ["/api/stats", "/api/substats", "/api/wikilink/suggest"];
   window.KB_STATIC.MAP_READ = READ_MAP.slice();
   window.KB_STATIC.WRITE = WRITE.slice();
 
@@ -84,6 +86,8 @@
     if (CUT.indexOf(p) >= 0) return Promise.resolve(notInStatic(p));
 
     if (p === "/api/tree") return getJSON("data/tree.json").then(function (j) {
+      return jsonResponse(j); });
+    if (p === "/api/dir/tree") return getJSON("data/dir-tree.json").then(function (j) {
       return jsonResponse(j); });
     if (p === "/api/palette/index") return getJSON("data/palette/index.json").then(function (j) {
       return jsonResponse(j); });
@@ -225,6 +229,7 @@
     '#editor', '#fav-btn', '#ed-del', '#tag-add-btn', '#tag-in', '#tag-inputrow',
     '.note-input', '#ni', '#global-stats-btn',
     'a[href="/stats"]', 'a[href="/favorites"]', 'a[href="/inbox"]',
+    '#kb-search-engines [data-eng="semantic"]',
   ].join(",");
   function injectReadonly() {
     document.documentElement.classList.add("kb-readonly");
@@ -237,13 +242,33 @@
     document.addEventListener("DOMContentLoaded", injectReadonly);
   } else { injectReadonly(); }
 
-  /* ---------- ③ 深链兜底 ---------- */
+  /* ---------- ⑤ 界面修正（公网专属） ---------- */
+  function fixUI() {
+    var b = document.querySelector("a.brand");
+    if (b) { b.href = BASE + "/"; b.title = "回到阅读工作台"; }
+    var se = document.querySelector(".sb-eng");
+    if (se) se.textContent = "全文";
+    var qi = document.getElementById("q");
+    if (qi) qi.placeholder = "检索（全文）…";
+  }
+
+  /* ---------- ③ 深链兜底 + 失效路径回工作台 ---------- */
   function deepLink() {
     patchUrls();
-    var m = location.pathname.match(/\/doc\/([^/]+)\/([^/]+)\/(.+)$/);
-    if (!m || typeof window.navigate !== "function") return;
-    var tail = location.pathname.replace(/\.md$/, "");
-    window.navigate(tail, false);
+    fixUI();
+    var path = location.pathname;
+    var m = path.match(/\/doc\/([^/]+)\/([^/]+)\/(.+)$/);
+    if (m) {
+      if (typeof window.navigate === "function") {
+        window.navigate(path.replace(/\.md$/, ""), false);
+      }
+      return;
+    }
+    // 非 /doc/ 落点：根路径 / index / 404 自身放行；其余（已裁剪入口、旧书签、乱入路径）
+    // 一律回工作台 —— 否则用户会停在"点了但没反应"的壳上。
+    var trimmed = path.replace(/\/+$/, "");
+    if (trimmed === BASE || trimmed === BASE + "/index.html" || trimmed === BASE + "/404.html") return;
+    location.replace(BASE + "/");
   }
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", deepLink);

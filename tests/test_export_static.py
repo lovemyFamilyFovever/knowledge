@@ -134,7 +134,7 @@ def main() -> int:
         c = app.test_client()
 
         # ---------------- 产物结构（§4.1 / §4.6） ----------------
-        for rel in ("index.html", "404.html", "data/tree.json", "data/links.json",
+        for rel in ("index.html", "404.html", "data/tree.json", "data/dir-tree.json", "data/links.json",
                     "data/meta.json", "data/palette/index.json", "data/doc/index.json",
                     "static/kb-core.js"):
             check(f"产物存在 {rel}", (out / rel).is_file())
@@ -189,6 +189,11 @@ def main() -> int:
         check("/api/links 反向链：B 被 A 引用",
               any("测试文档A" in x["title"]
                   for x in links_exp["career/B.md"]["incoming"]))
+
+        dir_exp = json.loads((out / "data" / "dir-tree.json").read_text(encoding="utf-8"))
+        check("/api/dir/tree 同构", dir_exp == c.get("/api/dir/tree").get_json())
+        check("dir-tree 内联文档清单可用",
+              any(bool(s.get("docs")) for d in dir_exp.get("domains", []) for s in d.get("subs", [])))
 
         pal_exp = json.loads((out / "data" / "palette" / "index.json").read_text(encoding="utf-8"))
         check("/api/palette/index 同构", pal_exp == c.get("/api/palette/index").get_json())
@@ -249,7 +254,7 @@ def main() -> int:
         check("仓库产品 JS 的 /api/ 字面量全部在分诊表内", not repo_unknown, f"未分诊: {repo_unknown}")
         check("分诊表恒定覆盖前端实际调用的读端点",
               TRIAGE_READ_MAP >= {"/api/tree", "/api/doc", "/api/links",
-                                  "/api/palette/index", "/api/search"})
+                                  "/api/palette/index", "/api/search", "/api/dir/tree"})
         check("分诊表恒定覆盖全部写端点",
               TRIAGE_WRITE >= {"/api/save", "/api/note", "/api/favorite", "/api/move",
                                "/api/move/batch", "/api/delete", "/api/mkdir", "/api/rmdir",
@@ -261,6 +266,7 @@ def main() -> int:
         # ---------------- 每个 map 端点都有产物背书 ----------------
         backing = {
             "/api/tree": out / "data" / "tree.json",
+            "/api/dir/tree": out / "data" / "dir-tree.json",
             "/api/doc": out / doc_data_rel("ai", "llm-and-agents", "A"),
             "/api/links": out / "data" / "links.json",
             "/api/palette/index": out / "data" / "palette" / "index.json",

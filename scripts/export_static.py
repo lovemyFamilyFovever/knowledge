@@ -16,6 +16,7 @@
     site/data/tree.json        ← /api/tree
     site/data/doc/…            ← /api/doc（逐篇）
     site/data/links.json       ← /api/links（逐篇聚合）
+    site/data/dir-tree.json    ← /api/dir/tree（单列树 + 内联文档清单）
     site/data/meta.json        ← 分类学标签/HUES + /api/globalstats
     site/data/palette/index.json ← /api/palette/index
     site/data/search/<域>.json  客户端 CJK bigram 检索索引（分域懒加载）
@@ -97,7 +98,7 @@ ENDPOINT_TRIAGE: dict[str, tuple[str, str]] = {
     # —— cut：只读档不生成对应页面，端点一并裁掉 ——
     "/api/stats": ("cut", "文档统计（/stats 页不生成）"),
     "/api/substats": ("cut", "目录统计"),
-    "/api/dir/tree": ("cut", "目录聚合树（移动弹窗用）"),
+    "/api/dir/tree": ("map", "data/dir-tree.json"),
     "/api/wikilink/suggest": ("cut", "双链补全（编辑器用）"),
     # —— retired：已下线端点（仅注释里残留字面量） ——
     "/api/ask": ("retired", "轮次 53/54 已下线的问吧链路"),
@@ -406,6 +407,10 @@ def export_site(root: Path, out: Path, base: str = KB_BASE_DEFAULT,
         # ---------------- data/palette/index.json ----------------
         pal = client.get("/api/palette/index").get_json()
         b["palette/index.json"] = _write_json(out / "data" / "palette" / "index.json", pal)
+
+        # ---------------- data/dir-tree.json（单列树：域/子域/内联文档清单）----------------
+        dirtree = client.get("/api/dir/tree").get_json()
+        b["dir-tree.json"] = _write_json(out / "data" / "dir-tree.json", dirtree)
 
         # ---------------- data/meta.json（分类学标签 + /api/globalstats） ----------------
         tax = load_taxonomy(content)
