@@ -266,6 +266,18 @@ main.single:not(:has(> .page-panel)){overflow-y:auto}
      窄屏没有任何替代入口 —— 用户报的"移动端没有目录结构的按钮"就是这个洞，
      所以「分类」抽屉从这一档起。 */
 @media (max-width:980px){
+  /* 抽屉必须是最高层级。坑在堆叠上下文：`main{position:relative;z-index:4}` 自成一层，
+     抽屉写在它里面就算 z=59/60 也出不去这层，会被 `header{z-index:7}` 压住顶上 91px
+     （用户实拍：「分类」抽屉第一行被切掉，elementFromPoint(120,90) 命中的是 HEADER）。
+     有任一抽屉开着，就把 main 抬到顶栏之上；main 的背景是透明的，没盖到的地方照旧。 */
+  main:has(> section.rail.rail-open),main.kb-nav-on{z-index:8}
+  /* 抽屉开着就压一层薄遮罩：一是"这是浮在内容上的一层"要看得见，二是给"点外面收起"
+     一个明确的落点（遮罩命中 main，不在 railSheet/navSheet 的 closest 白名单里，天然算外面）。
+      它在 main 这个上下文里 z=7，抽屉 59 / 工具栏 60 都在它上面；不加动画（半开帧的教训）。 */
+  main:has(> section.rail.rail-open)::after,main.kb-nav-on::after{
+    content:"";position:fixed;inset:0;z-index:7;
+    background:color-mix(in oklab,var(--c-ink),transparent 62%)
+  }
   /* 底部工具栏的高度只有一个来源：--kb-bar。分类抽屉要贴在它上面，
      靠手算像素会差 1~2px（实测就是差这一点被几何断言抓住），所以让它引用同一个数。 */
   main{--kb-bar:60px;padding-bottom:104px}

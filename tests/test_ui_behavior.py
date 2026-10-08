@@ -1492,6 +1492,21 @@ RAIL_VIS_JS = """(async () => {
     ? document.querySelector('.rtab.active').dataset.pane : null;
   out.paneAfterClamp = (document.querySelector('.rpane.active') || {}).id;
   out.railOpen = document.querySelector('#p-rail').classList.contains('rail-open');
+  // 层级：抽屉要盖住顶栏。main 是 z-index:4 的堆叠上下文，抽屉的 59/60 出不去那一层，
+  // 会被 header{z-index:7} 压住顶上 91px（用户实拍：抽屉第一行被切；elementFromPoint 命中 HEADER）。
+  const headerAt = (x) => {
+    const e = document.elementFromPoint(x, 20);
+    return !!(e && e.closest && e.closest('header'));
+  };
+  out.headerStillOnTop = null;
+  const navTab = document.querySelector('#kb-nav-tab');
+  if (navTab && getComputedStyle(navTab).display !== 'none') {
+    navTab.click(); await wait(450);
+    out.headerStillOnTop = headerAt(20);
+    const sc = getComputedStyle(document.querySelector('main'), '::after');
+    out.scrim = { pos: sc.position, z: sc.zIndex, w: Math.round(parseFloat(sc.width) || 0) };
+    navTab.click(); await wait(350);
+  }
   return JSON.stringify(out);
 })()"""
 
@@ -1549,6 +1564,10 @@ def probe_rail_sheet(base):
     check("面板底边压在状态栏之上，不被裁切",
           rv.get("clipped") is False and rv.get("paneBottom", 0) <= rv.get("statusTop", 0) + 1, rv)
     dv = run_expr(url, RAIL_VIS_JS, width=1600)
+    check("390 档抽屉压在顶栏之上：顶栏那条带里命中的不是 header，且遮罩是 fixed 的一整层",
+          rv.get("headerStillOnTop") is False
+          and (rv.get("scrim") or {}).get("pos") == "fixed"
+          and (rv.get("scrim") or {}).get("z") == "7", rv)
     check("宽屏照旧：四颗文档页签全部可见，clamp 不碰「备注」",
           dv.get("visible") == ["toc", "info", "notes", "links"]
           and dv.get("afterClamp") == "notes", dv)
