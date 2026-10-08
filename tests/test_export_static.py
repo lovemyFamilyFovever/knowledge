@@ -280,7 +280,9 @@ def main() -> int:
         check("拖拽移动与近 7 日阅读图在只读档不接线",
               appjs.count("if (KB_READ_ONLY) return;") >= 2)
         check("树内文档的 draggable 随只读档关闭",
-              appjs.count('draggable="${KB_READ_ONLY ? "false" : "true"}"') == 2)
+              # 曾经有第二处（第二列文档列表 renderDocList），随需求 #11 一起删了；
+              # 计数写死就是为了让"再抄一份渲染"或"删掉一处忘了改这里"都当场红
+              appjs.count('draggable="${KB_READ_ONLY ? "false" : "true"}"') == 1)
         check("编辑器快捷键在只读档不进帮助（registry 单点过滤）",
               'scope: "editor", roHide: true' in kbc and "VISIBLE_KEYS" in kbc
               and "keys.registry = VISIBLE_KEYS;" in kbc)
@@ -365,6 +367,11 @@ def main() -> int:
               and "main.kb-nav-on>section.panel#p-left" in kbc_css
               and "bottom:calc(28px + var(--kb-bar) + 1px" in kbc_css
               and "@media (min-width:861px){\n  .rtab.kb-nav-tab{display:none}" in kbc_css)
+        check("工具栏那一档跟的是 style.css「收右遥测轨」的 980，不是随手挑的数"
+              "（861~980 之间网格只有两轨，右栏不 fixed 就会被甩到第二行）",
+              "@media (max-width:980px)" in kbc_css
+              and 'const RAIL_SHEET = () => MQ(980);' in appjs
+              and 'const NAV_SHEET = () => MQ(860);' in appjs)
 
         # ---------------- ⑦ PWA：manifest + 站根 sw（只属于导出产物） ----------------
         man_p = out / "manifest.webmanifest"

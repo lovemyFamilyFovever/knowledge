@@ -586,11 +586,17 @@ def export_site(root: Path, out: Path, base: str = KB_BASE_DEFAULT,
         else:
             shell = client.get("/").get_data(as_text=True)
         inject = (
-            '<script>window.KB_STATIC=%s;</script>\n'
+            '<script>window.KB_STATIC=%s;'
+            '(function(){var b=window.KB_STATIC.base,p=location.pathname;'
+            'if(p===b||p===b+"/"||p===b+"/index.html")'
+            'document.documentElement.classList.add("kb-home-on");})();</script>\n'
             '<script src="%s/static/kb-static.js" defer></script>\n'
             '<script src="%s/static/kb-pwa.js" defer></script>\n'
             % (json.dumps({"readonly": True, "base": base}, separators=(",", ":")), base, base)
         )
+        # 首页态那个 class 必须由**内联**脚本同步落进 <html>：kb-static.js 是 defer 的，
+        # 等它跑起来，底部工具栏与烤死在壳里的那篇文档都已经画过一帧，然后才被一起藏掉 ——
+        # 用户实拍就是这个形状（"工具栏初始化时显示了 0.1s 后立马消失"）。
         # 注入点：紧接 <head>（在任何 defer 脚本之前，保证 kb-static 先于 app.js 执行）
         shell = shell.replace("<head>", "<head>\n" + inject, 1)
         # PWA 那几行单独排在 <meta charset> **之后**：它们带中文（apple-mobile-web-app-title），

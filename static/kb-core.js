@@ -5,7 +5,7 @@
    约束（与本项目技术栈一致，勿改）：
    - 无构建工具 / 无 ES module / 无 npm / 无 CDN：<script src defer> 直挂，全局作用域
    - 跨文件只能靠 window.* 与顶层 function 声明；本文件自给自足，不依赖 app.js 的 const
-   - 新增 class 前缀 kb-，新增 id 前缀 kb-；不复用 #q #toast #theme-btn #article #doclist
+   - 新增 class 前缀 kb-，新增 id 前缀 kb-；不复用 #q #toast #theme-btn #article
    - 图标一律内联 SVG 引用 base.html 的精灵表 #i-<name>，零 emoji、零外链
    结构索引：
    [1] util  [2] api  [3] prefs（需求9 阅读偏好）  [4] palette（需求5 命令面板）
@@ -820,14 +820,9 @@
   var keys = (KB.keys = {});
 
   function docListMove(delta) {
-    // 需求 #11：第二列列表移除后，文档在树内 —— 优先 #doclist，回退 #tree .doc
-    var list = document.getElementById("doclist");
-    var items = [];
-    if (list) items = util.$$(".doc", list);
-    if (!items.length) {
-      var nav = document.getElementById("tree");
-      if (nav) items = util.$$("#tree .doc", nav);
-    }
+    // 需求 #11：第二列列表已移除，文档就在树里
+    var nav = document.getElementById("tree");
+    var items = nav ? util.$$("#tree .doc", nav) : [];
     if (!items.length) return false;
     var cur = items.indexOf(document.activeElement);
     var next = cur < 0 ? (delta > 0 ? 0 : items.length - 1) : util.clamp(cur + delta, 0, items.length - 1);

@@ -1497,6 +1497,35 @@ def probe_rail_sheet(base):
     check("桌面档那颗「分类」页签不存在（左树常驻，多一个钮等于假入口）",
           d.get("navTabDisp") == "none" and d.get("leftDisp") != "none"
           and d.get("navOn") is False and d.get("navOnAfterClick") is False, d)
+    # 861~980 这一档：style.css 只把网格收成两轨，右栏若还在流里会被甩到第二行
+    band = run_expr(url, PRELUDE + r"""
+  for (let i = 0; i < 80 && !q('#article h1'); i++) await sleep(150);
+  await sleep(700);
+  const rect = e => { const b = e.getBoundingClientRect(); return {x: Math.round(b.x), y: Math.round(b.y), w: Math.round(b.width), h: Math.round(b.height)}; };
+  const rail = q('#p-rail'), left = q('#p-left'), m = q('main');
+  out.vw = innerWidth;
+  out.tracks = getComputedStyle(m).gridTemplateColumns;
+  out.railPos = getComputedStyle(rail).position;
+  out.rail = rect(rail);
+  out.navTab = getComputedStyle(q('#kb-nav-tab')).display;
+  out.leftDisp = getComputedStyle(left).display;
+  out.left = rect(left);
+  out.art = rect(q('#p-article'));
+  q('.rtab[data-pane]').click(); await sleep(700);
+  out.opened = cls('#p-rail', 'rail-open');
+  out.paneH = rect(q('.rpane.active')).h;
+  return JSON.stringify(out);
+})()""", width=900)
+    check("900 档：右栏是通宽的贴底工具栏，不是被 grid 换行甩到第二行的 240px 窄柱",
+          band.get("railPos") == "fixed" and (band.get("rail") or {}).get("x") == 0
+          and (band.get("rail") or {}).get("w") == band.get("vw")
+          and 40 <= (band.get("rail") or {}).get("h", 0) <= 80
+          and len(band.get("tracks", "").split()) == 2, band)
+    check("900 档：左树仍是常驻列，「分类」页签不出现（那一档树没被藏）",
+          band.get("leftDisp") != "none" and (band.get("left") or {}).get("w", 0) >= 200
+          and band.get("navTab") == "none", band)
+    check("900 档：工具栏页签照样能上滑展开",
+          band.get("opened") is True and (band.get("paneH") or 0) > 60, band)
     # ---- 「分类」抽屉：窄屏原本没有翻目录的路径（style.css ≤860 把左树整块隐藏）----
     for w in (390, 800):
         n = run_expr(url, NAV_SHEET_JS, width=w)

@@ -69,22 +69,22 @@ try { const savedSkin = localStorage.getItem("kb-skin"); if (savedSkin) applySki
 
 /* ---------- 面板折叠（workbench） ---------- */
 function setPanel(which, off) {
-  const pid = which === "left" ? "p-left" : which === "rail" ? "p-rail" : "p-list";
-  const cls = which === "left" ? "left-off" : which === "rail" ? "rail-off" : "list-off";
+  const pid = which === "left" ? "p-left" : "p-rail";
+  const cls = which === "left" ? "left-off" : "rail-off";
   const p = document.getElementById(pid), m = document.querySelector("main");
   if (!p || !m) return;
   p.classList.toggle("collapsed", off);
   m.classList.toggle(cls, off);
 }
 function togglePanel(which) {
-  const pid = which === "left" ? "p-left" : "p-list";
+  const pid = which === "left" ? "p-left" : "p-rail";
   const off = !document.getElementById(pid).classList.contains("collapsed");
   setPanel(which, off);
   try { const s = JSON.parse(localStorage.getItem("kb-panels") || "{}"); s[which] = off;
     localStorage.setItem("kb-panels", JSON.stringify(s)); } catch (e) {}
 }
 try { const s = JSON.parse(localStorage.getItem("kb-panels") || "{}");
-  if (s.left) setPanel("left", true); if (s.list) setPanel("list", true); } catch (e) {}
+  if (s.left) setPanel("left", true); } catch (e) {}
 
 /* ---------- mermaid 懒加载 ---------- */
 let mermaidLoading = null;
@@ -128,11 +128,13 @@ async function loadTree() {
 }
 
 /* ---------- 右栏 tabs ---------- */
-/* 窄屏（≤860，与 style.css 隐藏左树那条断点、kb-core.css"右栏变底部工具栏"那条同一口径）：
-   页签栏固定在底部，面板默认收起，点页签才从下往上展开；再点当前页签收起。
+/* 窄屏两档，各自对齐 style.css 里那条旧规则（详见 kb-core.css [9] 的注释）：
+   ≤980 右栏变成贴底工具栏（那一档网格只留两轨，右栏不改 fixed 就会被甩到第二行）；
+   ≤860 左树被整块隐藏，改由工具栏第一颗「分类」唤出。
    桌面端这些函数行为完全不变（CSS 只在窄屏生效，类加了也没有视觉后果）。 */
-const RAIL_SHEET = () => !!(window.matchMedia && matchMedia("(max-width:860px)").matches);
-const NAV_SHEET = RAIL_SHEET;   // 同一个断点：左树在 ≤860 被整块隐藏，唤出它也只在窄屏有意义
+const MQ = (w) => !!(window.matchMedia && matchMedia(`(max-width:${w}px)`).matches);
+const RAIL_SHEET = () => MQ(980);
+const NAV_SHEET = () => MQ(860);
 function railSheet(open) {
   const rail = $("#p-rail");
   if (!rail) return;
@@ -210,12 +212,16 @@ document.addEventListener("click", (e) => {
       e.target.closest("#p-rail, #p-left, .kbm-ov, #kb-search-ov, .kb-pal-box")) return;
   railSheet(false); navSheet(false);
 }, true);
-/* 跨过断点回桌面：把抽屉态与 aria-expanded 一起清掉 */
+/* 跨过断点回桌面：把抽屉态与 aria-expanded 一起清掉（两档各管各的） */
 if (window.matchMedia) {
-  const mqSheet = matchMedia("(max-width:860px)");
-  const syncSheet = () => { railSheet(false); navSheet(false); };
-  if (mqSheet.addEventListener) mqSheet.addEventListener("change", syncSheet);
-  else if (mqSheet.addListener) mqSheet.addListener(syncSheet);
+  const syncOn = (w, fn) => {
+    const mq = matchMedia(`(max-width:${w}px)`);
+    const on = () => fn(false);
+    if (mq.addEventListener) mq.addEventListener("change", on);
+    else if (mq.addListener) mq.addListener(on);
+  };
+  syncOn(980, railSheet);
+  syncOn(860, navSheet);
 }
 /* 初始就把 aria-expanded 落一遍：窄屏 = 页签全收起（false），桌面 = 面板常驻（属性删掉，
    不给读屏软件报"可展开"）。不跑这一趟，页签在第一次点击前是"没有状态"的。 */
@@ -1241,23 +1247,6 @@ async function loadDirTree(force) {
   return DIRTREE;
 }
 
-function renderDocList(docs, subLabel, activeName) {
-  const title = $("#list-title");
-  if (title) title.innerHTML = `${esc(subLabel)}<span class="cnt">${docs.length}</span><button class="fold" onclick="togglePanel('list')" title="收起列表"><svg><use href="#i-fold-l"/></svg></button>`;
-  const list = $("#doclist"); if (!list) return;
-  /* 问题8：星标 ◈ 直接输出 SVG（原 workbench.js cleanChars 事后清洗的产物），
-     href 统一走 docUrl(rel)（原手工拼接是第三份 encode 逻辑）。 */
-  list.innerHTML = docs.map(d => `
-    <a class="doc ${d.name === activeName ? "active" : ""}" data-name="${esc(d.name)}" draggable="${KB_READ_ONLY ? "false" : "true"}" href="${docUrl(`${CUR.domain}/${CUR.sub}/${d.name}.md`)}">
-      <div class="doc-t">${d.has_html ? `<span class="star" title="有美化版">${icon("external-link", 12)}</span>` : ""}${esc(d.title)}</div>
-      <div class="doc-meta">
-        ${(d.tags && d.tags.length) ? d.tags.map(t => `<span class="mini tag">${esc(t)}</span>`).join("") : `<span class="mini untag">未打标</span>`}
-        ${d.has_html ? `<span class="mini html">美化版</span>` : ""}
-        ${d.is_html ? `<span class="mini html">HTML</span>` : ""}
-      </div>
-    </a>`).join("") || `<div style="padding:20px;color:var(--faint);font-size:13px">无匹配文档</div>`;
-}
-
 /* 图3：面包屑（正文区「域 / 子域」行）移除 —— 路径显示在底部状态栏左侧 #sb-path。
    2026-09-20 头部瘦身：状态/收录日期/体积元信息也从 crumb 撤下，一并挂在这里。 */
 function updateStatusBarPath() {
@@ -1410,7 +1399,6 @@ async function apiTags(payload) {
       if (s2) {
         const hit = (s2.docs || []).find(d => d.name === DOC.name);
         if (hit) hit.tags = data.tags || [];
-        renderDocList(s2.docs, s2.label, CUR.name);
       }
     }
     toast(data.tags.length ? `标签已保存（${data.tags.length} 枚）` : "标签已清空");
@@ -1540,8 +1528,6 @@ async function navigate(url, push) {
 
 async function openDoc(domain, sub, name) {
   CUR = { domain, sub, name };
-  const s = findSub(domain, sub);
-  if (s) renderDocList(s.docs, s.label, name);
   renderTree();
   /* 问题14：加载反馈——fetch 期间放骨架（3 行灰条）。本地通常 <50ms 无感知，
      但磁盘冷读 / 索引重建时不能让正文区挂着一篇旧文档静默等待。 */
@@ -1557,9 +1543,8 @@ async function openDoc(domain, sub, name) {
     if (artEl) artEl.innerHTML = `<div class="a-kicker">无法打开</div><h1 class="a-title">${esc(name)}</h1>
       <div class="a-rule"></div><div class="a-body"><p>${why}</p></div>`;
     toast(why);
-    // 第三轮 #10：404 = 树缓存陈旧（文档已删/已移）→ 失效重拉树自愈，右侧列表同步消失
-    if (r.status === 404) { invalidate("tree"); await loadTree(); renderTree();
-      if (CUR) { const s2 = findSub(CUR.domain, CUR.sub); if (s2) renderDocList(s2.docs, s2.label, null); } }
+    // 第三轮 #10：404 = 树缓存陈旧（文档已删/已移）→ 失效重拉树自愈，树里那一条同步消失
+    if (r.status === 404) { invalidate("tree"); await loadTree(); renderTree(); }
     // bug 修复：404 也必须重建 crumb 按钮——此前 crumb 停在上一态（可能是“已删除”纯文本），
     // 用户看到的就是「编辑/删除/收藏按钮全消失」
     setDoc(null);
@@ -2020,10 +2005,6 @@ async function afterMutation() {
   invalidate("all");
   await loadTree();
   renderTree();
-  if (WORKBENCH && CUR) {
-    const s = findSub(CUR.domain, CUR.sub);
-    if (s) renderDocList(s.docs, s.label, DOC && DOC.name);
-  }
 }
 window.afterMutation = afterMutation;
 
@@ -2064,7 +2045,6 @@ async function deleteDoc() {
     if (d) d.n = d.subs.reduce((a, x) => a + x.n, 0);
     persistTree();
     renderTree();
-    renderDocList(s.docs, s.label, null);
   }
   closeEditor(); // 删除已确认，编辑器（若开着）随文档一并作废
   setDoc(null);
@@ -2661,11 +2641,10 @@ function wireDragMove() {
   /* 只读档：拖拽落点会打 /api/move，公网只会回 READ_ONLY —— 与其让人白拖一趟，
      不如根本不接这条线（配套的 draggable 属性在 renderTree 里也已关掉）。 */
   if (KB_READ_ONLY) return;
-  const list = $("#doclist"), nav = $("#tree");
+  const nav = $("#tree");
   if (!nav) return;
-  // 需求 #11：列表列已移除，拖拽源改为树内文档（#doclist 存在时兼容旧模板）
-  const dragSrc = list || nav;
-  dragSrc.addEventListener("dragstart", e => {
+  // 需求 #11：第二列列表已移除，拖拽源就是树内文档
+  nav.addEventListener("dragstart", e => {
     const a = e.target.closest(".doc");
     if (!a) return;
     const dom = a.dataset.dom || (CUR && CUR.domain);
@@ -2674,7 +2653,7 @@ function wireDragMove() {
     e.dataTransfer.effectAllowed = "move";
     nav.classList.add("drop-armed");
   });
-  dragSrc.addEventListener("dragend", () => {
+  nav.addEventListener("dragend", () => {
     nav.classList.remove("drop-armed");
     nav.querySelectorAll(".drop-hint").forEach(x => x.classList.remove("drop-hint"));
   });
@@ -2775,7 +2754,6 @@ async function ctxDiscardDoc(rel, title, deletedJustNow) {
     if (d) d.n = d.subs.reduce((a, x) => a + x.n, 0);
     persistTree();
     renderTree();
-    renderDocList(s.docs, s.label, null);
   }
   closeEditor();
   setDoc(null);
@@ -2969,7 +2947,7 @@ async function renameDomainPrompt(dom) {
    菜单锚定在该元素下方（触摸设备右键不可达的键盘补偿路径） */
 document.addEventListener("keydown", e => {
   if (!WORKBENCH || (e.key !== "ContextMenu" && !(e.shiftKey && e.key === "F10"))) return;
-  const a = e.target.closest && (e.target.closest("#doclist .doc") || e.target.closest("#tree .doc") || e.target.closest("#tree .sub") || e.target.closest("#tree .dom-head"));
+  const a = e.target.closest && (e.target.closest("#tree .doc") || e.target.closest("#tree .sub") || e.target.closest("#tree .dom-head"));
   if (!a) return;
   e.preventDefault();
   const r = a.getBoundingClientRect();
@@ -2981,7 +2959,7 @@ document.addEventListener("keydown", e => {
 document.addEventListener("contextmenu", e => {
   // 工作台（阅读页）：文档列表 / 分类树（含树内联文档）/ 域头的右键
   if (WORKBENCH) {
-    const docA = e.target.closest("#doclist .doc") || e.target.closest("#tree .doc");
+    const docA = e.target.closest("#tree .doc");
     if (docA) { e.preventDefault(); openCtxMenu(e.clientX, e.clientY, ctxDocItems(docA)); return; }
     const subA = e.target.closest("#tree .sub");
     if (subA) { e.preventDefault(); openCtxMenu(e.clientX, e.clientY, ctxSubItems(subA)); return; }

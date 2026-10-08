@@ -30,11 +30,6 @@
     <button class="unfold" onclick="togglePanel('left')" title="展开左栏" aria-label="展开左栏"><svg class="i"><use href="#i-fold-r"/></svg></button>
   </section>
 
-    {% if false %}{# 需求 #11：第二列文档列表移除 —— 文档内联进左侧树（当前 sub 的文档直接展开在子域下） #}
-    <section class="panel wb-panel" id="p-list" data-reveal data-reveal-y="14">
-      <div class="panel-h" id="list-title">{{ sub_label }}<span class="cnt">{{ docs|length }}</span></div>
-    </section>
-    {% endif %}
 
     {% set is_lib = doc.name.endswith(('.txt', '.pdf', '.xlsx', '.epub', '.mobi')) %}
   <section class="panel article-wrap{% if is_lib %} nv-mode{% endif %}" id="p-article" data-reveal data-reveal-y="14">

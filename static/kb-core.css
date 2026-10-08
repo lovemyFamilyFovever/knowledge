@@ -257,16 +257,18 @@ main.single > .page-panel{flex:1;min-height:0}
    （本库已依赖 color-mix(in oklab) 等特性，运行环境 Chrome ≥111，:has() 可用。） */
 main.single:not(:has(> .page-panel)){overflow-y:auto}
 
-/* [9] 响应式断点（需求10）：只新增 860 / 720 / 480，不动已有 1280/820/640/440 =====
-   860 这一档不是拍脑袋：style.css 的 `main > section.wb-panel{display:none}` 就在 ≤860，
-   左树与文档列表在那一档**整个消失**，而窄屏没有任何替代入口 —— 用户报的"移动端没有
-   目录结构的按钮"就是这个洞。所以底部工具栏与「分类」抽屉都从 860 起，与隐藏规则同一口径。 */
-@media (max-width:860px){
+/* [9] 响应式断点（需求10）：只新增 980 / 860 / 720 / 480，不动已有 1280/820/640/440 =====
+   980 与 860 各自跟一条 style.css 里的旧规则对齐：
+   · ≤980 —— style.css 把 main 收成**两**条轨道（"收右遥测轨"），可第三个孩子（右栏）
+     没人管：实测 900 档右栏被 grid 换行甩到第二行，成了一条 240px 宽的窄柱。
+     右栏在这一档改成 fixed 贴底工具栏，网格里就只剩两列，正好对上那行声明。
+   · ≤860 —— style.css 把 `main > section.wb-panel`（左树）整块 display:none，
+     窄屏没有任何替代入口 —— 用户报的"移动端没有目录结构的按钮"就是这个洞，
+     所以「分类」抽屉从这一档起。 */
+@media (max-width:980px){
   /* 底部工具栏的高度只有一个来源：--kb-bar。分类抽屉要贴在它上面，
      靠手算像素会差 1~2px（实测就是差这一点被几何断言抓住），所以让它引用同一个数。 */
-  main{--kb-bar:60px;display:flex;flex-direction:column;overflow-y:auto;padding-bottom:104px}
-  main>section.panel{flex:none;overflow-y:auto}
-  main>section.article-wrap{flex:1 1 auto;order:-1;min-height:60vh;max-height:none}
+  main{--kb-bar:60px;padding-bottom:104px}
   /* 右栏在窄屏不再是"流里的一块"（旧写法 position:sticky + 面板内联展开，
      结果是整块卡在正文中段 —— 用户实拍就是这个）。
      现在：tabs 固定成底部工具栏，面板默认收起，点页签才从下往上展开（app.js railSheet）。
@@ -288,7 +290,13 @@ main.single:not(:has(> .page-panel)){overflow-y:auto}
   main>section.rail.rail-open .rpane.active{
     max-height:60vh;overflow-y:auto;border-top:1px solid var(--c-line);padding:10px 12px 14px
   }
-  /* 「分类」页签：唤出被 style.css ≤860 整块隐藏的左树。桌面端它不存在（display:none），
+}
+@media (max-width:860px){
+  /* 单栏堆叠：正文置顶，左树改由「分类」抽屉唤出 */
+  main{display:flex;flex-direction:column;overflow-y:auto}
+  main>section.panel{flex:none;overflow-y:auto}
+  main>section.article-wrap{flex:1 1 auto;order:-1;min-height:60vh;max-height:none}
+  /* 「分类」页签：唤出被 style.css ≤860 整块隐藏的左树。860 以上它不存在（display:none），
      因为左树本来就常驻在左边，多一个钮等于多一个假入口。 */
   .rtab.kb-nav-tab{display:inline-flex}
   main>section.panel#p-left{

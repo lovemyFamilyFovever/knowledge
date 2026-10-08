@@ -96,7 +96,10 @@ def main() -> int:
         check("/doc 面包屑含分类", "ai/llm-and-agents" in body)
         check("/doc 保留客户端渲染锚点 id", 'id="tree"' in body
               and 'id="doc-data"' in body and 'id="article"' in body)
-        # 需求 #11：第二列列表移除 → 文档内联进树；#list-title/#doclist 不再是模板锚点
+        # 需求 #11：第二列列表移除 → 文档内联进树。这条从注释变成断言：
+        # 死锚点一旦回来，CSS 里那套四列栅格与 JS 分支就会跟着复活，没人记得为什么
+        check("第二列的死锚点不在模板里（#p-list / #doclist / #list-title）",
+              "p-list" not in body and "doclist" not in body and "list-title" not in body)
 
         r = c.get("/doc/ai/llm-and-agents/A.html")
         check("纯 HTML 文档可作为文档打开", r.status_code == 200)

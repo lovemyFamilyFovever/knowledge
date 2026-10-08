@@ -2,7 +2,7 @@
    知库 · Workbench 页面级交互
    阶段1·问题8 收口：body 级 MutationObserver + scheduleEnhance(60ms) +
    cleanChars/enhanceCodeblock/enhanceMermaid 整层已删除——渲染方（app.js
-   renderArticle/renderDocList/renderCrumb）直接产出 final-form DOM，
+   renderArticle/renderTree/renderCrumb）直接产出 final-form DOM，
    codeblock 包壳与 mermaid 角标在 app.js::enhanceArticleDOM 同帧完成。
    「渲染半成品 + 事后赌时序打补丁」的隐性契约不复存在。
    本文件只保留三类真·页面级职责：
@@ -16,39 +16,6 @@
   var $ = function (s, p) { return (p || document).querySelector(s); };
   var $$ = function (s, p) { return Array.prototype.slice.call((p || document).querySelectorAll(s)); };
   var SVG = '<svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><use href="#:id:"/></svg>';
-
-  /* ---------- [1] 密度切换 ---------- */
-  var LS_DENSITY = "kb-wb-density";
-  function buildDensityToggle() {
-    var head = $("#doclist-head");
-    if (!head || head.dataset.built) return;
-    head.dataset.built = "1";
-    head.innerHTML =
-      '<span class="head-cap">文档列表</span>' +
-      '<div class="density-toggle" role="group" aria-label="列表密度">' +
-      '<button type="button" data-d="compact" title="紧凑密度"><svg viewBox="0 0 24 24"><use href="#i-md-list"/></svg>紧凑</button>' +
-      '<button type="button" data-d="comfy" title="舒适密度"><svg viewBox="0 0 24 24"><use href="#i-md-image"/></svg>舒适</button>' +
-      "</div>";
-    var saved = "comfy";
-    try { saved = localStorage.getItem(LS_DENSITY) || "comfy"; } catch (e) {}
-    applyDensity(saved);
-    head.addEventListener("click", function (e) {
-      var b = e.target.closest("button[data-d]");
-      if (!b) return;
-      applyDensity(b.dataset.d);
-      try { localStorage.setItem(LS_DENSITY, b.dataset.d); } catch (err) {}
-    });
-  }
-  function applyDensity(d) {
-    var panel = $("#p-list");
-    if (!panel) return;
-    panel.classList.toggle("density-compact", d === "compact");
-    $$(".density-toggle button").forEach(function (b) {
-      var on = b.dataset.d === d;
-      b.classList.toggle("on", on);
-      b.setAttribute("aria-pressed", on ? "true" : "false");
-    });
-  }
 
   /* ---------- [2] rail tabs 键盘可达 ---------- */
   /* rtab 为原生 button（问题13）：Enter/Space 由浏览器原生触发 click，
@@ -129,7 +96,6 @@
   });
 
   function init() {
-    buildDensityToggle();
     bindTabs();
     initTreeCollapse(); // [4] 左侧分类目录独立收起
   }
