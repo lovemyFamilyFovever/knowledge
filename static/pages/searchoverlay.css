@@ -57,14 +57,17 @@ html[data-theme="dark"] .kb-scope-chip .dh{background:hsl(var(--dh,158) 62% 66%)
 .kb-sr-group .kb-sr-clearall{float:right;margin-right:2px;border:none;background:none;cursor:pointer;
   font:500 11px/1 var(--f-mono);letter-spacing:0;text-transform:none;color:var(--faint);padding:2px 6px;border-radius:var(--rd-ctl)}
 .kb-sr-group .kb-sr-clearall:hover{color:var(--c-danger);background:var(--danger-soft)}
-/* 窄屏（手机端）：浮层改成从底部升起的 sheet，引擎收成一条分段控件、域收成一行横滑 chips。
+/* 窄屏（手机端）：浮层**全屏垂直居中**（用户 2026-10-09 图8，口径是"像统计那颗按钮弹出的
+   弹层"—— 也就是 style.css 的 `.kbm-ov{align-items:center}` 那一套），不再是贴底的 sheet。
+   引擎收成一条分段控件、域收成一行横滑 chips。
    旧写法（≤720 那一档把左栏摊成一行 flex）在手机上会撞出两个毛病：引擎钮各占两行
    （"全文 / FTS5" 折行）、选中那颗是一块大蓝块，而域 chips 被挤成竖排两字一行 ——
    用户实拍"搜索框UI没调整好"就是这个形状。断点提到 860 与顶栏搜索入口同一档。 */
 @media (max-width:860px){
-  .kb-search-ov{padding:0;align-items:flex-end}
-  .kb-search-box{width:100%;max-height:88vh;border-radius:18px 18px 0 0;
-    border-left:0;border-right:0;border-bottom:0}
+  /* 遮罩铺满整屏 + 上下各留 14px，面板在里面垂直居中；圆角与四边框回归基础规则（14px / 蓝框），
+     不再单独削掉三条边 —— 那正是"贴底 sheet"的形状来源。 */
+  .kb-search-ov{padding:14px;align-items:center}
+  .kb-search-box{width:100%;max-height:100%}
   .kb-search-head{height:52px;padding:0 12px;gap:10px}
   .kb-search-head input{font-size:16px}
   .kb-search-cols{grid-template-columns:minmax(0,1fr)}

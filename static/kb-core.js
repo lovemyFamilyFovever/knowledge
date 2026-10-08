@@ -895,6 +895,9 @@
       // 移动端（≤860）右栏与左树变成贴底抽屉：Esc 先收抽屉，再轮到编辑器（关编辑器可能弹「未保存」，比收抽屉重）
       if (typeof window.railSheetClose === "function" && window.railSheetClose()) { e.preventDefault(); return true; }
       if (typeof window.navSheetClose === "function" && window.navSheetClose()) { e.preventDefault(); return true; }
+      /* 「阅读历史」面板：宽屏没有抽屉可收（左栏常驻、无遮罩），Esc 是它除了再点一次钮
+         之外唯一的关闭手势；窄屏那一步已经被上面的 navSheetClose 吃掉了。 */
+      if (typeof window.histSheetClose === "function" && window.histSheetClose()) { e.preventDefault(); return true; }
       if (typeof window.tryCloseEditor === "function") window.tryCloseEditor();
       else if (typeof window.closeEditor === "function") window.closeEditor();
       return false;

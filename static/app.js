@@ -1,5 +1,5 @@
 /* 知库 reader 前端：主题、面板折叠、客户端路由、正文渲染、编辑/备注/收藏/删除、双链、快捷键 */
-window.APP_JS_VERSION = 34;
+window.APP_JS_VERSION = 35;
 
 const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
@@ -196,7 +196,11 @@ function navSheet(open) {
     if (NAV_SHEET()) btn.setAttribute("aria-expanded", on ? "true" : "false");
     else btn.removeAttribute("aria-expanded");
   }
-  if (on) railSheet(false);            // 两个抽屉互斥：同时开着只会互相压
+  if (on) { railSheet(false); return; }            // 两个抽屉互斥：同时开着只会互相压
+  /* 窄屏的历史面板就住在 #p-left 里（抽屉的唯一可见路径）：抽屉被任何一种手势关掉
+     （再点当前页签 / Esc / 点遮罩 / 换文档 / 跨断点回桌面），面板与顶栏那颗钮必须一起回落 ——
+     挂在这个统一落点上，而不是只挂在按钮自己的 onclick 里。 */
+  if (NAV_SHEET()) histClose();
 }
 function navSheetToggle() {
   const m = document.querySelector("main");
@@ -217,18 +221,22 @@ window.navSheetClose = () => {
   navSheet(false);
   return true;
 };
-/* 换文档时收起两个抽屉：不然新正文上面还压着上一篇的目录/双链，
-   或者压着一颗刚点中的树节点 */
-document.addEventListener("kb:article-rendered", () => { railSheet(false); navSheet(false); });
+/* 换文档时收起两个抽屉 + 阅读历史面板：不然新正文上面还压着上一篇的目录/双链，
+   或者压着一颗刚点中的树节点；历史面板同理 —— 它已经完成了"把我送去这一篇"的动作，
+   继续挂着只会挡住左栏的分类树（钮还亮着更是第二次误导）。 */
+document.addEventListener("kb:article-rendered", () => { railSheet(false); navSheet(false); histClose(); });
 /* 手机上没有 Esc 键，"点抽屉外面"是唯一的兜底关闭手势（弹层内部的点击不算：
-   那些自己有"点空白关闭"逻辑，别让抽屉抢先把它们连带收掉）。 */
+   那些自己有"点空白关闭"逻辑，别让抽屉抢先把它们连带收掉）。
+   顶栏那颗「阅读历史」钮也不算外面 —— 它自己就是开关（toggleHist 读当前态取反）。
+   若把它当外面：捕获阶段先 navSheet(false)（顺带 histClose），紧接着按钮自己的 onclick
+   再读一次 hist-on 又把它顶开 —— 表现就是"窄屏再点一次不收"（任务 5）。 */
 document.addEventListener("click", (e) => {
   const m = document.querySelector("main");
   const rail = $("#p-rail");
   const anyOpen = (m && m.classList.contains("kb-nav-on")) || !!(rail && rail.classList.contains("rail-open"));
   if (!anyOpen || !RAIL_SHEET()) return;
   if (e.target && e.target.closest &&
-      e.target.closest("#p-rail, #p-left, .kbm-ov, #kb-search-ov, .kb-pal-box")) return;
+      e.target.closest("#p-rail, #p-left, #kb-hist-btn, .kbm-ov, #kb-search-ov, .kb-pal-box")) return;
   railSheet(false); navSheet(false);
 }, true);
 /* 跨过断点回桌面：把抽屉态与 aria-expanded 一起清掉（两档各管各的） */
@@ -293,6 +301,7 @@ function histPanel() {
   if (p) return p;
   p = document.createElement("div");
   p.className = "kb-hist"; p.id = "kb-hist";
+  p.setAttribute("role", "complementary"); p.setAttribute("aria-label", "阅读历史");
   p.innerHTML =
     `<div class="kb-hist-h">${icon("history-clock", 14)} 阅读历史<span class="kb-hist-cnt" id="kb-hist-n">0</span>`
     + `<button type="button" class="kb-hist-x" onclick="toggleHist(false)" title="关闭阅读历史，回到分类目录" aria-label="关闭阅读历史">${icon("cancel-x", 12)}</button></div>`
@@ -319,21 +328,56 @@ function renderHist() {
       + `<span class="kb-hist-m">${esc(where)} · ${histAgo(x.at)}</span></a>`;
   }).join("");
 }
+/* 顶栏那颗钮的开关态只有一个判据 = #p-left 上的 .hist-on。
+   histSync() 是**唯一**把 .on / aria-expanded 落回去的地方，一切开合路径都从这儿过：
+   再点按钮、面板右上角的 ×、Esc、点空白/遮罩、换文档、窄屏「分类」抽屉被任何一种手势关掉。
+   以前这些手势只动面板、不动按钮（用户报的"弹窗收了钮还亮着"就是这个缺口）。 */
+function histSync() {
+  const btn = $("#kb-hist-btn");
+  if (!btn) return false;
+  const on = !!$("#p-left") && $("#p-left").classList.contains("hist-on");
+  btn.classList.toggle("on", on);
+  btn.setAttribute("aria-expanded", on ? "true" : "false");
+  return on;
+}
+/* 收起历史面板（幂等：本来开着才收，返回是否真的收了一次）。
+   不碰「分类」抽屉本身 —— 抽屉里此刻显示的是分类树，收了抽屉不等于收了树。 */
+function histClose() {
+  const left = $("#p-left");
+  if (!left || !left.classList.contains("hist-on")) return false;
+  left.classList.remove("hist-on");
+  histSync();
+  return true;
+}
 function toggleHist(force) {
   const left = $("#p-left");
   const panel = histPanel();
   if (!left || !panel) return;
+  // 不传 force = 读面板当前态取反（再点一次必须收起，判据在面板不在按钮）
   const on = force === undefined ? !left.classList.contains("hist-on") : !!force;
   renderHist();
   left.classList.toggle("hist-on", on);
-  const btn = $("#kb-hist-btn");
-  if (btn) {
-    btn.classList.toggle("on", on);
-    btn.setAttribute("aria-expanded", on ? "true" : "false");
-  }
+  histSync();
   // 窄屏左树本身是「分类」抽屉；从顶栏点进来时必须把抽屉一起顶出来，否则钮亮了而东西在屏外
   if (on && NAV_SHEET()) navSheet(true);
 }
+window.toggleHist = toggleHist;
+window.histSync = histSync;
+window.histClose = histClose;
+/* Esc 分层关闭链里的一环（kb-core.js::keys.handle 调用）：浮层与两条抽屉都关完了才轮到它。 */
+window.histSheetClose = histClose;
+/* 宽屏那一档（>860，左栏是常驻栏、没有遮罩节点）的「点空白处收起」：
+   document 级 mousedown —— 点在面板内部、点在按钮上都不算外面，点在 main / 正文 / 背景上算。
+   用 mousedown 而不是 click：正文里的链接 click 会触发导航，等 click 时面板早被点过了。
+   ≤860 不在这儿判 —— 那一档有 main::after 遮罩 + 抽屉自己的四条关闭手势（见 navSheet）。 */
+document.addEventListener("mousedown", e => {
+  if (NAV_SHEET()) return;
+  const left = $("#p-left");
+  if (!left || !left.classList.contains("hist-on")) return;
+  const t = e.target;
+  if (t && t.closest && t.closest("#p-left, #kb-hist-btn")) return;
+  histClose();
+}, true);
 let CUR = null; // {domain, sub, name}
 
 /* ---------- 渲染预处理（需求 #8/#9/#6） ----------
@@ -1178,6 +1222,44 @@ function rebindTreeSel() {
 window.KB_treeSelected = () => TREE_SEL;
 window.KB_treeSelect = treeSelectNode;
 
+/* ---------- 一级域行：原地展开/收起（唯一写手在 app.js） ----------
+   此前这条层级有**两个**写手：pages/workbench.js 挂在 #tree 上的冒泡委托，加本文件
+   读 LS 渲染的那一套。旧委托把 kb-tree-open 写成它 init 时抓到的那份**闭包集合**
+   （启动瞬间的快照），而 renderTree / revealCurInTree 之后还会往 LS 追加当前域 ——
+   于是"收起 A 域"会顺手把 B 域的展开态从 LS 里抹掉（实测 ls 从 ["ui-r"] 变成 ["baike"]，
+   下一次整树重渲染时 B 域莫名其妙自己收了、再点一次像是没反应）。
+   这里用**捕获阶段**的监听接管同一个节点：它比那条冒泡委托更早拿到事件，切换做完就
+   stopPropagation，旧写手不再参与。行为与第三层同构 —— class 与 aria-expanded 同步、
+   落盘、记为 ←/→ 的锚点；移动端不另写一套（「分类」抽屉里就是这棵树、同一个节点）。 */
+function toggleDomOpen(dom, open) {
+  if (!dom) return;
+  dom.classList.toggle("open", open);
+  const head = dom.querySelector(".dom-head");
+  if (head) head.setAttribute("aria-expanded", open ? "true" : "false");
+  setTreeOpen(dom.dataset.dom, open);
+}
+(function wireDomHeadToggle() {
+  const nav = document.getElementById("tree");
+  if (!nav) return;                       // 收件箱 / 统计这些页面没有左树
+  nav.addEventListener("click", e => {
+    const head = e.target.closest && e.target.closest(".dom-head");
+    if (!head) return;                    // 子域 / 三级 / 文档条仍走下面的文档级委托
+    const dom = head.closest(".dom");
+    if (!dom) return;
+    /* 带修饰键（Ctrl / Cmd / Shift / Alt）= "在新标签页打开这个域"，交给浏览器原生语义。
+       但仍要拦住冒泡：否则 pages/workbench.js 那份旧委托会抢先 preventDefault 掉新标签，
+       还会把它那份陈旧闭包集合写进 kb-tree-open。 */
+    if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) {
+      e.stopPropagation();
+      return;
+    }
+    e.preventDefault(); e.stopPropagation();   // 只切换层级，绝不导航
+    toggleDomOpen(dom, !dom.classList.contains("open"));
+    TREE_SEL_KEY = "dom:" + dom.dataset.dom;  // 整树重渲染后按 key 找回（既有约定）
+    treeSelectNode(head);                     // ←/→ 的锚点（旧写法只记 key，点完域行按方向键没反应）
+  }, true);                                 // ← 必须捕获：早于 pages/workbench.js 那份冒泡委托
+})();
+
 /* ---------- 文件类型 → 前缀图标（目录树 / 文档列表共用） ----------
    按扩展名映射到对应图标：md / txt / epub / pdf / xlsx / 图片 / html / zip。
    未知扩展名回落通用 i-file；目录/文件夹用 i-folder。 */
@@ -1781,9 +1863,10 @@ document.addEventListener("click", e => {
         return;
       }
     }
-    /* 一级域头：记录选中（←/→ 可收起/展开该域）。
-       注意：一级点击会走导航 → 整树重渲染，旧节点引用会失效；
-       故只记 key，由 renderTree 结束后的 rebindTreeSel() 重新定位新节点。 */
+    /* 一级域头：正常情况下走上面 wireDomHeadToggle 的捕获监听（那里已经记好 TREE_SEL_KEY）。
+       到这儿只可能是带修饰键的点击（浏览器开新标签）或捕获监听缺席的角落，
+       记 key 是零成本的兜底：一级点击会走导航 → 整树重渲染，旧节点引用会失效，
+       故由 renderTree 结束后的 rebindTreeSel() 按 key 重新定位新节点。 */
     const domHeadEl = e.target.closest(".dom-head");
     if (domHeadEl) { TREE_SEL_KEY = "dom:" + (domHeadEl.closest(".dom") || {}).dataset?.dom; }
     /* 文档项：不参与 ←/→ 层级操作，清掉树选中态避免误操作 */

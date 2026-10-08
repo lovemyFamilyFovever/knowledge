@@ -49,7 +49,7 @@ python scripts\check_ledger_counts.py          # 台账对账：§0 数字必须
 | `test_known_defects.py` | 6 | 已登记缺陷不回退 |
 | `test_watch_ci.py` | 38 | Agent 工具自身（四类"读不到"分开点名；GBK/UTF-8 两档都要绿） |
 | `test_ui_regress.py` | 31 | P5 视觉回归：11 张截图逐像素 vs `tests/ui-baselines/` + 10 条顶栏几何 |
-| `test_ui_behavior.py` | 277 | UI 行为回归：真点每个控件，看它到底有没有反应 |
+| `test_ui_behavior.py` | 353 | UI 行为回归：真点每个控件，看它到底有没有反应（窄屏几何一律以 `.rtabs` 与视口为锚，**不许拿 `.statusbar` 当底** —— ≤980 它已整条撤掉，量到的是 0×0 假绿） |
 | `test_rag.py` | — | RAG（与 Rust tokenizers 逐 token 交叉验证 + 续跑三证；缺依赖/缺模型才 SKIP） |
 
 `--stability` 只验"两次截图逐像素相同"（改矩阵或换环境后先跑它）；`--update` 在确认改动无误后刷新基线。
@@ -79,10 +79,13 @@ app/wikilink.py     [[双链]]补全候选池 / 打分 / 断链检查
 app/palette.py      命令面板索引
 static/app.js       阅读器主逻辑；static/kb-core.js = KB 内核（overlay / 设置 / 命令面板 / 快捷键）
                     窄屏两坨抽屉，断点各自对齐 style.css 里的一条旧规则：
-                    ≤980 底部工具栏（railSheet：分类 / 目录 / 标签 / 备注 / 双链，点页签从下往上展开
-                    —— 那一档网格只留两轨，右栏不改 fixed 就会被甩到第二行）；
-                    ≤860「分类」抽屉（navSheet，唤出被 `main > section.wb-panel{display:none}` 藏掉的左树）。
-                    两者互斥，关闭手势四条齐全（再点当前页签 / Esc / 点抽屉外 / 换文档）
+                    ≤980 页签条自己 fixed 成贴底工具栏（只有 分类 / 目录 / 标签 三颗，备注与双链只留
+                    宽屏 —— 那一档网格只留两轨，右栏不改 fixed 就会被甩到第二行），点开是**撑满整个
+                    视口高度的侧边抽屉**（目录/标签从右边缘、分类从左边缘），工具栏 z62 浮在抽屉之上
+                    （否则"再点当前页签收起"没有落点），抽屉内容靠 `padding-bottom:calc(var(--kb-bar)+…)`
+                    让位；**同一档把底部状态栏整条撤掉**（那一行文案手机上没人读，`--kb-bar` 因此就是
+                    唯一的底部占位）。两者互斥，关闭手势四条齐全（再点当前页签 / Esc / 点抽屉外 / 换文档），
+                    「阅读历史」面板的开关态挂在 `navSheet` 的关闭落点上而不是挂在按钮自己
 static/kb-static.js 只读适配器（只在导出产物里加载）：fetch 分诊（读→data/*.json、写→READ_ONLY、
                     裁剪端点→NOT_IN_STATIC）、KB_BASE 链接与路由桥、只读裁剪 CSS、
                     公网状态栏与 <title> 口径、根路径的「公网首页」态；
@@ -121,7 +124,7 @@ Agent 的**常驻工具**统一收在 `scripts/`（进 git、跨机器复用）�
 | `imgdiff.mjs` | 像素对比：`node scripts/imgdiff.mjs <a.png> <b.png> [fuzz%]`，回差异像素数 AE 与占比 + 热图。**没有 ignoreRegions 参数** —— 要排除动画区域就先用 `magick <img> -crop WxH+X+Y +repage out.png` 裁开再比 |
 | `evalcdp.mjs` | CDP 执行任意 JS 并回显返回值 + console 报错：`node scripts/evalcdp.mjs <url> "<js>"`（表达式以 `@` 开头时按文件读取，长载荷塞不进 argv） |
 | `geom.mjs` | 多视口几何探针：`node scripts/geom.mjs <url> <w1,w2,...> <expr@文件>`，逐档设宽求值、每档回一行 JSON。用途：① 顶栏压字这类"像素基线永远绿"的重叠问题 ② 当行为测试的驱动器 —— **evalcdp 的视口只有 ~764px**，依赖侧栏/浮层定位的断言都得用它钉桌面宽度。**表达式必须一次求值取全部矩形**，逐字段各自 `getBoundingClientRect()` 会在过渡中读出三套数 |
-| `watch_ci.py` | 盯 GitHub Actions 到结论：`python scripts/watch_ci.py <sha 前缀> [等待秒=420]`。回 run 状态 + 逐步 conclusion + **annotations**（`::notice::STARTED` / `::warning::SKIPPED`，见 `tests/_ci.py`）—— 匿名 API 读不到日志正文，只有这三样能证明某一步真跑了。四类"读不到"分开报：够不着 API=4 / 限流=3 / 列表里没这个 sha=5 / 200 但正文不是 JSON=6。网络飘时设 `KB_CI_PROXY=http://127.0.0.1:7897` |
+| `watch_ci.py` | 盯 GitHub Actions 到结论：`python scripts/watch_ci.py <sha 前缀> [等待秒=420]`。回 run 状态 + 逐步 conclusion + **annotations**（`::notice::STARTED` / `::warning::SKIPPED`，见 `tests/_ci.py`）—— 匿名 API 读不到日志正文，只有这三样能证明某一步真跑了。四类"读不到"分开报：够不着 API=4 / 限流=3 / 列表里没这个 sha=5 / 200 但正文不是 JSON=6。网络飘时设 `KB_CI_PROXY=http://127.0.0.1:<当前代理端口>`（端口以注册表 `ProxyServer` 为准，见「跨机器坑备忘」那条，本机 2026-10-09 是 7890）。**设这个变量要用 `export X=... && python ...`，别用 `env X=... python ...` 前缀 —— 后者在本机 Bash 通道里会静默 no-op（rc=0、零输出，什么都不跑）** |
 | `scan_fm.py` | frontmatter 污染扫描：正文前 400 字符内又出现完整 fm 块 = 污染 |
 | `scan_dup.py` | 抓取残留副本扫描：`xxx-<数字>.md` 与 `xxx.md` 同名共存即残留 |
 | `serve404.py` | GitHub Pages 本机模拟器：`python scripts/serve404.py <端口> <文档根>`。文档根下必须放成 `<前缀>/…`（junction 到 `site/` 即可），404 走该前缀的 `404.html`（GH Pages 的 SUBDIRECTORY 行为），并显式钉 `.js`/`.webmanifest` 的 content-type（Windows 默认把 `.js` 报成 `text/plain`，Chrome 拒绝执行 → PWA 看着像坏的） |
@@ -159,7 +162,7 @@ Agent 的**常驻工具**统一收在 `scripts/`（进 git、跨机器复用）�
 - PowerShell 5.1 读无 BOM 的 UTF-8 脚本按 GBK 解码：若文件还是 LF-only，行尾中文的 UTF-8 末字节会把换行吞进非法双字节序列，下一行代码被并入注释**静默失效**。仓库 `.ps1` 一律 UTF-8 BOM + CRLF（`.gitattributes` 已强制），且脚本内容**只用 ASCII**。
 - 测试全绿 ≠ 启动路径可用：tests 从项目根 import `app`，而 `start.bat` 直启走另一条解析路径。回归入口：`python app\app.py --import-check`（已入 test_reader 与 pre-commit 链）。
 - **`NO_PROXY` 会让 pre-commit 永久假红**：本机系统变量 `NO_PROXY=localhost,127.0.0.1,::1` 使 `curl` 跳过 `test_watch_ci.py` 自建的假代理，两条分支永不触发 → 固定红（实测带它 36/2、去掉 **38/0**）。所以**本仓库每次提交都要 `env -u NO_PROXY -u no_proxy git commit ...`**。这是清理执行环境，不是 `--no-verify` 绕闸。
-- **推 GitHub 的可行路线**：直连时通时不通，先探活 `curl.exe -s -o NUL -w "%{http_code}" --proxy http://127.0.0.1:7897 https://github.com/`（应回 200），再 `git -c http.proxy=http://127.0.0.1:7897 -c http.version=HTTP/1.1 push origin main`（`-c` 不落配置）。代理没起来时**别直接下"推不出去"的结论**：清空 proxy 覆盖用一条只读 `git ls-remote` 实测直连，通了就直连推。哪条通要看**这一次**实测，别把上一小时的结论当这一小时的用。
+- **推 GitHub 的可行路线**：直连时通时不通，**代理端口别信文档**——先读当前值 `reg query "HKCU\Software\Microsoft\Windows\CurrentVersion\Internet Settings" | grep -i ProxyServer`（2026-10-09 实测是 `127.0.0.1:7890`，而不是这里写过很多年的 7897；两个端口当时都不通，只有注册表那个一次通），再探活 `curl.exe -s -o NUL -w "%{http_code}" --proxy http://127.0.0.1:<端口> https://github.com/`（应回 200），再 `git -c http.proxy=http://127.0.0.1:<端口> -c http.version=HTTP/1.1 push origin main`（`-c` 不落配置）。代理没起来时**别直接下"推不出去"的结论**：清空 proxy 覆盖用一条只读 `git ls-remote` 实测直连，通了就直连推。哪条通要看**这一次**实测，别把上一小时的结论当这一小时的用。
 - **判仓库是否真被删除**：`git ls-remote` 必须同时探一个已知公共仓做对照 —— 超时/reset 只代表线路问题，只有服务器实回 `remote: Repository not found` 才算删成；而本机存有凭据助手，**匿名 not-found 也可能只是"私有"**，别拿它当"已删"定论。同理 `git status` 干净、`log --not --remotes` 为空都不能证明远端还在 —— 它比的是本地那份可能已陈旧的 remote-tracking ref。
 
 ## 禁区

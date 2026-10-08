@@ -1344,6 +1344,7 @@ RAIL_SHEET_JS = PRELUDE + r"""
   out.open0 = cls('#p-rail', 'rail-open');
   out.aria0 = tab0.getAttribute('aria-expanded');
   out.statusbar = rect(q('.statusbar'));
+  out.sbDisp = getComputedStyle(q('.statusbar')).display;
   out.hScroll = document.documentElement.scrollWidth > innerWidth + 1;
   tab0.click(); await sleep(700);
   out.openPane = rect(q('.rpane.active'));
@@ -1357,10 +1358,21 @@ RAIL_SHEET_JS = PRELUDE + r"""
   out.paneRight = Math.round(q('.rpane.active').getBoundingClientRect().right);
   out.vw = innerWidth;
   out.vh = innerHeight;
-  const rr = rail.getBoundingClientRect(), sbr = q('.statusbar') && q('.statusbar').getBoundingClientRect();
-  out.bottomGap = Math.round(innerHeight - rr.bottom);
-  out.fullWidth = Math.round(rr.left) === 0 && Math.round(rr.right) === innerWidth;
-  out.squashStatusbar = !!(sbr && rr.bottom > sbr.top + 1 && rr.top < sbr.bottom - 1);
+  /* 锚点换了：≤980 那一行状态栏已按用户要求（图3）整条撤掉，工具栏因此贴住视口底边，
+     抽屉则撑满整屏（图6）。再拿 `.statusbar` 的矩形当"底"会永远量到 0×0。
+     工具栏的真实矩形在 `.rtabs` 上（`#p-rail` 这一层已收成 0 高的容器）。 */
+  const tb = q('.rtabs').getBoundingClientRect();
+  out.tbBottomGap = Math.round(innerHeight - tb.bottom);
+  out.tbH = Math.round(tb.height);
+  out.fullWidth = Math.round(tb.left) === 0 && Math.round(tb.right) === innerWidth;
+  const pb = q('.rpane.active').getBoundingClientRect();
+  out.paneTop = Math.round(pb.top);
+  out.paneBottom = Math.round(pb.bottom);
+  out.panePadBottom = Math.round(parseFloat(getComputedStyle(q('.rpane.active')).paddingBottom) || 0);
+  out.toolbarAbovePane = (() => {
+    const e = document.elementFromPoint(Math.round(innerWidth * 0.5), Math.round(innerHeight - 8));
+    return !!(e && e.closest && e.closest('.rtabs'));
+  })();
   out.paneWithinViewport = rect(q('.rpane.active')).y >= 0;
   tab0.click(); await sleep(700);
   out.open2 = cls('#p-rail', 'rail-open');
@@ -1430,15 +1442,25 @@ NAV_SHEET_JS = PRELUDE + r"""
   out.treeFirstH = rect(q('#tree .dom')).h;
   out.ariaNav1 = navTab.getAttribute('aria-expanded');
   out.railOpenWhenNav = rail.classList.contains('rail-open');
-  out.navAboveToolbar = rail ? (left.getBoundingClientRect().bottom
-    <= rail.getBoundingClientRect().top + 0.5) : null;   // 用原始浮点比：两个各自取整的数相加会假红
+  /* 判据换了：图6 要求分类抽屉**撑满整屏**，所以"底边必须 ≤ 工具栏上沿"这条不成立了；
+     现在要量的是两件真事 —— 抽屉自己 top=0/底到视口底，工具栏仍浮在它上面点得到。 */
+  out.navFullHeight = (() => {
+    const lb = left.getBoundingClientRect();
+    return lb.top <= 1 && Math.abs(lb.bottom - innerHeight) <= 1;
+  })();
+  out.toolbarPaintedAbove = (() => {
+    const e = document.elementFromPoint(Math.round(innerWidth * 0.4), Math.round(innerHeight - 8));
+    return !!(e && e.closest && e.closest('.rtabs'));
+  })();
+  out.navPadBottom = Math.round(parseFloat(getComputedStyle(left).paddingBottom) || 0);
   out.navInViewport = rect(left).y >= 0;
   out.navScrolls = getComputedStyle(left).overflowY;
   out.navMaxH = Math.round(parseFloat(getComputedStyle(left).maxHeight) || 0);
-  // 原始浮点 + 两侧 CSS 值：这条断言差 1px 就会红，不留下证据下一轮只能瞎猜
-  out.raw = { lBottom: left.getBoundingClientRect().bottom, rTop: rail.getBoundingClientRect().top,
-              railH: rail.getBoundingClientRect().height, rtabsH: q('.rtabs').getBoundingClientRect().height,
-              lBottomCss: getComputedStyle(left).bottom, sbTop: q('.statusbar').getBoundingClientRect().top };
+  // 原始浮点 + 两侧 CSS 值：这类断言差 1px 就会红，不留下证据下一轮只能瞎猜
+  out.raw = { lTop: left.getBoundingClientRect().top, lBottom: left.getBoundingClientRect().bottom,
+              tbTop: q('.rtabs').getBoundingClientRect().top,
+              tbH: q('.rtabs').getBoundingClientRect().height, vh: innerHeight,
+              lBottomCss: getComputedStyle(left).bottom, sbDisp: getComputedStyle(q('.statusbar')).display };
   navTab.click(); await sleep(700);
   out.navOn2 = m.classList.contains('kb-nav-on');
   out.leftDisp2 = getComputedStyle(left).display;
@@ -1478,10 +1500,11 @@ RAIL_VIS_JS = """(async () => {
   await wait(780);
   const b = pane().getBoundingClientRect();
   out.h900 = Math.round(b.height);
+  out.vh = innerHeight;
   out.paneBottom = Math.round(b.bottom);
-  const sb = document.querySelector('.statusbar');
-  out.statusTop = sb ? Math.round(sb.getBoundingClientRect().top) : innerHeight;
-  out.clipped = b.bottom > out.statusTop + 1;
+  out.sbDisp = getComputedStyle(document.querySelector('.statusbar')).display;
+  /* 锚点从状态栏换成视口：状态栏在 ≤980 已整条撤掉（用户图3），拿它的矩形当"底"会量到 0。 */
+  out.clipped = b.bottom > innerHeight + 1;
   tab('notes', document.querySelector('.rtab[data-pane="notes"]'));
   await wait(250);
   out.forcedActive = (document.querySelector('.rtab.active') || {}).dataset
@@ -1517,9 +1540,9 @@ def probe_rail_sheet(base):
     got = run_expr(url, RAIL_SHEET_JS, width=390)
     check("工具栏脱离文档流贴在底部（position:fixed），四枚页签都在",
           got.get("pos") == "fixed" and got.get("disp") != "none" and got.get("tabN") == 4, got)
-    check("贴在状态栏正上方：底部留白=状态栏高 28px，且不与状态栏矩形相交",
-          got.get("bottomGap") == 28 and got.get("squashStatusbar") is False
-          and got.get("fullWidth") is True, got)
+    check("窄屏撤掉底部状态栏（用户图3）：工具栏自己贴住视口底边、通宽、触控区够高",
+          got.get("sbDisp") == "none" and got.get("tbBottomGap") == 0
+          and got.get("fullWidth") is True and got.get("tbH", 0) >= 44, got)
     check("页签触控区 ≥44px（手机上点不准的按钮等于没有）",
           (got.get("tab0") or {}).get("h", 0) >= 44, got)
     check("默认收起：没有 rail-open，且收起态面板高度真的是 0（不留空壳）",
@@ -1531,11 +1554,12 @@ def probe_rail_sheet(base):
           and got.get("paneWithinViewport") is True
           and got.get("paneScrollH", 0) >= (got.get("openPane") or {}).get("h", 0) - 2
           and got.get("paneOverflow") == "auto" and got.get("aria1") == "true", got)
-    check("页签点开的是**侧边抽屉**：从右边缘贴到屏幕上沿，底边停在工具栏上沿，宽 ≤86vw 且 ≤380px，自己滚",
-          got.get("panePos") == "fixed" and (got.get("openPane") or {}).get("y") == 0
-          and abs(((got.get("openPane") or {}).get("y", 0)
-                   + (got.get("openPane") or {}).get("h", 0))
-                  - (got.get("openRail") or {}).get("y", -1)) <= 1
+    check("页签点开的是**侧边抽屉**：撑满整个视口高度（用户图6，top=0 且底边到视口底），"
+          "宽 ≤86vw 且 ≤380px、贴右边缘、自己滚；工具栏浮在它之上仍可点，内容底部留白≥工具栏高",
+          got.get("panePos") == "fixed" and got.get("paneTop") == 0
+          and abs(got.get("paneBottom", -1) - (got.get("vh") or -1)) <= 1
+          and got.get("toolbarAbovePane") is True
+          and (got.get("panePadBottom") or 0) >= (got.get("tbH") or 999)
           and (got.get("openPane") or {}).get("w", 0) <= 380
           and (got.get("openPane") or {}).get("w", 0) <= round((got.get("vw") or 0) * 0.86) + 1
           and abs(got.get("paneRight", 0) - (got.get("vw") or -1)) <= 1
@@ -1561,16 +1585,17 @@ def probe_rail_sheet(base):
           and rv.get("paneAfterClamp") == "pane-toc" and rv.get("railOpen") is True, rv)
     check("面板展开是**一步到位**的：120ms 与 900ms 两次量到同一个高度（没有半开中间帧）",
           rv.get("h120") == rv.get("h900") and (rv.get("h900") or 0) > 100, rv)
-    check("面板底边压在状态栏之上，不被裁切",
-          rv.get("clipped") is False and rv.get("paneBottom", 0) <= rv.get("statusTop", 0) + 1, rv)
+    check("面板底边就落在视口底边上（满高抽屉，图6）且不溢出屏幕；窄屏状态栏整条撤掉（图3）",
+          rv.get("clipped") is False and abs(rv.get("paneBottom", -1) - rv.get("vh", -2)) <= 1
+          and rv.get("sbDisp") == "none", rv)
     dv = run_expr(url, RAIL_VIS_JS, width=1600)
     check("390 档抽屉压在顶栏之上：顶栏那条带里命中的不是 header，且遮罩是 fixed 的一整层",
           rv.get("headerStillOnTop") is False
           and (rv.get("scrim") or {}).get("pos") == "fixed"
           and (rv.get("scrim") or {}).get("z") == "7", rv)
-    check("宽屏照旧：四颗文档页签全部可见，clamp 不碰「备注」",
+    check("宽屏照旧：四颗文档页签全部可见、clamp 不碰「备注」、底部状态栏仍在（隐藏只归窄屏那一档）",
           dv.get("visible") == ["toc", "info", "notes", "links"]
-          and dv.get("afterClamp") == "notes", dv)
+          and dv.get("afterClamp") == "notes" and dv.get("sbDisp") != "none", dv)
     d = run_expr(url, RAIL_DESK_JS, width=1600)
     check("桌面档零副作用：右栏仍在网格里（relative）、常驻可见，点页签不会长出抽屉态",
           d.get("pos") == "relative" and d.get("open0") is False and d.get("open1") is False
@@ -1589,6 +1614,8 @@ def probe_rail_sheet(base):
   out.tracks = getComputedStyle(m).gridTemplateColumns;
   out.railPos = getComputedStyle(rail).position;
   out.rail = rect(rail);
+  out.tb = rect(q('.rtabs'));   // 工具栏的真实矩形：#p-rail 这一层已收成 0 高的容器
+  out.vh = innerHeight;
   out.navTab = getComputedStyle(q('#kb-nav-tab')).display;
   out.leftDisp = getComputedStyle(left).display;
   out.left = rect(left);
@@ -1596,18 +1623,26 @@ def probe_rail_sheet(base):
   q('.rtab[data-pane]').click(); await sleep(700);
   out.opened = cls('#p-rail', 'rail-open');
   out.paneH = rect(q('.rpane.active')).h;
+  out.paneTop = rect(q('.rpane.active')).y;
+  out.paneBottom = Math.round(q('.rpane.active').getBoundingClientRect().bottom);
+  out.tbH = Math.round(parseFloat(getComputedStyle(q('.rtabs')).height) || 0);
+  out.panePadBottom = Math.round(parseFloat(getComputedStyle(q('.rpane.active')).paddingBottom) || 0);
   return JSON.stringify(out);
 })()""", width=900)
-    check("900 档：右栏是通宽的贴底工具栏，不是被 grid 换行甩到第二行的 240px 窄柱",
-          band.get("railPos") == "fixed" and (band.get("rail") or {}).get("x") == 0
-          and (band.get("rail") or {}).get("w") == band.get("vw")
-          and 40 <= (band.get("rail") or {}).get("h", 0) <= 80
+    check("900 档：页签条是通宽贴住视口底边的一条（.rtabs 自己 fixed），不是被 grid 换行甩到第二行的 240px 窄柱",
+          band.get("railPos") == "fixed" and (band.get("tb") or {}).get("x") == 0
+          and (band.get("tb") or {}).get("w") == band.get("vw")
+          and 40 <= (band.get("tb") or {}).get("h", 0) <= 90
+          and abs((band.get("tb") or {}).get("y", -1) + (band.get("tb") or {}).get("h", 0)
+                  - (band.get("vh") or -1)) <= 1
           and len(band.get("tracks", "").split()) == 2, band)
     check("900 档：左树仍是常驻列，「分类」页签不出现（那一档树没被藏）",
           band.get("leftDisp") != "none" and (band.get("left") or {}).get("w", 0) >= 200
           and band.get("navTab") == "none", band)
-    check("900 档：工具栏页签照样能上滑展开",
-          band.get("opened") is True and (band.get("paneH") or 0) > 60, band)
+    check("900 档：工具栏页签照样能展开，且抽屉在这一档同样是满高（顶到上沿、底到视口底、给工具栏留出内容底部）",
+          band.get("opened") is True and band.get("paneTop") == 0
+          and abs(band.get("paneBottom", -1) - (band.get("vh") or -1)) <= 1
+          and (band.get("panePadBottom") or 0) >= (band.get("tbH") or 999), band)
     # ---- 「分类」抽屉：窄屏原本没有翻目录的路径（style.css ≤860 把左树整块隐藏）----
     for w in (390, 800):
         n = run_expr(url, NAV_SHEET_JS, width=w)
@@ -1617,10 +1652,13 @@ def probe_rail_sheet(base):
               and (n.get("tabRect") or {}).get("h", 0) >= 44, n)
         check(f"{tag}默认不占位：没有 kb-nav-on，左树仍是 display:none",
               n.get("navOn0") is False and n.get("leftDisp0") == "none", n)
-        check(f"{tag}点一下左树从下往上顶出来：有高度、在视口内、压在工具栏之上、自己滚",
+        check(f"{tag}点一下左树从左侧滑出：**撑满整个视口高度**（用户图6）、自己滚、"
+              f"工具栏仍浮在它上面点得到，内容底部留白≥工具栏高",
               n.get("navOn1") is True and n.get("leftDisp1") == "flex"
               and (n.get("leftRect") or {}).get("h", 0) > 100
-              and n.get("navInViewport") is True and n.get("navAboveToolbar") is True
+              and n.get("navInViewport") is True and n.get("navFullHeight") is True
+              and n.get("toolbarPaintedAbove") is True
+              and (n.get("navPadBottom") or 0) >= (n.get("raw", {}).get("tbH") or 999)
               and n.get("navScrolls") == "auto" and n.get("ariaNav1") == "true", n)
         check(f"{tag}树真的在里面且域可见（不是空壳面板）",
               n.get("treeItems", 0) >= 1 and (n.get("treeFirstH") or 0) > 8, n)
@@ -2336,9 +2374,11 @@ def probe_read_history(base):
         check(f"[{tag}] 换一篇（走客户端路由）后顺序立刻更新：最新在前，面板开着也当场刷新",
               n.get("rows") and "排版约定样本-B" in n["rows"][0] and len(n["rows"]) >= 2, got)
         if w == 390:
-            check("[390px] 窄屏从顶栏点进来时把「分类」抽屉一起顶出来，且抽屉底边压在贴底工具栏之上"
-                  "（钮亮了而东西在屏外 = 假入口）",
-                  o.get("navOn") is True and o.get("histBottom", 0) <= o.get("statusTop", 0) + 1, got)
+            check("[390px] 窄屏从顶栏点进来时把「分类」抽屉一起顶出来（钮亮了而东西在屏外 = 假入口），"
+                  "并且这只有历史列表的抽屉也**撑满整个视口高度**（用户图6），状态栏已撤",
+                  o.get("navOn") is True and o.get("histTop") == 0
+                  and abs(o.get("histBottom", -1) - (o.get("vh") or -1)) <= 1
+                  and o.get("sbDisp") == "none", got)
     s390 = run_expr(url, MOBILE_SEARCH_JS, width=390)
     check("[390px] 窄屏顶栏那条常驻搜索框让位，右上角换成一颗搜索钮，且不与视口右边缘溢出",
           s390.get("boxDisp") == "none" and s390.get("btnDisp") != "none"
@@ -2346,6 +2386,11 @@ def probe_read_history(base):
     check("[390px] 点搜索钮展开的就是那个全局浮层，输入框自动获得焦点，Esc 关得掉",
           s390.get("shown") is True and s390.get("focused") == "kb-so-q"
           and s390.get("afterEsc") is True, s390)
+    check("[390px] 搜索浮层是**全屏垂直居中**的弹层（用户图8，对齐统计弹层）："
+          "遮罩铺满视口、面板中线与视口中线对齐、上下各留边距、四条圆角回归 14px（不再是贴底 sheet）",
+          s390.get("ovW") == s390.get("vw") and s390.get("ovH") == s390.get("vh")
+          and s390.get("vCentered") is True and s390.get("hCentered") is True
+          and s390.get("margins") is True and s390.get("boxRadius") == "14px", s390)
     check("[390px] 引擎条横排且**不溢出视口**（四颗 nowrap 钮会把 1fr 轨道顶到 419px，"
           "靠 rail 的 min-width:0 收住）",
           s390.get("engDir") == "row" and s390.get("engOverflow") is False, s390)
@@ -2374,7 +2419,9 @@ HIST_JS = """(async () => {
     aria: btn.getAttribute('aria-expanded'), rows: rows(),
     navOn: document.querySelector('main').classList.contains('kb-nav-on'),
     histBottom: Math.round(document.querySelector('#p-left').getBoundingClientRect().bottom),
-    statusTop: sb ? Math.round(sb.getBoundingClientRect().top) : innerHeight };
+    histTop: Math.round(document.querySelector('#p-left').getBoundingClientRect().top),
+    vh: innerHeight,
+    sbDisp: sb ? getComputedStyle(sb).display : null };
   document.querySelector('.kb-hist-x').click(); await wait(300);
   out.closedAgain = { histOn: left.classList.contains('hist-on'), tree: d('#tree'),
                       aria: btn.getAttribute('aria-expanded') };
@@ -2398,6 +2445,20 @@ MOBILE_SEARCH_JS = """(async () => {
   btn.click(); await wait(500);
   const ov = document.querySelector('#kb-search-ov');
   out.shown = ov.classList.contains('show');
+  /* 用户图8：搜索浮层要像「全库快照」那种弹层 —— 遮罩铺满整屏、面板垂直居中，
+     不再是贴底升起的一坨 sheet。判据三条：遮罩等于视口、面板中线与视口中线对齐、
+     上下都留出边距；再加一条圆角（贴底 sheet 的旧形状是 18px/18px/0/0）。 */
+  const obr = ov.getBoundingClientRect();
+  out.ovW = Math.round(obr.width);
+  out.ovH = Math.round(obr.height);
+  const bxb = document.querySelector('.kb-search-box').getBoundingClientRect();
+  out.boxTop = Math.round(bxb.top);
+  out.boxBottom = Math.round(bxb.bottom);
+  out.vh = innerHeight;
+  out.vCentered = Math.abs((bxb.top + bxb.height / 2) - innerHeight / 2) <= 6;
+  out.hCentered = Math.abs((bxb.left + bxb.width / 2) - innerWidth / 2) <= 6;
+  out.margins = Math.round(bxb.top) >= 8 && Math.round(innerHeight - bxb.bottom) >= 8;
+  out.boxRadius = getComputedStyle(document.querySelector('.kb-search-box')).borderTopLeftRadius;
   // 引擎条是 overflow-x:auto 的一条：grid 的 1fr 轨道默认 min-content，
   // 四颗 nowrap 的引擎钮会把整条顶到 419px 宽（>390 视口）—— 实测踩过，靠 min-width:0 收住
   const eng = document.querySelector('.kb-search-engines');
@@ -2476,6 +2537,364 @@ def probe_search_facets(base):
     check("搜索页：浏览器后退回到上一步 URL 时，分面态跟着 URL 走（不是留着旧的高亮和旧结果）",
           ab.get("skipped") is False and "domain=" not in (ab.get("url") or "")
           and ab.get("any_on") is False and ab.get("rows") == s.get("n0"), ab)
+
+
+# ---------------------------------------------------------------- 探针 32：左树一/二级「点击再点一次要收得回去」
+# 用户实拍（任务 2）：圈的是**域行与子域行**（AI / 资产 / 文章 / 百科 / 职业 / 面试那一档）。
+# 这一档此前有两个写手：pages/workbench.js 挂在 #tree 上的冒泡委托（把 kb-tree-open 写成
+# 它 init 那一刻抓到的**闭包集合**）+ app.js 读 LS 渲染。闭包那份不含 revealCurInTree 之后
+# 追加的当前域，于是"收起 A 域"会把 B 域的展开态从 LS 里抹掉（实测 ["ui-r"] 变成 ["baike"]）。
+# 判据全是"真点 + 真量矩形 + 真读 classList/aria/LS"，不判实现细节。
+TREE_COLLAPSE_JS = PRELUDE + r"""
+  const rect = e => { const b = e && e.getBoundingClientRect(); return b ? {h: Math.round(b.height), disp: getComputedStyle(e).display} : null; };
+  const caret = e => (e ? getComputedStyle(e, '::after').transform : null);
+  for (let i = 0; i < 90 && !q('#tree .dom'); i++) await sleep(150);
+  await sleep(700);
+  const domEl = id => q('#tree .dom[data-dom="' + id + '"]');
+  const snap = id => {
+    const d = domEl(id), h = d && d.querySelector('.dom-head');
+    return {
+      open: !!(d && d.classList.contains('open')),
+      aria: h ? h.getAttribute('aria-expanded') : null,
+      subs: rect(d && d.querySelector('.subs')),
+      caret: caret(h && h.querySelector('.dom-glyph')),
+    };
+  };
+  const ls = k => localStorage.getItem(k);
+  out.startPath = location.pathname;
+  out.start = { cur: snap('ui-r'), other: snap('baike'),
+                lsOpen: ls('kb-tree-open'), lsSubdir: ls('kb-subdir-collapsed'),
+                lsSub: ls('kb-sub-open') };
+  // ① 当前域（被"打开文档自动展开"顶开的）：第一下必须收回去
+  const cur = q('#tree .dom[data-dom="ui-r"] .dom-head');
+  cur.click(); await sleep(400); out.afterCur1 = snap('ui-r');
+  out.afterCur1.path = location.pathname;
+  out.afterCur1.lsOpen = ls('kb-tree-open');
+  cur.click(); await sleep(400); out.afterCur2 = snap('ui-r');
+  out.afterCur2.lsOpen = ls('kb-tree-open');
+  // ② 另一个域（默认是收着的）：展开它**不许**把当前域的 LS 记录抹掉（旧写法就是抹掉）
+  const other = q('#tree .dom[data-dom="baike"] .dom-head');
+  other.click(); await sleep(400); out.afterOther1 = snap('baike');
+  out.afterOther1.lsOpen = ls('kb-tree-open');
+  out.afterOther1.curStillOpen = snap('ui-r').open;
+  other.click(); await sleep(400); out.afterOther2 = snap('baike');
+  out.afterOther2.lsOpen = ls('kb-tree-open');
+  // ③ ←/→ 对齐第三层：点完域行就是这一层的操作锚点（左收右展）
+  other.click(); await sleep(300);
+  document.dispatchEvent(new KeyboardEvent('keydown', {key: 'ArrowLeft', bubbles: true, cancelable: true}));
+  await sleep(300); out.arrowLeft = snap('baike');
+  document.dispatchEvent(new KeyboardEvent('keydown', {key: 'ArrowRight', bubbles: true, cancelable: true}));
+  await sleep(300); out.arrowRight = snap('baike');
+  other.click(); await sleep(350);                      // 收着 baike 离场，给下一趟重载当物证
+  out.beforeReload = snap('baike'); out.beforeReload.lsOpen = ls('kb-tree-open');
+  // ④ 二级子域行：点一下收、再点一下开，class 与 aria 同步
+  const subA = q('#tree .sub[data-dom="ui-r"][data-sub="notes"]');
+  const subSnap = () => {
+    const box = subA && subA.nextElementSibling;
+    return { collapsed: !!(subA && subA.classList.contains('collapsed')),
+             aria: subA ? subA.getAttribute('aria-expanded') : null,
+             box: rect(box), lsSub: ls('kb-sub-open'),
+             caret: caret(subA && subA.querySelector('.sub-ic')),
+             docVisible: !!(q('#tree .doc[data-name="alpha"]') || {}).getBoundingClientRect
+                         && q('#tree .doc[data-name="alpha"]').getBoundingClientRect().height > 0 };
+  };
+  out.sub0 = subSnap();
+  subA.click(); await sleep(400); out.sub1 = subSnap();
+  subA.click(); await sleep(400); out.sub2 = subSnap();
+  out.end = { lsOpen: ls('kb-tree-open'), lsSubdir: ls('kb-subdir-collapsed'),
+              lsSub: ls('kb-sub-open') };
+  return JSON.stringify(out);
+})()"""
+
+# 收起态**落盘**：上一趟把 baike 收了（fresh=False 不清存储），这一趟重新加载页面，
+# 必须还是收着的（旧写手那一份闭包会把 LS 写花，所以这里也顺带验"两份真相"没了）。
+TREE_RELOAD_JS = PRELUDE + r"""
+  for (let i = 0; i < 90 && !q('#tree .dom'); i++) await sleep(150);
+  await sleep(700);
+  const snap = id => {
+    const d = q('#tree .dom[data-dom="' + id + '"]');
+    const h = d && d.querySelector('.dom-head');
+    return { open: !!(d && d.classList.contains('open')),
+             aria: h ? h.getAttribute('aria-expanded') : null,
+             subsH: d ? Math.round(d.querySelector('.subs').getBoundingClientRect().height) : -1 };
+  };
+  out.uiR = snap('ui-r'); out.baike = snap('baike');
+  out.lsOpen = localStorage.getItem('kb-tree-open');
+  return JSON.stringify(out);
+})()"""
+
+
+def probe_tree_collapse(base):
+    print("== 32 左树一/二级：点已展开的域行必须收回去（真点 + 真量矩形 + class/aria/落盘） ==")
+    seed = "try{localStorage.setItem('kb-tree-open',JSON.stringify(['ui-r']));}catch(e){}"
+    url = base + "/doc/ui-r/notes/alpha.md"
+    d = run_expr(url, TREE_COLLAPSE_JS, init=seed)
+    st = d.get("start") or {}
+    cur1, cur2 = d.get("afterCur1") or {}, d.get("afterCur2") or {}
+    check("域行：打开文档时当前域是展开的（.subs 有真实高度，aria=true）",
+          (st.get("cur") or {}).get("open") is True
+          and ((st.get("cur") or {}).get("subs") or {}).get("h", 0) > 20
+          and (st.get("cur") or {}).get("aria") == "true", st)
+    check("域行：点已展开的域行**第二次点击真的收起**（class 掉、.subs 高度归 0、aria=false 同步）",
+          cur1.get("open") is False and (cur1.get("subs") or {}).get("h") == 0
+          and cur1.get("aria") == "false", cur1)
+    check("域行：收起只是切层级，绝不把这一篇导航走（URL 一个字节都没动）",
+          cur1.get("path") == d.get("startPath"), {"path": cur1.get("path"),
+                                                   "start": d.get("startPath")})
+    check("域行：再点一次展开回去（class/aria/.subs 高度三者一起回来）",
+          cur2.get("open") is True and cur2.get("aria") == "true"
+          and (cur2.get("subs") or {}).get("h", 0) > 20, cur2)
+    check("域行也有折叠指示：展开态行首三角转了 90°、收起态回到 0°（读 computed transform，不看截图）",
+          ((st.get("cur") or {}).get("caret") or "").startswith("matrix(0, 1")
+          and (cur1.get("caret") or "").startswith("matrix(1, 0"),
+          {"open": (st.get("cur") or {}).get("caret"), "closed": cur1.get("caret")})
+    o1, o2 = d.get("afterOther1") or {}, d.get("afterOther2") or {}
+    check("域行：展开另一个域时，当前域的展开记录不被抹掉（旧写手那份闭包集合会把 LS 写花）",
+          o1.get("open") is True and o1.get("curStillOpen") is True
+          and "ui-r" in (o1.get("lsOpen") or "") and "baike" in (o1.get("lsOpen") or ""), o1)
+    check("域行：收起 baike 只动 baike 自己（ui-r 的记录还在 LS 里）",
+          o2.get("open") is False and "ui-r" in (o2.get("lsOpen") or "")
+          and "baike" not in (o2.get("lsOpen") or ""), o2)
+    al, ar = d.get("arrowLeft") or {}, d.get("arrowRight") or {}
+    check("域行：点完域行就有 ←/→ 的操作锚点（与第三层同一套手势，左收右展且 class/aria 同步）",
+          al.get("open") is False and al.get("aria") == "false"
+          and ar.get("open") is True and ar.get("aria") == "true", {"left": al, "right": ar})
+    s0, s1, s2 = d.get("sub0") or {}, d.get("sub1") or {}, d.get("sub2") or {}
+    check("子域行：默认展开态下文档真的可见（.sub-docs 有高度、aria=true）",
+          s0.get("collapsed") is False and s0.get("aria") == "true"
+          and (s0.get("box") or {}).get("h", 0) > 20 and s0.get("docVisible") is True, s0)
+    check("子域行：点一下收起（class 与 aria 一起落回、文档矩形归 0）",
+          s1.get("collapsed") is True and s1.get("aria") == "false"
+          and (s1.get("box") or {}).get("h") == 0 and s1.get("docVisible") is False, s1)
+    check("子域行：再点一下展开（回到原样）",
+          s2.get("collapsed") is False and s2.get("aria") == "true"
+          and (s2.get("box") or {}).get("h", 0) > 20 and s2.get("docVisible") is True, s2)
+    check("折叠指示看得见：展开态行首三角转了 90°，收起态回到 0°（transform 矩阵判，不判截图）",
+          (s0.get("caret") or "").startswith("matrix(0, 1")
+          and (s1.get("caret") or "").startswith("matrix(1, 0")
+          and (s2.get("caret") or "").startswith("matrix(0, 1"),
+          {"open": s0.get("caret"), "closed": s1.get("caret")})
+    check("层级钥匙各管各的：点满一/二级之后第三层那份 kb-subdir-collapsed 一个字都没被写",
+          (d.get("end") or {}).get("lsSubdir") is None
+          and "ui-r/notes" in ((d.get("end") or {}).get("lsSub") or ""), d.get("end"))
+    # 收起态落盘：baike 现在是收着的，重新加载（不清存储）必须还收着
+    r = run_expr(url, TREE_RELOAD_JS, fresh=False)
+    check("收起态刷新后仍然生效（落盘的是 LS，不是这一帧的 DOM）",
+          (r.get("baike") or {}).get("open") is False
+          and (r.get("baike") or {}).get("subsH") == 0
+          and (r.get("baike") or {}).get("aria") == "false"
+          and (r.get("uiR") or {}).get("open") is True, r)
+    # 移动端：「分类」抽屉里就是这同一棵树
+    m = run_expr(base + "/doc/ui-r/notes/alpha.md", MOBILE_TREE_JS, width=390, init=seed)
+    check("[390px] 移动端「分类」抽屉复用同一棵树：域行点第一下收起（class/aria/矩形三者同步）",
+          m.get("navOn") is True and m.get("c1open") is False
+          and m.get("c1aria") == "false" and m.get("c1subsH") == 0, m)
+    check("[390px] 移动端再点一次展开，且抽屉不会因为切层级被关掉",
+          m.get("c2open") is True and m.get("c2subsH", 0) > 20
+          and m.get("c2navOn") is True, m)
+    check("[390px] 移动端子域行同样能收起/展开",
+          m.get("s1collapsed") is True and m.get("s2collapsed") is False, m)
+
+
+MOBILE_TREE_JS = PRELUDE + r"""
+  for (let i = 0; i < 90 && !q('#tree .dom'); i++) await sleep(150);
+  await sleep(700);
+  q('#kb-nav-tab').click(); await sleep(500);          // 唤出「分类」抽屉
+  const dom = q('#tree .dom[data-dom="ui-r"]');
+  const head = dom.querySelector('.dom-head');
+  const subs = dom.querySelector('.subs');
+  const H = () => Math.round(subs.getBoundingClientRect().height);
+  out.navOn = q('main').classList.contains('kb-nav-on');
+  out.open0 = dom.classList.contains('open'); out.h0 = H();
+  head.click(); await sleep(400);
+  out.c1open = dom.classList.contains('open'); out.c1aria = head.getAttribute('aria-expanded');
+  out.c1subsH = H(); out.c1navOn = q('main').classList.contains('kb-nav-on');
+  head.click(); await sleep(400);
+  out.c2open = dom.classList.contains('open'); out.c2aria = head.getAttribute('aria-expanded');
+  out.c2subsH = H(); out.c2navOn = q('main').classList.contains('kb-nav-on');
+  const subA = q('#tree .sub[data-dom="ui-r"][data-sub="notes"]');
+  const subH = () => Math.round(subA.nextElementSibling.getBoundingClientRect().height);
+  out.s0h = subH();
+  subA.click(); await sleep(400); out.s1collapsed = subA.classList.contains('collapsed');
+  subA.click(); await sleep(400); out.s2collapsed = subA.classList.contains('collapsed');
+  out.s2h = subH();
+  return JSON.stringify(out);
+})()"""
+
+
+# ---------------------------------------------------------------- 探针 33：顶栏「阅读历史」开关态永远同步
+# 用户报的毛病（任务 5）：面板收了钮还亮着 / 再点一次不是切换。
+# 口径：**任何一条路径**之后，钮的 .on、aria-expanded、#p-left.hist-on、面板 computed display
+# 四样必须互相一致 —— 开关态只有 #p-left.hist-on 一个判据，其余全是它的投影。
+HIST_TOGGLE_JS = PRELUDE + r"""
+  for (let i = 0; i < 100 && !q('#kb-hist-btn'); i++) await sleep(50);
+  await sleep(600);
+  const btn = q('#kb-hist-btn'), left = q('#p-left');
+  // 面板是懒建的：一次都没点开过就没有这个节点，那就等于"看不见"，别把 null 当成有 display
+  const d = sel => { const e = q(sel); return e ? getComputedStyle(e).display : 'none'; };
+  const md = (el) => el.dispatchEvent(new MouseEvent('mousedown', {bubbles: true, cancelable: true}));
+  const esc = () => document.dispatchEvent(new KeyboardEvent('keydown', {key: 'Escape', bubbles: true, cancelable: true}));
+  /* 四样读回来一起判，而且**每一个状态都判**：开关态只有 #p-left.hist-on 一个判据，
+     钮的 .on、aria-expanded、面板可见性必须全是它的投影（任何一条路径之后都不许失衡）。 */
+  const st = () => {
+    const s = {
+      histOn: left.classList.contains('hist-on'),
+      on: btn.classList.contains('on'),
+      aria: btn.getAttribute('aria-expanded'),
+      disp: d('#kb-hist'),
+      tree: d('#tree'),
+      navOn: q('main').classList.contains('kb-nav-on'),
+    };
+    s.ok = s.on === s.histOn && (s.aria === 'true') === s.histOn && (s.disp !== 'none') === s.histOn;
+    return s;
+  };
+  const consistent = s => s.ok;
+  out.s0 = st(); out.k0 = consistent(out.s0);
+  btn.click(); await sleep(350); out.s1 = st(); out.k1 = consistent(out.s1);
+  btn.click(); await sleep(350); out.s2 = st(); out.k2 = consistent(out.s2);      // 再点一次 = 切回
+  btn.click(); await sleep(350); out.s3 = st(); out.k3 = consistent(out.s3);
+  // 面板右上角的 ×
+  q('.kb-hist-x').click(); await sleep(350); out.s4 = st(); out.k4 = consistent(out.s4);
+  btn.click(); await sleep(350); out.s5 = st();
+  // 点在面板**内部**不算外面（不许一按列表区就把面板收了）
+  md(q('#kb-hist')); await sleep(300); out.s6 = st(); out.k6 = consistent(out.s6);
+  // 点在按钮上也不算外面（mousedown 先收、onclick 再翻 = 二次错位，必须整个跳过）
+  md(btn); await sleep(300); out.s7 = st(); out.k7 = consistent(out.s7);
+  // 点在正文 = 外面：宽屏靠 document 级 mousedown，窄屏靠抽屉自己的"点抽屉外"手势
+  const outEl = q('#article') || q('main');
+  md(outEl); outEl.dispatchEvent(new MouseEvent('click', {bubbles: true, cancelable: true}));
+  await sleep(350); out.s8 = st(); out.k8 = consistent(out.s8);
+  btn.click(); await sleep(350); out.s9 = st();
+  esc(); await sleep(350); out.s10 = st(); out.k10 = consistent(out.s10);          // Esc
+  btn.click(); await sleep(350); out.s11 = st();
+  q('.rtab[data-pane="info"]').click(); await sleep(550); out.s12 = st(); out.k12 = consistent(out.s12);
+  if (!st().histOn) { btn.click(); await sleep(350); }        // 换文档之前先确保是开着的
+  out.s12b = st();
+  const link = q('#tree a[href$="gamma"]') || q('a[href$="/gamma"]');
+  if (link) { link.click(); await sleep(2200); }
+  out.s13 = st(); out.k13 = consistent(out.s13);
+  out.path13 = location.pathname;
+  out.allKeys = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13].map(i => !!(out['s' + i] || {}).ok);
+  return JSON.stringify(out);
+})()"""
+
+
+def probe_hist_toggle(base):
+    print("== 33 顶栏「阅读历史」：开关态在每条路径上都必须同步（真点 + 真读 classList/aria/display） ==")
+    url = base + "/doc/ui-r/notes/alpha"
+    narrow = None
+    for w, tag in ((1440, "[1440px]"), (390, "[390px]")):
+        d = run_expr(url, HIST_TOGGLE_JS, width=w)
+        if w == 390:
+            narrow = d
+        g = lambda k: d.get(k) or {}
+        check(f"{tag} 默认关：钮不亮、aria=false、面板不占地方",
+              g("s0").get("histOn") is False and g("s0").get("on") is False
+              and g("s0").get("aria") == "false" and g("s0").get("disp") in (None, "none"), g("s0"))
+        check(f"{tag} 点一下开：hist-on / .on / aria=true / 面板可见 四样一起到位（树让位）",
+              g("s1").get("histOn") is True and g("s1").get("on") is True
+              and g("s1").get("aria") == "true" and g("s1").get("disp") != "none"
+              and g("s1").get("tree") == "none", g("s1"))
+        check(f"{tag} 不传 force 时读当前态取反：再点一次是**收起**不是再展开",
+              g("s2").get("histOn") is False and g("s2").get("on") is False
+              and g("s2").get("aria") == "false" and g("s2").get("tree") != "none", g("s2"))
+        check(f"{tag} 第三次点击又展开（开关是交替不是单向）",
+              g("s3").get("histOn") is True and g("s3").get("on") is True, g("s3"))
+        check(f"{tag} 面板右上角 × 关掉时，钮的 .on 与 aria 一起落回（不许只剩 aria 骗读屏）",
+              g("s4").get("histOn") is False and g("s4").get("on") is False
+              and g("s4").get("aria") == "false", g("s4"))
+        check(f"{tag} 点在面板内部不算「外面」：mousedown 之后面板照旧开着",
+              g("s6").get("histOn") is True and g("s6").get("on") is True, g("s6"))
+        check(f"{tag} 点在按钮上的 mousedown 被跳过：不能收了又被 onclick 翻回来（二次错位）",
+              g("s7").get("histOn") is True and g("s7").get("on") is True, g("s7"))
+        check(f"{tag} 点在正文（抽屉外/遮罩那一片）算「外面」：面板收起且钮跟着回落",
+              g("s8").get("histOn") is False and g("s8").get("on") is False
+              and g("s8").get("aria") == "false", g("s8"))
+        check(f"{tag} Esc 关掉面板同时把钮落回",
+              g("s10").get("histOn") is False and g("s10").get("on") is False
+              and g("s10").get("aria") == "false", g("s10"))
+        if w == 390:
+            check(f"{tag} 窄屏从顶栏点进来时「分类」抽屉一起顶出来（钮亮了而东西在屏外 = 假入口）",
+                  g("s1").get("navOn") is True, g("s1"))
+            check(f"{tag} 点右栏页签会让「分类」抽屉让位 —— 历史面板与那颗钮必须一起回落",
+                  g("s12").get("histOn") is False and g("s12").get("on") is False
+                  and g("s12").get("navOn") is False, g("s12"))
+        else:
+            check(f"{tag} 宽屏点右栏页签与历史面板无关：面板照旧开着且四样仍一致",
+                  g("s12").get("histOn") is True and g("s12").get("on") is True, g("s12"))
+        check(f"{tag} 换文档（客户端路由真跳到另一篇）后钮与面板一起回落",
+              (d.get("path13") or "").endswith("/gamma")
+              and g("s13").get("histOn") is False and g("s13").get("on") is False
+              and g("s13").get("aria") == "false", {"path": d.get("path13"), "s13": g("s13")})
+        check(f"{tag} 每一步都满足不变式：.on 与 aria-expanded 恒等于 hist-on，面板可见性同判据",
+              len(d.get("allKeys") or []) == 14 and all(d.get("allKeys") or []),
+              {"keys": d.get("allKeys"), "states": [g("s5"), g("s9"), g("s11"), g("s12b")]})
+    check("[390px] 抽屉那些关闭手势都落在同一个同步点（窄屏整趟 14 个状态无一失衡）",
+          bool((narrow or {}).get("allKeys")) and all((narrow or {}).get("allKeys") or []),
+          {"keys": (narrow or {}).get("allKeys")})
+
+
+# ---------------------------------------------------------------- 探针 34：打开任意文章默认落在「目录」页签
+# 成因（任务 7）：页签的默认 active 按 doc.has_html 分岔，带 active 的面板恒为 #pane-toc
+# —— 两边判据不一致，于是"美化版那一篇"一打开页签亮着「标签」、画面却是目录。
+# 现在两边都由同一个判据（toc）派生，窄屏那三颗页签的落回口径也不能再造出二次错位。
+DEFAULT_TAB_JS = PRELUDE + r"""
+  for (let i = 0; i < 80 && !q('.rtab'); i++) await sleep(150);
+  await sleep(700);
+  const R = e => { const b = e && e.getBoundingClientRect(); return b ? {h: Math.round(b.height), w: Math.round(b.width), disp: getComputedStyle(e).display} : null; };
+  const read = () => {
+    const tabs = [...document.querySelectorAll('.rtab[data-pane]')];
+    const actTabs = tabs.filter(t => t.classList.contains('active'));
+    const sel = tabs.filter(t => t.getAttribute('aria-selected') === 'true');
+    const panes = [...document.querySelectorAll('.rpane')].filter(p => p.classList.contains('active'));
+    return {
+      tabPanes: actTabs.map(t => t.dataset.pane),
+      selPanes: sel.map(t => t.dataset.pane),
+      paneIds: panes.map(p => p.id),
+      paneRect: panes.length ? R(panes[0]) : null,
+      tocVisible: R(q('#pane-toc')),
+    };
+  };
+  out.firstPaint = read();
+  out.consistent = out.firstPaint.tabPanes.length === 1
+    && out.firstPaint.paneIds.length === 1
+    && out.firstPaint.tabPanes[0] === 'toc'
+    && out.firstPaint.paneIds[0] === 'pane-toc'
+    && out.firstPaint.selPanes.join(',') === 'toc';
+  // 点「标签」页签：页签与面板必须一起搬过去（不许只亮一个）
+  q('.rtab[data-pane="info"]').click(); await sleep(500);
+  out.afterInfo = read();
+  // 再换一篇文档：窄屏 clamp 只在 notes/links 上落回目录，桌面/信息页签保持用户选择
+  const link = q('a[href$="/gamma"]') || q('#tree a[href$="gamma"]');
+  if (link) { link.click(); await sleep(2200); }
+  out.afterNav = read();
+  out.path = location.pathname;
+  return JSON.stringify(out);
+})()"""
+
+
+def probe_default_tab(base):
+    print("== 34 打开任意文章：默认页签与默认面板必须同一个判据（都落「目录」） ==")
+    for rel, why in (("/doc/ui-r/notes/alpha.md", "纯 Markdown 那一篇"),
+                     ("/doc/ui-r/notes/beta.md", "旁挂美化版的那一篇（旧写法在这儿分岔）"),
+                     ("/doc/ui-r/notes/beta.html", "美化版本体")):
+        for w in (1440, 390):
+            d = run_expr(base + rel, DEFAULT_TAB_JS, width=w)
+            fp = d.get("firstPaint") or {}
+            tag = f"[{w}px {why}]"
+            check(f"{tag} 首屏默认落在「目录」：唯一的 active 页签是 toc",
+                  fp.get("tabPanes") == ["toc"] and fp.get("selPanes") == ["toc"], fp)
+            check(f"{tag} 唯一 active 的面板就是 #pane-toc（页签与面板不是两套判据）",
+                  fp.get("paneIds") == ["pane-toc"], fp)
+            check(f"{tag} 页签态与面板态自洽（四组读数合起来成立，不是各亮各的）",
+                  d.get("consistent") is True, d)
+            ai = d.get("afterInfo") or {}
+            check(f"{tag} 点「标签」后页签与面板一起搬到 info（不出现页签亮着目录、画面是标签）",
+                  ai.get("tabPanes") == ["info"] and ai.get("paneIds") == ["pane-info"], ai)
+            check(f"{tag} 换文档后仍然只有一个 active 页签与一个 active 面板（clamp 没造出二次错位）",
+                  len((d.get("afterNav") or {}).get("tabPanes") or []) == 1
+                  and len((d.get("afterNav") or {}).get("paneIds") or []) == 1
+                  and (d.get("path") or "").endswith("/gamma"), d.get("afterNav"))
 
 
 # ---------------------------------------------------------------- 探针 25：会话隔离护栏
@@ -2562,6 +2981,9 @@ def main() -> int:
         run_probe("chips", probe_head_chips, base)      # 只读：chips / 右栏跳转 / 元信息 / 编辑提示
         run_probe("tree", probe_tree_open, base)        # 只读：点树里的文档真的换页
         run_probe("reveal", probe_tree_reveal, base)    # 只读：深链打开 → 树自动展开并聚焦
+        run_probe("collapse", probe_tree_collapse, base)  # 只读：一/二级域行再点一次收得回去 + 落盘 + 移动端
+        run_probe("histtoggle", probe_hist_toggle, base)   # 只读：阅读历史开关态在每条路径上都同步
+        run_probe("defaulttab", probe_default_tab, base)   # 只读：默认页签与默认面板同一个判据
         run_probe("railsheet", probe_rail_sheet, base)  # 只读：窄屏右栏=贴底工具栏，点页签上滑展开
         run_probe("pretty", probe_pretty, base)         # 只读：美化版出口与只读态
         run_probe("finish", probe_finish_bar, base, tmp)  # 写 reading.db 的 doc_marks（不动语料）

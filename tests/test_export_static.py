@@ -360,14 +360,18 @@ def main() -> int:
               appjs.count("function treeOpenSet()") == 1)
         # 窄屏右栏 = 贴底工具栏（用户实拍：旧写法把那一坨卡在正文中段）
         kbc_css = (ROOT / "static" / "kb-core.css").read_text(encoding="utf-8")
-        check("窄屏工具栏固定在底部并压在状态栏之上；收起态面板真的不在流里，" 
-              "展开态是贴右边缘的侧边抽屉",
-              "position:fixed;left:0;right:0;bottom:28px" in kbc_css
+        check("窄屏撤掉状态栏（用户图3）、页签条自己 fixed 贴视口底边并浮在抽屉之上；"
+              "收起态面板真的不在流里，展开态是贴右边缘的**满高**侧边抽屉（用户图6）",
+              ".statusbar{display:none}" in kbc_css
+              and "position:fixed;left:0;right:0;bottom:0;top:auto" in kbc_css
+              and "main>section.rail .rtabs{position:fixed;left:0;right:0;bottom:0;z-index:62;" in kbc_css
               and "main>section.rail .rpane{display:none}" in kbc_css
               # style.css:607 的 `#pane-toc.active{display:flex}` 是 id 级，收起态必须用同级别的
               # :is() 才压得住 —— 压不住就是"工具栏下面挂一坨目录"（用户实拍）。
               and "main>section.rail:not(.rail-open) :is(#pane-toc,#pane-info,#pane-links,#pane-notes).active{display:none}" in kbc_css
-              and "position:fixed;right:0;top:0;left:auto" in kbc_css
+              and "position:fixed;right:0;top:0;left:auto;bottom:0;z-index:61" in kbc_css
+              # 满高抽屉的底边由"内容留出工具栏高度"负责，而不是把抽屉本身截短
+              and "padding:12px 14px calc(var(--kb-bar) + 26px + env(safe-area-inset-bottom))" in kbc_css
               and "animation:kb-rail-side" in kbc_css)
         check("抽屉的开合只在 app.js 一处实现（railSheet），Esc 链引用它",
               appjs.count("function railSheet(") == 1
@@ -382,11 +386,12 @@ def main() -> int:
         check("抽屉与页签的实现各只有一处，Esc 链两环都在",
               appjs.count("function navSheet(") == 1 and "window.navSheetClose" in appjs
               and "window.navSheetClose === \"function\"" in kbc)
-        check("唤出左树的规则与隐藏它的是同一档断点（860），且抽屉压在工具栏之上",
+        check("唤出左树的规则与隐藏它的是同一档断点（860），且分类抽屉也是满高、底边由内容留白让给工具栏",
               "@media (max-width:860px)" in kbc_css
               and ".rtab.kb-nav-tab{display:inline-flex}" in kbc_css
+              and "display:none;position:fixed;left:0;right:auto;top:0;z-index:59;bottom:0;" in kbc_css
               and "main.kb-nav-on>section.panel#p-left" in kbc_css
-              and "bottom:calc(28px + var(--kb-bar) + 1px" in kbc_css
+              and "padding:0 2px calc(var(--kb-bar) + 20px + env(safe-area-inset-bottom))" in kbc_css
               and "@media (min-width:861px){\n  .rtab.kb-nav-tab{display:none}" in kbc_css)
         # 窄屏贴底工具栏只留三颗（用户 2026-10-08 拍板：备注/双链手机上不给入口，宽屏照旧）
         check("窄屏藏掉「备注」「双链」两颗页签，且面板展开不再走 max-height 过渡（半开帧就是红框那张）",

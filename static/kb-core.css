@@ -278,24 +278,36 @@ main.single:not(:has(> .page-panel)){overflow-y:auto}
     content:"";position:fixed;inset:0;z-index:7;
     background:color-mix(in oklab,var(--c-ink),transparent 62%)
   }
-  /* 底部工具栏的高度只有一个来源：--kb-bar。分类抽屉要贴在它上面，
-     靠手算像素会差 1~2px（实测就是差这一点被几何断言抓住），所以让它引用同一个数。 */
-  main{--kb-bar:60px;padding-bottom:104px}
+  /* 窄屏不要状态栏（用户 2026-10-09 图3：手机上那一行「知库 · 公网只读档 …… 1002 篇可全文检索」
+     是纯噪音）。本地与公网两档一起消失 —— 公网那份文案是 kb-static.js 改写内容，
+     版式仍走 `.statusbar`，所以一条选择器管住两边。工具栏因此不再"压在状态栏上"，改贴视口底边。 */
+  .statusbar{display:none}
+  /* 底部工具栏的高度只有一个来源：--kb-bar。抽屉要给工具栏让出底边，
+     靠手算像素会差 1~2px（实测就是差这一点被几何断言抓住），所以全部引用同一个数。 */
+  main{--kb-bar:60px;padding-bottom:calc(var(--kb-bar) + 20px + env(safe-area-inset-bottom))}
   /* 右栏在窄屏不再是"流里的一块"（旧写法 position:sticky + 面板内联展开，
      结果是整块卡在正文中段 —— 用户实拍就是这个）。
-     现在：tabs 固定成底部工具栏，面板默认收起，点页签才从下往上展开（app.js railSheet）。
-     状态栏（28px，flex:none 在 body 末尾）仍在最底下，所以工具栏压在它上面。 */
+     现在：页签条 fixed 成底部工具栏（下面那条 .rtabs），面板默认收起，点开是侧边抽屉。
+     这一层只剩"抽屉的父级"，自己不再画底、不再投影，否则满高抽屉后面会多出一条灰带。 */
   main>section.rail{
-    display:flex;position:fixed;left:0;right:0;bottom:28px;top:auto;order:initial;z-index:60;
+    display:flex;position:fixed;left:0;right:0;bottom:0;top:auto;order:initial;z-index:60;
     flex-direction:column;max-height:none;margin:0;border-radius:0;
-    background:var(--c-panel);border-top:1px solid var(--c-line);border-bottom:0;
-    box-shadow:0 -10px 28px rgba(0,0,0,.16);padding-bottom:env(safe-area-inset-bottom)
+    background:transparent;border-top:0;border-bottom:0;box-shadow:none;padding-bottom:0
   }
-  main>section.rail .rtabs{flex-wrap:nowrap;overflow-x:auto;min-height:var(--kb-bar);align-items:stretch}
+  /* 工具栏抬成独立一条贴底 fixed，并浮在抽屉之上（z 62 > 抽屉 61 / 分类 59）。
+     为什么要盖在抽屉上面：用户 2026-10-09 图6 要求抽屉**撑满整个设备高度**（口径是
+     "像设置那种满高弹层"），工具栏若被抽屉盖住，"再点当前页签收起"这条手势在手机上
+     就没有落点了；抬上来之后从「分类」抽屉里也能直接切「目录 / 标签」。 */
+  main>section.rail .rtabs{position:fixed;left:0;right:0;bottom:0;z-index:62;
+    flex-wrap:nowrap;overflow-x:auto;min-height:var(--kb-bar);align-items:stretch;
+    background:var(--c-panel);border-top:1px solid var(--c-line);
+    box-shadow:0 -10px 28px rgba(0,0,0,.16);padding-bottom:env(safe-area-inset-bottom)}
   main>section.rail .rtab{min-height:44px;flex:1 0 auto;justify-content:center}
   /* 面板：**侧边抽屉**，不是从底部顶起来的一坨（用户 2026-10-08 明确要求）。
-     从右边缘滑入：顶到屏幕上沿、底边停在工具栏上沿（状态栏 28 + --kb-bar + 上边线 1 +
-     安全区），宽 86vw 上限 380px，自己滚。开合手势一条没动（再点当前页签 / Esc /
+     从右边缘滑入，**撑满整个视口高度**（用户 2026-10-09 图6：旧写法底边停在工具栏上沿，
+     只占正文那一截，看着矮一截 —— 口径要对齐「设置」那种满高弹层）。
+     内容底部留出 --kb-bar + 26px，避免最后一行被浮在上面的工具栏压住。
+     宽 86vw 上限 380px，自己滚。开合手势一条没动（再点当前页签 / Esc /
      点外面 / 换文档），落点仍在 app.js::railSheet。
      也不走 max-height 过渡：那条过渡会在 ~350ms 里停在几十像素高的形状上，
      用户实拍到的正是那个"只露出标题行的半开面板"。 */
@@ -305,11 +317,11 @@ main.single:not(:has(> .page-panel)){overflow-y:auto}
      正是用户实拍"底部弹出一坨"的那一条。这里用 :is() 把 id 抬到同一级再赢。 */
   main>section.rail:not(.rail-open) :is(#pane-toc,#pane-info,#pane-links,#pane-notes).active{display:none}
   main>section.rail.rail-open .rpane.active{
-    display:block;position:fixed;right:0;top:0;left:auto;z-index:61;
-    bottom:calc(28px + var(--kb-bar) + 1px + env(safe-area-inset-bottom));
+    display:block;position:fixed;right:0;top:0;left:auto;bottom:0;z-index:61;
     width:min(86vw,380px);max-height:none;overflow-y:auto;
     background:var(--c-panel);border-left:1px solid var(--c-line);border-top:0;
-    box-shadow:-16px 0 40px rgba(0,0,0,.18);padding:12px 14px 16px;
+    box-shadow:-16px 0 40px rgba(0,0,0,.18);
+    padding:12px 14px calc(var(--kb-bar) + 26px + env(safe-area-inset-bottom));
     animation:kb-rail-side var(--dur-2) var(--ease-out)
   }
   /* 窄屏贴底工具栏只留三颗：分类 / 目录 / 标签。备注与双链是"对着这一篇写作"的
@@ -333,17 +345,18 @@ main.single:not(:has(> .page-panel)){overflow-y:auto}
   .rtab.kb-nav-tab{display:inline-flex}
   /* 「分类」抽屉：与右栏那三颗**同一种形状** —— 从左边缘滑入的侧边栏，
      不是从底部顶起来的一坨（用户 2026-10-08 明确要求，两条抽屉方向相反正好对应
-     桌面端的左右两栏）。底边同样停在工具栏上沿，引用同一个 --kb-bar。
+     桌面端的左右两栏），并且同样**撑满整个视口高度**（用户 2026-10-09 图6）。
+     底边留给浮在上面的工具栏（引用同一个 --kb-bar），不然最后一行文档会被盖住。
      也不走 max-height 过渡：半开帧会被拍成"只露一行"的空壳（§6 127）。 */
   main>section.panel#p-left{
-    display:none;position:fixed;left:0;right:auto;top:0;z-index:59;
-    bottom:calc(28px + var(--kb-bar) + 1px + env(safe-area-inset-bottom));   /* 28=状态栏，1=工具栏上边线 */
+    display:none;position:fixed;left:0;right:auto;top:0;z-index:59;bottom:0;
     width:min(86vw,360px);max-height:none;overflow-y:auto;margin:0;border-radius:0;
     background:var(--c-panel);border:0;border-right:1px solid var(--c-line);
     box-shadow:16px 0 40px rgba(0,0,0,.18)
   }
   main.kb-nav-on>section.panel#p-left{
-    display:flex;padding:0 2px 6px;animation:kb-nav-side var(--dur-2) var(--ease-out)
+    display:flex;padding:0 2px calc(var(--kb-bar) + 20px + env(safe-area-inset-bottom));
+    animation:kb-nav-side var(--dur-2) var(--ease-out)
   }
 }
 /* 两条侧边抽屉的入场：从各自的边缘滑进来。位移只在动画期间存在，

@@ -285,8 +285,8 @@
      导出时烤进产物的字符串是本地实例的口径（statusbar 写「本地阅读器」、右端地址
      是构建机看到的 localhost、<title> 冻结在导出时那一篇的子域名），照搬上线就是假信息。 */
   var RO_TAG = "公网只读档";
-  /* 状态栏四段在 375px 档是横向滚动的（.statusbar{overflow-x:auto}），
-     所以公网措辞按"不比本地版更长"来定：本地实测 sb-src 225px / sb-fts 106px，
+  /* 状态栏只在 >980 出现（≤980 由 kb-core.css 整条撤掉，用户 2026-10-09 图3：手机上这一行是噪音）。
+     公网措辞仍按"不比本地版更长"来定：本地实测 sb-src 225px / sb-fts 106px，
      初稿写成「本档为只读快照（编辑与统计在本地阅读器）」把溢出从 105px 顶到 272px。 */
   function fixCopy() {
     var acc = document.querySelector(".sb-acc");

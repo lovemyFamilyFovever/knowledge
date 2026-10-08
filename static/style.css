@@ -338,6 +338,17 @@ main.single{display:flex;flex-direction:column}
 .sub.collapsed .sub-t{opacity:.85}
 /* 二级文档容器：默认展开，.collapsed 时隐藏（纯原地切换，无跳转） */
 .sub-docs.collapsed{display:none}
+/* ---- 一/二级"能不能收起"的视觉线索（行为面见 app.js::wireDomHeadToggle 与树点击委托）----
+   行首图标右上角一颗小三角：收起 = 指右，展开 = 转 90° 指下。
+   绝对定位 + border 画的零盒伪元素，不参与布局 —— 行高、缩进、图标尺寸一个像素都不动
+   （几何面归 kb-core.css，这里只借现成的行首图标当锚点，模板与渲染都不用加节点）。 */
+.dom-head .dom-glyph,.sub .sub-ic{position:relative}
+.dom-head .dom-glyph::after,.sub .sub-ic::after{content:"";position:absolute;right:-4px;top:-3px;
+  width:0;height:0;border-style:solid;border-width:3.5px 0 3.5px 5px;
+  border-color:transparent transparent transparent var(--muted);
+  transform:rotate(0deg);transform-origin:20% 50%;
+  transition:transform var(--dur-1) var(--ease-out);pointer-events:none}
+.dom.open > .dom-head .dom-glyph::after,.sub:not(.collapsed) .sub-ic::after{transform:rotate(90deg)}
 /* 目录中的文档项：不再渲染标签 chips（用户要求），改为「文件类型前缀图标」 */
 .doc-t .doc-ic{flex:none;display:inline-flex;align-items:center;justify-content:center;
   width:16px;height:16px;color:var(--muted);opacity:.92}
@@ -1219,7 +1230,4 @@ body::after{content:"";position:fixed;inset:0;z-index:1;pointer-events:none;
   .pill.icon-only{width:34px;height:34px}
   #theme-btn{width:34px}
   .iconbtn{min-height:34px}
-  /* 状态栏横向滚动 + 隐藏次要信息 */
-  .statusbar{overflow-x:auto;white-space:nowrap;gap:12px}
-  .statusbar .right{display:none}
 }
