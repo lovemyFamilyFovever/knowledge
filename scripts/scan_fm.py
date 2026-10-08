@@ -4,9 +4,9 @@ import os
 import re
 import sys
 
-# 仓库根按脚本位置推导（scripts/agent/ 的上两级），换机器/换盘符都可用；argv[1] 可显式覆盖
+# 仓库根按脚本位置推导（scripts/ 的上两级），换机器/换盘符都可用；argv[1] 可显式覆盖
 root = sys.argv[1] if len(sys.argv) > 1 else os.path.join(
-    os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "content")
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "content")
 fm_start = re.compile(r"\A---\s*\n")
 fm_block = re.compile(r"\A---\s*\n[\s\S]*?\n---\s*\n")
 fm_open = re.compile(r"\s*---\s*\n[\s\S]*?\n---\s*\n")

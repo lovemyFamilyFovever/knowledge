@@ -606,23 +606,10 @@ async function decorateWikilinks() {
 function enhanceArticleDOM(el) {
   el.querySelectorAll(".a-body h1, .a-body h2, .a-body h3, .a-body h4").forEach(h => {
     if (h.id) return;
-    // B5：标题 id = 文本去空白后空格→连字符，与 learn.js anchorHash 同一规则 ——
-    // 闪卡「跳转原文」的 #锚点 第一次真正可定位（marked 不生成 heading id，
-    // buildToc 的 sec-N 与卡片 anchor 永远接不上）。重名标题保留首个。
+    // B5：标题 id = 文本去空白后空格→连字符。marked 不生成 heading id，而没有 id
+    // 就没有落点：URL fragment 由 scrollToHash() 按 id 定位。重名标题保留首个。
     const slug = (h.textContent || "").trim().replace(/\s+/g, "-");
     if (slug && !document.getElementById(slug)) h.id = slug;
-    // 题号锚点：抽卡器给面试卡的 anchor 是 `Q{no}`（app/cards.py 的 I-5/I-5b），
-    // 而面试语料的题干标题写成 `### N. 题干｜难度` —— slug id 是整句、跟 Q1 接不上，
-    // 于是复习页「跳转原文」一直落在页首。这里在标题前挂一个**出流**的空 span 承载
-    // #Q{n}：slug id 一个不动（[[x#小节]] 与 I-1 卡的落点还靠它），position:absolute
-    // + 零尺寸保证像素与改前逐点相同。重号（每节各自从 1 编号）保留首个。
-    const qno = (h.textContent || "").trim().match(/^(\d+)\s*[.、]/);
-    if (qno && !document.getElementById("Q" + qno[1])) {
-      const a = document.createElement("span");
-      a.className = "kb-qanchor";
-      a.id = "Q" + qno[1];
-      h.before(a);
-    }
   });
   // markdown 渲染重构 · 步骤1：按 ## 分组成 .sec-card 小节卡（幂等：整 body 只包一次）；
   // H1（文章大标题）之后的游离内容留在卡外，与实验页行为一致
@@ -2141,37 +2128,11 @@ async function fixDeadLink(raw) {
   if (document.querySelector("#pane-links.active")) loadLinks(); // 面板停留时立即重载（断链行消失）
 }
 
-/* ---------- 美化版弹窗（KB.overlay：Esc/遮罩/焦点归还统一，问题13） ---------- */
-let PRETTY_OV = null;
-function openPretty() {
-  if (!DOC || !DOC.has_html) return;
-  if (PRETTY_OV) PRETTY_OV.close("re-open");
-  const rawHref = rawUrl(DOC.html_rel);
-  const ov = KB.overlay.open({
-    className: "pretty-ov show",
-    html: `<div class="pretty-box">
-      <div class="pretty-bar"><span class="pt">${esc(DOC.title)} · 美化版</span>
-        <a class="iconbtn" id="pretty-newtab" href="${rawHref}" target="_blank">${icon("external-link", 12)} 新窗口</a>
-        <button class="iconbtn pp-close">${icon("cancel-x", 12)} 关闭</button></div>
-      <iframe src="${rawHref}" sandbox="allow-same-origin allow-popups" title="${esc(DOC.title)}"></iframe></div>`,
-    onClose: () => { PRETTY_OV = null; },
-  });
-  PRETTY_OV = ov;
-  ov.root.querySelector(".pp-close").onclick = () => ov.close("btn");
-  
-}
-function closePretty() { if (PRETTY_OV) PRETTY_OV.close("api"); }
-
 /* ---------- 右键菜单：文档移动 / 复制双链 / 统计信息 ----------
    问题13：改走 KB.overlay——Esc 关闭、关闭归还焦点、Tab 被困在菜单内；
    新增 ↑↓ 导航 + 打开即聚焦首项，配合下方 ContextMenu/Shift+F10 唤起入口。 */
 let CTX = null; // 当前菜单目标 {kind:'doc'|'sub', rel|domain, sub, name}
 let CTX_OV = null;
-
-function closeCtxMenu() {
-  if (CTX_OV) { const o = CTX_OV; CTX_OV = null; o.close("api"); }
-  CTX = null;
-}
 
 function docRelOf(domain, sub, name) {
   return sub === "_root" ? `${domain}/${name}.md` : `${domain}/${sub}/${name}.md`;

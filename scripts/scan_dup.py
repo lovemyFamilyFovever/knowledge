@@ -4,8 +4,8 @@ import re
 import sys
 from pathlib import Path
 
-# 仓库根按脚本位置推导（scripts/agent/ 的上两级），换机器/换盘符都可用；argv[1] 可显式覆盖
-root = Path(sys.argv[1]) if len(sys.argv) > 1 else Path(__file__).resolve().parents[2] / "content"
+# 仓库根按脚本位置推导（scripts/ 的上两级），换机器/换盘符都可用；argv[1] 可显式覆盖
+root = Path(sys.argv[1]) if len(sys.argv) > 1 else Path(__file__).resolve().parents[1] / "content"
 pat = re.compile(r"^(.*)-(\d{1,4})$")
 dupes = []
 for p in root.rglob("*.md"):

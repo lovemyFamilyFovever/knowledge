@@ -24,7 +24,7 @@ app/rag.py          本地语义检索（切块 → ONNX 嵌入 → sqlite-vec�
 app/reading.py      阅读统计（事件制：open / read_minute / finish 只追加）
 static/             前端（经典脚本，无构建工具）
 static/kb-static.js 只读适配器：只在导出产物里加载，把同一套前端改成公网只读档
-scripts/            迁移与维护脚本（scripts/agent/ 是跨会话常驻工具）
+scripts/            迁移与维护脚本（scripts/ 是跨会话常驻工具）
 tests/              15 套自执行测试（无 pytest，`python tests/test_x.py`）
 docs/               当前设计规格与交接
 测试文件/覆盖台账.md  覆盖率台账（§0 数字由 check_ledger_counts.py 对账，已进门禁）
@@ -89,7 +89,7 @@ pip install -r requirements\requirements-rag.txt               # 依赖装在哪
 - `scripts/backup_reading.py` — `reading.db` 轮转备份
 - `scripts/daily_backup.ps1` — content/ 变更自动 commit + push（**未注册计划任务**，启用须用户在场）
 - `scripts/check_*.py` — 门禁：frontmatter 严格 YAML / 台账对账 / 悬空 CSS 令牌 / RAG 版本
-- `scripts/agent/` — 跨会话常驻工具：截图、像素对比、CDP 求值、多视口几何、CI 盯梢、语料扫描
+- `scripts/` — 跨会话常驻工具：截图、像素对比、CDP 求值、多视口几何、CI 盯梢、语料扫描
 
 ## 纪律
 

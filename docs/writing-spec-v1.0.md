@@ -50,7 +50,7 @@
 - UTF-8 无 BOM、LF、结尾换行。
 
 ## 7. 交付自检
-每篇 `python scripts/agent/check_rewrite.py <path>` 全 PASS；连败 3 次 → 回写原文并记 failed。
+每篇 `python scripts/check_rewrite.py <path>` 全 PASS；连败 3 次 → 回写原文并记 failed。
 
 ## 8. check_rewrite.py 检查项（实现契约）
 ① def 卡==1 且 trap 卡==2；误区列表条数∈[2,3]；② 一句话定义同行且≥8字；③ 必备 H2 齐全（核心机制允许 §3 变体名）；④ 无弯引号、无 `<details>`；⑤ git HEAD 版 arXiv/DOI ⊆ 工作版；⑥ 围栏与篇幅预算（按 §4 新字径计；超 2200 时先验枢纽信号①②，通过则按 3400 判，不通过仍 FAIL；枢纽理由③为审计项，不进机器检查）；⑦ frontmatter 与 HEAD 一致；⑧ `[[双链]]` basename 在 content/ 可解析（warning 级）。非零退出=FAIL。

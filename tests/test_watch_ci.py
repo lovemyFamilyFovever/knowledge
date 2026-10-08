@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""scripts/agent/watch_ci.py 的行为回归 —— 四类「读不到」必须分开点名。
+"""scripts/watch_ci.py 的行为回归 —— 四类「读不到」必须分开点名。
 
 来历（2026-09-29）：用户让跑 watch_ci 查 CI 结果，脚本回一句
 HTTP 0 读不到 run 列表 就退了。真因是它把代理 127.0.0.1:10810 写死在源码里，
@@ -39,7 +39,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-SCRIPT = ROOT / "scripts" / "agent" / "watch_ci.py"
+SCRIPT = ROOT / "scripts" / "watch_ci.py"
 SHA_SHORT = "deadbeef"
 SHA_FULL = SHA_SHORT + "0" * (40 - len(SHA_SHORT))
 

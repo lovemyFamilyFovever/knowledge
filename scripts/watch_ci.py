@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """盯 GitHub Actions 到结论：run 状态 → 逐步 conclusion → annotations。
 
-用法：`python scripts/agent/watch_ci.py <sha 前缀> [等待秒数=420]`
+用法：`python scripts/watch_ci.py <sha 前缀> [等待秒数=420]`
 环境变量（`tests/test_watch_ci.py` 靠这三个把本脚本指到本进程的假 GitHub，零外网）：
   `KB_CI_PROXY`    代理地址，缺省 `http://127.0.0.1:10810`；**传空串 = 从头就直连**。
   `KB_CI_API`      API 根，缺省本仓。

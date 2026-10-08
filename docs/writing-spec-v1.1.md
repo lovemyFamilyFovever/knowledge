@@ -138,7 +138,7 @@ v1.0 §6 只禁弯引号，没管半角标点。一期原稿多用 ASCII 半角�
 - **登记纪律**：每处理完一篇立即追加一行；**一个文件只准一行**（一期 `middleware/Kafka深入.md` 登了两行、`database/读写分离.md` 漏登，都是收尾才发现）。
 - **账本归属**：逐篇状态只写**本片自己的** `docs/refactor/status/sN.md`；跨片共享的 `docs/refactor/split-candidates.md` 只做拆分候选汇总，并发期由收尾会话统一归一，分片不直接改（`git commit -- <共享文件>` 会把别片在途行一并带走）。
 
-## 9. 机器门变更清单（`scripts/agent/check_rewrite.py`）
+## 9. 机器门变更清单（`scripts/check_rewrite.py`）
 
 | v1.0 §8 检查项 | v1.1 变更 |
 |---|---|

@@ -1,7 +1,7 @@
 # baike 批量重写分片清单（5 片）
 
 生成方式：扫描 `content/baike/*/`（排除 `_` 前缀目录与已落地试点），按主题相近聚合。
-判据：每片 75–95 篇。执行规范见 `docs/writing-spec-v1.0.md`，交付门 `scripts/agent/check_rewrite.py`。
+判据：每片 75–95 篇。执行规范见 `docs/writing-spec-v1.0.md`，交付门 `scripts/check_rewrite.py`。
 
 - baike 子域：28 个；词条总数 430 篇，其中待重写 421 篇
 - 已落地试点（不再重做）：9 篇

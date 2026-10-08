@@ -23,7 +23,7 @@ DSH = HOME / ".dsh"
 SELF = GITHUB / "knowledge"
 SKIP_DIR_NAMES = {
     ".git", "node_modules", "dist", "build", "coverage", "cache",
-    ".vitepress", "__pycache__", "vendor",
+    "__pycache__", "vendor",
 }
 # 需求#2：agent 会话产物不应进收件箱 —— 隐藏目录（点开头）与已知 agent 目录整棵跳过。
 # 点开头的目录在 iter_files 里统一剪枝；下面是非隐藏的 agent 运行时目录名。

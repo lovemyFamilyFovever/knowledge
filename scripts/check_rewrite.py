@@ -1,8 +1,8 @@
 """baike 重写验收：按 docs/writing-spec-v1.2.md §3 做机械检查。
 
-用法: python scripts/agent/check_rewrite.py content/baike/<域>/<词条>.md [...]
-      python scripts/agent/check_rewrite.py --exempt <path> [...] <待检路径> [...]
-      python scripts/agent/check_rewrite.py --strict <待检路径> [...]
+用法: python scripts/check_rewrite.py content/baike/<域>/<词条>.md [...]
+      python scripts/check_rewrite.py --exempt <path> [...] <待检路径> [...]
+      python scripts/check_rewrite.py --strict <待检路径> [...]
 退出码 0 = 全部 PASS；非 0 = 至少一篇 FAIL。warning 不影响退出码。
 
 v1.2 变更：
@@ -38,7 +38,7 @@ import re
 import subprocess
 import sys
 
-ROOT = pathlib.Path(__file__).resolve().parents[2]
+ROOT = pathlib.Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from app.cards import parse_file  # noqa: E402

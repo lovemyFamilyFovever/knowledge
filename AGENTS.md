@@ -55,7 +55,7 @@ python scripts\check_ledger_counts.py          # 台账对账：§0 数字必须
 `--stability` 只验"两次截图逐像素相同"（改矩阵或换环境后先跑它）；`--update` 在确认改动无误后刷新基线。
 
 > **导出器在 Git Bash 里必须加 `MSYS_NO_PATHCONV=1`**：`--base /knowledge` 会被 MSYS 在交给 Windows 版 Python 之前改写成 `C:/Program Files/Git/knowledge`，整站链接与 404 兜底就此指到本机目录树（线上是 Linux runner 所以没中招）。`export_static.check_base()` 现在会直接拒绝带盘符/反斜杠的 KB_BASE，不再静默产出坏站；cmd 与 PowerShell 下无需该变量。
-> 只读档本地预览：`mkdir .qa/serve-root && cmd /c mklink /J .qa\serve-root\knowledge site`，再 `python scripts\agent\serve404.py 8112 .qa/serve-root`，打开 `http://127.0.0.1:8112/knowledge/`。它按 GH Pages 的 SUBDIRECTORY 口径把 `<前缀>/404.html` 当深链回落（所以离线与路由桥才验得准），并**显式把 `.js` 钉成 `application/javascript`** —— Windows 注册表默认报 `text/plain`，Chrome 会拒绝执行，PWA 看着像做坏了。直接 `python -m http.server -d site` 只能验空前缀那一种口径，深链的 404 回落验不到。
+> 只读档本地预览：`mkdir .qa/serve-root && cmd /c mklink /J .qa\serve-root\knowledge site`，再 `python scripts\serve404.py 8112 .qa/serve-root`，打开 `http://127.0.0.1:8112/knowledge/`。它按 GH Pages 的 SUBDIRECTORY 口径把 `<前缀>/404.html` 当深链回落（所以离线与路由桥才验得准），并**显式把 `.js` 钉成 `application/javascript`** —— Windows 注册表默认报 `text/plain`，Chrome 会拒绝执行，PWA 看着像做坏了。直接 `python -m http.server -d site` 只能验空前缀那一种口径，深链的 404 回落验不到。
 
 ## 正文排版约定（markdown 渲染层消费）
 
@@ -109,21 +109,20 @@ requirements/       依赖清单（requirements.txt 核心 / -rag.txt 语义检�
 
 **只读档的两层裁剪分工（不许互相抄）**：静态存在的写入口（按钮、页签、导航链接、引擎钮）归 `kb-static.js` 里那份 CSS 隐藏清单；运行时才生成的写入口（右键菜单项、拖拽、动态图、快捷键帮助）归 `app.js` / `kb-core.js` 里的 `KB_READ_ONLY`（判据 = 注入的 `window.KB_STATIC.readonly`），菜单项打 `roHide: true` 由 `openCtxMenu` 单点过滤、空菜单不弹。**CSS 清单挡不住动态节点，别指望加选择器解决。**
 
-## 工具与临时产物（`scripts/agent/` 进 git；`.qa/` 不进 git）
+## 工具与临时产物（`scripts/` 进 git；`.qa/` 不进 git）
 
-Agent 的**常驻工具**统一收在 `scripts/agent/`（进 git、跨机器复用）。`.qa/` 只放**一次性诊断产物**，不进 git：验证类脚本不要落盘 txt，直接看 stdout；**任务收工后 `.qa/` 里自己产生的东西要清掉**，别留给下一个人排雷。
+Agent 的**常驻工具**统一收在 `scripts/`（进 git、跨机器复用）。`.qa/` 只放**一次性诊断产物**，不进 git：验证类脚本不要落盘 txt，直接看 stdout；**任务收工后 `.qa/` 里自己产生的东西要清掉**，别留给下一个人排雷。
 
 | 常驻工具 | 用途 |
 |---|---|
-| `shot.mjs` | 零依赖 CDP 截图：`node scripts/agent/shot.mjs <url> <out.png> [w] [h] [clickSel]`；`--batch manifest.json` 批量截（一个 Chrome 多标签，清单形如 `{"shots":[{url,out,w,h,init,clickWait}]}`，`init` 是页面任何脚本前注入的 JS，用来钉死主题/动画等确定态）。`clickWait` 是**上限**不是睡眠：字体就绪 + 在途 fetch 归零 + DOM 连续 320ms 无变化就提前走 |
-| `imgdiff.mjs` | 像素对比：`node scripts/agent/imgdiff.mjs <a.png> <b.png> [fuzz%]`，回差异像素数 AE 与占比 + 热图。**没有 ignoreRegions 参数** —— 要排除动画区域就先用 `magick <img> -crop WxH+X+Y +repage out.png` 裁开再比 |
-| `evalcdp.mjs` | CDP 执行任意 JS 并回显返回值 + console 报错：`node scripts/agent/evalcdp.mjs <url> "<js>"`（表达式以 `@` 开头时按文件读取，长载荷塞不进 argv） |
-| `geom.mjs` | 多视口几何探针：`node scripts/agent/geom.mjs <url> <w1,w2,...> <expr@文件>`，逐档设宽求值、每档回一行 JSON。用途：① 顶栏压字这类"像素基线永远绿"的重叠问题 ② 当行为测试的驱动器 —— **evalcdp 的视口只有 ~764px**，依赖侧栏/浮层定位的断言都得用它钉桌面宽度。**表达式必须一次求值取全部矩形**，逐字段各自 `getBoundingClientRect()` 会在过渡中读出三套数 |
-| `verifyall.mjs` | 同页两阶段 evaluate 模板（如 pretty/md 切换），按需改表达式复用 |
-| `watch_ci.py` | 盯 GitHub Actions 到结论：`python scripts/agent/watch_ci.py <sha 前缀> [等待秒=420]`。回 run 状态 + 逐步 conclusion + **annotations**（`::notice::STARTED` / `::warning::SKIPPED`，见 `tests/_ci.py`）—— 匿名 API 读不到日志正文，只有这三样能证明某一步真跑了。四类"读不到"分开报：够不着 API=4 / 限流=3 / 列表里没这个 sha=5 / 200 但正文不是 JSON=6。网络飘时设 `KB_CI_PROXY=http://127.0.0.1:7897` |
+| `shot.mjs` | 零依赖 CDP 截图：`node scripts/shot.mjs <url> <out.png> [w] [h] [clickSel]`；`--batch manifest.json` 批量截（一个 Chrome 多标签，清单形如 `{"shots":[{url,out,w,h,init,clickWait}]}`，`init` 是页面任何脚本前注入的 JS，用来钉死主题/动画等确定态）。`clickWait` 是**上限**不是睡眠：字体就绪 + 在途 fetch 归零 + DOM 连续 320ms 无变化就提前走 |
+| `imgdiff.mjs` | 像素对比：`node scripts/imgdiff.mjs <a.png> <b.png> [fuzz%]`，回差异像素数 AE 与占比 + 热图。**没有 ignoreRegions 参数** —— 要排除动画区域就先用 `magick <img> -crop WxH+X+Y +repage out.png` 裁开再比 |
+| `evalcdp.mjs` | CDP 执行任意 JS 并回显返回值 + console 报错：`node scripts/evalcdp.mjs <url> "<js>"`（表达式以 `@` 开头时按文件读取，长载荷塞不进 argv） |
+| `geom.mjs` | 多视口几何探针：`node scripts/geom.mjs <url> <w1,w2,...> <expr@文件>`，逐档设宽求值、每档回一行 JSON。用途：① 顶栏压字这类"像素基线永远绿"的重叠问题 ② 当行为测试的驱动器 —— **evalcdp 的视口只有 ~764px**，依赖侧栏/浮层定位的断言都得用它钉桌面宽度。**表达式必须一次求值取全部矩形**，逐字段各自 `getBoundingClientRect()` 会在过渡中读出三套数 |
+| `watch_ci.py` | 盯 GitHub Actions 到结论：`python scripts/watch_ci.py <sha 前缀> [等待秒=420]`。回 run 状态 + 逐步 conclusion + **annotations**（`::notice::STARTED` / `::warning::SKIPPED`，见 `tests/_ci.py`）—— 匿名 API 读不到日志正文，只有这三样能证明某一步真跑了。四类"读不到"分开报：够不着 API=4 / 限流=3 / 列表里没这个 sha=5 / 200 但正文不是 JSON=6。网络飘时设 `KB_CI_PROXY=http://127.0.0.1:7897` |
 | `scan_fm.py` | frontmatter 污染扫描：正文前 400 字符内又出现完整 fm 块 = 污染 |
 | `scan_dup.py` | 抓取残留副本扫描：`xxx-<数字>.md` 与 `xxx.md` 同名共存即残留 |
-| `serve404.py` | GitHub Pages 本机模拟器：`python scripts/agent/serve404.py <端口> <文档根>`。文档根下必须放成 `<前缀>/…`（junction 到 `site/` 即可），404 走该前缀的 `404.html`（GH Pages 的 SUBDIRECTORY 行为），并显式钉 `.js`/`.webmanifest` 的 content-type（Windows 默认把 `.js` 报成 `text/plain`，Chrome 拒绝执行 → PWA 看着像坏的） |
+| `serve404.py` | GitHub Pages 本机模拟器：`python scripts/serve404.py <端口> <文档根>`。文档根下必须放成 `<前缀>/…`（junction 到 `site/` 即可），404 走该前缀的 `404.html`（GH Pages 的 SUBDIRECTORY 行为），并显式钉 `.js`/`.webmanifest` 的 content-type（Windows 默认把 `.js` 报成 `text/plain`，Chrome 拒绝执行 → PWA 看着像坏的） |
 
 两个 scan 脚本的扫描根默认按脚本位置推导到仓库根下的 `content/`，传 argv[1] 可覆盖。
 

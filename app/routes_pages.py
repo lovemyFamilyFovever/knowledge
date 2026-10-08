@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """阅读器页面路由：首页 / 浏览 / 文档页 / 原文件 / 收件箱 / 收藏 / 标签 / 全文搜索 / 月度统计。
 
-依赖注入方式同 routes_learn.py：一切通过 flask.current_app.config
+依赖注入方式：一切通过 flask.current_app.config
 （KB_HOOKS / CONTENT / INDEXES / ROOT），严禁 from app.app import（循环导入）。
 本模块还持有 /raw 的 HTML 依赖重写（mermaid 缩放查看器注入 + 本地 vendored 替换）。
 """

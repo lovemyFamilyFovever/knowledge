@@ -3,10 +3,13 @@
 """frontmatter 结构门禁：待发布语料的 YAML 头必须能被严格解析器吃下。
 
 背景（2026-09-25 发布事故）：content/career/journal/写作技巧.md 写成
-`title:"写作"`（冒号后缺空格），本地阅读器的解析器是容错的手写版（app/store.py
-FM_RE + 自研取值），照样显示；而公开站的 Quartz 用 js-yaml 严格解析，整条
-`npx quartz build` 直接 failure，Pages 没更新——缺陷一路漂到 GitHub Actions 才爆。
-本门禁把同一类错误提前到「同步前」和「提交前」。
+`title:"写作"`（冒号后缺空格）。本地阅读器的解析器是容错的手写版（app/store.py
+FM_RE + 自研取值），这种头**照样显示**，于是缺陷在本地完全看不见；等它漂到
+构建面才炸（当时是 Quartz 严格 YAML，现在是 `scripts/export_static.py` 复用同一个
+容错解析器 —— 冒号缺空格会让整行被当普通标量、下一行变成"多行键"，
+title/tags 静默错位，公网档与本地读到的是同一份错）。
+所以这道门禁守的不是"某个构建器吃不吃得下"，而是**frontmatter 的语义只有一份**：
+写歪一行，本地不报错、派生层全错位。
 
 判定口径（只查顶层行，缩进行交给解析器）：
   · 冒号后必须跟空格，否则整行会被当普通标量 → 下一行就成了"多行键"
@@ -103,7 +106,7 @@ def lint_file(path: Path) -> list[tuple[int, str]]:
     except OSError as exc:  # 读不到就别猜内容
         return [(0, f"读取失败: {exc}")]
     if not text.lstrip("\ufeff").startswith("---"):
-        return []  # 无 frontmatter：Quartz 按普通正文处理，不报错
+        return []  # 无 frontmatter：阅读器按普通正文处理，不算缺陷
     m = FM_RE.match(text)
     if not m:
         return [(1, "frontmatter 有起始 --- 却没有闭合 ---")]
@@ -139,7 +142,7 @@ def main() -> int:
                 print(f"  {p.relative_to(ROOT)}:{ln}  {msg}", file=sys.stderr)
         if len(bad) > 40:
             print(f"  ...另有 {len(bad) - 40} 篇", file=sys.stderr)
-        print("公开站 Quartz 用严格 YAML 解析，这些会让整站构建失败——先修头再提交。", file=sys.stderr)
+        print("这些行会让 title/tags 静默错位（本地容错、派生层全错）——先修头再提交。", file=sys.stderr)
         return 1
     print(f"frontmatter 门禁：{len(files)} 篇（{scope}）全部可被严格 YAML 解析。")
     return 0

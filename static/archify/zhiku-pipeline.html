@@ -7512,7 +7512,7 @@
         <path data-edge-from="corpus" data-edge-to="publish" data-edge-label="白名单" data-edge-key="9"
           data-composition-points="542,282;542,466" d="M 542 282 L 542 466" class="a-security" data-animate="edge"
           style="--step:9" stroke-width="1.5" marker-end="url(#arrowhead-security)" />
-        <path data-edge-from="publish" data-edge-to="site" data-edge-label="build + push" data-edge-key="10"
+        <path data-edge-from="publish" data-edge-to="site" data-edge-label="导出 + 部署" data-edge-key="10"
           data-composition-points="624,502;700,502" d="M 624 502 L 700 502" class="a-security" data-animate="edge"
           style="--step:10" stroke-width="1.5" marker-end="url(#arrowhead-security)" />
 
@@ -7681,10 +7681,10 @@
             路由编排</text>
         </g>
 
-        <g id="node-publish" data-node-id="publish" data-node-label="publish_site.py" tabindex="0" role="button"
-          aria-label="聚焦publish_site.py，白名单同步, 公开面" aria-pressed="false" data-node-kind="backend"
+        <g id="node-publish" data-node-id="publish" data-node-label="export_static.py" tabindex="0" role="button"
+          aria-label="聚焦export_static.py，白名单同步, 公开面" aria-pressed="false" data-node-kind="backend"
           data-node-sublabel="白名单同步" data-node-context="公开面">
-          <title>publish_site.py · 白名单同步 · 公开面</title>
+          <title>export_static.py · 白名单同步 · 公开面</title>
           <rect x="460" y="466" width="164" height="72" rx="6" class="c-mask" />
           <rect x="460" y="466" width="164" height="72" rx="6" class="c-backend" data-animate="node" style="--step:10"
             stroke-width="1.5" />
@@ -7693,14 +7693,14 @@
             <path d="M6 3 3 8l3 5M10 3l3 5-3 5" />
           </g>
           <text data-node-label="" data-detail-anchor="" x="542" y="500" class="t-primary" font-size="11"
-            font-weight="600" text-anchor="middle">publish_site.py</text>
+            font-weight="600" text-anchor="middle">export_static.py</text>
           <text data-detail="context" x="542" y="516" class="t-muted" font-size="9" text-anchor="middle">白名单同步</text>
         </g>
 
-        <g id="node-site" data-node-id="site" data-node-label="garden 公开站" tabindex="0" role="button"
-          aria-label="聚焦garden 公开站，GitHub Pages, 公开面" aria-pressed="false" data-node-kind="cloud"
+        <g id="node-site" data-node-id="site" data-node-label="Pages 只读档" tabindex="0" role="button"
+          aria-label="聚焦Pages 只读档，GitHub Pages, 公开面" aria-pressed="false" data-node-kind="cloud"
           data-node-sublabel="GitHub Pages" data-node-context="公开面">
-          <title>garden 公开站 · GitHub Pages · 公开面</title>
+          <title>Pages 只读档 · GitHub Pages · 公开面</title>
           <rect x="700" y="466" width="160" height="72" rx="6" class="c-mask" />
           <rect x="700" y="466" width="160" height="72" rx="6" class="c-cloud" data-animate="node" style="--step:11"
             stroke-width="1.5" />
@@ -7709,7 +7709,7 @@
             <path d="M4.3 12.5h7.3a2.4 2.4 0 0 0 .2-4.8 4 4 0 0 0-7.5-1.3A3.1 3.1 0 0 0 4.3 12.5Z" />
           </g>
           <text data-node-label="" data-detail-anchor="" x="780" y="500" class="t-primary" font-size="11"
-            font-weight="600" text-anchor="middle">garden 公开站</text>
+            font-weight="600" text-anchor="middle">Pages 只读档</text>
           <text data-detail="context" x="780" y="516" class="t-muted" font-size="9" text-anchor="middle">GitHub
             Pages</text>
         </g>
@@ -7756,10 +7756,10 @@
           <rect x="522.6" y="364" width="38.8" height="14" rx="3" class="c-mask" />
           <text x="542" y="374" class="t-security" font-size="8" text-anchor="middle">白名单</text>
         </g>
-        <g data-detail="context" data-edge-from="publish" data-edge-to="site" data-edge-label="build + push"
+        <g data-detail="context" data-edge-from="publish" data-edge-to="site" data-edge-label="导出 + 部署"
           data-edge-key="10">
           <rect x="628.2" y="482" width="67.6" height="14" rx="3" class="c-mask" />
-          <text x="662" y="492" class="t-security" font-size="8" text-anchor="middle">build + push</text>
+          <text x="662" y="492" class="t-security" font-size="8" text-anchor="middle">导出 + 部署</text>
         </g>
 
         <!-- Boundary labels (foreground masks keep routes out of titles) -->

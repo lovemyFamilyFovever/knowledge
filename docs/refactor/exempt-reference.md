@@ -2,9 +2,9 @@
 
 # 用途：登记「参考手册型」文件——正文 >70% 为代码/表格、价值就在逐条示例本身，
 #      强行改写成 1def+2trap 单词条会毁掉内容。这类文件原样保留、不改 frontmatter、
-#      不重写、不拆分；cards.py 因缺锚点自然不出卡，故无需机器门介入。
+#      不重写、不拆分；这类参考页没有题干标题，本就不需要出题结构。
 #
-# 用法：python scripts/agent/check_rewrite.py <路径>...
+# 用法：python scripts/check_rewrite.py <路径>...
 #      check_rewrite 启动时读本清单，命中者打印 EXEMPT 并早退，不计 FAIL。
 #      也可临时用 --exempt <路径> 单独豁免（可重复传）。
 #

@@ -210,7 +210,7 @@ class CdpSession:
         QA.mkdir(parents=True, exist_ok=True)
         err = open(self.stderr_path, "ab")
         self.proc = subprocess.Popen(
-            ["node", str(ROOT / "scripts" / "agent" / "geom.mjs"), "--session"],
+            ["node", str(ROOT / "scripts" / "geom.mjs"), "--session"],
             cwd=str(ROOT), stdin=subprocess.PIPE, stdout=subprocess.PIPE,
             stderr=err, text=True, encoding="utf-8", errors="replace",
             env=dict(os.environ))
@@ -345,7 +345,7 @@ def run_expr(url, js, width=PROBE_WIDTH, click="", click_wait=1800, init="", fre
     if init:
         env["KB_GEOM_INIT"] = init
     r = subprocess.run(
-        ["node", str(ROOT / "scripts" / "agent" / "geom.mjs"), url, str(width), "@" + str(f)],
+        ["node", str(ROOT / "scripts" / "geom.mjs"), url, str(width), "@" + str(f)],
         cwd=str(ROOT), capture_output=True, text=True,
         encoding="utf-8", errors="replace", timeout=300, env=env)
     lines = [l for l in (r.stdout or "").splitlines() if l.strip().startswith("{")]

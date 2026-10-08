@@ -131,7 +131,7 @@ v1.0 §2 定 🎯 一句话速答为 30–60 字。实盘全库 331 篇 PASS 稿
 
 **登记**：排查项已落仓库根 `BACKLOG.md`「_inbox 抓取对超长文的硬截断」。若将来确认并全量重抓，需递增 `app/rag.py::RAG_CODE_VERSION` 并重建索引（AGENTS.md 不变量 7）。
 
-## 6. 机器门变更清单（`scripts/agent/check_rewrite.py`）
+## 6. 机器门变更清单（`scripts/check_rewrite.py`）
 
 | 检查项 | v1.2 变更 |
 |---|---|
@@ -151,8 +151,8 @@ v1.1 §9 的两条盲区（⑦ 对已提交文件空转、⑧ 朴素正则误报
 **本轮唯一被 ⑨ 打破的金样已修**：`ESB 与服务网格` 的 🎯 由 206 字压到 139 字（**只改该行**，其余字节未动；🎯 内的 `[[服务网格]]` 双链去掉，该双链在「相关术语」节仍在）。金样必须在新门下继续 PASS，否则 few-shot 会教出超标稿。
 
 **二期打样三篇（v1.2 门全绿）**：`programming-languages/软件测试完全指南.md` 2825/3400（①表8行 ②a=4）、`testing/E2E 测试.md` 2197/2200、`testing/Playwright 与 Cypress.md` 2190/2200；三篇抽卡自检均为 1 def + 2 trap、0 warning（无悬空双链）。
-（当时的自检脚本 `scripts/agent/check_cards.py` 随复习/闪卡子系统一并下线，
-现在这类检查由 `scripts/agent/check_rewrite.py` 承担。）
+（当时的自检脚本 `scripts/check_cards.py` 随复习/闪卡子系统一并下线，
+现在这类检查由 `scripts/check_rewrite.py` 承担。）
 
 ## 8. 信息不重复承载 + 双链核对（修订 v1.0 §4 篇幅预算）
 

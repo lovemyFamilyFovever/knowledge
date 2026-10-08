@@ -12,7 +12,7 @@
 
 - [ ] 桌面项目区（code / dsh / feishu_code / pg-tools / 素材）逐目录归位——须先经用户逐目录确认，不批量下结论。（code 已于 2026-09-20 归入 AI金）
 - [ ] work 仓库 108 份中非 ai-jin 的零星文件（如有）。
-- [ ] 静态发布管线（VitePress / Quartz 导出，公开分享用）。
+- [x] ~~静态发布管线（公开分享用）~~（**2026-10-07 落地**）：不是 VitePress/Quartz —— `scripts/export_static.py` 把公开白名单语料导成 `site/`，`.github/workflows/pages.yml` 推到本仓 GitHub Pages（<https://lovemyfamilyfovever.github.io/knowledge/>），只读、可安装、离线可读。
 - [ ] **_inbox 冷备份**（2026-09-09 审读新增）：现存 159 份暂存 md（2026-09-20 复核，
   AI金迁移后从 352 降至 159）被 .gitignore 排除，git 与每日备份均不覆盖，
   需压缩/镜像到另一块盘。（2026-09-20 用户已了解 _inbox 机制，处置三选一待定：
@@ -28,7 +28,7 @@
 
 - [x] **检索 UI 重构·方案 D 白底版**（2026-09-20，同日拍板同日落地）：搜索浮层改双栏控制台——
   左栏 ENGINE/SCOPE 纵向切换（选中引擎绿底反白），右栏结果/历史/快速前往；窄屏退化横排。
-  设计稿留档 `.workbuddy/ui-demo/searchbar.html`。
+  设计稿已随 `.qa/` 清理删除（该目录不进 git，留档即假指针）。
 - [x] **设置面板重构为右侧抽屉**（2026-09-20，commit 8c65636）：参考 draw.io 属性面板形态，
   界面风格/阅读排版/标题与代码/快捷键纵向分区，sticky 标题，Esc/遮罩/× 关闭。
 - [x] **文档页头部瘦身**（2026-09-20，commit acb0607）：分类/状态/收录/体积 chips 撤下并入

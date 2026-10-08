@@ -362,7 +362,7 @@ def capture(tag, shots):
             shutil.rmtree(out_dir)
         mf = make_manifest(base, out_dir, shots)
         t0 = time.time()
-        r = subprocess.run(["node", str(ROOT / "scripts" / "agent" / "shot.mjs"), "--batch", str(mf)],
+        r = subprocess.run(["node", str(ROOT / "scripts" / "shot.mjs"), "--batch", str(mf)],
                            cwd=str(ROOT), capture_output=True, text=True,
                            encoding="utf-8", errors="replace", timeout=900)
         for line in (r.stdout or "").splitlines():
@@ -429,7 +429,7 @@ def geometry(tag, base):
     expr_file = QA / f"geom-{tag}.js"
     expr_file.write_text(GEOM_EXPR, encoding="utf-8")
     r = subprocess.run(
-        ["node", str(ROOT / "scripts" / "agent" / "geom.mjs"),
+        ["node", str(ROOT / "scripts" / "geom.mjs"),
          base + "/doc/ui-r/notes/alpha.md",
          ",".join(str(w) for w in GEOM_WIDTHS), "@" + str(expr_file)],
         cwd=str(ROOT), capture_output=True, text=True,
@@ -471,7 +471,7 @@ def geometry(tag, base):
 
 def compare(a: Path, b: Path):
     """调 imgdiff（复用仓库现成工具），返回 (差异像素数, 说明)。SIZE-MISMATCH 记 -1。"""
-    r = subprocess.run(["node", str(ROOT / "scripts" / "agent" / "imgdiff.mjs"),
+    r = subprocess.run(["node", str(ROOT / "scripts" / "imgdiff.mjs"),
                         str(a), str(b), FUZZ],
                        cwd=str(ROOT), capture_output=True, text=True,
                        encoding="utf-8", errors="replace", timeout=180)

@@ -121,7 +121,7 @@
    "
    ```
 2. **拆前先查重**：队列的 `子概念预览` 列只是线索，动手前务必 `grep -rl "title: \"<子概念名>\"" content/baike/` 验一遍——本次两篇都发现队列把同义条数进了子概念数（`03-代码质量` 记 13、实为 11；`排序与搜索` 记 16、其中 5 个 DFS/BFS/A*/Dijkstra/Floyd 早有专条）。**先看 `docs/refactor/split-candidates.md` 顶部的重叠去重队列**（现有 6 对）。
-3. **单篇流程与验收门**：`PYTHONIOENCODING=utf-8 python scripts/agent/check_rewrite.py --strict <枢纽> <各子词条>` 全 PASS 且 `check_cards.py` 每篇 1 def + 2 trap，才算完；枢纽页需同时满足 ①（≥4 数据行的表或 mermaid）与 ②（≥3 具名 H2/H3 子概念，或核心机制粗体项 ≥3 且**含双链**）。
+3. **单篇流程与验收门**：`PYTHONIOENCODING=utf-8 python scripts/check_rewrite.py --strict <枢纽> <各子词条>` 全 PASS 且 `check_cards.py` 每篇 1 def + 2 trap，才算完；枢纽页需同时满足 ①（≥4 数据行的表或 mermaid）与 ②（≥3 具名 H2/H3 子概念，或核心机制粗体项 ≥3 且**含双链**）。
 4. **台账三处同步**：本片 `status/sN.md`（父改 `done-hub` + `split-into:`、子词条各加 `done` 行）、`split-candidates.md`（该篇 `pending` → `done`）、必要时登记 `pending-merge`；**收尾固定跑一遍集合差集对账**，本次就是靠它抓出 9 篇漏登。
 5. **建议优先级**：`database/`、`security/` 尾部多篇仅 6 个子概念、字数 3000–4000，性价比最高；`architecture/`、`programming-languages/` 里 15000–20000 字的巨型汇编每篇要 8–12 个子词条，建议单独排期、一次一篇。
 6. **两个待你裁决的前置项**：① v1.2 §3 的 `source_path` 口径要不要正式改成"继承父文档"（本次已按此执行 12 篇）；② `os/Shell 脚本详解.md` 的合并 + 软删除是否执行（涉及删文件，本次未动）。
@@ -479,7 +479,7 @@ split-candidates 102 行 = done 12 + exempt-reference 1 + pending 89
 
 1. **§1.2 未按要求放宽 Levenshtein 到 ≤3**（改为做三处降噪），依据与对照实例已记 `autopilot-log` §9.1；一句话版：你举的 `滑动窗口机制` 案例⑩从来能命中（真实文件名是 `滑动窗口.md`），漏报出在我上批那版覆盖率脚本，而 ≤3 会放大误报。要改就一行，但请一并评估误报率。
 2. **`.gitignore` 工作区有一处不属于本会话的改动**（新增 `/.qoder-credits`）。按 AGENTS.md 多会话并发纪律，我未提交、未回退、未触碰。
-3. 本会话其余工作：工具补丁（`bd9a4a0`、`fab0ae5`）、收官报告（`3546950`）、自决登记（`941373a`）。`scripts/agent/check_rewrite.py` 是唯一改动的代码文件，未触碰 `app/`。
+3. 本会话其余工作：工具补丁（`bd9a4a0`、`fab0ae5`）、收官报告（`3546950`）、自决登记（`941373a`）。`scripts/check_rewrite.py` 是唯一改动的代码文件，未触碰 `app/`。
 - e591c66 docs: 刷新第七批全库复跑日志（365 PASS / 89 FAIL / 0 悬空）（本行由 git log 生成）
 
 ## §S1（二期拆分 · 分片1 AI 线）— 巨型汇编专场：本会话处理 1 篇后收手

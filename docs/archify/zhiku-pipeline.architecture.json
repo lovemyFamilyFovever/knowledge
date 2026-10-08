@@ -175,7 +175,7 @@
     {
       "id": "publish",
       "type": "backend",
-      "label": "publish_site.py",
+      "label": "export_static.py",
       "sublabel": "白名单同步",
       "pos": [
         460,
@@ -189,7 +189,7 @@
     {
       "id": "site",
       "type": "cloud",
-      "label": "garden 公开站",
+      "label": "Pages 只读档",
       "sublabel": "GitHub Pages",
       "pos": [
         700,
@@ -300,7 +300,7 @@
     {
       "from": "publish",
       "to": "site",
-      "label": "build + push",
+      "label": "导出 + 部署",
       "variant": "security"
     }
   ],

@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """文档数据接口：语料分类树（/api/tree）与单篇文档详情（/api/doc）。
 
-依赖注入同 routes_learn.py：通过 flask.current_app.config 取 CONTENT 与 KB_HOOKS，
+依赖注入走 flask.current_app.config 取 CONTENT 与 KB_HOOKS，
 严禁 from app.app import（循环导入）。
 """
 from pathlib import Path

@@ -1,5 +1,5 @@
 // 截图像素对比（ImageMagick compare 包装）：
-//   node scripts/agent/imgdiff.mjs <a.png> <b.png> [fuzz%]
+//   node scripts/imgdiff.mjs <a.png> <b.png> [fuzz%]
 // 输出差异像素数与占比；fuzz 默认 2%（容忍动效/抗锯齿抖动）。
 // 依赖：ImageMagick（magick 在 PATH）。仅用于 UI 回归自检，不进运行时。
 import { spawnSync } from 'child_process';

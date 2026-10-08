@@ -197,7 +197,7 @@ if [ -f "tests/test_export_static.py" ]; then step export_static $PY tests/test_
 # resolve 前缀分歧致 /api/rmdir · /api/import 500。若被重新引入，提交即被拦下。
 if [ -f "tests/test_known_defects.py" ]; then step known_defects $PY tests/test_known_defects.py; fi
 
-# Agent 工具自身的回归（2026-09-29）：`scripts/agent/watch_ci.py` 的三类"读不到"必须分开
+# Agent 工具自身的回归（2026-09-29）：`scripts/watch_ci.py` 的三类"读不到"必须分开
 # 点名（够不着 / 限流 / 真没有 run），代理不通时自动改直连。判据打的是**本进程的假 GitHub**
 # （现挑端口、零外网）—— 别为了"顺手"把它改成跑真 API，那会让门禁依赖配额与出口 IP。
 if [ -f "tests/test_watch_ci.py" ]; then step watch_ci $PY tests/test_watch_ci.py; fi
