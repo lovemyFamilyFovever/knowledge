@@ -99,7 +99,9 @@ app/templates/landing_panel.html  首页那一屏的唯一一份标记：本地 
                     取景框全在），导出器以 home_readonly=True 再渲染一次成 data/home.html
                     （只留「搜索」+「继续上次阅读」）。改首页只改这一处，不许复制第二份
 .github/workflows/pages.yml  push main → export_static → deploy-pages（线上即本仓 Pages）
-.github/workflows/ci.yml     push → 静态层 + 上表全部套件（windows runner）
+.github/workflows/ci.yml     push → 静态层 + 表里除 `test_ui_regress` 外的全部套件（windows runner）。
+                             **P5 有意不进 CI**：逐像素基线是在本机字体/渲染栈上出的，换环境就没法比 ——
+                             理由与实测口径见台账 §7 那一行；它由 pre-commit 按"提交含 css/js/模板"触发。
 .githooks/pre-commit         静态层（ruff / 台账对账 / 悬空令牌 / RAG 版本）串行 → 纯 Python 套件
                              并行（KB_GATE_PARALLEL 默认 4，=1 串行）→ 动了语料加一道 frontmatter 闸
                              → 浏览器两套与 RAG 串行（缺依赖自动 SKIP）
