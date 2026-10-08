@@ -74,10 +74,10 @@
       {# 「分类」唤出左树：≤860 时 style.css 把左树整块隐藏（窄屏没有别的路径能翻目录），
          这个页签就是那条路径。桌面端 CSS 里 display:none —— 左树常驻，多一个钮等于假入口。 #}
       <button type="button" class="rtab kb-nav-tab" id="kb-nav-tab" role="tab" aria-controls="p-left" aria-selected="false" tabindex="0" onclick="navSheetToggle()" title="分类目录：域 / 子域 / 文档"><svg class="i i-12"><use href="#i-folder"/></svg>分类</button>
-      {# 默认页签恒为「目录」：页签的 active/aria-selected 与面板的 active 由**同一个判据**派生。
-         旧写法按 doc.has_html 分岔把「标签」渲染成 active，而下面带 active 的面板恒为 #pane-toc
-         —— 两边判据不一致 = 打开任何一篇带美化版的文档，页签亮着「标签」、看的却是目录面板（任务 7）。 #}
-      <button type="button" class="rtab active" data-pane="toc" role="tab" aria-selected="true" tabindex="0" onclick="tab('toc',this)"><svg class="i i-12"><use href="#i-toc-list"/></svg>目录</button>
+      {# 页签**一律不带 active 类**（用户 2026-10-09："完全删除 .rtab.active，底部工具栏的「目录」按钮
+         不允许加 active 类名"）。"在看哪一块面板"只有一个判据 = 下面那个 `.rpane.active`；
+         页签上只留 aria-selected 给读屏器。默认面板恒为 #pane-toc（目录）。 #}
+      <button type="button" class="rtab" data-pane="toc" role="tab" aria-selected="true" tabindex="0" onclick="tab('toc',this)"><svg class="i i-12"><use href="#i-toc-list"/></svg>目录</button>
       <button type="button" class="rtab" data-pane="info" role="tab" aria-selected="false" tabindex="0" onclick="tab('info',this)"><svg class="i i-12"><use href="#i-tag-outline"/></svg>标签<span class="rt-n" id="rt-n-tags">{{ n_tags or "" }}</span></button>
       <button type="button" class="rtab" data-pane="notes" role="tab" aria-selected="false" tabindex="0" onclick="tab('notes',this)"><svg class="i i-12"><use href="#i-note-pen"/></svg>备注<span class="rt-n" id="rt-n-notes">{{ doc.notes|length or "" }}</span></button>
       <button type="button" class="rtab" data-pane="links" role="tab" aria-selected="false" tabindex="0" onclick="tab('links',this)"><svg class="i i-12"><use href="#i-backlink-graph"/></svg>双链<span class="rt-n" id="rt-n-links"></span></button>

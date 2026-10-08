@@ -143,33 +143,39 @@ function railSheet(open) {
   rail.classList.toggle("rail-open", on);
   // aria-expanded 只在抽屉档有意义：桌面端右栏面板常驻，写 false 是谎话。
   // 「分类」页签自己管自己（它是另一个抽屉），别被这个循环顺手刷掉。
+  // 判"哪颗页签正开着面板"只能读 aria-selected —— 页签已按用户要求不再带 active 类。
   rail.querySelectorAll(".rtab:not(.kb-nav-tab)").forEach(t => {
-    if (sheet) t.setAttribute("aria-expanded", on && t.classList.contains("active") ? "true" : "false");
+    if (sheet) t.setAttribute("aria-expanded", on && t.getAttribute("aria-selected") === "true" ? "true" : "false");
     else t.removeAttribute("aria-expanded");
   });
 }
 function tab(id, el) {
-  const wasActive = el.classList.contains("active");
+  /* 页签**不再带 active 类**（用户 2026-10-09 明确要求："完全删除 .rtab.active，
+     底部工具栏的「目录」按钮不允许加 active 类名"）。
+     "哪一块面板在显示"从此只有一个判据 = `.rpane.active`；页签这边只留 `aria-selected`
+     给读屏器，它不是样式钩子。窄屏"点已展开那颗 = 收起"的判据也跟着改成读面板，别读页签。 */
+  const pane = $("#pane-" + id);
+  const wasActive = !!(pane && pane.classList.contains("active"));
   const sheetOn = !!$("#p-rail") && $("#p-rail").classList.contains("rail-open");
-  $$(".rtab").forEach(t => { t.classList.remove("active"); t.setAttribute("aria-selected", "false"); });
-  el.classList.add("active"); el.setAttribute("aria-selected", "true");
+  $$(".rtab").forEach(t => t.setAttribute("aria-selected", "false"));
+  el.setAttribute("aria-selected", "true");
   if (!el.id) el.id = "rtab-" + id;
   $$(".rpane").forEach(p => p.classList.remove("active"));
-  const pane = $("#pane-" + id); pane.classList.add("active");
+  pane.classList.add("active");
   pane.setAttribute("aria-labelledby", el.id);
   if (id === "links") loadLinks();
   if (RAIL_SHEET()) { navSheet(false); railSheet(!(wasActive && sheetOn)); }   // 点已展开的那个 = 收起
 }
 /* 窄屏贴底工具栏只留三颗页签（kb-core.css 把「备注」「双链」display:none）。
-   换档时若 active 正停在那两颗上，屏幕上会出现一块"没有页签对应"的面板 —— 落回「目录」。
+   换档时若**面板**正停在那两颗上，屏幕上会出现一块"没有页签对应"的面板 —— 落回「目录」。
    只在两个时机跑：跨断点、换文档。故意**不**从 railSheet() 里调 —— railSheet 是被
    tab() 调的，反过来调 tab() 就是递归。 */
 function railTabClamp() {
   if (!RAIL_SHEET()) return;
   const rail = $("#p-rail");
-  const act = rail && rail.querySelector(".rtab.active");
-  if (!act) return;
-  if (!/^(notes|links)$/.test(act.dataset.pane || "")) return;
+  const pane = rail && rail.querySelector(".rpane.active");
+  const shown = pane ? pane.id.replace(/^pane-/, "") : "";
+  if (!/^(notes|links)$/.test(shown)) return;
   const toc = rail.querySelector('.rtab[data-pane="toc"]');
   if (toc) tab("toc", toc);
 }
@@ -191,7 +197,7 @@ function navSheet(open) {
   m.classList.toggle("kb-nav-on", on);
   const btn = $("#kb-nav-tab");
   if (btn) {
-    btn.classList.toggle("active", on);
+    // 页签一律不带 active 类（见 tab() 上方那段注释），开合态只走 aria-selected / aria-expanded
     btn.setAttribute("aria-selected", on ? "true" : "false");
     if (NAV_SHEET()) btn.setAttribute("aria-expanded", on ? "true" : "false");
     else btn.removeAttribute("aria-expanded");

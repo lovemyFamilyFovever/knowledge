@@ -1178,11 +1178,12 @@ CRUMB_JS = PRELUDE + r"""
   const tagBtn = [...document.querySelectorAll('#crumb .seg-btn, .crumb .seg-btn')]
     .filter(b => T(b).indexOf('标签') >= 0)[0];
   out.tag_btn = tagBtn ? T(tagBtn) : '';
-  out.info_tab_active_before = !!document.querySelector('.rtab[data-pane="info"].active');
+  /* 页签侧的"当前是哪个"只读 aria-selected —— active 类已按用户要求从页签上删除 */
+  out.info_tab_active_before = !!document.querySelector('.rtab[data-pane="info"][aria-selected="true"]');
   out.inputrow_hidden_before = !!(q('#tag-inputrow') && q('#tag-inputrow').hidden);
   if (tagBtn) tagBtn.click();
   await sleep(700);
-  out.info_tab_active = !!document.querySelector('.rtab[data-pane="info"].active');
+  out.info_tab_active = !!document.querySelector('.rtab[data-pane="info"][aria-selected="true"]');
   out.pane_info_active = !!document.querySelector('#pane-info.active');
   out.inputrow_hidden_after = !!(q('#tag-inputrow') && q('#kb-tag-in, #tag-in') && q('#tag-inputrow').hidden);
   out.focus_after = document.activeElement ? document.activeElement.id : '';
@@ -1224,7 +1225,7 @@ def probe_head_chips(base):
           {"dom": chips, "api": want_tags})
     check("crumb 标签：「标签」钮在位（它是跳右栏编辑的唯一入口）",
           "标签" in (d.get("tag_btn") or ""), d.get("tag_btn"))
-    check("jumpToTagEdit：右栏切到「信息」页签（pane 与 rtab 同时 active）",
+    check("jumpToTagEdit：右栏切到「信息」页签（面板 active + 页签 aria-selected，页签不再带 active 类）",
           d.get("info_tab_active_before") is False and d.get("info_tab_active") is True
           and d.get("pane_info_active") is True, d)
     check("jumpToTagEdit：标签输入行被自动展开（原来 hidden，点完不 hidden）",
@@ -1369,9 +1370,11 @@ RAIL_SHEET_JS = PRELUDE + r"""
   out.paneTop = Math.round(pb.top);
   out.paneBottom = Math.round(pb.bottom);
   out.panePadBottom = Math.round(parseFloat(getComputedStyle(q('.rpane.active')).paddingBottom) || 0);
-  out.toolbarAbovePane = (() => {
+  /* 堆叠次序判据（用户 2026-10-09 两次点名「侧边栏要在堆顶层」）：抽屉开着时，
+     贴着视口底边那一点命中的**必须是抽屉本身**，不是工具栏 —— 也就是抽屉把工具栏盖住了。 */
+  out.drawerAboveToolbar = (() => {
     const e = document.elementFromPoint(Math.round(innerWidth * 0.5), Math.round(innerHeight - 8));
-    return !!(e && e.closest && e.closest('.rtabs'));
+    return !!(e && e.closest && e.closest('.rpane'));
   })();
   out.paneWithinViewport = rect(q('.rpane.active')).y >= 0;
   tab0.click(); await sleep(700);
@@ -1442,16 +1445,20 @@ NAV_SHEET_JS = PRELUDE + r"""
   out.treeFirstH = rect(q('#tree .dom')).h;
   out.ariaNav1 = navTab.getAttribute('aria-expanded');
   out.railOpenWhenNav = rail.classList.contains('rail-open');
-  /* 判据换了：图6 要求分类抽屉**撑满整屏**，所以"底边必须 ≤ 工具栏上沿"这条不成立了；
-     现在要量的是两件真事 —— 抽屉自己 top=0/底到视口底，工具栏仍浮在它上面点得到。 */
+  /* 「分类」抽屉的层级与宽度是**用户手写指定**的：z-index 70 高于工具栏（60），
+     所以开着时贴底那一点命中的必须是抽屉本身，不是页签。 */
   out.navFullHeight = (() => {
     const lb = left.getBoundingClientRect();
     return lb.top <= 1 && Math.abs(lb.bottom - innerHeight) <= 1;
   })();
-  out.toolbarPaintedAbove = (() => {
-    const e = document.elementFromPoint(Math.round(innerWidth * 0.4), Math.round(innerHeight - 8));
-    return !!(e && e.closest && e.closest('.rtabs'));
+  out.drawerAboveToolbar = (() => {
+    /* 取样点必须在抽屉**自己的宽度**里：800 档抽屉只有 280 宽，
+       按 0.4*vw=320 去点会落到抽屉外的工具栏上 —— 那是探针的错，不是层级的错。 */
+    const w = left.getBoundingClientRect().width;
+    const e = document.elementFromPoint(Math.round(w / 2), Math.round(innerHeight - 8));
+    return !!(e && e.closest && e.closest('#p-left'));
   })();
+  out.navW = Math.round(left.getBoundingClientRect().width);
   out.navPadBottom = Math.round(parseFloat(getComputedStyle(left).paddingBottom) || 0);
   out.navInViewport = rect(left).y >= 0;
   out.navScrolls = getComputedStyle(left).overflowY;
@@ -1507,12 +1514,14 @@ RAIL_VIS_JS = """(async () => {
   out.clipped = b.bottom > innerHeight + 1;
   tab('notes', document.querySelector('.rtab[data-pane="notes"]'));
   await wait(250);
-  out.forcedActive = (document.querySelector('.rtab.active') || {}).dataset
-    ? document.querySelector('.rtab.active').dataset.pane : null;
+  /* 页签从此**不带 active 类**（用户 2026-10-09 点名删除 .rtab.active）：
+     "在看哪块面板"只读 .rpane.active，所以这里也改成读面板。 */
+  const shownPane = () => { const p = document.querySelector('.rpane.active'); return p ? p.id.replace(/^pane-/, '') : null; };
+  out.forcedActive = shownPane();
+  out.tabsWithActive = document.querySelectorAll('.rtab.active').length;
   railTabClamp();
   await wait(300);
-  out.afterClamp = (document.querySelector('.rtab.active') || {}).dataset
-    ? document.querySelector('.rtab.active').dataset.pane : null;
+  out.afterClamp = shownPane();
   out.paneAfterClamp = (document.querySelector('.rpane.active') || {}).id;
   out.railOpen = document.querySelector('#p-rail').classList.contains('rail-open');
   // 层级：抽屉要盖住顶栏。main 是 z-index:4 的堆叠上下文，抽屉的 59/60 出不去那一层，
@@ -1555,11 +1564,11 @@ def probe_rail_sheet(base):
           and got.get("paneScrollH", 0) >= (got.get("openPane") or {}).get("h", 0) - 2
           and got.get("paneOverflow") == "auto" and got.get("aria1") == "true", got)
     check("页签点开的是**侧边抽屉**：撑满整个视口高度（用户图6，top=0 且底边到视口底），"
-          "宽 ≤86vw 且 ≤380px、贴右边缘、自己滚；工具栏浮在它之上仍可点，内容底部留白≥工具栏高",
+          "宽 ≤86vw 且 ≤380px、贴右边缘、自己滚；**抽屉在最高层，把工具栏盖住**（用户两次点名）",
           got.get("panePos") == "fixed" and got.get("paneTop") == 0
           and abs(got.get("paneBottom", -1) - (got.get("vh") or -1)) <= 1
-          and got.get("toolbarAbovePane") is True
-          and (got.get("panePadBottom") or 0) >= (got.get("tbH") or 999)
+          and got.get("drawerAboveToolbar") is True
+          and 0 < (got.get("panePadBottom") or 0) <= 40
           and (got.get("openPane") or {}).get("w", 0) <= 380
           and (got.get("openPane") or {}).get("w", 0) <= round((got.get("vw") or 0) * 0.86) + 1
           and abs(got.get("paneRight", 0) - (got.get("vw") or -1)) <= 1
@@ -1579,10 +1588,11 @@ def probe_rail_sheet(base):
     rv = run_expr(url, RAIL_VIS_JS, width=390)
     check("390 档可见页签恰好是三颗：分类 / 目录 / 标签（备注与双链只留宽屏）",
           rv.get("visible") == ["nav", "toc", "info"] and rv.get("domN") == 4, rv)
-    check("换档防御：active 停在被隐藏的「备注」上时，railTabClamp 把它落回「目录」，"
-          "不留一块看不见页签的面板",
+    check("换档防御：显示中停在被隐藏的「备注」面板上时，railTabClamp 把它落回「目录」，"
+          "不留一块看不见页签的面板；且**页签一律不带 active 类**（用户点名删除 .rtab.active）",
           rv.get("forcedActive") == "notes" and rv.get("afterClamp") == "toc"
-          and rv.get("paneAfterClamp") == "pane-toc" and rv.get("railOpen") is True, rv)
+          and rv.get("paneAfterClamp") == "pane-toc" and rv.get("railOpen") is True
+          and rv.get("tabsWithActive") == 0, rv)
     check("面板展开是**一步到位**的：120ms 与 900ms 两次量到同一个高度（没有半开中间帧）",
           rv.get("h120") == rv.get("h900") and (rv.get("h900") or 0) > 100, rv)
     check("面板底边就落在视口底边上（满高抽屉，图6）且不溢出屏幕；窄屏状态栏整条撤掉（图3）",
@@ -1593,9 +1603,11 @@ def probe_rail_sheet(base):
           rv.get("headerStillOnTop") is False
           and (rv.get("scrim") or {}).get("pos") == "fixed"
           and (rv.get("scrim") or {}).get("z") == "7", rv)
-    check("宽屏照旧：四颗文档页签全部可见、clamp 不碰「备注」、底部状态栏仍在（隐藏只归窄屏那一档）",
+    check("宽屏照旧：四颗文档页签全部可见、clamp 不碰「备注」、底部状态栏仍在（隐藏只归窄屏那一档）、"
+          "页签同样不带 active 类",
           dv.get("visible") == ["toc", "info", "notes", "links"]
-          and dv.get("afterClamp") == "notes" and dv.get("sbDisp") != "none", dv)
+          and dv.get("afterClamp") == "notes" and dv.get("sbDisp") != "none"
+          and dv.get("tabsWithActive") == 0, dv)
     d = run_expr(url, RAIL_DESK_JS, width=1600)
     check("桌面档零副作用：右栏仍在网格里（relative）、常驻可见，点页签不会长出抽屉态",
           d.get("pos") == "relative" and d.get("open0") is False and d.get("open1") is False
@@ -1639,10 +1651,10 @@ def probe_rail_sheet(base):
     check("900 档：左树仍是常驻列，「分类」页签不出现（那一档树没被藏）",
           band.get("leftDisp") != "none" and (band.get("left") or {}).get("w", 0) >= 200
           and band.get("navTab") == "none", band)
-    check("900 档：工具栏页签照样能展开，且抽屉在这一档同样是满高（顶到上沿、底到视口底、给工具栏留出内容底部）",
+    check("900 档：工具栏页签照样能展开，且抽屉在这一档同样是满高（顶到上沿、底到视口底）并盖住工具栏",
           band.get("opened") is True and band.get("paneTop") == 0
           and abs(band.get("paneBottom", -1) - (band.get("vh") or -1)) <= 1
-          and (band.get("panePadBottom") or 0) >= (band.get("tbH") or 999), band)
+          and 0 < (band.get("panePadBottom") or 0) <= 40, band)
     # ---- 「分类」抽屉：窄屏原本没有翻目录的路径（style.css ≤860 把左树整块隐藏）----
     for w in (390, 800):
         n = run_expr(url, NAV_SHEET_JS, width=w)
@@ -1652,12 +1664,13 @@ def probe_rail_sheet(base):
               and (n.get("tabRect") or {}).get("h", 0) >= 44, n)
         check(f"{tag}默认不占位：没有 kb-nav-on，左树仍是 display:none",
               n.get("navOn0") is False and n.get("leftDisp0") == "none", n)
-        check(f"{tag}点一下左树从左侧滑出：**撑满整个视口高度**（用户图6）、自己滚、"
-              f"工具栏仍浮在它上面点得到，内容底部留白≥工具栏高",
+        check(f"{tag}点一下左树从左侧滑出：**撑满整个视口高度**（用户图6）、自己滚、宽 ≤280px（用户手写指定），"
+              f"并且 z70 是最高层 —— 连底部工具栏一起盖住（用户手写指定的层级）",
               n.get("navOn1") is True and n.get("leftDisp1") == "flex"
               and (n.get("leftRect") or {}).get("h", 0) > 100
               and n.get("navInViewport") is True and n.get("navFullHeight") is True
-              and n.get("toolbarPaintedAbove") is True
+              and n.get("drawerAboveToolbar") is True
+              and (n.get("navW") or 0) <= min(round((n.get("vw") or 0) * 0.86) + 1, 281)
               and (n.get("navPadBottom") or 0) >= (n.get("raw", {}).get("tbH") or 999)
               and n.get("navScrolls") == "auto" and n.get("ariaNav1") == "true", n)
         check(f"{tag}树真的在里面且域可见（不是空壳面板）",
@@ -2844,12 +2857,13 @@ DEFAULT_TAB_JS = PRELUDE + r"""
   const R = e => { const b = e && e.getBoundingClientRect(); return b ? {h: Math.round(b.height), w: Math.round(b.width), disp: getComputedStyle(e).display} : null; };
   const read = () => {
     const tabs = [...document.querySelectorAll('.rtab[data-pane]')];
-    const actTabs = tabs.filter(t => t.classList.contains('active'));
+    /* 页签侧从此只有一个判据 = aria-selected：用户 2026-10-09 点名删除 .rtab.active，
+       所以"哪个页签是当前的"不再看类名（activeTabs 必须恒为 0，这条也断）。 */
     const sel = tabs.filter(t => t.getAttribute('aria-selected') === 'true');
     const panes = [...document.querySelectorAll('.rpane')].filter(p => p.classList.contains('active'));
     return {
-      tabPanes: actTabs.map(t => t.dataset.pane),
-      selPanes: sel.map(t => t.dataset.pane),
+      tabPanes: sel.map(t => t.dataset.pane),
+      activeTabs: document.querySelectorAll('.rtab.active').length,
       paneIds: panes.map(p => p.id),
       paneRect: panes.length ? R(panes[0]) : null,
       tocVisible: R(q('#pane-toc')),
@@ -2860,7 +2874,7 @@ DEFAULT_TAB_JS = PRELUDE + r"""
     && out.firstPaint.paneIds.length === 1
     && out.firstPaint.tabPanes[0] === 'toc'
     && out.firstPaint.paneIds[0] === 'pane-toc'
-    && out.firstPaint.selPanes.join(',') === 'toc';
+    && out.firstPaint.activeTabs === 0;
   // 点「标签」页签：页签与面板必须一起搬过去（不许只亮一个）
   q('.rtab[data-pane="info"]').click(); await sleep(500);
   out.afterInfo = read();
@@ -2882,8 +2896,9 @@ def probe_default_tab(base):
             d = run_expr(base + rel, DEFAULT_TAB_JS, width=w)
             fp = d.get("firstPaint") or {}
             tag = f"[{w}px {why}]"
-            check(f"{tag} 首屏默认落在「目录」：唯一的 active 页签是 toc",
-                  fp.get("tabPanes") == ["toc"] and fp.get("selPanes") == ["toc"], fp)
+            check(f"{tag} 首屏默认落在「目录」：唯一 aria-selected 的页签是 toc，"
+                  f"且**没有任何页签带 active 类**（用户点名删除）",
+                  fp.get("tabPanes") == ["toc"] and fp.get("activeTabs") == 0, fp)
             check(f"{tag} 唯一 active 的面板就是 #pane-toc（页签与面板不是两套判据）",
                   fp.get("paneIds") == ["pane-toc"], fp)
             check(f"{tag} 页签态与面板态自洽（四组读数合起来成立，不是各亮各的）",
@@ -2891,9 +2906,11 @@ def probe_default_tab(base):
             ai = d.get("afterInfo") or {}
             check(f"{tag} 点「标签」后页签与面板一起搬到 info（不出现页签亮着目录、画面是标签）",
                   ai.get("tabPanes") == ["info"] and ai.get("paneIds") == ["pane-info"], ai)
-            check(f"{tag} 换文档后仍然只有一个 active 页签与一个 active 面板（clamp 没造出二次错位）",
+            check(f"{tag} 换文档后仍然只有一个 aria-selected 页签与一个 active 面板（clamp 没造出二次错位），"
+                  f"页签仍然零个 active 类",
                   len((d.get("afterNav") or {}).get("tabPanes") or []) == 1
                   and len((d.get("afterNav") or {}).get("paneIds") or []) == 1
+                  and (d.get("afterNav") or {}).get("activeTabs") == 0
                   and (d.get("path") or "").endswith("/gamma"), d.get("afterNav"))
 
 
@@ -2945,6 +2962,100 @@ def run_probe(name, fn, *args):
         print(f"-- 跳过探针 {name}（KB_BEHAVIOR_ONLY={ONLY or '未设'}）")
 
 
+# ---------------------------------------------------------------- 探针 35：公网产物独有的一面
+# 本地实例根本没有 KB_BASE 桥，所以"点层级行既收起又导航"这条缺陷**只在导出壳里出现**
+# （轮次 71 用户实拍：点一级域行，目录收了，正文还跳到该目录下的第一篇）。
+# 这一格是台账 §8 那笔欠账的第一块砖：把只读档的真浏览器行为纳进常驻套件。
+ARTIFACT_CLICK_JS = r"""(async () => {
+  const wait = ms => new Promise(r => setTimeout(r, ms));
+  const out = {};
+  for (let i = 0; i < 140 && !window.navigate; i++) await wait(50);
+  await wait(600);
+  // 深链在纯静态服务上没有 404 回落 → 走客户端路由，等价于用户从首页点进一篇
+  window.navigate('/doc/ui-r/notes/alpha.md', true);
+  for (let i = 0; i < 120 && !document.querySelector('#tree .dom-head'); i++) await wait(50);
+  await wait(700);
+  const q = s => document.querySelector(s);
+  const heads = [...document.querySelectorAll('#tree .dom-head')];
+  out.nHeads = heads.length;
+  out.readonly = !!(window.KB_STATIC && KB_STATIC.readonly);
+  const head = heads.find(h => h.getAttribute('aria-expanded') === 'true') || heads[0];
+  const dom = head.closest('.dom');
+  out.before = { path: location.pathname, open: dom.classList.contains('open'),
+                 aria: head.getAttribute('aria-expanded') };
+  head.click();
+  await wait(1200);
+  out.after = { path: location.pathname, open: dom.classList.contains('open'),
+                aria: head.getAttribute('aria-expanded'),
+                title: (q('.article h1') || {}).textContent || null };
+  const subA = document.querySelector('#tree .sub');
+  if (subA) {
+    const p0 = location.pathname;
+    subA.click(); await wait(900);
+    out.sub = { path: location.pathname, moved: p0 !== location.pathname,
+                collapsed: subA.classList.contains('collapsed'),
+                aria: subA.getAttribute('aria-expanded') };
+  }
+  out.moved = out.before.path !== out.after.path;
+  return JSON.stringify(out);
+})()"""
+
+
+def probe_public_artifact(base, tmp):
+    print("== 35 公网产物：点一级/二级层级行只收起，绝不导航（本地实例照不到的一面） ==")
+    site = tmp / "site-artifact"
+    env = dict(os.environ, KB_ROOT=str(tmp))
+    subprocess.run([sys.executable, str(ROOT / "scripts" / "export_static.py"),
+                    "--root", str(tmp), "--out", str(site), "--base", "",
+                    "--no-git", "--no-search"],
+                   capture_output=True, text=True, encoding="utf-8", errors="replace",
+                   env=env, timeout=600)
+    ok_file = (site / "index.html").is_file()
+    check("合成语料导出成公网产物（index.html 落盘）", ok_file, f"site={site.name}")
+    if not ok_file:
+        return
+    port = free_port()
+    srv = subprocess.Popen([sys.executable, "-m", "http.server", str(port), "-d", str(site)],
+                           stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    try:
+        # 资源可达闸门：产物全 404 时探针也能"跑完"，那是裸页假绿（§6 132）
+        import urllib.request
+        reachable = False
+        for _ in range(40):
+            try:
+                with urllib.request.urlopen(f"http://127.0.0.1:{port}/static/kb-static.js",
+                                            timeout=2) as resp:
+                    reachable = resp.status == 200
+                break
+            except Exception:  # noqa: BLE001
+                time.sleep(0.5)
+        check("产物静态服务可达（kb-static.js 200，不是 404 裸页）", reachable)
+        if not reachable:
+            return
+        d = run_expr(f"http://127.0.0.1:{port}/", ARTIFACT_CLICK_JS, width=390)
+        b, a = d.get("before") or {}, d.get("after") or {}
+        check("跑的就是导出壳（KB_STATIC.readonly=true，树里有域行）",
+              d.get("readonly") is True and (d.get("nHeads") or 0) >= 1, d)
+        check("点一级域行：收起发生（class 与 aria 一起落）",
+              b.get("open") is True and a.get("open") is False
+              and a.get("aria") == "false", {"before": b, "after": a})
+        check("点一级域行：**绝不导航**（公网桥曾把带前缀的 href 翻译成 navigate，"
+              "于是点一下既收目录又打开该目录第一篇 —— 用户实拍）",
+              d.get("moved") is False and a.get("path") == b.get("path"),
+              {"before": b.get("path"), "after": a.get("path"), "title": a.get("title")})
+        s = d.get("sub") or {}
+        check("点二级子域行：同样只收不导航",
+              s.get("moved") is False and s.get("collapsed") is True
+              and s.get("aria") == "false", s)
+    finally:
+        srv.kill()
+        try:
+            srv.wait(timeout=10)
+        except Exception:  # noqa: BLE001
+            pass
+        # 产物落在 tmp 里，main() 收尾整根删掉 —— 不在这里多开一处物理删除调用点（I4 白名单按数量记账）
+
+
 def main() -> int:
     global PORT
     if not node_available() or not shutil.which("node"):
@@ -2985,6 +3096,7 @@ def main() -> int:
         run_probe("histtoggle", probe_hist_toggle, base)   # 只读：阅读历史开关态在每条路径上都同步
         run_probe("defaulttab", probe_default_tab, base)   # 只读：默认页签与默认面板同一个判据
         run_probe("railsheet", probe_rail_sheet, base)  # 只读：窄屏右栏=贴底工具栏，点页签上滑展开
+        run_probe("artifact", probe_public_artifact, base, tmp)  # 只读：导出壳里点层级行只收不导航（§8 第一块砖）
         run_probe("pretty", probe_pretty, base)         # 只读：美化版出口与只读态
         run_probe("finish", probe_finish_bar, base, tmp)  # 写 reading.db 的 doc_marks（不动语料）
         run_probe("spark", probe_toc_spark, base)       # 写 reading.db 的事件（派生库，不动语料）

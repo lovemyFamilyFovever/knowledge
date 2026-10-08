@@ -84,7 +84,7 @@
 
 /* ---- [7] 右 rail：药丸页签内的图标节奏（页签本体样式在 style.css [9]） ---- */
 .rtab svg{width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex:none;opacity:.78}
-.rtab.active svg{color:var(--c-acc);opacity:1}
+/* 页签图标与文字同色 —— 选中态那一条已按用户要求删除（页签不带 active 类，见 style.css 同处注释） */
 .rtab:focus-visible{outline:3px solid color-mix(in oklab,var(--c-acc),transparent 20%);outline-offset:1px;border-radius:var(--rd-card)}
 
 /* ---- [8] 面板 reveal 微调：三栏不同步起跳（stagger 由 data-reveal 顺序决定） ---- */

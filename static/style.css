@@ -608,9 +608,9 @@ a.lk-row:hover{background:var(--c-sunk)}
   transition:color var(--dur-1),background var(--dur-1),border-color var(--dur-1),box-shadow var(--dur-1)}
 .rtab .rt-n{font:600 10px/1 var(--f-mono);color:var(--faint);font-variant-numeric:tabular-nums}
 .rtab:hover{color:var(--c-ink);background:color-mix(in oklab,var(--c-panel),transparent 52%)}
-.rtab.active{background:var(--c-panel);border-color:var(--c-line);color:var(--c-ink);
-  box-shadow:0 1px 2px color-mix(in oklab,var(--c-ink),transparent 92%)}
-.rtab.active .rt-n{color:var(--c-acc)}
+/* 这里**故意没有**页签选中态那两条规则 —— 用户 2026-10-09 明确要求页签（含底部工具栏那颗「目录」）
+   一律不带 active 类；"在看哪块面板"只由面板自身的 active 类表达。要加回选中样式请先问用户。
+   （test_export_static 会扫全部样式表钉这条口径，所以这里连那个选择器字面量都不许出现。） */
 .rtab:focus-visible{outline:2px solid var(--acc-line);outline-offset:1px}
 .rpane{flex:1;overflow-y:auto;padding-top:10px;display:none}
 .rpane.active{display:block;animation:rise var(--dur-2) var(--ease-out)}

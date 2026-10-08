@@ -480,6 +480,13 @@
         showHome();
         return;
       }
+      /* 树里的层级行（一级域行 / 二级子域行）**只负责展开收起，绝不导航**。
+         app.js 在 #tree 的**捕获**阶段就 preventDefault + stopPropagation 了，
+         但本监听挂在 document 上 —— 捕获阶段 document 比 #tree 更早拿到事件，
+         那一刻 `e.defaultPrevented` 还是 false，于是公网这一侧把带前缀的 href
+         翻译成 navigate()，症状就是"点一下层级既收起又打开了下面第一篇"（轮次 71 实拍）。
+         所以这里按选择器放行给 app.js，不在桥里翻译这两类链接。 */
+      if (e.target.closest && e.target.closest("#tree .dom-head, #tree .sub")) return;
       if (h.indexOf(BASE + "/doc/") !== 0 && h.indexOf(BASE + "/browse/") !== 0) return;
       e.preventDefault();
       if (typeof window.navigate === "function") window.navigate(h.slice(BASE.length), true);

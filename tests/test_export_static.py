@@ -360,23 +360,36 @@ def main() -> int:
               appjs.count("function treeOpenSet()") == 1)
         # 窄屏右栏 = 贴底工具栏（用户实拍：旧写法把那一坨卡在正文中段）
         kbc_css = (ROOT / "static" / "kb-core.css").read_text(encoding="utf-8")
-        check("窄屏撤掉状态栏（用户图3）、页签条自己 fixed 贴视口底边并浮在抽屉之上；"
-              "收起态面板真的不在流里，展开态是贴右边缘的**满高**侧边抽屉（用户图6）",
+        check("窄屏撤掉状态栏（用户图3）、页签条自己 fixed 贴视口底边但**在抽屉之下**；"
+              "收起态面板真的不在流里，展开态是贴右边缘的**满高 + 最高层**侧边抽屉（用户图6 + 两次点名堆顶层）",
               ".statusbar{display:none}" in kbc_css
               and "position:fixed;left:0;right:0;bottom:0;top:auto" in kbc_css
-              and "main>section.rail .rtabs{position:fixed;left:0;right:0;bottom:0;z-index:62;" in kbc_css
+              and "main>section.rail .rtabs{position:fixed;left:0;right:0;bottom:0;z-index:60;" in kbc_css
               and "main>section.rail .rpane{display:none}" in kbc_css
               # style.css:607 的 `#pane-toc.active{display:flex}` 是 id 级，收起态必须用同级别的
               # :is() 才压得住 —— 压不住就是"工具栏下面挂一坨目录"（用户实拍）。
               and "main>section.rail:not(.rail-open) :is(#pane-toc,#pane-info,#pane-links,#pane-notes).active{display:none}" in kbc_css
               and "position:fixed;right:0;top:0;left:auto;bottom:0;z-index:61" in kbc_css
-              # 满高抽屉的底边由"内容留出工具栏高度"负责，而不是把抽屉本身截短
-              and "padding:12px 14px calc(var(--kb-bar) + 26px + env(safe-area-inset-bottom))" in kbc_css
+              # 抽屉是最高层（61 > 工具栏 60），底边只留普通内边距 + 安全区，不再给工具栏让位
+              and "padding:12px 14px calc(16px + env(safe-area-inset-bottom))" in kbc_css
               and "animation:kb-rail-side" in kbc_css)
         check("抽屉的开合只在 app.js 一处实现（railSheet），Esc 链引用它",
               appjs.count("function railSheet(") == 1
               and "window.railSheetClose" in appjs
               and "window.railSheetClose === \"function\"" in kbc)
+        # 用户 2026-10-09："完全删除 .rtab.active，底部工具栏的「目录」按钮不允许加 active 类名"
+        # —— 样式表里不许再有这个选择器，模板里不许再烤出这个类，JS 里不许再往页签上加。
+        rtab_css = "\n".join(p.read_text(encoding="utf-8", errors="replace")
+                             for p in list((ROOT / "static").glob("*.css"))
+                             + list((ROOT / "static" / "pages").glob("*.css")))
+        tab_body = appjs.split("function tab(")[1].split("\n}")[0]
+        check("`.rtab.active` 这个选择器在全部样式表里已彻底删除（页签选中态只走 aria-selected + 面板 active）",
+              ".rtab.active" not in rtab_css
+              and 'class="rtab active"' not in (ROOT / "app" / "templates" / "workbench.html").read_text(encoding="utf-8")
+              # tab() 里唯一一次 add("active") 必须落在**面板**上；页签侧只许改 aria-selected
+              and tab_body.count('classList.add("active")') == 1
+              and 'pane.classList.add("active")' in tab_body
+              and 'classList.toggle("active", on)' not in appjs)
         # 窄屏左树入口：style.css ≤860 把左树整块隐藏，工具栏第一颗「分类」是唯一的翻目录路径
         wb_tpl = (ROOT / "app" / "templates" / "workbench.html").read_text(encoding="utf-8")
         base_tpl = (ROOT / "app" / "templates" / "base.html").read_text(encoding="utf-8")
@@ -386,10 +399,12 @@ def main() -> int:
         check("抽屉与页签的实现各只有一处，Esc 链两环都在",
               appjs.count("function navSheet(") == 1 and "window.navSheetClose" in appjs
               and "window.navSheetClose === \"function\"" in kbc)
-        check("唤出左树的规则与隐藏它的是同一档断点（860），且分类抽屉也是满高、底边由内容留白让给工具栏",
+        check("唤出左树的规则与隐藏它的是同一档断点（860），且分类抽屉满高、宽 ≤280px、"
+              "z-index 70 最高层（用户 2026-10-09 手写指定的三条）",
               "@media (max-width:860px)" in kbc_css
               and ".rtab.kb-nav-tab{display:inline-flex}" in kbc_css
-              and "display:none;position:fixed;left:0;right:auto;top:0;z-index:59;bottom:0;" in kbc_css
+              and "display:none;position:fixed;left:0;right:auto;top:0;z-index:70;bottom:0;" in kbc_css
+              and "width:min(86vw,280px)" in kbc_css
               and "main.kb-nav-on>section.panel#p-left" in kbc_css
               and "padding:0 2px calc(var(--kb-bar) + 20px + env(safe-area-inset-bottom))" in kbc_css
               and "@media (min-width:861px){\n  .rtab.kb-nav-tab{display:none}" in kbc_css)

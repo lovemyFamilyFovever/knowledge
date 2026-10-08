@@ -294,21 +294,22 @@ main.single:not(:has(> .page-panel)){overflow-y:auto}
     flex-direction:column;max-height:none;margin:0;border-radius:0;
     background:transparent;border-top:0;border-bottom:0;box-shadow:none;padding-bottom:0
   }
-  /* 工具栏抬成独立一条贴底 fixed，并浮在抽屉之上（z 62 > 抽屉 61 / 分类 59）。
-     为什么要盖在抽屉上面：用户 2026-10-09 图6 要求抽屉**撑满整个设备高度**（口径是
-     "像设置那种满高弹层"），工具栏若被抽屉盖住，"再点当前页签收起"这条手势在手机上
-     就没有落点了；抬上来之后从「分类」抽屉里也能直接切「目录 / 标签」。 */
-  main>section.rail .rtabs{position:fixed;left:0;right:0;bottom:0;z-index:62;
+  /* 工具栏是独立一条贴底 fixed，但**永远在抽屉之下**（z 60 < 两条抽屉的 61）。
+     用户 2026-10-09 两次明确要求：「侧边栏要在堆顶层」—— 抽屉开着就是最高层，
+     连工具栏一起盖住，形状对齐「设置」那个满高弹层。
+     代价说清楚：抽屉开着时三颗页签点不到，"再点当前页签收起"这一环在手机上暂时不可用，
+     关闭走**点遮罩 / Esc / 换文档**三条（遮罩是 main::after，点它算外面，实测收得掉）。 */
+  main>section.rail .rtabs{position:fixed;left:0;right:0;bottom:0;z-index:60;
     flex-wrap:nowrap;overflow-x:auto;min-height:var(--kb-bar);align-items:stretch;
     background:var(--c-panel);border-top:1px solid var(--c-line);
     box-shadow:0 -10px 28px rgba(0,0,0,.16);padding-bottom:env(safe-area-inset-bottom)}
   main>section.rail .rtab{min-height:44px;flex:1 0 auto;justify-content:center}
   /* 面板：**侧边抽屉**，不是从底部顶起来的一坨（用户 2026-10-08 明确要求）。
      从右边缘滑入，**撑满整个视口高度**（用户 2026-10-09 图6：旧写法底边停在工具栏上沿，
-     只占正文那一截，看着矮一截 —— 口径要对齐「设置」那种满高弹层）。
-     内容底部留出 --kb-bar + 26px，避免最后一行被浮在上面的工具栏压住。
-     宽 86vw 上限 380px，自己滚。开合手势一条没动（再点当前页签 / Esc /
-     点外面 / 换文档），落点仍在 app.js::railSheet。
+     只占正文那一截，看着矮一截 —— 口径要对齐「设置」那种满高弹层），
+     并且是这一档里的**最高层**（z 61，把工具栏与顶栏都盖住）。
+     底边只留普通内边距 + 安全区，不再给工具栏让位 —— 让位是"抽屉在工具栏之下"那版的写法。
+     宽 86vw 上限 380px，自己滚。落点仍在 app.js::railSheet。
      也不走 max-height 过渡：那条过渡会在 ~350ms 里停在几十像素高的形状上，
      用户实拍到的正是那个"只露出标题行的半开面板"。 */
   main>section.rail .rpane{display:none}
@@ -321,7 +322,7 @@ main.single:not(:has(> .page-panel)){overflow-y:auto}
     width:min(86vw,380px);max-height:none;overflow-y:auto;
     background:var(--c-panel);border-left:1px solid var(--c-line);border-top:0;
     box-shadow:-16px 0 40px rgba(0,0,0,.18);
-    padding:12px 14px calc(var(--kb-bar) + 26px + env(safe-area-inset-bottom));
+    padding:12px 14px calc(16px + env(safe-area-inset-bottom));
     animation:kb-rail-side var(--dur-2) var(--ease-out)
   }
   /* 窄屏贴底工具栏只留三颗：分类 / 目录 / 标签。备注与双链是"对着这一篇写作"的
@@ -343,14 +344,14 @@ main.single:not(:has(> .page-panel)){overflow-y:auto}
   /* 「分类」页签：唤出被 style.css ≤860 整块隐藏的左树。860 以上它不存在（display:none），
      因为左树本来就常驻在左边，多一个钮等于多一个假入口。 */
   .rtab.kb-nav-tab{display:inline-flex}
-  /* 「分类」抽屉：与右栏那三颗**同一种形状** —— 从左边缘滑入的侧边栏，
-     不是从底部顶起来的一坨（用户 2026-10-08 明确要求，两条抽屉方向相反正好对应
-     桌面端的左右两栏），并且同样**撑满整个视口高度**（用户 2026-10-09 图6）。
-     底边留给浮在上面的工具栏（引用同一个 --kb-bar），不然最后一行文档会被盖住。
+  /* 「分类」抽屉：从左边缘滑入的侧边栏（两条抽屉方向相反对应桌面端左右两栏），
+     满高 `top:0;bottom:0`。
+     **z-index:70 是用户 2026-10-09 手写指定的值** —— 高于工具栏（60）与右栏那两条面板（61），
+     抽屉开着时它是最高层，连工具栏一起盖住。关闭走 点遮罩 / Esc / 换文档 三条。
      也不走 max-height 过渡：半开帧会被拍成"只露一行"的空壳（§6 127）。 */
   main>section.panel#p-left{
-    display:none;position:fixed;left:0;right:auto;top:0;z-index:59;bottom:0;
-    width:min(86vw,360px);max-height:none;overflow-y:auto;margin:0;border-radius:0;
+    display:none;position:fixed;left:0;right:auto;top:0;z-index:70;bottom:0;
+    width:min(86vw,280px);max-height:none;overflow-y:auto;margin:0;border-radius:0;
     background:var(--c-panel);border:0;border-right:1px solid var(--c-line);
     box-shadow:16px 0 40px rgba(0,0,0,.18)
   }
