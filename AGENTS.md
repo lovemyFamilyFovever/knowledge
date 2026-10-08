@@ -45,11 +45,11 @@ python scripts\check_ledger_counts.py          # 台账对账：§0 数字必须
 | `test_properties.py` | 14 | 性质测试（每条 240 个随机样本，固定种子） |
 | `test_invariants.py` | 71 | AGENTS 不变量门禁 I1~I9（含 I4 物理删除调用点白名单） |
 | `test_e2e_smoke.py` | 170 | 端到端：逐条打满 40 条路由 |
-| `test_export_static.py` | 143 | 公网只读档契约（导出同构 / 只读裁剪 / KB_BASE 口径 / 公网文案与首页 / PWA 清单） |
+| `test_export_static.py` | 144 | 公网只读档契约（导出同构 / 只读裁剪 / KB_BASE 口径 / 公网文案与首页 / PWA 清单） |
 | `test_known_defects.py` | 6 | 已登记缺陷不回退 |
 | `test_watch_ci.py` | 38 | Agent 工具自身（四类"读不到"分开点名；GBK/UTF-8 两档都要绿） |
 | `test_ui_regress.py` | 31 | P5 视觉回归：11 张截图逐像素 vs `tests/ui-baselines/` + 10 条顶栏几何 |
-| `test_ui_behavior.py` | 274 | UI 行为回归：真点每个控件，看它到底有没有反应 |
+| `test_ui_behavior.py` | 275 | UI 行为回归：真点每个控件，看它到底有没有反应 |
 | `test_rag.py` | — | RAG（与 Rust tokenizers 逐 token 交叉验证 + 续跑三证；缺依赖/缺模型才 SKIP） |
 
 `--stability` 只验"两次截图逐像素相同"（改矩阵或换环境后先跑它）；`--update` 在确认改动无误后刷新基线。

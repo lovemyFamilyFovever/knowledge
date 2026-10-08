@@ -1353,6 +1353,9 @@ RAIL_SHEET_JS = PRELUDE + r"""
   out.paneScrollH = q('.rpane.active').scrollHeight;
   out.paneOverflow = getComputedStyle(q('.rpane.active')).overflowY;
   out.paneMaxH = Math.round(parseFloat(getComputedStyle(q('.rpane.active')).maxHeight) || 0);
+  out.panePos = getComputedStyle(q('.rpane.active')).position;
+  out.paneRight = Math.round(q('.rpane.active').getBoundingClientRect().right);
+  out.vw = innerWidth;
   out.vh = innerHeight;
   const rr = rail.getBoundingClientRect(), sbr = q('.statusbar') && q('.statusbar').getBoundingClientRect();
   out.bottomGap = Math.round(innerHeight - rr.bottom);
@@ -1459,6 +1462,7 @@ NAV_SHEET_JS = PRELUDE + r"""
 
 
 # 窄屏工具栏的三件事：可见页签数、换档钳位、展开有没有停在半开帧（用户实拍的红框）
+# 抽屉形状本身（右边缘贴入、底边压在工具栏上沿）由下面 RAIL_SHEET_JS 那组断言管。
 RAIL_VIS_JS = """(async () => {
   const wait = ms => new Promise(r => setTimeout(r, ms));
   for (let i = 0; i < 100 && !document.querySelector('.rtab'); i++) await wait(50);
@@ -1493,7 +1497,7 @@ RAIL_VIS_JS = """(async () => {
 
 
 def probe_rail_sheet(base):
-    print("== 16d 窄屏右栏 → 贴底工具栏，点页签从下往上展开 ==")
+    print("== 16d 窄屏右栏 → 贴底工具栏，点页签展开侧边抽屉 ==")
     url = base + "/doc/ui-r/notes/beta.md"
     got = run_expr(url, RAIL_SHEET_JS, width=390)
     check("工具栏脱离文档流贴在底部（position:fixed），四枚页签都在",
@@ -1506,15 +1510,23 @@ def probe_rail_sheet(base):
     check("默认收起：没有 rail-open，且收起态面板高度真的是 0（不留空壳）",
           got.get("open0") is False and (got.get("pane0") or {}).get("h") == 0
           and got.get("aria0") == "false", got)
-    check("点页签从下往上展开：面板按内容起高（上限 60vh）、不超出视口、溢出时自己滚",
+    check("点页签展开：抽屉按内容起高、不超出视口、溢出时自己滚",
           got.get("open1") is True and (got.get("openPane") or {}).get("h", 0) > 100
           and (got.get("openRail") or {}).get("y", -1) >= 0
           and got.get("paneWithinViewport") is True
           and got.get("paneScrollH", 0) >= (got.get("openPane") or {}).get("h", 0) - 2
           and got.get("paneOverflow") == "auto" and got.get("aria1") == "true", got)
-    check("展开上限就是 60vh（长目录会被截断，但面板自己滚，不会顶掉整屏正文）",
-          abs((got.get("paneMaxH") or 0) - round((got.get("vh") or 0) * 0.6)) <= 2
+    check("页签点开的是**侧边抽屉**：从右边缘贴到屏幕上沿，底边停在工具栏上沿，宽 ≤86vw 且 ≤380px，自己滚",
+          got.get("panePos") == "fixed" and (got.get("openPane") or {}).get("y") == 0
+          and abs(((got.get("openPane") or {}).get("y", 0)
+                   + (got.get("openPane") or {}).get("h", 0))
+                  - (got.get("openRail") or {}).get("y", -1)) <= 1
+          and (got.get("openPane") or {}).get("w", 0) <= 380
+          and (got.get("openPane") or {}).get("w", 0) <= round((got.get("vw") or 0) * 0.86) + 1
+          and abs(got.get("paneRight", 0) - (got.get("vw") or -1)) <= 1
           and got.get("paneOverflow") == "auto", got)
+    check("抽屉不再受 60vh 上限约束（旧写法把面板压在工具栏上方一条里，长目录只能滚一小截）",
+          got.get("paneMaxH") in (0, None) and (got.get("openPane") or {}).get("h", 0) > 500, got)
     check("再点当前页签收起", got.get("open2") is False and (got.get("pane2") or {}).get("h") == 0, got)
     check("Esc 收起（Esc 分层关闭链里加了这一环）",
           got.get("open3") is True and got.get("open4") is False, got)

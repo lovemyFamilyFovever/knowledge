@@ -226,11 +226,16 @@ def create_app(root: Path | None = None) -> Flask:
         tax = load_taxonomy(content)
 
         def av(name):
-            """静态资源版本号：按文件 mtime 自动失效，改完刷新即生效，免手动 ?v=。"""
+            """静态资源版本号：按文件 mtime 自动失效，改完刷新即生效，免手动 ?v=。
+
+            导出产物里拿不到 mtime（渲染发生在 static 拷贝**之前**，且 KB_ROOT 是只含
+            语料的 staging），退回构建号。**绝不能让公网所有资源都带 ?v=0** ——
+            那等于没有 cache-busting：SW 的 static 档是缓存优先，新壳配旧 CSS/JS 的
+            混血状态就是这么来的（2026-10-08 用户实拍：改了不生效）。"""
             try:
                 return int((root / "static" / name).stat().st_mtime)
             except OSError:
-                return 0
+                return app.config.get("KB_ASSET_VERSION") or 0
 
         return {"LABELS": tax["domains"], "SUB_LABELS": tax["subs"],
                 "SOURCE_LABELS": tax["sources"], "STATUS_LABELS": tax["status"],

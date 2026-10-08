@@ -451,6 +451,9 @@ def export_site(root: Path, out: Path, base: str = KB_BASE_DEFAULT,
     content = corpus / "content"
     try:
         app = create_app(corpus)
+        # 模板里所有 ?v= 走这个：公网的资源 URL 必须随构建号变，否则 SW 的缓存优先档
+        # 会把上一版的 CSS/JS 一直喂给新壳（av() 在 staging 里 stat 不到文件）。
+        app.config["KB_ASSET_VERSION"] = build_stamp(root, out)
         client = app.test_client()
         tree = client.get("/api/tree").get_json()
         domains = tree.get("domains", [])

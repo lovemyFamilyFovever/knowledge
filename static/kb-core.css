@@ -281,17 +281,24 @@ main.single:not(:has(> .page-panel)){overflow-y:auto}
   }
   main>section.rail .rtabs{flex-wrap:nowrap;overflow-x:auto;min-height:var(--kb-bar);align-items:stretch}
   main>section.rail .rtab{min-height:44px;flex:1 0 auto;justify-content:center}
-  /* 面板：收起时 0 高（style.css 的 .rpane 有 padding-top:10px，这里必须一起归零，
-     否则收起态工具栏下还挂着 10px 空壳）。
-     展开**不再走 max-height 过渡**：那条过渡会在 ~350ms 里停在几十像素高的形状上，
-     用户实拍到的正是那个"只露出标题行的半开面板"。这里直接落终态，入场交给
-     style.css 的 rise（淡入 + 位移），没有中间态可截。
-     高度上限按**真实可用空间**算（状态栏 28 + 工具栏 --kb-bar + 安全区 + 上边线 1），
-     免得短窗口里 60vh 把页签顶出屏幕。 */
-  main>section.rail .rpane{max-height:0;padding:0;overflow:hidden;border-top:0}
+  /* 面板：**侧边抽屉**，不是从底部顶起来的一坨（用户 2026-10-08 明确要求）。
+     从右边缘滑入：顶到屏幕上沿、底边停在工具栏上沿（状态栏 28 + --kb-bar + 上边线 1 +
+     安全区），宽 86vw 上限 380px，自己滚。开合手势一条没动（再点当前页签 / Esc /
+     点外面 / 换文档），落点仍在 app.js::railSheet。
+     也不走 max-height 过渡：那条过渡会在 ~350ms 里停在几十像素高的形状上，
+     用户实拍到的正是那个"只露出标题行的半开面板"。 */
+  main>section.rail .rpane{display:none}
+  /* style.css:607/611 那两条是**带 id 的** `#pane-toc.active{display:flex}`（特异性 1,1,0），
+     单写 `.rpane{display:none}`（0,2,2）压不住 —— 收起态工具栏下面就会挂着一块流里的目录，
+     正是用户实拍"底部弹出一坨"的那一条。这里用 :is() 把 id 抬到同一级再赢。 */
+  main>section.rail:not(.rail-open) :is(#pane-toc,#pane-info,#pane-links,#pane-notes).active{display:none}
   main>section.rail.rail-open .rpane.active{
-    max-height:min(60vh,calc(100vh - 28px - var(--kb-bar) - 1px - env(safe-area-inset-bottom)));
-    overflow-y:auto;border-top:1px solid var(--c-line);padding:10px 12px 14px
+    display:block;position:fixed;right:0;top:0;left:auto;z-index:61;
+    bottom:calc(28px + var(--kb-bar) + 1px + env(safe-area-inset-bottom));
+    width:min(86vw,380px);max-height:none;overflow-y:auto;
+    background:var(--c-panel);border-left:1px solid var(--c-line);border-top:0;
+    box-shadow:-16px 0 40px rgba(0,0,0,.18);padding:12px 14px 16px;
+    animation:kb-rail-side var(--dur-2) var(--ease-out)
   }
   /* 窄屏贴底工具栏只留三颗：分类 / 目录 / 标签。备注与双链是"对着这一篇写作"的
      工具，手机上不提供入口（宽屏 >980 右栏仍是五颗，功能不丢）。app.js 的
@@ -312,18 +319,25 @@ main.single:not(:has(> .page-panel)){overflow-y:auto}
   /* 「分类」页签：唤出被 style.css ≤860 整块隐藏的左树。860 以上它不存在（display:none），
      因为左树本来就常驻在左边，多一个钮等于多一个假入口。 */
   .rtab.kb-nav-tab{display:inline-flex}
+  /* 「分类」抽屉：与右栏那三颗**同一种形状** —— 从左边缘滑入的侧边栏，
+     不是从底部顶起来的一坨（用户 2026-10-08 明确要求，两条抽屉方向相反正好对应
+     桌面端的左右两栏）。底边同样停在工具栏上沿，引用同一个 --kb-bar。
+     也不走 max-height 过渡：半开帧会被拍成"只露一行"的空壳（§6 127）。 */
   main>section.panel#p-left{
-    display:none;position:fixed;left:0;right:0;top:auto;z-index:59;
+    display:none;position:fixed;left:0;right:auto;top:0;z-index:59;
     bottom:calc(28px + var(--kb-bar) + 1px + env(safe-area-inset-bottom));   /* 28=状态栏，1=工具栏上边线 */
-    max-height:0;overflow:hidden;margin:0;border-radius:0;
-    background:var(--c-panel);border:0;border-top:1px solid var(--c-line);
-    box-shadow:0 -10px 28px rgba(0,0,0,.16);
-    transition:max-height var(--dur-3) var(--ease-inout)
+    width:min(86vw,360px);max-height:none;overflow-y:auto;margin:0;border-radius:0;
+    background:var(--c-panel);border:0;border-right:1px solid var(--c-line);
+    box-shadow:16px 0 40px rgba(0,0,0,.18)
   }
   main.kb-nav-on>section.panel#p-left{
-    display:flex;max-height:60vh;overflow-y:auto;padding:0 2px 6px
+    display:flex;padding:0 2px 6px;animation:kb-nav-side var(--dur-2) var(--ease-out)
   }
 }
+/* 两条侧边抽屉的入场：从各自的边缘滑进来。位移只在动画期间存在，
+   结束后 transform 归位，不影响 getBoundingClientRect 的稳态测量。 */
+@keyframes kb-rail-side{from{transform:translateX(100%)}to{transform:none}}
+@keyframes kb-nav-side{from{transform:translateX(-100%)}to{transform:none}}
 @media (min-width:861px){
   .rtab.kb-nav-tab{display:none}
   /* 特异性要和 .pill.icon-only 同级（两个类），单写 .kb-so-btn 压不住它 */

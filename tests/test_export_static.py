@@ -241,6 +241,12 @@ def main() -> int:
         check("KB_STATIC.readonly 注入 index.html", '"readonly":true' in html)
         check("KB_STATIC.base 注入为 /kb", '"base":"/kb"' in html)
         check("静态资源加 KB_BASE 前缀", 'src="/kb/static/kb-core.js' in html)
+        # av() 在导出时 stat 不到 static/（渲染发生在拷贝之前，KB_ROOT 是只含语料的 staging），
+        # 必须退回构建号。全站 ?v=0 等于**没有 cache-busting**：SW 的 static 档是缓存优先，
+        # 于是"新壳 + 上一版 CSS/JS"的混血状态会一直留着（2026-10-08 用户实拍改了不生效）。
+        vers = set(re.findall(r"[?&]v=([0-9a-zA-Z]+)", html))
+        check("公网每个资源都带同一个非零构建号 ?v=<sha>",
+              len(vers) == 1 and vers != {"0"} and "" not in vers, sorted(vers))
         check("模板 /raw 链接加 KB_BASE 前缀（新标签页打开美化版）",
               'href="/kb/raw/ai/llm-and-agents/A.html"' in html)
         check("不再出现裸 /static 引用", '"/static/' not in html)
@@ -354,10 +360,15 @@ def main() -> int:
               appjs.count("function treeOpenSet()") == 1)
         # 窄屏右栏 = 贴底工具栏（用户实拍：旧写法把那一坨卡在正文中段）
         kbc_css = (ROOT / "static" / "kb-core.css").read_text(encoding="utf-8")
-        check("窄屏工具栏固定在底部并压在状态栏之上，面板默认 0 高",
+        check("窄屏工具栏固定在底部并压在状态栏之上；收起态面板真的不在流里，" 
+              "展开态是贴右边缘的侧边抽屉",
               "position:fixed;left:0;right:0;bottom:28px" in kbc_css
-              and "max-height:0;padding:0;overflow:hidden" in kbc_css
-              and "main>section.rail.rail-open .rpane.active" in kbc_css)
+              and "main>section.rail .rpane{display:none}" in kbc_css
+              # style.css:607 的 `#pane-toc.active{display:flex}` 是 id 级，收起态必须用同级别的
+              # :is() 才压得住 —— 压不住就是"工具栏下面挂一坨目录"（用户实拍）。
+              and "main>section.rail:not(.rail-open) :is(#pane-toc,#pane-info,#pane-links,#pane-notes).active{display:none}" in kbc_css
+              and "position:fixed;right:0;top:0;left:auto" in kbc_css
+              and "animation:kb-rail-side" in kbc_css)
         check("抽屉的开合只在 app.js 一处实现（railSheet），Esc 链引用它",
               appjs.count("function railSheet(") == 1
               and "window.railSheetClose" in appjs
@@ -383,7 +394,7 @@ def main() -> int:
               and 'main>section.rail .rtab[data-pane="links"]{display:none}' in kbc_css
               and "transition:max-height" not in kbc_css.split("@media (max-width:980px)")[1]
                   .split("@media (max-width:860px)")[0]
-              and "min(60vh,calc(100vh - 28px - var(--kb-bar)" in kbc_css)
+              and "width:min(86vw,380px)" in kbc_css)
         # 窄屏搜索入口：常驻搜索框让位给右上角那颗钮（两档都要有，缺一个就是假入口/双入口）
         check("窄屏收掉顶栏搜索框并放出那颗搜索钮；宽屏反过来（.pill 两个类才压得住 .pill.icon-only）",
               ".searchbox{display:none}" in kbc_css and ".pill.kb-so-btn{display:inline-flex}" in kbc_css
