@@ -45,7 +45,7 @@ python scripts\check_ledger_counts.py          # 台账对账：§0 数字必须
 | `test_properties.py` | 14 | 性质测试（每条 240 个随机样本，固定种子） |
 | `test_invariants.py` | 71 | AGENTS 不变量门禁 I1~I9（含 I4 物理删除调用点白名单） |
 | `test_e2e_smoke.py` | 170 | 端到端：逐条打满 40 条路由 |
-| `test_export_static.py` | 136 | 公网只读档契约（导出同构 / 只读裁剪 / KB_BASE 口径 / 公网文案与首页 / PWA 清单） |
+| `test_export_static.py` | 137 | 公网只读档契约（导出同构 / 只读裁剪 / KB_BASE 口径 / 公网文案与首页 / PWA 清单） |
 | `test_known_defects.py` | 6 | 已登记缺陷不回退 |
 | `test_watch_ci.py` | 38 | Agent 工具自身（四类"读不到"分开点名；GBK/UTF-8 两档都要绿） |
 | `test_ui_regress.py` | 31 | P5 视觉回归：11 张截图逐像素 vs `tests/ui-baselines/` + 10 条顶栏几何 |

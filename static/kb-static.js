@@ -260,7 +260,12 @@
       /* 首页态（方案 B）：中间列换成首页面板，正文列与右栏收起；栅格两档（常规 / 左栏收起）都要给值 */
       + "\n.kb-home-on main{grid-template-columns:280px minmax(0,1fr) 0!important}"
       + ".kb-home-on main.left-off{grid-template-columns:46px minmax(0,1fr) 0!important}"
-      + ".kb-home-on #p-article,.kb-home-on #p-rail{display:none!important}"
+      + ".kb-home-on #p-article{display:none!important}"
+      /* 窄屏那一档右栏就是**贴底工具栏**，首页态必须留着它：≤860 的左树是抽屉，唯一的入口
+         就是工具栏里的「分类」页签 —— 一并藏掉就等于手机上 1002 篇无处可翻（用户实拍：
+         PWA 打开后底部什么都没有）。宽屏首页照旧收起，那里左树本来就在屏幕上。 */
+      + "@media (min-width:861px){.kb-home-on #p-rail{display:none!important}}"
+      + "@media (max-width:860px){.kb-home-on .rtab:not(.kb-nav-tab){display:none!important}}"
       /* 首页面板本身也必须跟着首页态开关 —— 它一旦注入就常驻 DOM，
          只收起正文列/右栏的话，点开文档后它会继续占住中间那一列、把正文挤到右栏
          （用户实拍就是这个形状）。 */

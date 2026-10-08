@@ -338,6 +338,14 @@ def main() -> int:
         # 占住中间那一列、把正文挤到右栏去（用户实拍就是这个形状）。
         check("首页面板本身受首页态控制（不是注入后就常驻）",
               "#kb-home{display:none" in kbs and ".kb-home-on #kb-home{display:flex}" in kbs)
+        # 首页态收右栏**只能对宽屏生效**：≤860 那一档右栏就是贴底工具栏，而首页上「分类」抽屉
+        # 唯一的入口是工具栏里那一页签 —— 一并藏掉等于手机上 1002 篇没有导航（用户实拍：PWA
+        # 打开后底部什么都没有。这条正是当时没有任何断言管住而溜出去的）。
+        check("首页态的右栏收起只写在 ≥861 那档；≤860 留工具栏且只挂「分类」一页签",
+              "@media (min-width:861px){.kb-home-on #p-rail{display:none!important}}" in kbs
+              and "@media (max-width:860px){.kb-home-on .rtab:not(.kb-nav-tab)"
+                  "{display:none!important}}" in kbs
+              and ".kb-home-on #p-article,.kb-home-on #p-rail" not in kbs)
         check("打开文档 → 左树自动展开并聚焦（renderTree 末尾单点调用）",
               "function revealCurInTree()" in appjs and "revealCurInTree();" in appjs
               and "setTreeOpen(CUR.domain, true)" in appjs)
