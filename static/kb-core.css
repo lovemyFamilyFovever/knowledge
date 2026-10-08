@@ -282,16 +282,29 @@ main.single:not(:has(> .page-panel)){overflow-y:auto}
   main>section.rail .rtabs{flex-wrap:nowrap;overflow-x:auto;min-height:var(--kb-bar);align-items:stretch}
   main>section.rail .rtab{min-height:44px;flex:1 0 auto;justify-content:center}
   /* 面板：收起时 0 高（style.css 的 .rpane 有 padding-top:10px，这里必须一起归零，
-     否则收起态工具栏下还挂着 10px 空壳），展开时最高 60vh 自己滚 */
-  main>section.rail .rpane{
-    max-height:0;padding:0;overflow:hidden;border-top:0;
-    transition:max-height var(--dur-3) var(--ease-inout)
-  }
+     否则收起态工具栏下还挂着 10px 空壳）。
+     展开**不再走 max-height 过渡**：那条过渡会在 ~350ms 里停在几十像素高的形状上，
+     用户实拍到的正是那个"只露出标题行的半开面板"。这里直接落终态，入场交给
+     style.css 的 rise（淡入 + 位移），没有中间态可截。
+     高度上限按**真实可用空间**算（状态栏 28 + 工具栏 --kb-bar + 安全区 + 上边线 1），
+     免得短窗口里 60vh 把页签顶出屏幕。 */
+  main>section.rail .rpane{max-height:0;padding:0;overflow:hidden;border-top:0}
   main>section.rail.rail-open .rpane.active{
-    max-height:60vh;overflow-y:auto;border-top:1px solid var(--c-line);padding:10px 12px 14px
+    max-height:min(60vh,calc(100vh - 28px - var(--kb-bar) - 1px - env(safe-area-inset-bottom)));
+    overflow-y:auto;border-top:1px solid var(--c-line);padding:10px 12px 14px
   }
+  /* 窄屏贴底工具栏只留三颗：分类 / 目录 / 标签。备注与双链是"对着这一篇写作"的
+     工具，手机上不提供入口（宽屏 >980 右栏仍是五颗，功能不丢）。app.js 的
+     railTabClamp() 负责把停在隐藏页签上的 active 落回目录，避免出现"看不见的面板"。 */
+  main>section.rail .rtab[data-pane="notes"],
+  main>section.rail .rtab[data-pane="links"]{display:none}
 }
 @media (max-width:860px){
+  /* 手机端顶栏不放常驻搜索框：它占掉半行标题，而点开的还是同一个浮层。
+     入口挪到右上角那颗搜索图标（.kb-so-btn 默认 display:none，860 以下才现身），
+     点击走 app.js 的 soOpen() —— 与 / 键、桌面点搜索框是同一个浮层，不做第二套。 */
+  .searchbox{display:none}
+  .pill.kb-so-btn{display:inline-flex}
   /* 单栏堆叠：正文置顶，左树改由「分类」抽屉唤出 */
   main{display:flex;flex-direction:column;overflow-y:auto}
   main>section.panel{flex:none;overflow-y:auto}
@@ -313,6 +326,8 @@ main.single:not(:has(> .page-panel)){overflow-y:auto}
 }
 @media (min-width:861px){
   .rtab.kb-nav-tab{display:none}
+  /* 特异性要和 .pill.icon-only 同级（两个类），单写 .kb-so-btn 压不住它 */
+  .pill.kb-so-btn{display:none}   /* 顶栏搜索框在的这一档不需要第二个入口 */
 }
 @media (max-width:720px){
   .editor textarea{min-height:44vh}

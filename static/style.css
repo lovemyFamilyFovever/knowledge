@@ -269,6 +269,21 @@ main.single{display:flex;flex-direction:column}
 .fold svg{width:13px;height:13px}
 /* 左树：原理图轨（结界虚线 + 方形记号）——层级用缩进+引导线+字号梯度区分 */
 .tree{flex:1;overflow-y:auto;padding:8px 10px}
+/* 阅读历史：顶栏那颗钮把左栏内容换成这份列表（hist-on 时树让位，同一块地方不叠两层）。
+   默认不显示 —— 公网左栏顶部那条常驻的「最近阅读」已按用户要求撤掉，改成点开的侧边栏。 */
+#p-left .kb-hist{display:none;flex:1;min-height:0;overflow-y:auto;padding:6px 8px 12px}
+#p-left.hist-on .kb-hist{display:block}
+#p-left.hist-on .panel-h,#p-left.hist-on .tree{display:none}
+.kb-hist-h{display:flex;align-items:center;gap:6px;padding:3px 6px 9px;font:600 12.5px/1 var(--f-body);letter-spacing:.05em;color:var(--c-ink)}
+.kb-hist-h svg{color:var(--c-acc);flex:none}
+.kb-hist-cnt{font:600 11px/1 var(--f-mono);color:var(--c-acc);background:var(--acc-soft);border-radius:20px;padding:3px 7px}
+.kb-hist-x{margin-left:auto;width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;border:1px solid var(--c-line);border-radius:var(--rd-ctl);background:transparent;color:var(--muted);cursor:pointer}
+.kb-hist-x:hover{color:var(--c-ink);background:var(--c-sunk)}
+.kb-hist-i{display:block;padding:7px 9px;border-radius:var(--rd-ctl);text-decoration:none;color:inherit}
+.kb-hist-i:hover{background:var(--c-sunk)}
+.kb-hist-t{display:block;font-size:13.5px;line-height:1.45;color:var(--c-ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.kb-hist-m{display:block;margin-top:2px;font-size:11.5px;line-height:1.4;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.kb-hist-empty{padding:16px 10px;font-size:12.5px;line-height:1.8;color:var(--muted)}
 .dom{margin-bottom:4px;position:relative}
 .dom-head{display:flex;align-items:center;gap:8px;padding:8px 9px;border-radius:var(--rd-ctl);cursor:pointer;transition:background var(--dur-1);user-select:none;position:relative}
 .dom-head:hover{background:var(--c-sunk)}

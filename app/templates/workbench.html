@@ -1,6 +1,9 @@
 {% extends "base.html" %}
 {% block title %}知库 · {{ sub_label }}{% endblock %}
 {% block head %}<link rel="stylesheet" href="/static/pages/workbench.css?v={{ av('pages/workbench.css') }}"><link rel="stylesheet" href="/static/pages/tagedit.css?v={{ av('pages/tagedit.css') }}">{% endblock %}
+{% block nav_tail %}{# 「阅读」旁边的第二颗：点开把左栏换成阅读历史（默认不占地方，见 app.js 的 kb-hist） #}
+    <button type="button" class="tn" id="kb-hist-btn" onclick="toggleHist()" aria-expanded="false" aria-controls="kb-hist" title="阅读历史：本机最近打开过的文档（最多 20 条）"><svg class="i i-13"><use href="#i-history-clock"/></svg>阅读历史</button>
+{% endblock %}
 {% block body %}
 <main>
   <section class="panel wb-panel" id="p-left" data-reveal data-reveal-y="14">

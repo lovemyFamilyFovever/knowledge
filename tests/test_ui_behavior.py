@@ -1458,6 +1458,40 @@ NAV_SHEET_JS = PRELUDE + r"""
 })()"""
 
 
+# 窄屏工具栏的三件事：可见页签数、换档钳位、展开有没有停在半开帧（用户实拍的红框）
+RAIL_VIS_JS = """(async () => {
+  const wait = ms => new Promise(r => setTimeout(r, ms));
+  for (let i = 0; i < 100 && !document.querySelector('.rtab'); i++) await wait(50);
+  await wait(600);
+  const vis = () => [...document.querySelectorAll('.rtab')]
+    .filter(t => getComputedStyle(t).display !== 'none').map(t => t.dataset.pane || 'nav');
+  const out = { vw: innerWidth, visible: vis(),
+                domN: document.querySelectorAll('.rtab[data-pane]').length };
+  tab('info', document.querySelector('.rtab[data-pane="info"]'));
+  const pane = () => document.querySelector('.rpane.active');
+  await wait(120);
+  out.h120 = Math.round(pane().getBoundingClientRect().height);
+  await wait(780);
+  const b = pane().getBoundingClientRect();
+  out.h900 = Math.round(b.height);
+  out.paneBottom = Math.round(b.bottom);
+  const sb = document.querySelector('.statusbar');
+  out.statusTop = sb ? Math.round(sb.getBoundingClientRect().top) : innerHeight;
+  out.clipped = b.bottom > out.statusTop + 1;
+  tab('notes', document.querySelector('.rtab[data-pane="notes"]'));
+  await wait(250);
+  out.forcedActive = (document.querySelector('.rtab.active') || {}).dataset
+    ? document.querySelector('.rtab.active').dataset.pane : null;
+  railTabClamp();
+  await wait(300);
+  out.afterClamp = (document.querySelector('.rtab.active') || {}).dataset
+    ? document.querySelector('.rtab.active').dataset.pane : null;
+  out.paneAfterClamp = (document.querySelector('.rpane.active') || {}).id;
+  out.railOpen = document.querySelector('#p-rail').classList.contains('rail-open');
+  return JSON.stringify(out);
+})()"""
+
+
 def probe_rail_sheet(base):
     print("== 16d 窄屏右栏 → 贴底工具栏，点页签从下往上展开 ==")
     url = base + "/doc/ui-r/notes/beta.md"
@@ -1489,6 +1523,23 @@ def probe_rail_sheet(base):
     check("换文档（kb:article-rendered）收起：不然新正文上面还压着上一篇的目录",
           got.get("open7") is False, got)
     check("窄屏不产生横向滚动", got.get("hScroll") is False, got)
+    # 窄屏贴底工具栏只留三颗（分类/目录/标签）+ 展开不许停在半开态：用户实拍的那张
+    # "只露出标题行的空壳"就是 max-height 过渡的中间帧，红框指的就是它。
+    rv = run_expr(url, RAIL_VIS_JS, width=390)
+    check("390 档可见页签恰好是三颗：分类 / 目录 / 标签（备注与双链只留宽屏）",
+          rv.get("visible") == ["nav", "toc", "info"] and rv.get("domN") == 4, rv)
+    check("换档防御：active 停在被隐藏的「备注」上时，railTabClamp 把它落回「目录」，"
+          "不留一块看不见页签的面板",
+          rv.get("forcedActive") == "notes" and rv.get("afterClamp") == "toc"
+          and rv.get("paneAfterClamp") == "pane-toc" and rv.get("railOpen") is True, rv)
+    check("面板展开是**一步到位**的：120ms 与 900ms 两次量到同一个高度（没有半开中间帧）",
+          rv.get("h120") == rv.get("h900") and (rv.get("h900") or 0) > 100, rv)
+    check("面板底边压在状态栏之上，不被裁切",
+          rv.get("clipped") is False and rv.get("paneBottom", 0) <= rv.get("statusTop", 0) + 1, rv)
+    dv = run_expr(url, RAIL_VIS_JS, width=1600)
+    check("宽屏照旧：四颗文档页签全部可见，clamp 不碰「备注」",
+          dv.get("visible") == ["toc", "info", "notes", "links"]
+          and dv.get("afterClamp") == "notes", dv)
     d = run_expr(url, RAIL_DESK_JS, width=1600)
     check("桌面档零副作用：右栏仍在网格里（relative）、常驻可见，点页签不会长出抽屉态",
           d.get("pos") == "relative" and d.get("open0") is False and d.get("open1") is False
@@ -2230,6 +2281,97 @@ def probe_heading_ids(base):
 
 
 
+def probe_read_history(base):
+    print("== 31 阅读历史：顶栏钮把左栏在「分类树」与「最近打开」之间切换 ==")
+    url = base + "/doc/ui-r/notes/alpha"
+    for w in (1440, 390):
+        got = run_expr(url, HIST_JS, width=w)
+        tag = f"{w}px"
+        check(f"[{tag}] 顶栏「阅读」旁边有第二颗「阅读历史」钮",
+              got.get("btnText") == "阅读历史", got)
+        check(f"[{tag}] 默认是关的：左栏仍是分类树，历史面板不占地方",
+              got.get("closed", {}).get("histOn") is False
+              and got.get("closed", {}).get("tree") not in (None, "none"), got)
+        check(f"[{tag}] 首屏那一篇就进了历史（记录挂在 setDoc，不是 openDoc —— -boot 走的是内嵌 doc-data）",
+              (got.get("histKey") or 0) >= 1, got)
+        o = got.get("opened") or {}
+        check(f"[{tag}] 点开：树让位、历史面板出现、钮的 aria-expanded=true，列表里有当前这篇",
+              o.get("histOn") is True and o.get("tree") == "none" and o.get("hist") != "none"
+              and o.get("aria") == "true" and any("排版约定样本" in t for t in (o.get("rows") or [])), got)
+        c = got.get("closedAgain") or {}
+        check(f"[{tag}] 面板右上角的 × 关掉后回到分类树（aria 一起落回 false）",
+              c.get("histOn") is False and c.get("tree") != "none" and c.get("aria") == "false", got)
+        n = got.get("afterNav") or {}
+        check(f"[{tag}] 换一篇（走客户端路由）后顺序立刻更新：最新在前，面板开着也当场刷新",
+              n.get("rows") and "排版约定样本-B" in n["rows"][0] and len(n["rows"]) >= 2, got)
+        if w == 390:
+            check("[390px] 窄屏从顶栏点进来时把「分类」抽屉一起顶出来，且抽屉底边压在贴底工具栏之上"
+                  "（钮亮了而东西在屏外 = 假入口）",
+                  o.get("navOn") is True and o.get("histBottom", 0) <= o.get("statusTop", 0) + 1, got)
+    s390 = run_expr(url, MOBILE_SEARCH_JS, width=390)
+    check("[390px] 窄屏顶栏那条常驻搜索框让位，右上角换成一颗搜索钮，且不与视口右边缘溢出",
+          s390.get("boxDisp") == "none" and s390.get("btnDisp") != "none"
+          and s390.get("btnW", 0) >= 28 and s390.get("overflow") is False, s390)
+    check("[390px] 点搜索钮展开的就是那个全局浮层，输入框自动获得焦点，Esc 关得掉",
+          s390.get("shown") is True and s390.get("focused") == "kb-so-q"
+          and s390.get("afterEsc") is True, s390)
+    s1440 = run_expr(url, MOBILE_SEARCH_JS, width=1440)
+    check("[1440px] 宽屏零副作用：搜索框照旧在，那颗移动端搜索钮不存在于视野里",
+          s1440.get("boxDisp") != "none" and s1440.get("btnDisp") == "none", s1440)
+
+
+
+# 阅读历史面板：一次跑完「默认关 → 点开 → 关掉 → 换文档」四态
+HIST_JS = """(async () => {
+  const wait = ms => new Promise(r => setTimeout(r, ms));
+  for (let i = 0; i < 100 && !document.querySelector('#kb-hist-btn'); i++) await wait(50);
+  await wait(600);
+  const d = sel => { const e = document.querySelector(sel); return e ? getComputedStyle(e).display : null; };
+  const left = document.querySelector('#p-left'), btn = document.querySelector('#kb-hist-btn');
+  const rows = () => [...document.querySelectorAll('.kb-hist-i')]
+    .map(a => (a.querySelector('.kb-hist-t') || {}).textContent || '');
+  let hist = 0;
+  try { hist = (JSON.parse(localStorage.getItem('kb-read-history') || '[]') || []).length; } catch (e) {}
+  const sb = document.querySelector('.statusbar');
+  const out = { vw: innerWidth, btnText: (btn.textContent || '').trim(), histKey: hist,
+    closed: { histOn: left.classList.contains('hist-on'), tree: d('#tree') } };
+  btn.click(); await wait(400);
+  out.opened = { histOn: left.classList.contains('hist-on'), tree: d('#tree'), hist: d('#kb-hist'),
+    aria: btn.getAttribute('aria-expanded'), rows: rows(),
+    navOn: document.querySelector('main').classList.contains('kb-nav-on'),
+    histBottom: Math.round(document.querySelector('#p-left').getBoundingClientRect().bottom),
+    statusTop: sb ? Math.round(sb.getBoundingClientRect().top) : innerHeight };
+  document.querySelector('.kb-hist-x').click(); await wait(300);
+  out.closedAgain = { histOn: left.classList.contains('hist-on'), tree: d('#tree'),
+                      aria: btn.getAttribute('aria-expanded') };
+  btn.click(); await wait(250);
+  const link = document.querySelector('#tree a[href$="beta"]');
+  if (link) { link.click(); await wait(1800); }
+  out.afterNav = { path: location.pathname, rows: rows() };
+  return JSON.stringify(out);
+})()"""
+
+# 窄屏搜索入口：搜索框让位 → 右上角那颗钮 → 打开的还是同一个浮层
+MOBILE_SEARCH_JS = """(async () => {
+  const wait = ms => new Promise(r => setTimeout(r, ms));
+  for (let i = 0; i < 100 && !document.querySelector('#kb-so-btn'); i++) await wait(50);
+  await wait(600);
+  const btn = document.querySelector('#kb-so-btn'), box = document.querySelector('.searchbox');
+  const b = btn.getBoundingClientRect();
+  const out = { vw: innerWidth, boxDisp: getComputedStyle(box).display,
+    btnDisp: getComputedStyle(btn).display, btnW: Math.round(b.width),
+    overflow: b.right > innerWidth + 1 };
+  btn.click(); await wait(500);
+  const ov = document.querySelector('#kb-search-ov');
+  out.shown = ov.classList.contains('show');
+  out.focused = document.activeElement ? document.activeElement.id : null;
+  document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+  await wait(400);
+  out.afterEsc = !ov.classList.contains('show');
+  return JSON.stringify(out);
+})()"""
+
+
 def probe_search_facets(base):
     print("== 29 搜索结果页：命中列表 / 分面多选 / 清空 / 浏览器后退 ==")
     q = quote("标签")
@@ -2374,6 +2516,7 @@ def main() -> int:
         run_probe("pref", probe_prefs, base)            # 只写 localStorage（不动语料；每趟自带新 profile）
         run_probe("exact", probe_exact, base)           # 只读：/search 精确命中区
         run_probe("anchor", probe_heading_ids, base)    # 只读：标题 slug id 在位，且 #fragment 真滚到落点
+        run_probe("history", probe_read_history, base)   # 只读：阅读历史钮 + 窄屏搜索入口
         run_probe("search", probe_search_facets, base)  # 只读：结果页命中/分面多选/清空/后退
         run_probe("chips", probe_head_chips, base)      # 只读：chips / 右栏跳转 / 元信息 / 编辑提示
         run_probe("tree", probe_tree_open, base)        # 只读：点树里的文档真的换页

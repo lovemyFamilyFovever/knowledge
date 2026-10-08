@@ -253,10 +253,6 @@
     var st = document.createElement("style");
     st.id = "kb-static-readonly";
     st.textContent = ".kb-readonly " + HIDE.split(",").join(",.kb-readonly ") + "{display:none!important}"
-      + "\n.kb-recent{padding:8px 12px 10px;border-bottom:1px solid rgba(128,128,128,.25)}"
-      + ".kb-recent-h{font-size:12px;opacity:.55;margin:0 0 6px;letter-spacing:.02em}"
-      + ".kb-recent-i{display:block;font-size:13px;line-height:1.55;padding:1px 0;color:inherit;text-decoration:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}"
-      + ".kb-recent-i:hover{color:var(--acc,#0c9a6a)}"
       /* 首页态（方案 B）：中间列换成首页面板，正文列与右栏收起；栅格两档（常规 / 左栏收起）都要给值 */
       + "\n.kb-home-on main{grid-template-columns:280px minmax(0,1fr) 0!important}"
       + ".kb-home-on main.left-off{grid-template-columns:46px minmax(0,1fr) 0!important}"
@@ -367,72 +363,16 @@
     obs.observe(document.documentElement, { childList: true, subtree: true });
   }
 
-  /* ---------- ⑦ 本机阅读进度（仅浏览器本地：最近阅读列表） ----------
-     2026-10-07 用户增补：公网档要能「接着上次读」。滚动位置跳过/恢复由 app 自带的
-     kb-readpos 负责（监听 .article 滚动容器）；这里只补公网档缺失的入口——
-     左栏顶部「最近阅读」列表。只写 localStorage，不碰语料、不出站；换设备不同步。 */
-  var RKEY = "kb-static:recent";
-  function lsGet(k, d) { try { return JSON.parse(localStorage.getItem(k)) || d; } catch (e) { return d; } }
-  function lsSet(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
-  function docKeyNow() {
-    var p = location.pathname;
-    if (BASE && p.indexOf(BASE + "/doc/") === 0) return p.slice(BASE.length + 1);
-    if (!BASE && p.indexOf("/doc/") === 0) return p.slice(1);
-    return null;
-  }
-  function recentTitle() {
-    var now = String(location.pathname || "").replace(/\.md$/, "");
-    var links = document.querySelectorAll(".tree a[href]");
-    for (var i = 0; i < links.length; i++) {
-      if ((links[i].getAttribute("href") || "") === now) {
-        var t = (links[i].textContent || "").trim();
-        if (t) return t.slice(0, 60);
-      }
-    }
-    var h = document.querySelector(".article h1");
-    if (h && (h.textContent || "").trim()) return h.textContent.trim().slice(0, 60);
-    return now.split("/").filter(Boolean).slice(-1)[0] || "";
-  }
-  function recordVisit() {
-    var k = docKeyNow(); if (!k) return;
-    var list = lsGet(RKEY, []).filter(function (x) { return x.k !== k; });
-    list.unshift({ k: k, t: recentTitle(), ts: Date.now() });
-    lsSet(RKEY, list.slice(0, 20));
-    renderRecent();
-  }
-  function renderRecent() {
-    var host = document.getElementById("kb-recent");
-    if (!host) {
-      var left = document.getElementById("p-left") || document.querySelector(".panel");
-      if (!left) return;
-      host = document.createElement("div");
-      host.id = "kb-recent"; host.className = "kb-recent";
-      var tree = left.querySelector(".tree");
-      if (tree) left.insertBefore(host, tree); else left.appendChild(host);
-    }
-    var list = lsGet(RKEY, []).slice(0, 8);
-    while (host.firstChild) host.removeChild(host.firstChild);
-    if (!list.length) { host.style.display = "none"; return; }
-    host.style.display = "";
-    var hd = document.createElement("div");
-    hd.className = "kb-recent-h"; hd.textContent = "最近阅读（本机）";
-    host.appendChild(hd);
-    for (var i = 0; i < list.length; i++) {
-      var a = document.createElement("a");
-      a.className = "kb-recent-i";
-      a.setAttribute("href", BASE + "/" + list[i].k);
-      a.textContent = list[i].t || list[i].k;
-      a.title = list[i].t || list[i].k;
-      host.appendChild(a);
-    }
-  }
-  var _recentTimer = null;
-  function hookRecent() {
+  /* ---------- ⑦ 文档渲染完要做的两件公网专属事 ----------
+     最近阅读列表**不在这里**了：它升成了本地/公网共用的一份实现（app.js 的
+     kb-read-history + 顶栏「阅读历史」钮），左栏那条常驻列表按用户要求撤掉。
+     这里只留两件没有第二处会做的事：真的打开文档时让首页片段退场、把导出时冻结的
+     <title> 换成正文那一篇（否则标签页永远显示构建机碰巧烤进去的那篇）。 */
+  var _docHooked = false;
+  function hookDocRendered() {
     document.addEventListener("kb:article-rendered", function () {
       if (!atRoot()) hideHome();                     // 真的打开文档了 → 首页让位（根路径上不动）
       fixTitle();                                    // 标题跟着正文走：导出时冻结的 <title> 是构建机那一篇
-      if (_recentTimer) clearTimeout(_recentTimer);
-      _recentTimer = setTimeout(recordVisit, 400);
     });
   }
 
@@ -441,7 +381,7 @@
      app/templates/landing_panel.html（导出器以 home_readonly=True 渲染成 data/home.html），
      与本地 landing 同一份标记，这里不复制第二份模板；公网只留两行能用的：
      「搜索」= 开现成的检索浮层并带上输入，「继续上次阅读」= app 自己写的 localStorage
-     kb-last-doc（缺席时回退到本适配器的最近阅读首条）。收件箱/本月统计/架构图取景框
+     kb-last-doc（app.js 每次打开文档都写，两边同一份）。收件箱/本月统计/架构图取景框
      在片段渲染时就不存在（公网没有 /inbox、/stats，也没有本地 reading.db）。 */
   var _homeNode = null, _homePromise = null;
   /* 首页那一屏的样式在 pages/landing.css 里，而阅读壳只带 workbench.css —— 不补这一份，
@@ -480,10 +420,6 @@
     if (!cont) return;
     var last = "";
     try { last = localStorage.getItem("kb-last-doc") || ""; } catch (e) {}
-    if (!last) {
-      var rec = lsGet(RKEY, [])[0];
-      if (rec) last = "/" + rec.k;
-    }
     if (!last) { cont.hidden = true; return; }
     cont.setAttribute("href", last.charAt(0) === "/" ? BASE + last : last);
     cont.hidden = false;
@@ -580,7 +516,7 @@
   }
 
   /* ---------- 启动编排（幂等；先跑一次，DOMContentLoaded/load 再补跑） ---------- */
-  var _linksWatched = false, _recentHooked = false, _routed = false;
+  var _linksWatched = false, _routed = false;
   function routeNow() {
     var path = location.pathname;
     var m = path.match(/\/doc\/([^/]+)\/([^/]+)\/(.+)$/);
@@ -604,8 +540,7 @@
     if (!_linksWatched) { _linksWatched = true; watchLinks(); }
     if (!_clicksBridged) { _clicksBridged = true; bridgeClicks(); }
     bridgeRouting();
-    if (!_recentHooked) { _recentHooked = true; hookRecent(); }
-    renderRecent();
+    if (!_docHooked) { _docHooked = true; hookDocRendered(); }
     routeNow();
   }
   onReady();

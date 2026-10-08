@@ -160,6 +160,25 @@ function tab(id, el) {
   if (id === "links") loadLinks();
   if (RAIL_SHEET()) { navSheet(false); railSheet(!(wasActive && sheetOn)); }   // 点已展开的那个 = 收起
 }
+/* 窄屏贴底工具栏只留三颗页签（kb-core.css 把「备注」「双链」display:none）。
+   换档时若 active 正停在那两颗上，屏幕上会出现一块"没有页签对应"的面板 —— 落回「目录」。
+   只在两个时机跑：跨断点、换文档。故意**不**从 railSheet() 里调 —— railSheet 是被
+   tab() 调的，反过来调 tab() 就是递归。 */
+function railTabClamp() {
+  if (!RAIL_SHEET()) return;
+  const rail = $("#p-rail");
+  const act = rail && rail.querySelector(".rtab.active");
+  if (!act) return;
+  if (!/^(notes|links)$/.test(act.dataset.pane || "")) return;
+  const toc = rail.querySelector('.rtab[data-pane="toc"]');
+  if (toc) tab("toc", toc);
+}
+if (window.matchMedia) {
+  const mqRail = matchMedia("(max-width:980px)");
+  if (mqRail.addEventListener) mqRail.addEventListener("change", railTabClamp);
+  else if (mqRail.addListener) mqRail.addListener(railTabClamp);   // 老 Safari 只有 addListener
+}
+document.addEventListener("kb:article-rendered", railTabClamp);
 /* ---------- 「分类」抽屉：唤出窄屏被隐藏的左树 ----------
    style.css 在 ≤860 把 `main > section.wb-panel` 整块 display:none（左树与文档列表），
    窄屏于是完全没有"翻目录"的路径 —— 用户报的"移动端没有目录结构的按钮"就是这个洞。
@@ -233,7 +252,88 @@ let DOC = null;
    window.DOC（pages/wikilink-suggest.js 排除本篇）。
    这个缺口是切片 2 的探针抓出来的 —— 在那之前 `if (window.DOC && ...)` 恒为假，
    「双链补全排除当前文档」从来没生效过。换文档一律走 setDoc()，别再裸赋值。 */
-function setDoc(v) { DOC = v; window.DOC = v; return v; }
+function setDoc(v) {
+  DOC = v; window.DOC = v;
+  /* 阅读历史的唯一落点：五处赋值都走这儿，**包括首屏从内嵌 doc-data 直接渲染那一趟**
+     （它不经过 openDoc —— 挂在那儿会漏掉"直接打开一篇"的整条路径，实测就是空列表）。 */
+  if (v && v.rel) histRecord(v.rel, v.title);
+  return v;
+}
+
+/* ---------- 阅读历史（本机最近打开） ----------
+   顶栏「阅读历史」钮把左栏内容在「分类树 ↔ 最近打开」之间切换。默认不常驻：
+   公网左栏顶部那条「最近阅读（本机）」被用户判为噪音（2026-10-08），改成点钮才出现。
+   数据存 localStorage 而不是 reading.db —— 公网只读档没有可写的后端，
+   而"两边同一副形状"要求同一份实现（不变量 1：高频运行时数据不进语料）。 */
+const HIST_KEY = "kb-read-history";
+const HIST_MAX = 20;
+function histList() {
+  try { return JSON.parse(localStorage.getItem(HIST_KEY) || "[]") || []; } catch (e) { return []; }
+}
+function histAgo(ts) {
+  const s = Math.max(0, (Date.now() - (ts || 0)) / 1000);
+  if (s < 60) return "刚刚";
+  if (s < 3600) return Math.floor(s / 60) + " 分钟前";
+  if (s < 86400) return Math.floor(s / 3600) + " 小时前";
+  const d = Math.floor(s / 86400);
+  return d <= 30 ? d + " 天前" : new Date(ts).toLocaleDateString();
+}
+function histRecord(rel, title) {
+  if (!rel) return;
+  const list = histList().filter(x => x && x.k !== rel);
+  list.unshift({ k: rel, t: (title || "").trim().slice(0, 60), at: Date.now() });
+  try { localStorage.setItem(HIST_KEY, JSON.stringify(list.slice(0, HIST_MAX))); } catch (e) {}
+  const p = document.getElementById("kb-hist");
+  if (p) renderHist();          // 面板开着就当场刷新：读完一篇回来顺序必须是对的
+}
+function histPanel() {
+  const left = $("#p-left");
+  if (!left) return null;       // 收件箱 / 统计等页面没有左栏，钮也不在那儿
+  let p = document.getElementById("kb-hist");
+  if (p) return p;
+  p = document.createElement("div");
+  p.className = "kb-hist"; p.id = "kb-hist";
+  p.innerHTML =
+    `<div class="kb-hist-h">${icon("history-clock", 14)} 阅读历史<span class="kb-hist-cnt" id="kb-hist-n">0</span>`
+    + `<button type="button" class="kb-hist-x" onclick="toggleHist(false)" title="关闭阅读历史，回到分类目录" aria-label="关闭阅读历史">${icon("cancel-x", 12)}</button></div>`
+    + `<div class="kb-hist-list" id="kb-hist-list"></div>`;
+  const tree = left.querySelector(".tree") || left.querySelector(".panel-h");
+  left.insertBefore(p, tree ? tree.nextSibling : left.firstChild);
+  return p;
+}
+function renderHist() {
+  const list = histList();
+  const host = document.getElementById("kb-hist-list");
+  if (!host) return;
+  const n = document.getElementById("kb-hist-n");
+  if (n) n.textContent = String(list.length);
+  if (!list.length) {
+    host.innerHTML = `<div class="kb-hist-empty">还没有阅读记录 —— 打开一篇文档，它就会出现在这里。</div>`;
+    return;
+  }
+  host.innerHTML = list.map(x => {
+    const parts = String(x.k || "").split("/").filter(Boolean);
+    const where = parts.length > 1 ? parts.slice(0, -1).join(" / ") : (parts[0] || "");
+    return `<a class="kb-hist-i" href="${docUrl(x.k)}" title="${esc(x.t || where)}">`
+      + `<span class="kb-hist-t">${esc(x.t || where || x.k)}</span>`
+      + `<span class="kb-hist-m">${esc(where)} · ${histAgo(x.at)}</span></a>`;
+  }).join("");
+}
+function toggleHist(force) {
+  const left = $("#p-left");
+  const panel = histPanel();
+  if (!left || !panel) return;
+  const on = force === undefined ? !left.classList.contains("hist-on") : !!force;
+  renderHist();
+  left.classList.toggle("hist-on", on);
+  const btn = $("#kb-hist-btn");
+  if (btn) {
+    btn.classList.toggle("on", on);
+    btn.setAttribute("aria-expanded", on ? "true" : "false");
+  }
+  // 窄屏左树本身是「分类」抽屉；从顶栏点进来时必须把抽屉一起顶出来，否则钮亮了而东西在屏外
+  if (on && NAV_SHEET()) navSheet(true);
+}
 let CUR = null; // {domain, sub, name}
 
 /* ---------- 渲染预处理（需求 #8/#9/#6） ----------

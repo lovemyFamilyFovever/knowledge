@@ -254,8 +254,9 @@ def main() -> int:
         kbs = (out / "static" / "kb-static.js").read_text(encoding="utf-8")
         check("适配器把写端点归为 READ_ONLY", 'READ_ONLY' in kbs and 'WRITE' in kbs)
         check("适配器单点覆盖 docUrl/rawUrl", "KB.util.docUrl" in kbs and "KB.util.rawUrl" in kbs)
-        check("适配器含本机阅读进度（kb-recent + localStorage 键）",
-              "kb-recent" in kbs and "kb-static:recent" in kbs)
+        check("「继续上次阅读」的数据源就是 app.js 每次开文档写的 kb-last-doc"
+              "（适配器不再有第二份最近阅读，见下面那条 137 组的断言）",
+              '"kb-last-doc"' in kbs and "lsGet(RKEY" not in kbs)
         check("适配器含路由桥（bridgeClicks/bridgeRouting）",
               "bridgeClicks" in kbs and "bridgeRouting" in kbs)
         check("适配器改写根相对链接为 KB_BASE 前缀",
@@ -363,6 +364,7 @@ def main() -> int:
               and "window.railSheetClose === \"function\"" in kbc)
         # 窄屏左树入口：style.css ≤860 把左树整块隐藏，工具栏第一颗「分类」是唯一的翻目录路径
         wb_tpl = (ROOT / "app" / "templates" / "workbench.html").read_text(encoding="utf-8")
+        base_tpl = (ROOT / "app" / "templates" / "base.html").read_text(encoding="utf-8")
         check("「分类」页签只有一份标记，且排在四枚面板页签之前",
               wb_tpl.count('id="kb-nav-tab"') == 1
               and wb_tpl.find('kb-nav-tab') < wb_tpl.find('data-pane="toc"'))
@@ -375,6 +377,28 @@ def main() -> int:
               and "main.kb-nav-on>section.panel#p-left" in kbc_css
               and "bottom:calc(28px + var(--kb-bar) + 1px" in kbc_css
               and "@media (min-width:861px){\n  .rtab.kb-nav-tab{display:none}" in kbc_css)
+        # 窄屏贴底工具栏只留三颗（用户 2026-10-08 拍板：备注/双链手机上不给入口，宽屏照旧）
+        check("窄屏藏掉「备注」「双链」两颗页签，且面板展开不再走 max-height 过渡（半开帧就是红框那张）",
+              'main>section.rail .rtab[data-pane="notes"],' in kbc_css
+              and 'main>section.rail .rtab[data-pane="links"]{display:none}' in kbc_css
+              and "transition:max-height" not in kbc_css.split("@media (max-width:980px)")[1]
+                  .split("@media (max-width:860px)")[0]
+              and "min(60vh,calc(100vh - 28px - var(--kb-bar)" in kbc_css)
+        # 窄屏搜索入口：常驻搜索框让位给右上角那颗钮（两档都要有，缺一个就是假入口/双入口）
+        check("窄屏收掉顶栏搜索框并放出那颗搜索钮；宽屏反过来（.pill 两个类才压得住 .pill.icon-only）",
+              ".searchbox{display:none}" in kbc_css and ".pill.kb-so-btn{display:inline-flex}" in kbc_css
+              and ".pill.kb-so-btn{display:none}" in kbc_css)
+        check("搜索钮与浮层入口是同一个 soOpen（不做第二套搜索 UI）",
+              'id="kb-so-btn" onclick="soOpen()"' in base_tpl)
+        # 阅读历史：左栏那条常驻列表已按用户要求撤掉，实现收在 app.js 一份，两边共用
+        check("公网适配器不再自己实现「最近阅读」（那份与本地各写各的，已并成 app.js 一份）",
+              "kb-recent" not in kbs and "RKEY" not in kbs and "renderRecent" not in kbs)
+        check("阅读历史的记录点挂在 setDoc 上（首屏内嵌 doc-data 那一趟也要记到）",
+              "if (v && v.rel) histRecord(v.rel, v.title);" in appjs
+              and appjs.count("function histRecord(") == 1)
+        check("「阅读历史」钮只在阅读工作台出现（模板 block，不在收件箱/统计页长假入口）",
+              '{% block nav_tail %}' in base_tpl and '{% block nav_tail %}' in wb_tpl
+              and wb_tpl.count('id="kb-hist-btn"') == 1)
         check("工具栏那一档跟的是 style.css「收右遥测轨」的 980，不是随手挑的数"
               "（861~980 之间网格只有两轨，右栏不 fixed 就会被甩到第二行）",
               "@media (max-width:980px)" in kbc_css
