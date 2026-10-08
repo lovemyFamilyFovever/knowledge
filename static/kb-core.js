@@ -164,12 +164,6 @@
   var ERR_TEXT = {
     BAD_PARAM: "参数有问题",
     BAD_Q: "查询词为空或不可解析",
-    BAD_CARD: "找不到这张卡片",
-    NOT_SYNCED: "卡片库还没准备好，稍等几秒再试",
-    SYNC_BUSY: "正在抽卡同步中，稍等几秒",
-    CORPUS_EMPTY: "语料里还没有可学的卡片",
-    PATH_ESCAPE: "路径越出了 content/",
-    RAG_UNAVAILABLE: "语义检索不可用，已退回全文检索",
     INTERNAL: "服务内部错误"
   };
 
@@ -815,8 +809,6 @@
      [5] keys —— 需求7 键盘导航（单一 keydown 捕获阶段分发器）
      铁律：INPUT / TEXTAREA / contenteditable 聚焦时，除 Esc 与 Ctrl/Cmd+K 外不劫持任何键
      ================================================================== */
-  /* 原 `context` / `setContext` 页面级上下文钩子随 learn.js（复习页翻面 / 评分）一并下线：
-     它唯一的注册方就是那个文件，留着一个永远不会被调用的钩子会误导接手的人。 */
   var keys = (KB.keys = {});
 
   function docListMove(delta) {

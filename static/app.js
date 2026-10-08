@@ -702,7 +702,21 @@ function scrollToHash() {
   const h = location.hash; if (!h || h.length < 2) return;
   let id; try { id = decodeURIComponent(h.slice(1)); } catch (e) { id = h.slice(1); }
   const t = id && document.getElementById(id);
-  if (t) t.scrollIntoView({ block: "start" });
+  if (!t) return;
+  /* 自己算偏移，不用 scrollIntoView：正文被 .sec-card（position:relative + overflow:hidden）
+     一层层包着，scrollIntoView 在嵌套滚动容器里只滚到 572 就停手（实测目标在 993），
+     于是"点了某一节"停在半空。滚动容器就是 .article，落点 = 元素顶 - 容器顶 + 已滚量。 */
+  const go = () => {
+    const sc = t.closest(".article") || document.scrollingElement;
+    if (!sc) return;
+    const top = t.getBoundingClientRect().top - sc.getBoundingClientRect().top + sc.scrollTop;
+    sc.scrollTop = Math.max(0, top - 8);
+  };
+  go();
+  // 这一趟只保证「id 已存在」，不保证布局已定：图片与小节卡在首帧后还会把内容撑开，
+  // 实测落点因此会偏。等布局稳定再兑现一次，成本两次赋值。
+  requestAnimationFrame(go);
+  setTimeout(go, 350);
 }
 
 /* ---------- 阅读字体双轨（印刷排版还原后唯一保留项，2026-09-14 用户决定）：
@@ -1622,6 +1636,9 @@ function resetReadProgress() {
 function restoreReadPos() {
   const art = document.querySelector(".article");
   if (!art || !DOC) return;
+  // URL 里带 #fragment 时不回来：显式点了某一节，却被上次的滚动位置顶掉，
+  // 等于"链接骗人"（scrollToHash 先滚对、这里再滚回旧位置）。
+  if (location.hash && location.hash.length > 1) return;
   const saved = readposLoad(DOC.rel);
   if (saved > 40) { art.scrollTop = saved; toast("已回到上次阅读位置"); }
 }

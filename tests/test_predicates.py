@@ -6,7 +6,7 @@
 来历：P6 变异测试（覆盖台账 §10）把这层的断言空白量化了出来——`app/store.py` 与 `app/fts.py`
 的判定性变异各 13 条存活，存活原因几乎全是「那行判定 8 套 smoke 一次都没执行到」。
 本文件按那 26 条存活体逐条回填（台账 §10.10），每条断言都注明它焊住哪个变异（文件:行 + 算子 +
-变异体编号），复跑命令见 §10.10 末。轮次 9 曾补进 learn.py/cards.py，2026-10-07 随复习与抽卡子系统下线。
+变异体编号），复跑命令见 §10.10 末。
 
 全程只读真实 `content/`：语料一律在 `tempfile.TemporaryDirectory()` 里现造，
 不写、不删任何真实文件（AGENTS 不变量 1/4）。
@@ -283,7 +283,7 @@ def test_wikilink_resolution() -> None:
                   f"got {sorted(by_stem)[:6]}")
             # 轮次 9 统一口径后的契约：三处（build_index / upsert_doc_in_index / 这里）都是
             # 「去掉 .md 的完整相对路径 → 该路径」。旧版本这里键带 .md、值是标题，
-            # 于是 learn.py 与 upsert 各自补了一张别名表来绕开它（重复实现 + 口径分叉）。
+            # 于是调用方各自补了一张别名表来绕开它（重复实现 + 口径分叉）。
             check("resolve_maps_from_db：by_path 去掉 .md 且值是路径（与 build_index 同构）",
                   by_path.get("ai/llm/目标篇") == "ai/llm/目标篇.md"
                   and "ai/llm/目标篇.md" not in by_path, f"got {sorted(by_path)[:5]}")

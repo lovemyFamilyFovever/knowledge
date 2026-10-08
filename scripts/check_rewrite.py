@@ -39,9 +39,6 @@ import subprocess
 import sys
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT))
-
-from app.cards import parse_file  # noqa: E402
 
 # 规范 §3：只有"核心机制"这一节的节名可按类型变化
 CORE_VARIANTS = {"核心机制", "核心流程", "做法", "计算逻辑", "核心能力"}
@@ -103,6 +100,23 @@ def section_lines(body: str, title: str) -> list[str]:
         if grab:
             out.append(ln)
     return out
+
+
+RE_TRAP_ITEM = re.compile(r"^-\s+(\S.*)$")
+
+
+def anchor_counts(body: str) -> tuple[int, int]:
+    """① 硬锚点计数：一句话定义条数 与 误区段计入的 trap 条数（规范 §1）。
+
+    口径：定义只认 `## 定义` 段内 `**一句话定义：**` 同行非空值且 ≥8 字；误区只取该段
+    **前 2 条**列表项、各 ≥4 字 —— 第 3 条是正文补充，不计入。
+    """
+    def_lines = section_lines(body, "定义")
+    n_def = sum(1 for ln in def_lines
+                if (m := RE_DEF.match(ln)) and len(m.group(1).strip()) >= 8)
+    traps = [m.group(1).strip() for ln in section_lines(body, "常见误区")
+             if (m := RE_TRAP_ITEM.match(ln))][:2]
+    return n_def, sum(1 for t in traps if len(t) >= 4)
 
 
 def fence_stats(body: str) -> tuple[int, int]:
@@ -505,14 +519,12 @@ def check(path_arg: str, exempt: set[str] | None = None) -> tuple[int, int]:
     if not (titles & CORE_VARIANTS):
         fails.append("③ 缺少『核心机制』节（可用 §3 变体名：" + "、".join(sorted(CORE_VARIANTS)) + "）")
 
-    # ① 卡片数与误区条数
-    cards = parse_file(content_rel(p), raw)
-    n_def = sum(1 for c in cards if c.kind == "baike_def")
-    n_trap = sum(1 for c in cards if c.kind == "baike_trap")
+    # ① 硬锚点：一句话定义恰好 1 条、误区段前 2 条计入 trap
+    n_def, n_trap = anchor_counts(body)
     if n_def != 1:
-        fails.append(f"① baike_def 卡数 = {n_def}（需恰好 1）")
+        fails.append(f"① `## 定义` 段内一句话定义 = {n_def} 条（需恰好 1 条：同行非空且 ≥8 字）")
     if n_trap != 2:
-        fails.append(f"① baike_trap 卡数 = {n_trap}（需恰好 2）")
+        fails.append(f"① 误区段计入 trap = {n_trap} 条（需恰好 2 条：前两条列表项各 ≥4 字）")
     mistakes = [ln for ln in section_lines(body, "常见误区") if re.match(r"^-\s+\S", ln)]
     if not 2 <= len(mistakes) <= 3:
         fails.append(f"① 常见误区列表 {len(mistakes)} 条（需 2–3 条）")
@@ -586,7 +598,7 @@ def check(path_arg: str, exempt: set[str] | None = None) -> tuple[int, int]:
     hub = f" [{hub_note}]" if limit == 3400 else ""
     print(
         f"{tag} {content_rel(p)}  "
-        f"(正文 {nchars}/{limit} 字 / 围栏 {nb} 块 {nl} 行 / 卡 {n_def}def+{n_trap}trap){hub}"
+        f"(正文 {nchars}/{limit} 字 / 围栏 {nb} 块 {nl} 行 / 锚点 {n_def}def+{n_trap}trap){hub}"
     )
     for f in fails:
         print(f"   ✗ {f}")

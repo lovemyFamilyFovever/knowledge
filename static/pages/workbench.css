@@ -86,7 +86,6 @@
 .rtab svg{width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex:none;opacity:.78}
 .rtab.active svg{color:var(--c-acc);opacity:1}
 .rtab:focus-visible{outline:3px solid color-mix(in oklab,var(--c-acc),transparent 20%);outline-offset:1px;border-radius:var(--rd-card)}
-.rpane-hint{padding:6px 2px;font-size:12.5px;color:var(--faint)}
 
 /* ---- [8] 面板 reveal 微调：三栏不同步起跳（stagger 由 data-reveal 顺序决定） ---- */
 html.motion-ready .wb-panel{will-change:transform}

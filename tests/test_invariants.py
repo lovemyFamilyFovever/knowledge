@@ -511,8 +511,8 @@ def test_i8() -> None:
 
 
 # ---------------------------------------------------------------- I9
-# 只测"闸本身灵不灵"，不在这里扫真实 content/：语料扫描归 scripts/check_frontmatter.py
-# 与 publish_site.py，测试若绑语料，并发分片会把它顶红（learn smoke 的前车之鉴）。
+# 只测"闸本身灵不灵"，不在这里扫真实 content/：语料扫描归 scripts/check_frontmatter.py。
+# 测试若绑语料，并发分片会把它顶红。
 def test_i9() -> None:
     group("I9 frontmatter 严格 YAML 门禁（scripts/check_frontmatter.py）")
     spec = importlib.util.spec_from_file_location(

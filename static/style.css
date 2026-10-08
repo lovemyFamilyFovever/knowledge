@@ -449,8 +449,6 @@ h1.a-title{font-family:var(--f-disp);font-weight:700;font-size:28px;line-height:
 .a-body h3{font-size:var(--kb-h3-size,1.12rem);font-weight:700;margin:1.6rem 0 .8rem;letter-spacing:.01em;
   display:flex;justify-content:space-between;align-items:center;gap:.6rem;flex-wrap:wrap;
   color:var(--c-acc);border-left:4px solid var(--c-acc);padding-left:.8rem}
-/* 题号锚点（DOM 由 enhanceArticleDOM 生成）：复习卡 anchor=Q{n} 的落点。
-   出流 + 零尺寸 + 不可见 —— 只为让 #Q1 有个元素可跳，不参与任何布局。 */
 .a-body h4{font-size:15px;margin:20px 0 8px;color:var(--muted);letter-spacing:.02em}
 /* H2 分组小节卡片（DOM 由 enhanceArticleDOM 生成） */
 .a-body .sec-card{background:var(--c-panel);border:1px solid var(--c-line);border-radius:12px;padding:1.4rem 1.6rem;margin-bottom:1.6rem}

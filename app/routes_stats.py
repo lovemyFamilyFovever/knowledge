@@ -277,11 +277,7 @@ def _rel_key(path: str):
 
 @stats_bp.get("/api/recent_read")
 def api_recent_read():
-    """近 N 日阅读篇数（reading.db 只读派生查询；右栏 TOC sparkline 供数）。
-
-    2026-10-07 从 routes_learn.py 迁来：数据源是保留的阅读心跳统计（reading.db），
-    原端点只是寄生在已下线的学习蓝图里。URL 随之从 /api/learn/recent_read 改名。
-    """
+    """近 N 日阅读篇数（reading.db 的只读派生查询；右栏 TOC sparkline 供数）。"""
     try:
         n = int(request.args.get("days", 7))
     except (TypeError, ValueError):

@@ -10,8 +10,8 @@ Obsidian 与本应用共享同一份语料。
     app/fts.py           FTS5 全文索引 + [[双链]] 解析（派生，外科手术式更新）
     app/rag.py           语义检索：切块 / 嵌入 / sqlite-vec（派生）
     app/reading.py       月度阅读统计（派生，与语料隔离）
-    app/wikilink.py      双链补全候选池 / 打分 / 断链检查（2026-10-07 自 learn.py 拆出）
-    app/palette.py       命令面板索引（同上，只索引文档+子域+命令）
+    app/wikilink.py      双链补全候选池 / 打分 / 断链检查（候选只来自文档）
+    app/palette.py       命令面板索引（文档 + 子域 + 固定命令）
     app/app.py           本文件：只做装配（配置 / 索引引导 / RAG 惰性接入 /
                          watcher / 缓存门面 / 上下文 / 错误处理 / 蓝图注册）
     app/routes_pages.py  页面：/ /home /browse /doc /raw /inbox /favorites /search /stats

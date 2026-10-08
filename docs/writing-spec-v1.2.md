@@ -1,7 +1,7 @@
 # 知识库 baike 写作规范 v1.2
 
 生效 2026-09-19。**增量修订**：本文只写与 v1.1 不同的部分，未提及条目一律沿用 `docs/writing-spec-v1.1.md` 与 `docs/writing-spec-v1.0.md`。
-适用：`content/baike/` 二期串行拆分与新建词条。抽卡契约仍对齐 `app/cards.py` v3。
+适用：`content/baike/` 二期串行拆分与新建词条。锚点契约仍由 `scripts/check_rewrite.py` 机器校验。
 
 来源：二期首篇打样（`programming-languages/软件测试完全指南.md` → 枢纽页 + 2 子词条）暴露的 5 类规范歧义，逐条定案。背景见 `docs/refactor/split-candidates.md` 重叠去重队列第 1、6 对。
 

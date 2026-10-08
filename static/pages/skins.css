@@ -193,8 +193,7 @@ html[data-skin="graphite"]{
 }
 html[data-skin="graphite"] .panel.is-bracket::before,html[data-skin="graphite"] .panel.is-bracket::after,
 html[data-skin="graphite"] .kb-panel.is-bracket::before,html[data-skin="graphite"] .kb-panel.is-bracket::after{display:none}
-html[data-skin="graphite"] .kb-side-h,html[data-skin="graphite"] .panel-h,
-html[data-skin="graphite"] .kb-panel-h{letter-spacing:.18em}
+html[data-skin="graphite"] .panel-h{letter-spacing:.18em}
 html[data-skin="graphite"] .a-body h1{text-align:left;border-bottom:1px solid var(--c-ink);color:var(--c-ink);font-weight:900;letter-spacing:.01em}
 html[data-skin="graphite"] .a-body .sec-card{background:transparent;border:none;border-radius:0;padding:0 0 1.8rem;margin:0}
 html[data-skin="graphite"] .a-body h2{background:none;border:none;border-bottom:1px solid var(--c-line2);border-radius:0;

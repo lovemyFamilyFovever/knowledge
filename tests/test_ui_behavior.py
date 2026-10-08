@@ -2156,44 +2156,78 @@ SEARCH_JS = PRELUDE + r"""
 
 
 
-# 一篇里同时验「题号锚点」与「B5 的 slug 锚点」：后者是 [[双链#小节]] 与 I-1 卡的落点，
-# 加题号锚点时若把 h.id 从 slug 改成 Q{n}，下面那两条 slug 断言就会红 —— 这正是防"修 A 崩 B"。
-QANCHOR_JS = """(async () => {
+# 标题 id = 文本去空白后空格→连字符。marked 不生成 heading id，而没有 id 就没有落点 ——
+# URL fragment 由 app.js::scrollToHash() 按 id 定位。
+HEADING_ID_JS = """(async () => {
   const wait = ms => new Promise(r => setTimeout(r, ms));
   for (let i = 0; i < 80 && !document.querySelectorAll('.a-body h3').length; i++) await wait(50);
-  const want = ["Q1", "Q2", "1.-题干示例｜中级", "2.-另一题干｜高级"];
-  const out = {};
-  for (const id of want) {
+  await wait(400);
+  const out = { ids: {}, n3: document.querySelectorAll('.a-body h3').length };
+  for (const id of ["1.-题干示例｜中级", "2.-另一题干｜高级"]) {
     const el = document.getElementById(id);
-    const h = el ? (el.tagName === "H3" ? el : el.nextElementSibling) : null;
-    out[id] = { present: !!el, tag: h ? h.tagName : null,
-                text: h ? (h.textContent || "").trim() : null,
-                pos: el ? getComputedStyle(el).position : null,
-                own: el ? (el.textContent || "").length : null,
-                h: el ? Math.round(el.getBoundingClientRect().height) : null };
+    out.ids[id] = { present: !!el, tag: el ? el.tagName : null,
+                    text: el ? (el.textContent || "").trim().slice(0, 24) : null };
   }
-  out._n3 = document.querySelectorAll('.a-body h3').length;
+  out.headings = [...document.querySelectorAll('.a-body h2, .a-body h3')].length;
+  out.withId = [...document.querySelectorAll('.a-body h2, .a-body h3')].filter(h => h.id).length;
+  out.dups = (() => { const seen = {}, d = [];
+    [...document.querySelectorAll('.a-body h2, .a-body h3')].forEach(h => {
+      if (!h.id) return; if (seen[h.id]) d.push(h.id); seen[h.id] = 1; });
+    return d; })();
   return JSON.stringify(out);
 })()"""
 
+# 带 fragment 进来的落点判据（heading id 唯一的消费者，别只验 id 存在）。
+# 判据口径：目标在滚动内容里的偏移 off，可达落点 want = min(off, 最大可滚)，滚到 want 且目标
+# 贴住容器顶才算兑现。样本正文尾部那段「留白」就是为了把 off 拉进可达范围 —— 之前合成样本只有
+# 1.3k 高，1600 档容器实测 745 高，want 恒等于「夹到底」，任何一路实现（包括根本没滚对）都能绿。
+# 控制组（同篇不带 fragment）必须停在页首，堵死"夹到底蒙绿"。
+HASH_JS = """(async () => {
+  const wait = ms => new Promise(r => setTimeout(r, ms));
+  for (let i = 0; i < 100 && !document.querySelector('.a-body h3'); i++) await wait(50);
+  await wait(1400);
+  const sc = document.querySelector('.article') || document.scrollingElement;
+  const id = decodeURIComponent(location.hash.slice(1));
+  const el = document.getElementById(id);
+  const s = sc.getBoundingClientRect(), r = el ? el.getBoundingClientRect() : null;
+  const max = Math.max(0, Math.round(sc.scrollHeight - sc.clientHeight));
+  const off = el ? Math.round(r.top - s.top + sc.scrollTop) : null;
+  const want = el ? Math.min(off, max) : null;
+  return JSON.stringify({ id: id, present: !!el, scrolled: Math.round(sc.scrollTop),
+    off: off, max: max, want: want,
+    canLand: !!(el && off <= max),
+    onTarget: !!(el && Math.abs(sc.scrollTop - want) <= 8),
+    nearTop: !!(r && Math.abs(r.top - s.top) <= 14),
+    visible: !!(r && r.bottom > s.top && r.top < s.bottom),
+    hash: location.hash });
+})()"""
 
-def probe_card_anchor(base):
-    print("== 30 排版锚点：题号锚点 Q{n} 与 B5 的 slug 标题 id 各就各位 ==")
-    # 原第一段（拿 /api/learn/cards 的面试卡验「跳转原文」落点）随抽卡器下线一并删除；
-    # 留下的是**渲染层本体**：app.js::enhanceArticleDOM 仍在给 `### N. 题干` 挂出流空锚点。
-    a = run_expr(base + "/doc/ui-r/notes/alpha", QANCHOR_JS)
-    q1, q2 = a.get("Q1") or {}, a.get("Q2") or {}
-    check("排版样本里两道编号题干各有一个题号锚点，且分别指向自己的 h3",
-          q1.get("present") is True and q2.get("present") is True
-          and q1.get("tag") == "H3" and q2.get("tag") == "H3"
-          and "题干示例" in (q1.get("text") or "") and "另一题干" in (q2.get("text") or ""),
-          {"Q1": q1, "Q2": q2, "n3": a.get("_n3")})
-    slugs = [k for k in ("1.-题干示例｜中级", "2.-另一题干｜高级") if (a.get(k) or {}).get("present")]
-    check("B5 的 slug 标题 id 仍然在位（[[双链#小节]] 与 I-1 卡靠它，加题号锚点不许把它顶掉）",
-          len(slugs) == 2, {"got": slugs})
-    check("题号锚点是出流的空元素（position:absolute、无文字、零高）—— 不许把正文顶下去",
-          q1.get("pos") == "absolute" and q1.get("own") == 0 and q1.get("h") == 0,
-          {"pos": q1.get("pos"), "own": q1.get("own"), "h": q1.get("h")})
+
+def probe_heading_ids(base):
+    print("== 30 标题 id：URL fragment 的落点（scrollToHash 按 id 定位）==")
+    a = run_expr(base + "/doc/ui-r/notes/alpha", HEADING_ID_JS)
+    ids = a.get("ids") or {}
+    s1, s2 = ids.get("1.-题干示例｜中级") or {}, ids.get("2.-另一题干｜高级") or {}
+    check("两道编号题干各有一个 slug id，且分别指向自己的 h3",
+          s1.get("present") is True and s2.get("present") is True
+          and s1.get("tag") == "H3" and s2.get("tag") == "H3"
+          and "题干示例" in (s1.get("text") or "") and "另一题干" in (s2.get("text") or ""),
+          {"s1": s1, "s2": s2, "n3": a.get("n3")})
+    check("正文每个 h2/h3 都拿到 id（漏一个就等于那条没有落点）",
+          a.get("headings", 0) > 0 and a.get("withId") == a.get("headings"), a)
+    check("重名标题不产生重复 id（getElementById 只会命中首个，重复即静默错位）",
+          a.get("dups") == [], a)
+    frag = "1.-题干示例%EF%BD%9C%E4%B8%AD%E7%BA%A7"
+    h = run_expr(base + "/doc/ui-r/notes/alpha#" + frag, HASH_JS)
+    check("带 #fragment 进来滚到那一条：先确认这一档「贴顶」几何上做得到（不是夹到底）",
+          h.get("present") is True and h.get("canLand") is True, h)
+    check("带 #fragment 进来真的贴住容器顶（落点 = min(目标偏移, 最大可滚)）",
+          h.get("onTarget") is True and h.get("nearTop") is True
+          and h.get("visible") is True, h)
+    c = run_expr(base + "/doc/ui-r/notes/alpha", HASH_JS)
+    check("控制组：同篇不带 fragment 就停在页首（上一条的落点不是「夹到底」蒙出来的）",
+          c.get("scrolled") == 0 and c.get("present") is False, c)
+
 
 
 def probe_search_facets(base):
@@ -2339,7 +2373,7 @@ def main() -> int:
         run_probe("asset", probe_asset_rewrite, base)   # 只读 /raw（顺带把 §5 那格补上）
         run_probe("pref", probe_prefs, base)            # 只写 localStorage（不动语料；每趟自带新 profile）
         run_probe("exact", probe_exact, base)           # 只读：/search 精确命中区
-        run_probe("anchor", probe_card_anchor, base)    # 只读：排版锚点（Q{n} / slug）在原文里真落得住
+        run_probe("anchor", probe_heading_ids, base)    # 只读：标题 slug id 在位，且 #fragment 真滚到落点
         run_probe("search", probe_search_facets, base)  # 只读：结果页命中/分面多选/清空/后退
         run_probe("chips", probe_head_chips, base)      # 只读：chips / 右栏跳转 / 元信息 / 编辑提示
         run_probe("tree", probe_tree_open, base)        # 只读：点树里的文档真的换页

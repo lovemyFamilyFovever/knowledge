@@ -118,7 +118,10 @@ def hello():
 ### 2. 另一题干｜高级
 
 第二段题干正文，用来验证两个徽章不串色。
-"""
+
+""" + ("尾部留白：这一段不是排版要素，是给 #锚点 的落点预留的可滚空间 —— 目标之后不满一屏时，"
+       "浏览器会把滚动写入夹到「最大可滚」，探针就量不到贴顶（实测 1.3k 高的正文配 745 高的"
+       "容器，贴顶需要滚到 985 而最多只能滚到 572）。它不属于任何排版约定，别当废话删掉。" * 9) + "\n"
 
 DOC_B = """---
 title: 排版约定样本-B
@@ -179,9 +182,8 @@ collected: 2026-01-08
 躺在 `content/_inbox/` 里等归档的一条，用来渲染收件箱列表行（含大小与"归档/删除"动作位）。
 """
 
-# I-5 编号标题式（`### N. 题干｜难度`）：渲染层会把它转成难度徽章并在标题前挂一个
-# `#Q{n}` 出流空锚点（app.js::enhanceArticleDOM），是排版锚点回归的靶子。
-# （原注释末尾那段讲的是已下线的抽卡器与 /quiz 镜头，随子系统一起删。）
+# 编号标题式（`### N. 题干｜难度`）：渲染层（app.js::enhanceArticleDOM）把它转成难度
+# 徽章，是排版回归的靶子。
 DOC_INTERVIEW = """---
 title: 前端面试题样本
 source: knowledge
@@ -225,8 +227,7 @@ CORPUS = {
     "content/ui-r/notes/gamma.md": DOC_FAV,
     "content/ui-r/notes/alpha.md.notes.md": DOC_NOTES_SIDE,
     "content/ui-r/empty-sub/": None,             # None = 只建目录（空子域工作台）
-    # 两篇词条/题目样本：给排版权重样本之外的域一点内容，让域分面与全文检索
-    # 有跨域的形状（原注释讲的抽卡理由随 cards 子系统一并下线）。
+    # 两篇词条/题目样本：给排版权重样本之外的域一点内容，让域分面与全文检索有跨域的形状。
     "content/baike/term/向量数据库.md": DOC_BAIKE,
     "content/interview/fe/事件循环.md": DOC_INTERVIEW,
     "content/_inbox/待归档条目.md": DOC_INBOX,
@@ -254,10 +255,9 @@ TAXONOMY = {
 #     热图整块红都在右下角）。
 #   · 搜索页的 `.srch-meta`（"共 N 条 · X ms · 全文"）与结果头 `.rc-head .n` 带后端 `took_ms`，
 #     同一查询两次也能差几毫秒 —— 数字一变整行文字重排，AE 直接上 300。
-#   · `#toast` 是**按墙上时钟自动消失**的浮层（记分后弹"1 天后再见"）：截图快慢一点，
-#     它在与不在就不同，实测让 review_graded 两次差 637 像素。
+#   · `#toast` 是**按墙上时钟自动消失**的浮层：截图快慢一点，它在与不在就不同。
 # 代价说清楚：**这几块的视觉回归由本矩阵放弃**，它们的正确性另有 e2e 断言兜
-# （/api/learn/recent_read、/api/search 的 took_ms/total 字段在 test_e2e_smoke 里）。
+# （/api/recent_read、/api/search 的 took_ms/total 字段在 test_e2e_smoke 里）。
 FREEZE_CSS = ("#kb-toc-spark{display:none!important}"
               ".srch-meta{display:none!important}"
               ".rc-head .n{display:none!important}"
@@ -331,8 +331,7 @@ def capture(tag, shots):
     """**自带一套临时根 + 临时实例**地截完矩阵，返回实际图目录。
 
     为什么不共享实例（第一版就是共享的）：矩阵里有会**改状态**的点击 ——
-    复习页点「困难」写 learn.db 的排程、打开文档写 reading.db。两次截图共用一个实例时，
-    第二次的环形进度/今日队列必然和第一次不同，`--stability` 就会红，而红的是 harness 不是代码。
+    打开文档写 reading.db 的事件与进度。两次截图共用一个实例时，第二次的环形进度必然和第一次不同，`--stability` 就会红，而红的是 harness 不是代码。
     每次截完换一座干净的临时根，才是"同一份代码截两遍"的本义。
     """
     global PORT
