@@ -67,9 +67,9 @@ html[data-theme="dark"] .kb-scope-chip .dh{background:hsl(var(--dh,158) 62% 66%)
     border-left:0;border-right:0;border-bottom:0}
   .kb-search-head{height:52px;padding:0 12px;gap:10px}
   .kb-search-head input{font-size:16px}
-  .kb-search-cols{grid-template-columns:1fr}
+  .kb-search-cols{grid-template-columns:minmax(0,1fr)}
   .kb-search-rail{border-right:0;border-bottom:1px solid var(--c-line);
-    display:flex;flex-direction:column;gap:8px;padding:10px 12px;overflow:visible}
+    display:flex;flex-direction:column;gap:8px;padding:10px 12px;overflow:visible;min-width:0}
   .so-rail-h{display:none}
   .kb-search-engines{display:flex;flex-direction:row;width:100%;gap:0;border:1px solid var(--c-line);
     border-radius:10px;overflow-x:auto}

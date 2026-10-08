@@ -2327,6 +2327,9 @@ def probe_read_history(base):
     check("[390px] 点搜索钮展开的就是那个全局浮层，输入框自动获得焦点，Esc 关得掉",
           s390.get("shown") is True and s390.get("focused") == "kb-so-q"
           and s390.get("afterEsc") is True, s390)
+    check("[390px] 引擎条横排且**不溢出视口**（四颗 nowrap 钮会把 1fr 轨道顶到 419px，"
+          "靠 rail 的 min-width:0 收住）",
+          s390.get("engDir") == "row" and s390.get("engOverflow") is False, s390)
     s1440 = run_expr(url, MOBILE_SEARCH_JS, width=1440)
     check("[1440px] 宽屏零副作用：搜索框照旧在，那颗移动端搜索钮不存在于视野里",
           s1440.get("boxDisp") != "none" and s1440.get("btnDisp") == "none", s1440)
@@ -2376,6 +2379,13 @@ MOBILE_SEARCH_JS = """(async () => {
   btn.click(); await wait(500);
   const ov = document.querySelector('#kb-search-ov');
   out.shown = ov.classList.contains('show');
+  // 引擎条是 overflow-x:auto 的一条：grid 的 1fr 轨道默认 min-content，
+  // 四颗 nowrap 的引擎钮会把整条顶到 419px 宽（>390 视口）—— 实测踩过，靠 min-width:0 收住
+  const eng = document.querySelector('.kb-search-engines');
+  const eb = eng.getBoundingClientRect();
+  out.engDir = getComputedStyle(eng).flexDirection;
+  out.engOverflow = eb.right > innerWidth + 1;
+  out.engW = Math.round(eb.width);
   out.focused = document.activeElement ? document.activeElement.id : null;
   document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
   await wait(400);
