@@ -348,6 +348,9 @@ main.single{display:flex;flex-direction:column}
   border-color:transparent transparent transparent var(--muted);
   transform:rotate(0deg);transform-origin:20% 50%;
   transition:transform var(--dur-1) var(--ease-out);pointer-events:none}
+/* 域行（一级）的三角撤掉，只留子域行上的（用户 2026-10-09 点名）。
+   同选择器分块是刻意的：上面那条与 .sub 共用，这里单点把 dom-head 一支关掉。 */
+.dom-head .dom-glyph::after{display:none}
 .dom.open > .dom-head .dom-glyph::after,.sub:not(.collapsed) .sub-ic::after{transform:rotate(90deg)}
 /* 目录中的文档项：不再渲染标签 chips（用户要求），改为「文件类型前缀图标」 */
 .doc-t .doc-ic{flex:none;display:inline-flex;align-items:center;justify-content:center;
