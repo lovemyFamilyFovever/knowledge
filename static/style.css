@@ -343,15 +343,12 @@ main.single{display:flex;flex-direction:column}
    绝对定位 + border 画的零盒伪元素，不参与布局 —— 行高、缩进、图标尺寸一个像素都不动
    （几何面归 kb-core.css，这里只借现成的行首图标当锚点，模板与渲染都不用加节点）。 */
 .dom-head .dom-glyph,.sub .sub-ic{position:relative}
-.dom-head .dom-glyph::after,.sub .sub-ic::after{content:"";position:absolute;right:-4px;top:-3px;
+.sub .sub-ic::after{content:"";position:absolute;right:-4px;top:-3px;
   width:0;height:0;border-style:solid;border-width:3.5px 0 3.5px 5px;
   border-color:transparent transparent transparent var(--muted);
   transform:rotate(0deg);transform-origin:20% 50%;
   transition:transform var(--dur-1) var(--ease-out);pointer-events:none}
-/* 域行（一级）的三角撤掉，只留子域行上的（用户 2026-10-09 点名）。
-   同选择器分块是刻意的：上面那条与 .sub 共用，这里单点把 dom-head 一支关掉。 */
-.dom-head .dom-glyph::after{display:none}
-.dom.open > .dom-head .dom-glyph::after,.sub:not(.collapsed) .sub-ic::after{transform:rotate(90deg)}
+.sub:not(.collapsed) .sub-ic::after{transform:rotate(90deg)}
 /* 目录中的文档项：不再渲染标签 chips（用户要求），改为「文件类型前缀图标」 */
 .doc-t .doc-ic{flex:none;display:inline-flex;align-items:center;justify-content:center;
   width:16px;height:16px;color:var(--muted);opacity:.92}
