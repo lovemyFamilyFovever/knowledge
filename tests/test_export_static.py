@@ -501,6 +501,14 @@ def main() -> int:
               'href="/kb/manifest.webmanifest"' in kbhtml2 and "/kb/kb/" not in kbhtml2)
         check("带前缀档：sw 里的 KB_BASE 与构建号都替换成 /kb",
               'var KB_BASE = "/kb";' in (with_base / "sw.js").read_text(encoding="utf-8"))
+        # 注入脚本必须带 ?v=（2026-10-11 真机事故）：kb-static.js 每轮 UI 修复都在改，
+        # 却曾是唯一没有版本号的静态引用 —— SW「缓存优先 + URL 不变」把旧字节钉死在
+        # 真机上，10-08 的首页态修复到 10-11 都没到用户手机（手机闪一下全没 / PC 模拟器
+        # 正常 = 同站两副面孔）。预热清单从壳扫，壳带了 ?v= 清单自然逐字对上。
+        check("注入的 kb-static / kb-pwa 带构建版本号（两档壳 + 预热清单三处都在）",
+              'static/kb-static.js?v=' in kbhtml and 'static/kb-pwa.js?v=' in kbhtml
+              and 'static/kb-static.js?v=' in sw
+              and 'static/kb-static.js?v=' in kbhtml2)
         local_tpl = (ROOT / "app" / "templates" / "base.html").read_text(encoding="utf-8")
         check("本地阅读器不加载 PWA（模板里没有 manifest / sw.js / kb-pwa）",
               "manifest" not in local_tpl and "sw.js" not in local_tpl

@@ -588,14 +588,20 @@ def export_site(root: Path, out: Path, base: str = KB_BASE_DEFAULT,
                 f"/doc/{quote(first[0])}/{quote(first[1])}/{quote(first[2])}").get_data(as_text=True)
         else:
             shell = client.get("/").get_data(as_text=True)
+        # 注入的这两个脚本必须带 ?v=（2026-10-11 真机实拍）：kb-static.js 是每轮 UI
+        # 修复都在改的文件，却曾是唯一没有版本号的静态引用 —— SW「缓存优先 + URL 不变」
+        # 会把旧字节钉死在真机上，10-08 的首页态修复到 10-11 都没到用户手机（手机闪一下
+        # 全没 / PC 模拟器正常 = 同站两副面孔）。口径与模板 av() 一致，读同一个构建号。
+        av = app.config["KB_ASSET_VERSION"]
         inject = (
             '<script>window.KB_STATIC=%s;'
             '(function(){var b=window.KB_STATIC.base,p=location.pathname;'
             'if(p===b||p===b+"/"||p===b+"/index.html")'
             'document.documentElement.classList.add("kb-home-on");})();</script>\n'
-            '<script src="%s/static/kb-static.js" defer></script>\n'
-            '<script src="%s/static/kb-pwa.js" defer></script>\n'
-            % (json.dumps({"readonly": True, "base": base}, separators=(",", ":")), base, base)
+            '<script src="%s/static/kb-static.js?v=%s" defer></script>\n'
+            '<script src="%s/static/kb-pwa.js?v=%s" defer></script>\n'
+            % (json.dumps({"readonly": True, "base": base}, separators=(",", ":")),
+               base, av, base, av)
         )
         # 首页态那个 class 必须由**内联**脚本同步落进 <html>：kb-static.js 是 defer 的，
         # 等它跑起来，底部工具栏与烤死在壳里的那篇文档都已经画过一帧，然后才被一起藏掉 ——
