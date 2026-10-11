@@ -45,7 +45,7 @@ python scripts\check_ledger_counts.py          # 台账对账：§0 数字必须
 | `test_properties.py` | 14 | 性质测试（每条 240 个随机样本，固定种子） |
 | `test_invariants.py` | 71 | AGENTS 不变量门禁 I1~I9（含 I4 物理删除调用点白名单） |
 | `test_e2e_smoke.py` | 170 | 端到端：逐条打满 40 条路由 |
-| `test_export_static.py` | 145 | 公网只读档契约（导出同构 / 只读裁剪 / KB_BASE 口径 / 公网文案与首页 / PWA 清单） |
+| `test_export_static.py` | 147 | 公网只读档契约（导出同构 / 只读裁剪 / KB_BASE 口径 / 公网文案与首页 / PWA 清单与版本探针） |
 | `test_known_defects.py` | 6 | 已登记缺陷不回退 |
 | `test_watch_ci.py` | 38 | Agent 工具自身（四类"读不到"分开点名；GBK/UTF-8 两档都要绿） |
 | `test_ui_regress.py` | 31 | P5 视觉回归：11 张截图逐像素 vs `tests/ui-baselines/` + 10 条顶栏几何 |
@@ -95,7 +95,9 @@ static/app.js       阅读器主逻辑；static/kb-core.js = KB 内核（overlay
                     样式表里不许再出现那个选择器（`test_export_static` 会扫全部 CSS 钉这条）
 static/kb-static.js 只读适配器（只在导出产物里加载）：fetch 分诊（读→data/*.json、写→READ_ONLY、
                     裁剪端点→NOT_IN_STATIC）、KB_BASE 链接与路由桥、只读裁剪 CSS、
-                    公网状态栏与 <title> 口径、根路径的「公网首页」态；
+                    公网状态栏与 <title> 口径、根路径的「公网首页」态、
+                    版本探针（探站根 sw.js 的 KB_BUILD 与壳里 KB_STATIC.build 比，落后就浮
+                    「有新版本，点此刷新」—— 断网回落是无感的，2026-10-12 真机旧快照钉四天的补丁）；
                     /api/doc 被 SW 判死（离线且没缓存过）时回 **503 OFFLINE**，app.js 对 503 单独
                     说一句人话——不许拿 404 顶它，那等于对读者宣称"这篇被删了"
 scripts/export_static.py  导出器：公开白名单语料 staging → 复用读端点产 payload → site/ 落盘

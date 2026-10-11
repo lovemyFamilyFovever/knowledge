@@ -509,6 +509,11 @@ def main() -> int:
               'static/kb-static.js?v=' in kbhtml and 'static/kb-pwa.js?v=' in kbhtml
               and 'static/kb-static.js?v=' in sw
               and 'static/kb-static.js?v=' in kbhtml2)
+        # 版本落后提示（2026-10-12 真机事故）：断网回落无感，"刷新成功"的可能就是旧快照
+        # （轮 68 钉四天、底栏消失四天）。探针比对壳注入的 build 与站根 sw.js 的 KB_BUILD。
+        check("KB_STATIC 烤了 build 号；适配器有 sw.js 版本探针与「有新版本，点此刷新」",
+              '"build":"' in kbhtml and "probeVersion" in kbs
+              and "有新版本，点此刷新" in kbs and 'cache: "no-cache"' in kbs)
         local_tpl = (ROOT / "app" / "templates" / "base.html").read_text(encoding="utf-8")
         check("本地阅读器不加载 PWA（模板里没有 manifest / sw.js / kb-pwa）",
               "manifest" not in local_tpl and "sw.js" not in local_tpl

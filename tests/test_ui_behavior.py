@@ -2657,9 +2657,12 @@ def probe_tree_collapse(base):
     check("域行：再点一次展开回去（class/aria/.subs 高度三者一起回来）",
           cur2.get("open") is True and cur2.get("aria") == "true"
           and (cur2.get("subs") or {}).get("h", 0) > 20, cur2)
-    check("域行也有折叠指示：展开态行首三角转了 90°、收起态回到 0°（读 computed transform，不看截图）",
-          ((st.get("cur") or {}).get("caret") or "").startswith("matrix(0, 1")
-          and (cur1.get("caret") or "").startswith("matrix(1, 0"),
+    # 域行三角已按用户 2026-10-09 点名撤掉（30fda40 → b686c53 整条摘除 .dom-glyph::after），
+    # 这条断言从"转 90°"翻成"两态都不存在 matrix"——探针要跟着用户拍板的终态走，
+    # 子域行 .sub-ic::after 仍在，2685 那条继续钉旋转本身。
+    check("域行折叠指示已撤掉（用户点名）：展开/收起两态 .dom-glyph 的 ::after 都不是 matrix",
+          not ((st.get("cur") or {}).get("caret") or "").startswith("matrix")
+          and not ((cur1.get("caret") or "").startswith("matrix")),
           {"open": (st.get("cur") or {}).get("caret"), "closed": cur1.get("caret")})
     o1, o2 = d.get("afterOther1") or {}, d.get("afterOther2") or {}
     check("域行：展开另一个域时，当前域的展开记录不被抹掉（旧写手那份闭包集合会把 LS 写花）",

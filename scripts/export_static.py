@@ -592,6 +592,7 @@ def export_site(root: Path, out: Path, base: str = KB_BASE_DEFAULT,
         # 修复都在改的文件，却曾是唯一没有版本号的静态引用 —— SW「缓存优先 + URL 不变」
         # 会把旧字节钉死在真机上，10-08 的首页态修复到 10-11 都没到用户手机（手机闪一下
         # 全没 / PC 模拟器正常 = 同站两副面孔）。口径与模板 av() 一致，读同一个构建号。
+        # build 顺路烤进 KB_STATIC：适配器 §⑨ 的版本探针拿它跟站根 sw.js 的 KB_BUILD 比。
         av = app.config["KB_ASSET_VERSION"]
         inject = (
             '<script>window.KB_STATIC=%s;'
@@ -600,7 +601,8 @@ def export_site(root: Path, out: Path, base: str = KB_BASE_DEFAULT,
             'document.documentElement.classList.add("kb-home-on");})();</script>\n'
             '<script src="%s/static/kb-static.js?v=%s" defer></script>\n'
             '<script src="%s/static/kb-pwa.js?v=%s" defer></script>\n'
-            % (json.dumps({"readonly": True, "base": base}, separators=(",", ":")),
+            % (json.dumps({"readonly": True, "base": base, "build": av},
+                          separators=(",", ":")),
                base, av, base, av)
         )
         # 首页态那个 class 必须由**内联**脚本同步落进 <html>：kb-static.js 是 defer 的，

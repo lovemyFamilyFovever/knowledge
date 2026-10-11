@@ -273,7 +273,26 @@
          实测整栏被压到 291px 宽。 */
       + "#kb-home .land-grid{grid-template-columns:minmax(0,420px);justify-content:center;"
       + "align-content:start;max-width:none;margin:0;padding:56px 20px}"
-      + "#kb-home .land-cards{display:none}";
+      + "#kb-home .land-cards{display:none}"
+      /* 版本落后提示（§⑨）的样式：白底黑字 + accent 左沿的药丸，居中贴底。
+         --kb-bar 只定义在 main 上，这条挂在 body 上拿不到 → 给 60px 兜底；
+         ≤980 浮在贴底工具栏（z60）之上 12px，提示 z75 但低于分类抽屉语义上互不相干。 */
+      + "\n#kb-newver{position:fixed;left:50%;transform:translateX(-50%);z-index:75;"
+      + "max-width:calc(100vw - 24px);display:flex;align-items:center;gap:6px;"
+      + "padding:9px 14px;border:1px solid var(--c-line);border-left:3px solid var(--c-acc);"
+      + "border-radius:999px;background:var(--c-panel);color:var(--c-ink);"
+      + "font:13px/1.4 system-ui,sans-serif;box-shadow:0 8px 24px rgba(0,0,0,.18);"
+      + "bottom:calc(16px + env(safe-area-inset-bottom))}"
+      + "@media (max-width:980px){#kb-newver{bottom:calc(var(--kb-bar,60px) + 12px"
+      + " + env(safe-area-inset-bottom))}}"
+      + "#kb-newver .kb-nv-go{border:0;background:none;padding:0;color:inherit;font:inherit;"
+      + "cursor:pointer;display:flex;align-items:center;gap:8px;min-width:0;"
+      + "white-space:nowrap}"
+      + "#kb-newver .kb-nv-v{color:var(--c-mut,rgba(0,0,0,.55));"
+      + "font:11px/1.4 ui-monospace,monospace;white-space:nowrap;overflow:hidden;"
+      + "text-overflow:ellipsis}"
+      + "#kb-newver .kb-nv-x{border:0;background:none;padding:0 0 0 2px;"
+      + "color:var(--c-mut,rgba(0,0,0,.55));font:17px/1 system-ui,sans-serif;cursor:pointer}";
     (document.head || document.documentElement).appendChild(st);
   }
   if (document.readyState === "loading") {
@@ -459,6 +478,63 @@
     var p = location.pathname.replace(/\/+$/, "");
     return p === BASE || p === BASE + "/index.html" || p === BASE + "/404.html" || !p;
   }
+
+  /* ---------- ⑨ 版本落后提示（公网专属） ----------
+     断网回落是**无感**的：SW 拿不到新壳就端出缓存里的旧快照，渲染得和正常一模一样，
+     用户"刷新成功"的其实是旧字节（2026-10-12 真机事故：手机网络到 github.io 不通，
+     轮 68 快照钉了四天，贴底工具栏"消失"了四天、刷新无数次看起来都是成功的）。
+     做法：load 后 + 页面回前台 + 每 30 分钟，用 cache:no-cache 探一次站根 sw.js 的
+     KB_BUILD（它就是当前部署的构建号；SW 脚本本身也被浏览器强制绕过缓存，最不容易被
+     中间层改写），与壳里注入的 KB_STATIC.build 不一致就浮「有新版本，点此刷新」。
+     探不到 = 网络本来就不通，提示救不了 —— 静默跳过，提示层不许变成新的报错源。
+     注意边界：这段代码只存在于**新壳**里；已经钉死的旧快照里没有它，它防的是
+     "以后再落后"，不是"把已经落后的旧壳变出来"。 */
+  var _verBanner = null;
+  function showVerBanner(cur, latest) {
+    if (_verBanner) return;
+    var el = document.createElement("div");
+    el.id = "kb-newver";
+    var go = document.createElement("button");
+    go.type = "button";
+    go.className = "kb-nv-go";
+    go.textContent = "有新版本，点此刷新";     // 全程 textContent：版本号来自网络响应，
+    var span = document.createElement("span");// 不给 innerHTML 解析留任何口子
+    span.className = "kb-nv-v";
+    span.textContent = cur + " → " + latest;
+    go.appendChild(span);
+    go.addEventListener("click", function () { location.reload(); });
+    var x = document.createElement("button");
+    x.type = "button";
+    x.className = "kb-nv-x";
+    x.setAttribute("aria-label", "本次先不更新");
+    x.textContent = "\u00d7";
+    x.addEventListener("click", function () {
+      if (el.parentNode) el.parentNode.removeChild(el);
+      _verBanner = null;                      // 只是本次会话收起；下次前台/探针再报
+    });
+    el.appendChild(go);
+    el.appendChild(x);
+    (document.body || document.documentElement).appendChild(el);
+    _verBanner = el;
+  }
+  function probeVersion() {
+    var cur = CFG.build;
+    if (_verBanner || !cur || !nativeFetch) return;
+    nativeFetch(BASE + "/sw.js", { cache: "no-cache" })
+      .then(function (r) { return r && r.ok ? r.text() : ""; })
+      .then(function (t) {
+        var m = /var KB_BUILD\s*=\s*"([^"]+)"/.exec(t || "");
+        if (m && m[1] && m[1] !== cur) showVerBanner(cur, m[1]);
+      })
+      .catch(function () {});                 // 断网/被墙都算"探不到"，静默
+  }
+  window.addEventListener("load", function () {
+    setTimeout(probeVersion, 4000);           // 让开首屏与预热，别抢带宽
+    setInterval(probeVersion, 30 * 60 * 1000);
+  });
+  document.addEventListener("visibilitychange", function () {
+    if (!document.hidden) probeVersion();     // 手机回前台是最常见的网络恢复点
+  });
 
   /* ---------- ③ 客户端路由桥 + 深链兜底（公网专属） ----------
      app 的点击拦截正则只认裸路径（/^\/(doc|browse)\//）。壳里链接已带 KB_BASE 前缀
