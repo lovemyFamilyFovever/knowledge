@@ -536,35 +536,6 @@
     if (!document.hidden) probeVersion();     // 手机回前台是最常见的网络恢复点
   });
 
-  /* ---------- ⑩ 临时诊断（用户 2026-10-12 指挥，验收后撤）：5s 后 alert 分类按钮状态 ----------
-     症状：真机首页「分类」闪现约 0.1s 后消失。一次 alert 报四件事用来定罪：
-     ① 元素在不在 + display + 矩形（DOM 没了 vs CSS 藏了 vs 藏它的父容器）
-     ② #p-rail 的 display（首页态收右栏那条 ≥861 规则是不是它干的）
-     ③ 视口宽 + 首页态（档位判据：≥861 就是宽度问题而不是选择器问题）
-     ④ 两个哨兵：statusbar=none 证明 kb-core ≤980 生效；so-btn=inline-flex
-       证明 kb-core ≤860 生效（两者都不成立 = kb-core.css 根本没加载）。 */
-  setTimeout(function () {
-    try {
-      var t = document.getElementById("kb-nav-tab");
-      var cs = t ? window.getComputedStyle(t) : null;
-      var r = t ? t.getBoundingClientRect() : null;
-      var rail = document.getElementById("p-rail");
-      var sb = document.querySelector(".statusbar");
-      var so = document.querySelector(".pill.kb-so-btn");
-      alert("分类按钮诊断\n"
-        + "1 存在: " + (t ? "是" : "否") + " · display: " + (cs ? cs.display : "-")
-        + " · 矩形: " + (r ? Math.round(r.width) + "x" + Math.round(r.height)
-          + "@top" + Math.round(r.top) : "-") + "\n"
-        + "2 #p-rail: " + (rail ? window.getComputedStyle(rail).display : "无此元素") + "\n"
-        + "3 视口: " + window.innerWidth + "x" + window.innerHeight
-        + " · 首页态: " + (document.documentElement.classList.contains("kb-home-on") ? "是" : "否") + "\n"
-        + "4 statusbar: " + (sb ? window.getComputedStyle(sb).display : "无")
-        + " · so-btn: " + (so ? window.getComputedStyle(so).display : "无"));
-    } catch (e) {
-      alert("诊断异常: " + e);
-    }
-  }, 5000);
-
   /* ---------- ③ 客户端路由桥 + 深链兜底（公网专属） ----------
      app 的点击拦截正则只认裸路径（/^\/(doc|browse)\//）。壳里链接已带 KB_BASE 前缀
      （中键/刷新可用），这里用捕获监听把带前缀的点击翻译回裸路径交给 app；再给
