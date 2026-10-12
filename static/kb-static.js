@@ -240,6 +240,9 @@
     '#editor', '#fav-btn', '#ed-del', '#tag-add-btn', '#tag-in', '#tag-inputrow',
     '.note-input', '#ni',
     'a[href$="/stats"]', 'a[href$="/favorites"]', 'a[href$="/inbox"]',
+    /* .tn-sep 的两侧邻居（统计 / 收藏）在公网全被上面三条裁掉，分隔符孤零零挂在
+       「阅读历史」右边（2026-10-12 手机端审查 D1：实测 x=238 悬空 1px 竖线）—— 一并裁 */
+    '.tn-sep',
     /* 「全库快照」按钮 2026-10-07 恢复（用户拍板）：它的数据源 /api/globalstats 早已同构
        导出，公网拿得到真数字，上一轮属过度裁剪。但面板里两处本地专属跟着挡掉——
        「月度趋势」跳 /stats（公网没这页），「收件箱待归档」是本机收件箱的状态。 */
@@ -292,8 +295,14 @@
       + "font:11px/1.4 ui-monospace,monospace;white-space:nowrap;overflow:hidden;"
       + "text-overflow:ellipsis}"
       + "#kb-newver .kb-nv-x{border:0;background:none;padding:0 0 0 2px;"
-      + "color:var(--c-mut,rgba(0,0,0,.55));font:17px/1 system-ui,sans-serif;cursor:pointer}";
+      + "color:var(--c-mut,rgba(0,0,0,.55));font:17px/1 system-ui,sans-serif;cursor:pointer}"
+      /* D2 的 CSS 兜底：正常路径 soEmptyState 已在只读态整段不渲染快速前往；
+         这里防的是将来某条渲染路径忘了判 KB_READ_ONLY —— 空网格与它的孤组标题一并藏掉 */
+      + "\n.kb-readonly .kb-sdrop-grid:not(:has(>a)){display:none}"
+      + "\n.kb-readonly .kb-sr-group:has(+ .kb-sdrop-grid:not(:has(>a))){display:none}";
     (document.head || document.documentElement).appendChild(st);
+    /* 占位符与 .sb-eng 的只读改写不在这儿做第二份 —— 既有 fixUI() 已经在管
+       （检索（全文）/ 检索正文 / 标签），两处写文案必然后患。 */
   }
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", injectReadonly);

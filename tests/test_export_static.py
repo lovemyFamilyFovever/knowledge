@@ -444,6 +444,33 @@ def main() -> int:
         check("右栏 opening tag 不带 data-reveal（贴底 fixed × IO rootMargin 几何永不相交）",
               rail_tag.startswith("<section") and "data-reveal" not in rail_tag, rail_tag)
 
+        # ---------------- ⑥b 2026-10-12 手机端首页审查修复（D1/D2/D4/D5/D6 + 观感项） ----------------
+        st_css = (ROOT / "static" / "style.css").read_text(encoding="utf-8")
+        land_css = (ROOT / "static" / "pages" / "landing.css").read_text(encoding="utf-8")
+        seo_css = (ROOT / "static" / "pages" / "searchoverlay.css").read_text(encoding="utf-8")
+        exp_py = (ROOT / "scripts" / "export_static.py").read_text(encoding="utf-8")
+        check("D1 公网裁掉悬空 .tn-sep（统计/收藏被裁后它孤在「阅读历史」右边 1px）",
+              "'.tn-sep'" in kbs)
+        check("D2 快速前往整段走 KB_READ_ONLY 分支，且空网格有 :has 兜底（不留孤组标题）",
+              "KB_READ_ONLY ? [] : [" in appjs
+              and ".kb-sdrop-grid:not(:has(>a))" in kbs)
+        check("D2 公网语法行去谎（全文检索）且本地原文（混合/语义）逐字节保留",
+              "直接输入 = 全文检索" in appjs and "直接输入 = 混合检索" in appjs)
+        check("D5 顶栏触控热区外扩（视觉尺寸不动，伪元素命中面积 ≥44）",
+              '.pill.icon-only::after{content:"";position:absolute;inset:-7px}' in st_css
+              and '.topnav .tn::after,.brand::after{content:"";position:absolute;inset:-8px 0}' in st_css)
+        check("D6 抽屉树嵌套行抬到 40px 触控行高（叶子转 flex 保持文字垂直居中）",
+              ".tree .doc{min-height:40px;display:flex;align-items:center}" in kbc_css
+              and ".tree .sub{min-height:40px}" in kbc_css)
+        check("D4 窄屏首页输入框 16px（Android Chrome 聚焦 <16px 输入框会放大视口）",
+              ".land-box input{font-size:16px}" in land_css)
+        check("触屏（hover:none）隐藏键盘提示：hero 行、回车 kbd、浮层 Esc kbd 三处都在",
+              ".land-keys{display:none}" in land_css
+              and ".land-box kbd{display:none}" in land_css
+              and ".kb-search-head kbd{display:none}" in seo_css)
+        check("公网首页片段烙全库快照行（导出时传 kb_stats，零运行时请求）",
+              'class="land-stats"' in home and "kb_stats=stats" in exp_py)
+
         # ---------------- ⑦ PWA：manifest + 站根 sw（只属于导出产物） ----------------
         man_p = out / "manifest.webmanifest"
         sw_p = out / "sw.js"

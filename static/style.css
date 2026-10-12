@@ -1216,6 +1216,13 @@ body::after{content:"";position:fixed;inset:0;z-index:1;pointer-events:none;
 @media (max-width:980px){
   main{grid-template-columns:240px minmax(0,1fr)}
   main.left-off{grid-template-columns:46px minmax(0,1fr)}
+  /* 触控热区（2026-10-12 手机端审查 D5，用户拍板方案 B：视觉尺寸不动、命中面积外扩）：
+     实测四颗图标钮 34×34（≤860 档）/30×30、导航项 29~32 高，都低于 44 触控线；
+     伪元素外扩后 861~980 档 30→44、≤860 档 34→48，行间距 8px 容得下垂直外扩。
+     与邻钮重叠的边缘按命中顺序归后绘元素本体，没有死区。 */
+  .topnav .tn,.brand{position:relative}
+  .topnav .tn::after,.brand::after{content:"";position:absolute;inset:-8px 0}
+  .pill.icon-only::after{content:"";position:absolute;inset:-7px}
 }
 /* 980–860：收左树 */
 @media (max-width:860px){

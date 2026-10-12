@@ -3347,17 +3347,28 @@ function soSetEngine(eng) {
 }
 
 function soEmptyState() {
-  const shortcuts = [
+  /* 只读档裁剪层（KB_READ_ONLY，判据 = 导出器注入的 window.KB_STATIC.readonly）：
+     收件箱/收藏/统计三页公网不存在，快速前往整段不渲染 —— 否则三颗钮全被 kb-static
+     的 HIDE 清单藏掉，只剩一个悬空的组标题（2026-10-12 手机端审查 D2）。
+     语法行只在公网去谎：staticSearch 恒走全文、混合/语义引擎钮已隐藏，文案不再承诺
+     它们（D3）；本地渲染的文案与结构逐字节保持原样。 */
+  const shortcuts = KB_READ_ONLY ? [] : [
     { icon: "i-inbox-tray", label: "收件箱（待归档）", href: "/inbox" },
     { icon: "i-favorite-heart", label: "我的收藏", href: "/favorites" },
     { icon: "i-stats-chart", label: "月度统计", href: "/stats" },
   ];
-  return `<div class="kb-sr-group">快速前往</div>
+  const gotoHtml = shortcuts.length
+    ? `<div class="kb-sr-group">快速前往</div>
     <div class="kb-sdrop-grid">${shortcuts.map(s =>
       `<a class="kb-sdrop-item" href="${s.href}"><svg class="i i-14"><use href="#${s.icon}"/></svg>${SO.esc2(s.label)}</a>`).join("")}</div>
-    <div class="kb-sr-group">搜索语法</div>
+    `
+    : "";
+  const syntaxLine = KB_READ_ONLY
+    ? `直接输入 = 全文检索 · <span class="mono">Enter</span> 打开首条 · <span class="mono">Esc</span> 关闭`
+    : `直接输入 = 混合检索 · <span class="mono">? 问题</span> = 语义 · <span class="mono">Enter</span> 打开首条 · <span class="mono">Esc</span> 关闭`;
+  return `${gotoHtml}<div class="kb-sr-group">搜索语法</div>
     <div style="font:400 13px/1.8 var(--f-body);color:var(--muted);padding:2px 2px 8px">
-      直接输入 = 混合检索 · <span class="mono">? 问题</span> = 语义 · <span class="mono">Enter</span> 打开首条 · <span class="mono">Esc</span> 关闭</div>`;
+      ${syntaxLine}</div>`;
 }
 
 function soRenderRecent() {

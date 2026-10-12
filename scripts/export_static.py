@@ -652,7 +652,9 @@ def export_site(root: Path, out: Path, base: str = KB_BASE_DEFAULT,
         # 由 static/kb-static.js 在根路径注入到阅读壳的中间列 —— 不复制第二份模板。
         from flask import render_template  # 局部导入：与 create_app 同一 Flask 版本
         with app.test_request_context("/"):
-            home_html = render_template("landing_panel.html", home_readonly=True)
+            # kb_stats = 全库快照（上文 meta.json 同源的 /api/globalstats 响应）：
+            # 只读首页片段把它烙成一行静态数字，公网首页因此有了真实内容而零运行时请求。
+            home_html = render_template("landing_panel.html", home_readonly=True, kb_stats=stats)
         (out / "data" / "home.html").write_text(prefix_html(home_html, base), encoding="utf-8")
         b["data/home.html"] = len(home_html.encode("utf-8"))
 

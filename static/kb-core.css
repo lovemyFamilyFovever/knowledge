@@ -330,6 +330,11 @@ main.single:not(:has(> .page-panel)){overflow-y:auto}
      railTabClamp() 负责把停在隐藏页签上的 active 落回目录，避免出现"看不见的面板"。 */
   main>section.rail .rtab[data-pane="notes"],
   main>section.rail .rtab[data-pane="links"]{display:none}
+  /* 手机触控行高（2026-10-12 审查 D6 实测）：二级 .sub 只有 31px、叶子 .tree .doc 只有
+     28px，低于 44 触控线容易误触；抬到 40 —— 对齐一级 .dom-head（42）的密度，
+     列表节奏不被拉散。.doc 转 flex 是让加高后的文字仍垂直居中。 */
+  .tree .sub{min-height:40px}
+  .tree .doc{min-height:40px;display:flex;align-items:center}
 }
 @media (max-width:860px){
   /* 手机端顶栏不放常驻搜索框：它占掉半行标题，而点开的还是同一个浮层。

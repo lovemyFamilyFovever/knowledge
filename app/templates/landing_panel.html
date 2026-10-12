@@ -27,6 +27,13 @@
         <a href="/stats"><svg class="i i-13"><use href="#i-stats-chart"/></svg>本月阅读统计<span class="land-li-meta">{{ month }}</span></a>
         {% endif %}
       </div>
+      {% if home_readonly and kb_stats %}
+      {# 公网首页的全库快照行（2026-10-12 手机端审查观感项）：hero 卡以下原先近半屏空白。
+         数字由导出器渲染片段时从 /api/globalstats 烙进去 —— 派生产物自带，零运行时请求。 #}
+      <div class="land-stats" aria-label="全库快照">全库 <b>{{ kb_stats.n_docs }}</b> 篇 ·
+        <b>{{ kb_stats.domains|length }}</b> 域 · <b>{{ (kb_stats.total_cjk / 10000)|round(0)|int }}</b> 万字 ·
+        <b>{{ kb_stats.n_tag_types }}</b> 类标签</div>
+      {% endif %}
       <div class="land-keys"><kbd>/</kbd> 搜索 <kbd>?</kbd> 快捷键</div>
       <div class="land-cards" id="land-cards"></div>
     </div>
