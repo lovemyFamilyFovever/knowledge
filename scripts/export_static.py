@@ -33,6 +33,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
 import re
 import shutil
 import subprocess
@@ -617,7 +618,30 @@ def export_site(root: Path, out: Path, base: str = KB_BASE_DEFAULT,
             raise SystemExit("模板里找不到 <meta charset=\"UTF-8\">，PWA 注入点不成立")
         shell = shell.replace(anchor, anchor + "\n" + pwa_head(base), 1)
         shell = prefix_html(shell, base)
-        (out / "index.html").write_text(shell, encoding="utf-8")
+        # ---- 临时诊断主页（KB_MINIMAL_HOME=1；用户 2026-10-12 通宵后亲自指挥）----
+        # 手机端连做清缓存 / 删 PWA 重建 / 换浏览器，页面都"毫无变化" —— 先发一版
+        # 最小可辨识页面做判别实验：整壳备份为 index.full.html，index.html 只剩
+        # 底部一颗「分类」按钮（点 → alert）。能收到 = 管道通、问题在旧缓存层；
+        # 收不到 = 设备到 GitHub 的传输被卡死，与代码无关。
+        # 404.html 仍写整壳（深链回落要 SPA 壳）。恢复：去掉环境变量重新发布。
+        index_html = shell
+        if os.environ.get("KB_MINIMAL_HOME") == "1":
+            (out / "index.full.html").write_text(shell, encoding="utf-8")
+            index_html = (
+                '<!doctype html>\n<html lang="zh-CN">\n<head>\n'
+                '  <meta charset="utf-8">\n'
+                '  <meta name="viewport" content="width=device-width,initial-scale=1">\n'
+                "  <title>知库</title>\n"
+                "  <style>\n"
+                "    html,body{margin:0;height:100%;background:#fff;"
+                "font-family:system-ui,sans-serif}\n"
+                "    .cat{position:fixed;left:0;right:0;bottom:0;height:56px;"
+                "border:0;border-top:1px solid #ddd;background:#fff;font-size:17px}\n"
+                "  </style>\n</head>\n<body>\n"
+                '  <button class="cat" type="button" onclick="alert(\'分类\')">分类</button>\n'
+                "</body>\n</html>\n"
+            )
+        (out / "index.html").write_text(index_html, encoding="utf-8")
         (out / "404.html").write_text(shell, encoding="utf-8")   # 深链兜底（§4.1 / §5-1）
 
         # ---------------- data/home.html（公网首页片段） ----------------
