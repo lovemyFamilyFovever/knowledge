@@ -435,6 +435,14 @@ def main() -> int:
               "@media (max-width:980px)" in kbc_css
               and 'const RAIL_SHEET = () => MQ(980);' in appjs
               and 'const NAV_SHEET = () => MQ(860);' in appjs)
+        # 右栏 2026-10-12 起不参与 reveal：窄屏它是贴底 fixed 工具栏，而 reveal 的 IO 用
+        # rootMargin 底边 -12%（只看视口上方 88%）—— 贴死最底部 12% 的元素永远不相交，
+        # .in 不来 → motion-ready 一挂就 opacity:0 永久隐身（真机「分类闪现 0.1s 消失」、
+        # 5s 诊断「有矩形无像素」）。无头截图环境默认 reduced-motion 测不出，靠这条钉死。
+        _rail_m = re.search(r'<section class="panel rail"[^>]*>', wb_tpl)
+        rail_tag = _rail_m.group(0) if _rail_m else ""   # 匹配不到 opening tag 也算失败
+        check("右栏 opening tag 不带 data-reveal（贴底 fixed × IO rootMargin 几何永不相交）",
+              rail_tag.startswith("<section") and "data-reveal" not in rail_tag, rail_tag)
 
         # ---------------- ⑦ PWA：manifest + 站根 sw（只属于导出产物） ----------------
         man_p = out / "manifest.webmanifest"

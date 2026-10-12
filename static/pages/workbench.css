@@ -87,7 +87,9 @@
 /* 页签图标与文字同色 —— 选中态那一条已按用户要求删除（页签不带 active 类，见 style.css 同处注释） */
 .rtab:focus-visible{outline:3px solid color-mix(in oklab,var(--c-acc),transparent 20%);outline-offset:1px;border-radius:var(--rd-card)}
 
-/* ---- [8] 面板 reveal 微调：三栏不同步起跳（stagger 由 data-reveal 顺序决定） ---- */
+/* ---- [8] 面板 reveal 微调（左/中两栏不同步起跳，stagger 由 data-reveal 顺序决定。
+   右栏 2026-10-12 起不参与 reveal：窄屏它是贴底 fixed 工具栏，与 IO rootMargin
+   底边 -12% 的观察区几何永不相交会永久隐身（真机事故，见 workbench.html 注释）。 ---- */
 html.motion-ready .wb-panel{will-change:transform}
 
 

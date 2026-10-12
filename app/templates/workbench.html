@@ -68,7 +68,14 @@
     </div>
   </section>
 
-  <section class="panel rail" id="p-rail" data-reveal data-reveal-y="14">
+  {# 右栏**不带 data-reveal**（用户 2026-10-12 真机终局修复）：≤980 它是贴底 fixed
+     工具栏，而 reveal 的 IntersectionObserver 用 rootMargin 底边 -12%（只观察视口
+     上方 88%）—— 贴死在最底部 12% 的元素几何上永远不相交，.in 永远不来，
+     motion-ready 一挂就 opacity:0 永久隐身：真机「分类闪现 0.1s 后消失」、
+     5s 诊断「有矩形无像素」全是它。无头截图环境默认 reduced-motion、motion 整个
+     不启动，所以本地永远测不出来。UI 铬件不许被入场动画门控；桌面端右栏改为
+     静态入场（少一档 stagger，换真机可靠）。 #}
+  <section class="panel rail" id="p-rail">
     {% set n_tags = (doc.fm.tags or [])|length %}
     <div class="rtabs" role="tablist" aria-label="文档信息面板">
       {# 「分类」唤出左树：≤860 时 style.css 把左树整块隐藏（窄屏没有别的路径能翻目录），
