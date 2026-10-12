@@ -37,10 +37,9 @@ jobs:
       - name: Install deps (reader only; export needs just flask)
         run: python -m pip install -r requirements/requirements.txt
       - name: Export static site (KB_BASE=/knowledge)
-        env:
-          # 临时诊断版主页（用户 2026-10-12 指挥）：极简「分类」按钮页，判别
-          # "设备收不到新字节"还是"渲染层问题"。恢复：删掉这行重新运行即回整壳。
-          KB_MINIMAL_HOME: "1"
+        # 诊断开关 KB_MINIMAL_HOME 已于 2026-10-12 实验成功后移除：
+        # 极简页送达 = 管道通，旧快照 = SW 断网回落。需要再做判别时，
+        # 在 export_static 读环境变量 KB_MINIMAL_HOME=1 即可（见 export_static 注释）。
         run: python scripts/export_static.py --out site --base /knowledge
       # enablement: true 尝试自动启用 Pages（Source = GitHub Actions）。
       # 实测（2026-10-07）：默认令牌创建 Pages 站会报 403 "Resource not accessible
