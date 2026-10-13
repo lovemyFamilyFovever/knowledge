@@ -399,12 +399,12 @@ def main() -> int:
         check("抽屉与页签的实现各只有一处，Esc 链两环都在",
               appjs.count("function navSheet(") == 1 and "window.navSheetClose" in appjs
               and "window.navSheetClose === \"function\"" in kbc)
-        check("唤出左树的规则与隐藏它的是同一档断点（860），且分类抽屉满高、宽 = 设备 60%"
-              "（60vw，2026-10-12 用户新口径，先 50vw 后 60vw）、z-index 70 最高层（用户手写）",
+        check("唤出左树的规则与隐藏它的是同一档断点（860），且分类抽屉满高、宽 = 设备 70%"
+              "（70vw，2026-10-14 用户新口径）、z-index 70 最高层（用户手写）",
               "@media (max-width:860px)" in kbc_css
               and ".rtab.kb-nav-tab{display:inline-flex}" in kbc_css
               and "display:none;position:fixed;left:0;right:auto;top:0;z-index:70;bottom:0;" in kbc_css
-              and "width:60vw;max-height:none;overflow-y:auto;margin:0;border-radius:0;" in kbc_css
+              and "width:70vw;max-height:none;overflow-y:auto;margin:0;border-radius:0;" in kbc_css
               and "main.kb-nav-on>section.panel#p-left" in kbc_css
               and "padding:0 2px calc(var(--kb-bar) + 20px + env(safe-area-inset-bottom))" in kbc_css
               and "@media (min-width:861px){\n  .rtab.kb-nav-tab{display:none}" in kbc_css)
@@ -414,9 +414,9 @@ def main() -> int:
               and 'main>section.rail .rtab[data-pane="links"]{display:none}' in kbc_css
               and "transition:max-height" not in kbc_css.split("@media (max-width:980px)")[1]
                   .split("@media (max-width:860px)")[0]
-              and "z-index:61;\n    width:60vw;max-height:none;overflow-y:auto;" in kbc_css)
-        check("设置抽屉窄屏同样 60vw（侧边弹窗占设备宽 60% 的总口径，桌面维持 400px）",
-              ".kb-set-drawer{width:60vw;max-width:60vw}" in kbc_css)
+              and "z-index:61;\n    width:70vw;max-height:none;overflow-y:auto;" in kbc_css)
+        check("设置抽屉窄屏同样 70vw（侧边弹窗占设备宽 70% 的总口径，桌面维持 400px）",
+              ".kb-set-drawer{width:70vw;max-width:70vw}" in kbc_css)
         # 窄屏搜索入口：常驻搜索框让位给右上角那颗钮（两档都要有，缺一个就是假入口/双入口）
         check("窄屏收掉顶栏搜索框并放出那颗搜索钮；宽屏反过来（.pill 两个类才压得住 .pill.icon-only）",
               ".searchbox{display:none}" in kbc_css and ".pill.kb-so-btn{display:inline-flex}" in kbc_css
