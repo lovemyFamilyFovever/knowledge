@@ -471,6 +471,14 @@ def main() -> int:
         check("公网首页片段烙全库快照行（导出时传 kb_stats，零运行时请求）",
               'class="land-stats"' in home and "kb_stats=stats" in exp_py)
 
+        # ---------------- ⑥c 2026-10-12 手机截图逐图修复：图1（设置 · 快捷键页签） ----------------
+        kbc_js = (ROOT / "static" / "kb-core.js").read_text(encoding="utf-8")
+        check("图1 触屏（hover:none）隐藏设置「快捷键」页签与其面板（桌面键位在手机上按不到）",
+              '.kb-set-tabs button[data-sec="keys"]{display:none}' in kbc_css
+              and '.kb-set-sec[data-sec="keys"]{display:none}' in kbc_css)
+        check("图1 只读档 Esc 帮助文案去「编辑器」尾巴（公网没有编辑器，roHide 过滤不到这半句）",
+              'Object.assign({}, k, { desc: "分层关闭：补全 → 弹窗 / 菜单 → 帮助" })' in kbc_js)
+
         # ---------------- ⑦ PWA：manifest + 站根 sw（只属于导出产物） ----------------
         man_p = out / "manifest.webmanifest"
         sw_p = out / "sw.js"

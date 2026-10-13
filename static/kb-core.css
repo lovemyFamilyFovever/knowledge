@@ -138,6 +138,12 @@ html [hidden]{display:none}
 .kb-set-tabs button:hover{color:var(--c-ink)}
 .kb-set-tabs button.on{color:var(--c-acc)}
 .kb-set-tabs button.on::after{content:"";position:absolute;left:10px;right:10px;bottom:-1px;height:2px;background:var(--c-acc);border-radius:1px}
+/* 触屏没有物理键盘（hover:none）：设置里「快捷键」页签整页是桌面键位，按不到的键
+   不给入口（2026-10-12 图1 手机审查）；? 帮助弹层触屏同样唤不出。桌面不受影响。 */
+@media (hover:none){
+  .kb-set-tabs button[data-sec="keys"]{display:none}
+  .kb-set-sec[data-sec="keys"]{display:none}
+}
 .kb-set-b{flex:1;overflow-y:auto;padding:4px 18px 26px;overscroll-behavior:contain}
 .kb-set-b .kb-pref-head{position:sticky;top:0;z-index:1;background:var(--c-panel);border-bottom:1px solid var(--c-line);padding:12px 0 8px;margin-bottom:4px}
 .kb-set-b .kb-pref-head:first-child{position:static}

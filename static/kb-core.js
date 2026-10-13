@@ -845,6 +845,15 @@
   var VISIBLE_KEYS = KEY_REGISTRY.filter(function (k) {
     return !(window.KB_STATIC && window.KB_STATIC.readonly && k.roHide);
   });
+  /* 只读档的 Esc 说明也去「编辑器」尾巴（2026-10-12 图1 手机审查）：条目本身不是
+     editor scope，roHide 过滤不到它，但文案尾「→ 编辑器（未保存先确认）」在公网是
+     谎话。改在 VISIBLE_KEYS 这一层 —— 帮助弹层 / 设置快捷键页 / 命令面板同源。 */
+  if (window.KB_STATIC && window.KB_STATIC.readonly) {
+    VISIBLE_KEYS = VISIBLE_KEYS.map(function (k) {
+      return k.combo === "Esc"
+        ? Object.assign({}, k, { desc: "分层关闭：补全 → 弹窗 / 菜单 → 帮助" }) : k;
+    });
+  }
   var HELP_HTML = VISIBLE_KEYS.map(function (k) { return [k.combo, k.desc]; });
   keys.registry = VISIBLE_KEYS;
 
