@@ -493,6 +493,9 @@ def main() -> int:
         check("图3 阅读历史头部粘顶（滚走标题连 × 关闭钮一起丢）",
               "position:sticky;top:0;z-index:1;background:var(--c-panel);border-bottom:1px solid var(--c-line)}" in st_css
               and ".kb-hist-h{" in st_css)
+        check("图4 viewport 声明键盘 resizes-content（浮层不再被软键盘盖住下半）",
+              "interactive-widget=resizes-content" in base_tpl
+              and "interactive-widget=resizes-content" in (out / "index.html").read_text(encoding="utf-8"))
 
         # ---------------- ⑦ PWA：manifest + 站根 sw（只属于导出产物） ----------------
         man_p = out / "manifest.webmanifest"

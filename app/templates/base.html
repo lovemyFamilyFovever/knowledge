@@ -2,7 +2,10 @@
 <html lang="zh-CN" data-theme="light">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+{# 手机软键盘（2026-10-12 图4）：interactive-widget=resizes-content 让 Chromium（89+）
+   键盘弹出时缩 layout viewport，而不是把键盘盖在页面上 —— 搜索浮层（≤860 全屏垂直居中）
+   的下半不再被键盘吃掉；旧口径下浮层仍按整屏居中，实拍「搜索语法」被裁半行。 #}
+<meta name="viewport" content="width=device-width, initial-scale=1.0, interactive-widget=resizes-content">
 {# KB_STATIC 注入点（合并方案 §4.1/§4.3）：静态导出器把 readonly / base 覆盖在本行使之前 #}
 <script>window.KB_STATIC=window.KB_STATIC||{readonly:false,base:""};</script>
 <title>{% block title %}知库{% endblock %}</title>
