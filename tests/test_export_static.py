@@ -506,6 +506,10 @@ def main() -> int:
         check("图5 hero 卡居中（窄屏 flex:1 拉满 + align-items:center 浮卡；safe center 兜溢出）",
               "align-content:safe center" in kbs
               and ".kb-home-on #kb-home{display:flex;flex:1;align-items:center}" in kbs)
+        check("版本探针三方对账（网络/壳/本机缓存代）：盲区浮条 + 主动 registration.update + 点击链轮询新代",
+              'keys.indexOf("zhiku-shell-" + latest) >= 0' in kbs
+              and "rr.update()" in kbs and "缓存待更新" in kbs
+              and 'span.setAttribute("data-latest", latest)' in kbs)
 
         # ---------------- ⑦ PWA：manifest + 站根 sw（只属于导出产物） ----------------
         man_p = out / "manifest.webmanifest"

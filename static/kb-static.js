@@ -515,8 +515,31 @@
     var span = document.createElement("span");// 不给 innerHTML 解析留任何口子
     span.className = "kb-nv-v";
     span.textContent = cur + " → " + latest;
+    span.setAttribute("data-latest", latest);   // 点击处理轮询新缓存代用
     go.appendChild(span);
-    go.addEventListener("click", function () { location.reload(); });
+    /* 点击不再裸 reload（2026-10-12 盲区修复）：先主动让浏览器去发现新 sw.js，
+       轮询到新缓存代（zhiku-shell-<latest> 在 install 阶段就建键）再刷 ——
+       否则旧 SW 还控制着页面时，reload 只会再吃一遍旧缓存。8s 兜底也刷（下次导航续命）。 */
+    go.addEventListener("click", function () {
+      go.textContent = "更新中…";
+      var latestShown = span.getAttribute("data-latest") || "";
+      var doReload = function () { location.reload(); };
+      if (!navigator.serviceWorker || !navigator.serviceWorker.getRegistration) { doReload(); return; }
+      navigator.serviceWorker.getRegistration().then(function (rr) {
+        try { if (rr && rr.update) rr.update(); } catch (e) {}
+        var t0 = Date.now();
+        var poll = function () {
+          var check = (typeof caches !== "undefined" && caches.keys)
+            ? caches.keys().then(function (ks) { return ks.indexOf("zhiku-shell-" + latestShown) >= 0; })
+            : Promise.resolve(true);
+          check.then(function (hit) {
+            if (hit || Date.now() - t0 > 8000) doReload();
+            else setTimeout(poll, 400);
+          }).catch(doReload);
+        };
+        poll();
+      }).catch(doReload);
+    });
     var x = document.createElement("button");
     x.type = "button";
     x.className = "kb-nv-x";
@@ -534,13 +557,35 @@
   function probeVersion() {
     var cur = CFG.build;
     if (_verBanner || !cur || !nativeFetch) return;
-    nativeFetch(BASE + "/sw.js", { cache: "no-cache" })
-      .then(function (r) { return r && r.ok ? r.text() : ""; })
-      .then(function (t) {
-        var m = /var KB_BUILD\s*=\s*"([^"]+)"/.exec(t || "");
-        if (m && m[1] && m[1] !== cur) showVerBanner(cur, m[1]);
-      })
-      .catch(function () {});                 // 断网/被墙都算"探不到"，静默
+    var swOK = !!(navigator.serviceWorker && navigator.serviceWorker.getRegistration);
+    Promise.all([
+      nativeFetch(BASE + "/sw.js", { cache: "no-cache" })
+        .then(function (r) { return r && r.ok ? r.text() : ""; })
+        .catch(function () { return ""; }),
+      swOK ? navigator.serviceWorker.getRegistration() : Promise.resolve(null),
+      (typeof caches !== "undefined" && caches.keys) ? caches.keys() : Promise.resolve([])
+    ]).then(function (p) {
+      var t = p[0], keys = p[2] || [];
+      var m = /var KB_BUILD\s*=\s*"([^"]+)"/.exec(t || "");
+      var latest = (m && m[1]) || "";
+      if (!latest) return;
+      /* 盲区修复（2026-10-12 用户实拍：60vw 在 PWA 与移动浏览器"未生效"）：
+         旧判据只比「网络 sw.js vs 壳内联 build」。壳已被导航拿新、而浏览器里
+         控制页的 SW 还是旧缓存代时（update 未触发/未完成），两者恰好相等 ——
+         探针谎报"已最新"，页面却还在吃旧 static 缓存（ignoreSearch 的 cache-first）。
+         新判据三方对账：网络 latest / 壳 build / **本机缓存代**（zhiku-shell-<build>
+         键在不在 = 资源代际到没到）。任一落后即浮条，并主动 registration.update()
+         让浏览器立刻发现新 sw.js（install skipWaiting + activate 清旧库 + claim
+         完成代际切换），点刷新直接吃到新资源。 */
+      var genCurrent = keys.indexOf("zhiku-shell-" + latest) >= 0;
+      if (latest === cur && genCurrent) return;          // 三方全齐：真最新
+      if (swOK) {
+        navigator.serviceWorker.getRegistration().then(function (rr) {
+          try { if (rr && rr.update) rr.update(); } catch (e) {}
+        }).catch(function () {});
+      }
+      showVerBanner(cur === latest ? "缓存待更新" : cur, latest);
+    }).catch(function () {});                 // 断网/被墙都算"探不到"，静默
   }
   window.addEventListener("load", function () {
     setTimeout(probeVersion, 4000);           // 让开首屏与预热，别抢带宽
