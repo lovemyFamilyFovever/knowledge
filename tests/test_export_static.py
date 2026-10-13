@@ -479,6 +479,18 @@ def main() -> int:
         check("图1 只读档 Esc 帮助文案去「编辑器」尾巴（公网没有编辑器，roHide 过滤不到这半句）",
               'Object.assign({}, k, { desc: "分层关闭：补全 → 弹窗 / 菜单 → 帮助" })' in kbc_js)
 
+        # ---------------- ⑥d 2026-10-12 手机截图逐图修复：图2/图3（历史抽屉 ▶ 与 ×） ----------------
+        appjs2 = (ROOT / "static" / "app.js").read_text(encoding="utf-8")
+        check("图2 窄屏 togglePanel('left') 守卫（抽屉态落 .collapsed 会让 .unfold 浮进历史头部）",
+              'if (which === "left" && window.matchMedia && matchMedia("(max-width:860px)").matches) return;' in appjs2)
+        check("图2 kb-panels 恢复同样守断点（窄屏不恢复 left 折叠脏态，宽屏照常）",
+              'if (s.left && !(window.matchMedia && matchMedia("(max-width:860px)").matches)) setPanel("left", true);' in appjs2)
+        check("图2/3 窄屏抽屉里藏掉 .unfold 与 .fold（死钮不给入口）",
+              "#p-left .unfold{display:none}" in kbc_css
+              and ".panel-h .fold{display:none}" in kbc_css)
+        check("图2 阅读历史 × 热区外扩 44（本体 24×24 视觉不动）",
+              ".kb-hist-x::after{content:\"\";position:absolute;inset:-10px}" in st_css)
+
         # ---------------- ⑦ PWA：manifest + 站根 sw（只属于导出产物） ----------------
         man_p = out / "manifest.webmanifest"
         sw_p = out / "sw.js"

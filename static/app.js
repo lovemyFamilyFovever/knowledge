@@ -77,6 +77,11 @@ function setPanel(which, off) {
   m.classList.toggle(cls, off);
 }
 function togglePanel(which) {
+  /* 窄屏（≤860，NAV_SHEET 档）左树是抽屉：开合归 navSheet 管，没有「收起」这个概念。
+     不加这道守卫，点分类抽屉头部那颗 fold 会落下 .collapsed 并写进 kb-panels ——
+     之后每次 boot 恢复，宽屏专用的 .unfold（absolute top:12 居中）就在「阅读历史」
+     抽屉头部中间浮出一颗三角（2026-10-12 手机图2/图3 实拍）。 */
+  if (which === "left" && window.matchMedia && matchMedia("(max-width:860px)").matches) return;
   const pid = which === "left" ? "p-left" : "p-rail";
   const off = !document.getElementById(pid).classList.contains("collapsed");
   setPanel(which, off);
@@ -84,7 +89,8 @@ function togglePanel(which) {
     localStorage.setItem("kb-panels", JSON.stringify(s)); } catch (e) {}
 }
 try { const s = JSON.parse(localStorage.getItem("kb-panels") || "{}");
-  if (s.left) setPanel("left", true); } catch (e) {}
+  /* 恢复同样只在宽屏生效：窄屏无视历史遗留的 left 折叠态（脏态自愈，宽屏照常恢复） */
+  if (s.left && !(window.matchMedia && matchMedia("(max-width:860px)").matches)) setPanel("left", true); } catch (e) {}
 
 /* ---------- mermaid 懒加载 ---------- */
 let mermaidLoading = null;

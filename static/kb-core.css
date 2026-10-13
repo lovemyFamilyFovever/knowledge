@@ -370,6 +370,12 @@ main.single:not(:has(> .page-panel)){overflow-y:auto}
     display:flex;padding:0 2px calc(var(--kb-bar) + 20px + env(safe-area-inset-bottom));
     animation:kb-nav-side var(--dur-2) var(--ease-out)
   }
+  /* 窄屏抽屉语境里两颗宽屏件不许露头（2026-10-12 图2 手机实拍定罪）：
+     ① .fold（分类目录头部收起钮）点了会落 .collapsed——左树是抽屉，收起无意义，点了是死钮；
+     ② .unfold（展开左栏，absolute top:12 居中）一旦 .collapsed 被 kb-panels 带病恢复，
+        它就在「阅读历史」头部中间浮出一颗三角、滚动不跟随 —— 用户拍到的就是它。 */
+  #p-left .unfold{display:none}
+  main.kb-nav-on>section.panel#p-left .panel-h .fold{display:none}
 }
 /* 两条侧边抽屉的入场：从各自的边缘滑进来。位移只在动画期间存在，
    结束后 transform 归位，不影响 getBoundingClientRect 的稳态测量。 */
