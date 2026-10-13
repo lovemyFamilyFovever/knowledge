@@ -344,7 +344,7 @@ def main() -> int:
         # 首页面板自己也必须跟着首页态收起：只收正文列/右栏的话，点开文档后它会继续
         # 占住中间那一列、把正文挤到右栏去（用户实拍就是这个形状）。
         check("首页面板本身受首页态控制（不是注入后就常驻）",
-              "#kb-home{display:none" in kbs and ".kb-home-on #kb-home{display:flex}" in kbs)
+              "#kb-home{display:none" in kbs and ".kb-home-on #kb-home{display:flex" in kbs)
         # 首页态收右栏**只能对宽屏生效**：≤860 那一档右栏就是贴底工具栏，而首页上「分类」抽屉
         # 唯一的入口是工具栏里那一页签 —— 一并藏掉等于手机上 1002 篇没有导航（用户实拍：PWA
         # 打开后底部什么都没有。这条正是当时没有任何断言管住而溜出去的）。
@@ -496,6 +496,12 @@ def main() -> int:
         check("图4 viewport 声明键盘 resizes-content（浮层不再被软键盘盖住下半）",
               "interactive-widget=resizes-content" in base_tpl
               and "interactive-widget=resizes-content" in (out / "index.html").read_text(encoding="utf-8"))
+        check("图5 首页快照带域分布行（导出时从 globalstats 烙进，单行 mono 直出）",
+              'class="land-stats land-stats-doms"' in home
+              and ".land-stats-doms{margin-top:6px}" in land_css)
+        check("图5 hero 卡居中（窄屏 flex:1 拉满 + align-items:center 浮卡；safe center 兜溢出）",
+              "align-content:safe center" in kbs
+              and ".kb-home-on #kb-home{display:flex;flex:1;align-items:center}" in kbs)
 
         # ---------------- ⑦ PWA：manifest + 站根 sw（只属于导出产物） ----------------
         man_p = out / "manifest.webmanifest"

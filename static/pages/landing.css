@@ -51,6 +51,7 @@
    hero 卡以下原先近半屏空白）。数字由导出器渲染片段时从 globalstats 烙进去，零运行时请求。 */
 .land-stats{margin-top:14px;font:500 11px/1.7 var(--f-mono);color:var(--faint);letter-spacing:.02em}
 .land-stats b{color:var(--muted);font-weight:600;font-variant-numeric:tabular-nums}
+.land-stats-doms{margin-top:6px}
 
 /* 左栏纵向排布：与右栏顶端对齐（居中会和图的标题错位） */
 .land-side{display:flex;flex-direction:column;justify-content:flex-start;min-width:0;padding-top:2px}

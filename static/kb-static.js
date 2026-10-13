@@ -269,13 +269,18 @@
          只收起正文列/右栏的话，点开文档后它会继续占住中间那一列、把正文挤到右栏
          （用户实拍就是这个形状）。 */
       + "#kb-home{display:none;min-width:0;overflow:auto}"
-      + ".kb-home-on #kb-home{display:flex}"
+      /* flex:1 = 窄屏（main 列 flex）里拉满剩余高度；align-items:center 让内容高的
+         卡垂直居中浮在点阵上（水平仍 flex:1 撑满 —— land-grid 的 420px 轨道靠它居中）。
+         桌面 main 是 grid，flex:1 对 grid 项无效 —— 桌面维持贴顶原样。 */
+      + ".kb-home-on #kb-home{display:flex;flex:1;align-items:center}"
       + "#kb-home .land-panel{flex:1;min-width:0}"
       /* 片段里没有取景框那一列。居中用 grid 的 justify-content，**别用 margin:0 auto** ——
          .land-grid 是 .land-panel(列 flex) 的 flex item，auto 外边距会让它退化成 fit-content，
          实测整栏被压到 291px 宽。 */
       + "#kb-home .land-grid{grid-template-columns:minmax(0,420px);justify-content:center;"
-      + "align-content:start;max-width:none;margin:0;padding:56px 20px}"
+      /* 图5（2026-10-12）：hero 卡垂直居中消化卡外空场（原先 start 贴顶、下面近半屏点阵）。
+         safe：内容高于视口时回落 start，避免 center 溢出裁顶。本地 landing 不走这段。 */
+      + "align-content:safe center;max-width:none;margin:0;padding:44px 20px}"
       + "#kb-home .land-cards{display:none}"
       /* 版本落后提示（§⑨）的样式：白底黑字 + accent 左沿的药丸，居中贴底。
          --kb-bar 只定义在 main 上，这条挂在 body 上拿不到 → 给 60px 兜底；
