@@ -1564,13 +1564,13 @@ def probe_rail_sheet(base):
           and got.get("paneScrollH", 0) >= (got.get("openPane") or {}).get("h", 0) - 2
           and got.get("paneOverflow") == "auto" and got.get("aria1") == "true", got)
     check("页签点开的是**侧边抽屉**：撑满整个视口高度（用户图6，top=0 且底边到视口底），"
-          "宽 ≤86vw 且 ≤380px、贴右边缘、自己滚；**抽屉在最高层，把工具栏盖住**（用户两次点名）",
+          "宽 = 设备一半（50vw，2026-10-12 用户新口径）、贴右边缘、自己滚；"
+          "**抽屉在最高层，把工具栏盖住**（用户两次点名）",
           got.get("panePos") == "fixed" and got.get("paneTop") == 0
           and abs(got.get("paneBottom", -1) - (got.get("vh") or -1)) <= 1
           and got.get("drawerAboveToolbar") is True
           and 0 < (got.get("panePadBottom") or 0) <= 40
-          and (got.get("openPane") or {}).get("w", 0) <= 380
-          and (got.get("openPane") or {}).get("w", 0) <= round((got.get("vw") or 0) * 0.86) + 1
+          and abs((got.get("openPane") or {}).get("w", 0) - round((got.get("vw") or 0) * 0.5)) <= 2
           and abs(got.get("paneRight", 0) - (got.get("vw") or -1)) <= 1
           and got.get("paneOverflow") == "auto", got)
     check("抽屉不再受 60vh 上限约束（旧写法把面板压在工具栏上方一条里，长目录只能滚一小截）",
@@ -1664,13 +1664,14 @@ def probe_rail_sheet(base):
               and (n.get("tabRect") or {}).get("h", 0) >= 44, n)
         check(f"{tag}默认不占位：没有 kb-nav-on，左树仍是 display:none",
               n.get("navOn0") is False and n.get("leftDisp0") == "none", n)
-        check(f"{tag}点一下左树从左侧滑出：**撑满整个视口高度**（用户图6）、自己滚、宽 ≤280px（用户手写指定），"
+        check(f"{tag}点一下左树从左侧滑出：**撑满整个视口高度**（用户图6）、自己滚、"
+              f"宽 = 设备一半（50vw，2026-10-12 用户新口径），"
               f"并且 z70 是最高层 —— 连底部工具栏一起盖住（用户手写指定的层级）",
               n.get("navOn1") is True and n.get("leftDisp1") == "flex"
               and (n.get("leftRect") or {}).get("h", 0) > 100
               and n.get("navInViewport") is True and n.get("navFullHeight") is True
               and n.get("drawerAboveToolbar") is True
-              and (n.get("navW") or 0) <= min(round((n.get("vw") or 0) * 0.86) + 1, 281)
+              and abs((n.get("navW") or 0) - round((n.get("vw") or 0) * 0.5)) <= 2
               and (n.get("navPadBottom") or 0) >= (n.get("raw", {}).get("tbH") or 999)
               and n.get("navScrolls") == "auto" and n.get("ariaNav1") == "true", n)
         check(f"{tag}树真的在里面且域可见（不是空壳面板）",
@@ -2369,8 +2370,10 @@ def probe_read_history(base):
     for w in (1440, 390):
         got = run_expr(url, HIST_JS, width=w)
         tag = f"{w}px"
-        check(f"[{tag}] 顶栏「阅读」旁边有第二颗「阅读历史」钮",
-              got.get("btnText") == "阅读历史", got)
+        check(f"[{tag}] 「阅读历史」是纯图标钮、在右上图标组里且紧挨搜索钮右侧"
+              f"（2026-10-12 用户口径：去文字、从导航第二颗挪位）",
+              got.get("btnText") == "" and got.get("btnAria") == "阅读历史"
+              and got.get("inTopRight") is True and got.get("afterSearch") is True, got)
         check(f"[{tag}] 默认是关的：左栏仍是分类树，历史面板不占地方",
               got.get("closed", {}).get("histOn") is False
               and got.get("closed", {}).get("tree") not in (None, "none"), got)
@@ -2426,6 +2429,9 @@ HIST_JS = """(async () => {
   try { hist = (JSON.parse(localStorage.getItem('kb-read-history') || '[]') || []).length; } catch (e) {}
   const sb = document.querySelector('.statusbar');
   const out = { vw: innerWidth, btnText: (btn.textContent || '').trim(), histKey: hist,
+    btnAria: btn.getAttribute('aria-label') || '',
+    inTopRight: !!btn.closest('.top-right'),
+    afterSearch: (document.getElementById('kb-so-btn') || {}).nextElementSibling === btn,
     closed: { histOn: left.classList.contains('hist-on'), tree: d('#tree') } };
   btn.click(); await wait(400);
   out.opened = { histOn: left.classList.contains('hist-on'), tree: d('#tree'), hist: d('#kb-hist'),

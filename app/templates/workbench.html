@@ -1,8 +1,9 @@
 {% extends "base.html" %}
 {% block title %}知库 · {{ sub_label }}{% endblock %}
 {% block head %}<link rel="stylesheet" href="/static/pages/workbench.css?v={{ av('pages/workbench.css') }}"><link rel="stylesheet" href="/static/pages/tagedit.css?v={{ av('pages/tagedit.css') }}">{% endblock %}
-{% block nav_tail %}{# 「阅读」旁边的第二颗：点开把左栏换成阅读历史（默认不占地方，见 app.js 的 kb-hist） #}
-    <button type="button" class="tn" id="kb-hist-btn" onclick="toggleHist()" aria-expanded="false" aria-controls="kb-hist" title="阅读历史：本机最近打开过的文档（最多 20 条）"><svg class="i i-13"><use href="#i-history-clock"/></svg>阅读历史</button>
+{% block top_right_hist %}{# 阅读历史改纯图标钮、挪到搜索钮右侧（2026-10-12 用户口径）：
+   与同组 pill.icon-only 同款，触控热区由 ≤980 的伪元素外扩接管；无文字后 aria-label 顶可访问名。 #}
+    <button type="button" class="pill icon-only" id="kb-hist-btn" onclick="toggleHist()" aria-expanded="false" aria-controls="kb-hist" title="阅读历史：本机最近打开过的文档（最多 20 条）" aria-label="阅读历史"><svg class="i i-14"><use href="#i-history-clock"/></svg></button>
 {% endblock %}
 {% block body %}
 <main>

@@ -399,12 +399,12 @@ def main() -> int:
         check("抽屉与页签的实现各只有一处，Esc 链两环都在",
               appjs.count("function navSheet(") == 1 and "window.navSheetClose" in appjs
               and "window.navSheetClose === \"function\"" in kbc)
-        check("唤出左树的规则与隐藏它的是同一档断点（860），且分类抽屉满高、宽 ≤280px、"
-              "z-index 70 最高层（用户 2026-10-09 手写指定的三条）",
+        check("唤出左树的规则与隐藏它的是同一档断点（860），且分类抽屉满高、宽 = 设备一半"
+              "（50vw，2026-10-12 用户新口径）、z-index 70 最高层（用户手写）",
               "@media (max-width:860px)" in kbc_css
               and ".rtab.kb-nav-tab{display:inline-flex}" in kbc_css
               and "display:none;position:fixed;left:0;right:auto;top:0;z-index:70;bottom:0;" in kbc_css
-              and "width:min(86vw,280px)" in kbc_css
+              and "width:50vw;max-height:none;overflow-y:auto;margin:0;border-radius:0;" in kbc_css
               and "main.kb-nav-on>section.panel#p-left" in kbc_css
               and "padding:0 2px calc(var(--kb-bar) + 20px + env(safe-area-inset-bottom))" in kbc_css
               and "@media (min-width:861px){\n  .rtab.kb-nav-tab{display:none}" in kbc_css)
@@ -414,7 +414,9 @@ def main() -> int:
               and 'main>section.rail .rtab[data-pane="links"]{display:none}' in kbc_css
               and "transition:max-height" not in kbc_css.split("@media (max-width:980px)")[1]
                   .split("@media (max-width:860px)")[0]
-              and "width:min(86vw,380px)" in kbc_css)
+              and "z-index:61;\n    width:50vw;max-height:none;overflow-y:auto;" in kbc_css)
+        check("设置抽屉窄屏同样 50vw（侧边弹窗一律设备宽一半的总口径，桌面维持 400px）",
+              ".kb-set-drawer{width:50vw;max-width:50vw}" in kbc_css)
         # 窄屏搜索入口：常驻搜索框让位给右上角那颗钮（两档都要有，缺一个就是假入口/双入口）
         check("窄屏收掉顶栏搜索框并放出那颗搜索钮；宽屏反过来（.pill 两个类才压得住 .pill.icon-only）",
               ".searchbox{display:none}" in kbc_css and ".pill.kb-so-btn{display:inline-flex}" in kbc_css
@@ -427,9 +429,11 @@ def main() -> int:
         check("阅读历史的记录点挂在 setDoc 上（首屏内嵌 doc-data 那一趟也要记到）",
               "if (v && v.rel) histRecord(v.rel, v.title);" in appjs
               and appjs.count("function histRecord(") == 1)
-        check("「阅读历史」钮只在阅读工作台出现（模板 block，不在收件箱/统计页长假入口）",
-              '{% block nav_tail %}' in base_tpl and '{% block nav_tail %}' in wb_tpl
-              and wb_tpl.count('id="kb-hist-btn"') == 1)
+        check("「阅读历史」钮只在阅读工作台出现（top_right_hist 插件槽，不在收件箱/统计页长假入口）"
+              "且是纯图标 pill（2026-10-12 用户口径：去文字、挪到搜索钮右边）",
+              '{% block top_right_hist %}' in base_tpl and '{% block top_right_hist %}' in wb_tpl
+              and wb_tpl.count('id="kb-hist-btn"') == 1
+              and 'class="pill icon-only" id="kb-hist-btn"' in wb_tpl)
         check("工具栏那一档跟的是 style.css「收右遥测轨」的 980，不是随手挑的数"
               "（861~980 之间网格只有两轨，右栏不 fixed 就会被甩到第二行）",
               "@media (max-width:980px)" in kbc_css
