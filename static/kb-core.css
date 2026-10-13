@@ -124,11 +124,11 @@ html [hidden]{display:none}
   background:var(--c-panel);border-left:1px solid var(--c-line);box-shadow:-16px 0 44px rgba(24,26,20,.16);
   transform:translateX(103%);transition:transform .26s cubic-bezier(.2,.8,.3,1)}
 .kb-set-ov.show .kb-set-drawer{transform:none}
-/* 侧边弹窗宽度新总口径（2026-10-12 用户）：窄屏一律设备宽一半（50vw）——
-   与分类抽屉 / 右栏抽屉同档（≤980）。桌面维持 400px：「设备宽度的一半」
-   是手机语境，桌面 50vw=700+ 反而失形。 */
+/* 侧边弹窗宽度新总口径（2026-10-12 用户，两次拍板后定 60vw）：窄屏一律设备宽 60% ——
+   与分类抽屉 / 右栏抽屉同档（≤980）。桌面维持 400px：「设备宽度的百分比」
+   是手机语境，桌面 60vw=800+ 反而失形。 */
 @media (max-width:980px){
-  .kb-set-drawer{width:50vw;max-width:50vw}
+  .kb-set-drawer{width:60vw;max-width:60vw}
 }
 .kb-set-h{flex:none;display:flex;align-items:center;gap:8px;padding:14px 18px;border-bottom:1px solid var(--c-line);
   font-family:var(--f-disp);font-size:15px;font-weight:700;color:var(--c-ink)}
@@ -321,7 +321,7 @@ main.single:not(:has(> .page-panel)){overflow-y:auto}
      只占正文那一截，看着矮一截 —— 口径要对齐「设置」那种满高弹层），
      并且是这一档里的**最高层**（z 61，把工具栏与顶栏都盖住）。
      底边只留普通内边距 + 安全区，不再给工具栏让位 —— 让位是"抽屉在工具栏之下"那版的写法。
-     宽 50vw（2026-10-12 用户改口径：侧边弹窗一律设备宽一半），自己滚。落点仍在 app.js::railSheet。
+     宽 60vw（2026-10-12 用户改口径：侧边弹窗占设备宽 60%），自己滚。落点仍在 app.js::railSheet。
      也不走 max-height 过渡：那条过渡会在 ~350ms 里停在几十像素高的形状上，
      用户实拍到的正是那个"只露出标题行的半开面板"。 */
   main>section.rail .rpane{display:none}
@@ -331,7 +331,7 @@ main.single:not(:has(> .page-panel)){overflow-y:auto}
   main>section.rail:not(.rail-open) :is(#pane-toc,#pane-info,#pane-links,#pane-notes).active{display:none}
   main>section.rail.rail-open .rpane.active{
     display:block;position:fixed;right:0;top:0;left:auto;bottom:0;z-index:61;
-    width:50vw;max-height:none;overflow-y:auto;
+    width:60vw;max-height:none;overflow-y:auto;
     background:var(--c-panel);border-left:1px solid var(--c-line);border-top:0;
     box-shadow:-16px 0 40px rgba(0,0,0,.18);
     padding:12px 14px calc(16px + env(safe-area-inset-bottom));
@@ -365,12 +365,12 @@ main.single:not(:has(> .page-panel)){overflow-y:auto}
      满高 `top:0;bottom:0`。
      **z-index:70 是用户 2026-10-09 手写指定的值** —— 高于工具栏（60）与右栏那两条面板（61），
      抽屉开着时它是最高层，连工具栏一起盖住。关闭走 点遮罩 / Esc / 换文档 三条。
-     宽度 2026-10-12 用户改口径 **50vw（设备宽一半）**，原手写值 min(86vw,280px) 作废 ——
-     「侧边弹窗一律一半」是他的新总口径，改宽度前先读台账 145 行。
+     宽度 2026-10-12 用户改口径 **60vw（设备宽 60%）**，原手写值 min(86vw,280px) 作废 ——
+     「侧边弹窗占 60%」是他的新总口径（先 50vw 后 60vw，两次拍板），改宽度前先读台账 145~146 行。
      也不走 max-height 过渡：半开帧会被拍成"只露一行"的空壳（§6 127）。 */
   main>section.panel#p-left{
     display:none;position:fixed;left:0;right:auto;top:0;z-index:70;bottom:0;
-    width:50vw;max-height:none;overflow-y:auto;margin:0;border-radius:0;
+    width:60vw;max-height:none;overflow-y:auto;margin:0;border-radius:0;
     background:var(--c-panel);border:0;border-right:1px solid var(--c-line);
     box-shadow:16px 0 40px rgba(0,0,0,.18)
   }

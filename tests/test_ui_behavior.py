@@ -1564,13 +1564,13 @@ def probe_rail_sheet(base):
           and got.get("paneScrollH", 0) >= (got.get("openPane") or {}).get("h", 0) - 2
           and got.get("paneOverflow") == "auto" and got.get("aria1") == "true", got)
     check("页签点开的是**侧边抽屉**：撑满整个视口高度（用户图6，top=0 且底边到视口底），"
-          "宽 = 设备一半（50vw，2026-10-12 用户新口径）、贴右边缘、自己滚；"
+          "宽 = 设备 60%（60vw，2026-10-12 用户新口径）、贴右边缘、自己滚；"
           "**抽屉在最高层，把工具栏盖住**（用户两次点名）",
           got.get("panePos") == "fixed" and got.get("paneTop") == 0
           and abs(got.get("paneBottom", -1) - (got.get("vh") or -1)) <= 1
           and got.get("drawerAboveToolbar") is True
           and 0 < (got.get("panePadBottom") or 0) <= 40
-          and abs((got.get("openPane") or {}).get("w", 0) - round((got.get("vw") or 0) * 0.5)) <= 2
+          and abs((got.get("openPane") or {}).get("w", 0) - round((got.get("vw") or 0) * 0.6)) <= 2
           and abs(got.get("paneRight", 0) - (got.get("vw") or -1)) <= 1
           and got.get("paneOverflow") == "auto", got)
     check("抽屉不再受 60vh 上限约束（旧写法把面板压在工具栏上方一条里，长目录只能滚一小截）",
@@ -1665,13 +1665,13 @@ def probe_rail_sheet(base):
         check(f"{tag}默认不占位：没有 kb-nav-on，左树仍是 display:none",
               n.get("navOn0") is False and n.get("leftDisp0") == "none", n)
         check(f"{tag}点一下左树从左侧滑出：**撑满整个视口高度**（用户图6）、自己滚、"
-              f"宽 = 设备一半（50vw，2026-10-12 用户新口径），"
+              f"宽 = 设备 60%（60vw，2026-10-12 用户新口径），"
               f"并且 z70 是最高层 —— 连底部工具栏一起盖住（用户手写指定的层级）",
               n.get("navOn1") is True and n.get("leftDisp1") == "flex"
               and (n.get("leftRect") or {}).get("h", 0) > 100
               and n.get("navInViewport") is True and n.get("navFullHeight") is True
               and n.get("drawerAboveToolbar") is True
-              and abs((n.get("navW") or 0) - round((n.get("vw") or 0) * 0.5)) <= 2
+              and abs((n.get("navW") or 0) - round((n.get("vw") or 0) * 0.6)) <= 2
               and (n.get("navPadBottom") or 0) >= (n.get("raw", {}).get("tbH") or 999)
               and n.get("navScrolls") == "auto" and n.get("ariaNav1") == "true", n)
         check(f"{tag}树真的在里面且域可见（不是空壳面板）",
