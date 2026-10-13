@@ -490,6 +490,9 @@ def main() -> int:
               and ".panel-h .fold{display:none}" in kbc_css)
         check("图2 阅读历史 × 热区外扩 44（本体 24×24 视觉不动）",
               ".kb-hist-x::after{content:\"\";position:absolute;inset:-10px}" in st_css)
+        check("图3 阅读历史头部粘顶（滚走标题连 × 关闭钮一起丢）",
+              "position:sticky;top:0;z-index:1;background:var(--c-panel);border-bottom:1px solid var(--c-line)}" in st_css
+              and ".kb-hist-h{" in st_css)
 
         # ---------------- ⑦ PWA：manifest + 站根 sw（只属于导出产物） ----------------
         man_p = out / "manifest.webmanifest"
