@@ -638,11 +638,8 @@ function renderArticle(forceMd) {
     el.innerHTML = `<div class="html-render" id="html-render">
         <div class="kb-skeleton" aria-busy="true"><i style="width:65%"></i><i style="width:88%"></i><i style="width:76%"></i></div>
       </div>
-      <div class="kb-finish-bar" id="kb-finish-bar">
-        <span class="kb-finish-q">读完这篇了？</span>
-        <button type="button" class="kb-btn" id="mark-read-btn" onclick="toggleDocMark('read')" title="标记已读完（存本地复习库，不写语料）">已读完</button>
-        <button type="button" class="kb-btn" id="mark-mastered-btn" onclick="toggleDocMark('mastered')" title="标记已掌握 —— 术语门户会显示为已掌握">已掌握</button>
-      </div>`;
+      ${finishBarHTML()}`;
+    syncFinishNav();
     mountHtmlDoc(el.querySelector("#html-render"), rawHref, DOC.title).then(() => buildToc());
   } else {
     /* 2026-09-20 头部瘦身：.a-chips 元信息行撤销（标签已并入 crumb 右端）；
@@ -652,11 +649,8 @@ function renderArticle(forceMd) {
     const hasH1 = /^\s*<h1[\s>]/i.test(bodyHtml);
     el.innerHTML = `${hasH1 ? "" : `<h1 class="a-title">${esc(DOC.title)}</h1><div class="a-rule"></div>`}
       <div class="a-body">${bodyHtml}</div>
-      <div class="kb-finish-bar" id="kb-finish-bar">
-        <span class="kb-finish-q">读完这篇了？</span>
-        <button type="button" class="kb-btn" id="mark-read-btn" onclick="toggleDocMark('read')" title="标记已读完（存本地复习库，不写语料）">已读完</button>
-        <button type="button" class="kb-btn" id="mark-mastered-btn" onclick="toggleDocMark('mastered')" title="标记已掌握 —— 术语门户会显示为已掌握">已掌握</button>
-      </div>`;
+      ${finishBarHTML()}`;
+    syncFinishNav();
     applyReaderFonts(el); // 阅读字体双轨：英文 Cormorant/Work Sans + 中文宋黑回退（排版还原回 v2）
   }
   // mermaid：按需懒加载（3.5MB），仅文档真含 mermaid 图时加载
@@ -2117,6 +2111,52 @@ async function addNote() {
 }
 
 /* ---------- 已读完 / 已掌握（文档级标记，存 indexes/reading.db 的 doc_marks，不写语料） ---------- */
+/* 正文底部这一条（用户 2026-10-15 拍板）：
+   此前只有「读完这篇了？[已读完][已掌握]」，公网只读档（手机上的 PWA）按写入口裁掉两个钮后，
+   就只剩一句孤零零的问话。本轮把它拆成两组，共用同一个 .kb-finish-bar：
+   - .kb-finish-nav  上一篇 / 下一篇：纯导航，本地与公网都留 —— 顺序 = 左树摊平后的阅读线
+   - .kb-finish-marks 读完 / 掌握：本地专属（写 reading.db），公网档由 kb-static.js 的 HIDE 整组裁掉 */
+function finishBarHTML() {
+  return `<div class="kb-finish-bar" id="kb-finish-bar">
+      <div class="kb-finish-nav">
+        <button type="button" class="kb-btn" id="kb-prev-doc" onclick="gotoSiblingDoc(-1)">${icon("chev-left", 13)}上一篇</button>
+        <button type="button" class="kb-btn" id="kb-next-doc" onclick="gotoSiblingDoc(1)">下一篇${icon("chev-right", 13)}</button>
+      </div>
+      <div class="kb-finish-marks">
+        <span class="kb-finish-q">读完这篇了？</span>
+        <button type="button" class="kb-btn" id="mark-read-btn" onclick="toggleDocMark('read')" title="标记已读完（存本地复习库，不写语料）">已读完</button>
+        <button type="button" class="kb-btn" id="mark-mastered-btn" onclick="toggleDocMark('mastered')" title="标记已掌握 —— 术语门户会显示为已掌握">已掌握</button>
+      </div>
+    </div>`;
+}
+/* 相邻篇：把左树（域 → 子域 → 文档）摊平成一条阅读线，取当前篇的前一篇 / 后一篇。
+   身份判定**比链接不比名字**：与左树同一套 docUrl 构造 + 同一份 .md 规范化
+   （理由见 renderTree：CUR.name 带扩展名、树里的 doc.name 不带，比名字永远对不上）。 */
+function siblingDoc(step) {
+  if (!TREE) return null;
+  const here = location.pathname.replace(/\.md$/, "");
+  const flat = [];
+  let idx = -1;
+  TREE.forEach(d => (d.subs || []).forEach(s => (s.docs || []).forEach(doc => {
+    const href = docUrl(`${d.id}/${s.id}/${doc.name}.md`);
+    if (href === here && idx < 0) idx = flat.length;
+    flat.push({ href, label: doc.name.split("/").pop() }); // 多层目录只拿叶子名做 title
+  })));
+  return idx < 0 ? null : (flat[idx + step] || null); // 首篇的上一篇 / 末篇的下一篇 → null
+}
+function gotoSiblingDoc(step) {
+  const t = siblingDoc(step);
+  if (t) navigate(t.href, true);
+}
+/* 首/末篇：钮留在原位但置灰 —— 既不许「点了没反应」，也不许整钮消失把这一行拆成两种宽度 */
+function syncFinishNav() {
+  const pb = document.getElementById("kb-prev-doc"), nb = document.getElementById("kb-next-doc");
+  if (!pb || !nb) return;
+  const p = siblingDoc(-1), n = siblingDoc(1);
+  pb.disabled = !p; nb.disabled = !n;
+  pb.title = p ? `上一篇：${p.label}` : "已经是第一篇";
+  nb.title = n ? `下一篇：${n.label}` : "已经是最后一篇";
+}
 function renderDocMark(m) {
   const rb = document.getElementById("mark-read-btn");
   const mb = document.getElementById("mark-mastered-btn");
@@ -3508,6 +3548,9 @@ if (docData) {
 if (WORKBENCH) wireDragMove();
 loadTree().then(() => {
   renderTree();
+  /* 直载 /doc 时 renderArticle 在 loadTree 之前跑（上面 3539 行），那一刻 TREE 还是 null ——
+     上一篇/下一篇只能先置灰。树到货后补一次，否则"刷新页面"和"SPA 点进来"两种进法状态不一致。 */
+  syncFinishNav();
 });
 
 /* 首页「继续阅读」：接上最后打开的文档（滚动进度由 restoreReadPos 自动续） */

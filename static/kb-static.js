@@ -236,7 +236,10 @@
   var HIDE = [
     '[onclick^="openEditor"]', '[onclick^="deleteDoc"]', '[onclick^="toggleFav"]',
     '[onclick^="jumpToTagEdit"]', '[onclick^="addNote"]', '[onclick^="removeTag"]',
-    '[onclick^="toggleDocMark"]', '[onclick^="purgeInbox"]', '[onclick^="chipsAddToggle"]',
+    /* 读完/掌握整组裁（2026-10-15）：selector 从 [onclick^="toggleDocMark"] 改成外层容器 ——
+       原来只裁两个钮，留下「读完这篇了？」这句没有钮的问话孤零零挂在正文末尾（用户实拍手机端）。
+       同一条里的「上一篇/下一篇」是纯导航，公网照留，不在这份清单里。 */
+    '.kb-finish-marks', '[onclick^="purgeInbox"]', '[onclick^="chipsAddToggle"]',
     '#editor', '#fav-btn', '#ed-del', '#tag-add-btn', '#tag-in', '#tag-inputrow',
     '.note-input', '#ni',
     'a[href$="/stats"]', 'a[href$="/favorites"]', 'a[href$="/inbox"]',

@@ -290,6 +290,16 @@ def main() -> int:
               # 曾经有第二处（第二列文档列表 renderDocList），随需求 #11 一起删了；
               # 计数写死就是为了让"再抄一份渲染"或"删掉一处忘了改这里"都当场红
               appjs.count('draggable="${KB_READ_ONLY ? "false" : "true"}"') == 1)
+        # ---- 2026-10-15：正文底部这一条拆成「导航组 + 标记组」 ----
+        # 负判走剥注释后的源码：改版注释里会原样引用被换掉的旧选择器（便于回查），
+        # 直接判原文会把"注释里提到"误判成"代码里还在"。
+        _kbs_code = _strip_js_comments(kbs)
+        check("读完/掌握整组裁掉（含「读完这篇了？」那句问话），不是只裁两钮留一句孤零零的问话",
+              "'.kb-finish-marks'" in _kbs_code and '[onclick^="toggleDocMark"]' not in _kbs_code)
+        check("同一条里的「上一篇/下一篇」是纯导航：不在这份 HIDE 清单里（公网/手机照点）",
+              "kb-prev-doc" in appjs and "kb-prev-doc" not in kbs)
+        check("正文底部这一条的 HTML 只有一处（两个渲染分支共用 finishBarHTML，不手抄第二份）",
+              appjs.count('id="kb-finish-bar"') == 1)
         check("编辑器快捷键在只读档不进帮助（registry 单点过滤）",
               'scope: "editor", roHide: true' in kbc and "VISIBLE_KEYS" in kbc
               and "keys.registry = VISIBLE_KEYS;" in kbc)

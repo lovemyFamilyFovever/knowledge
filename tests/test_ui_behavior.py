@@ -1752,13 +1752,34 @@ def probe_pretty(base):
           "美化版" in (html.get("tag_state") or ""), html.get("tag_state"))
 
 
-# ================================================================ 探针 18：#kb-finish-bar 读完 / 掌握
+# ================================================================ 探针 18：#kb-finish-bar 读完 / 掌握 + 上一篇/下一篇
 FINISH_JS = PRELUDE + r"""
   const T = e => ((e && e.textContent) || '').replace(/\s+/g, ' ').trim();
   const rb = () => q('#mark-read-btn'), mb = () => q('#mark-mastered-bar, #mark-mastered-btn');
   for (let i = 0; i < 80 && !rb(); i++) await sleep(150);
   await sleep(700);
   out.bar_present = !!q('#kb-finish-bar');
+  /* 上一篇/下一篇的期望值**独立算一遍**：拿 /api/tree 摊平（域→子域→文档），
+     与钮自身的 disabled/title 对账 —— 不依赖测试夹具里 alpha 排第几。 */
+  const here = location.pathname.replace(/\.md$/, '');
+  const flat = [];
+  const tj = await (await fetch('/api/tree')).json();
+  (tj.domains || []).forEach(d => (d.subs || []).forEach(s => (s.docs || []).forEach(dc => {
+    flat.push({ href: docUrl(`${d.id}/${s.id}/${dc.name}.md`), label: dc.name.split('/').pop() });
+  })));
+  const idx = flat.findIndex(x => x.href === here);
+  out.nav_idx = idx;
+  out.nav_tree_n = flat.length;
+  const pv = q('#kb-prev-doc'), nx = q('#kb-next-doc');
+  out.nav_present = !!(pv && nx);
+  out.nav_prev = pv ? {dis: pv.disabled, title: pv.title} : null;
+  out.nav_next = nx ? {dis: nx.disabled, title: nx.title} : null;
+  out.nav_expect_prev = idx > 0 ? flat[idx - 1].label : null;
+  out.nav_expect_next = (idx >= 0 && idx + 1 < flat.length) ? flat[idx + 1].label : null;
+  out.nav_z_groups = !!q('.kb-finish-nav') && !!q('.kb-finish-marks');
+  const rect = e => { const r = e && e.getBoundingClientRect(); return r ? {x: Math.round(r.x), w: Math.round(r.width)} : null; };
+  out.bar_box = rect(q('#kb-finish-bar'));
+  out.body_box = rect(q('.a-body'));
   const snap = () => ({r_on: rb().classList.contains('mark-on'), r_txt: T(rb()),
                        m_on: mb().classList.contains('mark-on'), m_txt: T(mb())});
   out.s0 = snap();
@@ -1776,6 +1797,30 @@ FINISH_JS = PRELUDE + r"""
   out.s3 = snap();
   out.t_unread = txt('#toast');
   out.disabled_after = rb().disabled;
+  /* 点「下一篇」：地址栏换成树上那一篇 + 这一条在新页面重新渲染且「上一篇」翻回本篇 */
+  if (nx && !nx.disabled) {
+    nx.click();
+    for (let i = 0; i < 60 && location.pathname.replace(/\.md$/, '') === here; i++) await sleep(150);
+    await sleep(600);
+    out.after_path = location.pathname.replace(/\.md$/, '');
+    out.after_expect = flat[idx + 1].href;
+    out.after_bar = !!q('#kb-finish-bar');
+    out.after_prev_title = (q('#kb-prev-doc') || {}).title;
+  }
+  return JSON.stringify(out);
+})()"""
+
+
+# 手机档只量几何：这一条与正文同宽（用户 2026-10-15 拍板），且不把正文撑出横向滚动
+FINISH_MOBILE_JS = PRELUDE + r"""
+  for (let i = 0; i < 80 && !q('#kb-finish-bar'); i++) await sleep(150);
+  await sleep(500);
+  const rect = e => { const r = e && e.getBoundingClientRect(); return r ? {x: Math.round(r.x), w: Math.round(r.width)} : null; };
+  out.bar_box = rect(q('#kb-finish-bar'));
+  out.body_box = rect(q('.a-body') || q('.html-render'));
+  out.nav_box = rect(q('.kb-finish-nav'));
+  out.marks_disp = getComputedStyle(q('.kb-finish-marks')).display;
+  out.overflow = (() => { const a = q('.article'); return a ? a.scrollWidth - a.clientWidth : null; })();
   return JSON.stringify(out);
 })()"""
 
@@ -1804,6 +1849,29 @@ def probe_finish_bar(base, tmp):
     srv = json.loads(urllib_get(base + "/api/docmark?path=" + quote("ui-r/notes/alpha.md")) or "{}")
     check("标记的最终状态与后端一致（服务端 read/mastered 都是 False）",
           srv.get("ok") is True and not srv.get("read") and not srv.get("mastered"), srv)
+
+    # ---- 2026-10-15 增补：这一条拆成「导航组 + 标记组」，导航组本地与公网都在 ----
+    pv, nx = d.get("nav_prev") or {}, d.get("nav_next") or {}
+    pi, ni = d.get("nav_expect_prev"), d.get("nav_expect_next")
+    check("这一条由两组组成：.kb-finish-nav（上一篇/下一篇）+ .kb-finish-marks（读完/掌握）",
+          d.get("nav_z_groups") is True, d)
+    check("上一篇/下一篇 = 左树摊平后的相邻篇；首篇/末篇按钮留在原位但置灰（不许点了没反应）",
+          d.get("nav_present") is True and d.get("nav_idx") is not None and d.get("nav_idx") >= 0
+          and pv.get("title") == (("上一篇：" + pi) if pi else "已经是第一篇")
+          and nx.get("title") == (("下一篇：" + ni) if ni else "已经是最后一篇")
+          and pv.get("dis") == (pi is None) and nx.get("dis") == (ni is None),
+          {"prev": pv, "next": nx, "expect_prev": pi, "expect_next": ni, "idx": d.get("nav_idx")})
+    check("点「下一篇」翻到树上那一篇（SPA 客户端切页），这一条跟着重渲染且「上一篇」翻回本篇",
+          d.get("after_path") is not None and d.get("after_path") == d.get("after_expect")
+          and d.get("after_bar") is True
+          and (d.get("after_prev_title") or "").startswith("上一篇："),
+          {"after": d.get("after_path"), "expect": d.get("after_expect"),
+           "prev_title": d.get("after_prev_title")})
+    mm = run_expr(base + "/doc/ui-r/notes/alpha.md", FINISH_MOBILE_JS, width=390)
+    check("手机档（390）：这一条与正文同 x 同宽（原先左右各留 28px 缩进，比正文窄一圈）",
+          mm.get("bar_box") is not None and mm.get("bar_box") == mm.get("body_box"), mm)
+    check("手机档（390）：两组同宽放不下时折行，不把正文撑出横向滚动",
+          mm.get("overflow") == 0 and mm.get("marks_disp") == "flex", mm)
 
 
 # ================================================================ 探针 19：#kb-toc-spark 近 7 日阅读
@@ -2980,8 +3048,10 @@ ARTIFACT_CLICK_JS = r"""(async () => {
   const out = {};
   for (let i = 0; i < 140 && !window.navigate; i++) await wait(50);
   await wait(600);
-  // 深链在纯静态服务上没有 404 回落 → 走客户端路由，等价于用户从首页点进一篇
-  window.navigate('/doc/ui-r/notes/alpha.md', true);
+  // 深链在纯静态服务上没有 404 回落 → 走客户端路由，等价于用户从首页点进一篇。
+  // 走 KB.util.docUrl 拿**规范链接**：只读档那份覆盖不带 .md（本地那份也不带），
+  // 手写 "/doc/…/alpha.md" 在静态索引里查不到 key，渲染成"文档可能已被删除"的假页。
+  window.navigate(KB.util.docUrl('ui-r/notes/alpha.md'), true);
   for (let i = 0; i < 120 && !document.querySelector('#tree .dom-head'); i++) await wait(50);
   await wait(700);
   const q = s => document.querySelector(s);
@@ -3006,6 +3076,44 @@ ARTIFACT_CLICK_JS = r"""(async () => {
                 aria: subA.getAttribute('aria-expanded') };
   }
   out.moved = out.before.path !== out.after.path;
+  /* 正文底部这一条（2026-10-15）：手机上看的就是这个只读档，所以「上一篇/下一篇 是活的」
+     与「读完/掌握 整组被裁掉」这两件事必须在这一档验，本地实例照不到（那边两钮都在）。 */
+  const bar = document.getElementById('kb-finish-bar');
+  const marks = document.querySelector('.kb-finish-marks');
+  const pb = document.getElementById('kb-prev-doc'), nb = document.getElementById('kb-next-doc');
+  const body = document.querySelector('#article .a-body') || document.querySelector('#article .html-render');
+  const box = el => { const b = el.getBoundingClientRect();
+                      return { x: Math.round(b.x), w: Math.round(b.width) }; };
+  // 期望的相邻篇**不看界面自己报的**：拿接口里的树在本页独立摊平一遍这条阅读线
+  // （或只读档的 data/tree.json —— 桥把它映射成同一个 /api/tree）
+  const tree = await (await fetch(((window.KB_STATIC && KB_STATIC.base) || '') + '/api/tree')).json();
+  const flat = [];
+  (tree.domains || []).forEach(d => (d.subs || []).forEach(s => (s.docs || []).forEach(doc => {
+    flat.push({ href: KB.util.docUrl(d.id + '/' + s.id + '/' + doc.name + '.md'),
+                label: String(doc.name).split('/').pop() });
+  })));
+  const here = location.pathname.replace(/\.md$/, '');
+  const i = flat.findIndex(x => x.href === here);
+  const p = i > 0 ? flat[i - 1] : null;
+  const nx = (i >= 0 && i < flat.length - 1) ? flat[i + 1] : null;
+  out.finish = {
+    bar: !!bar,
+    marksShown: !!marks && getComputedStyle(marks).display !== 'none',
+    prev: pb ? { disabled: pb.disabled, title: pb.title } : null,
+    next: nb ? { disabled: nb.disabled, title: nb.title } : null,
+    barBox: bar ? box(bar) : null,
+    bodyBox: body ? box(body) : null,
+    path: location.pathname,
+    i: i,
+    n: flat.length,
+    expect: { prev: p ? p.label : null, next: nx ? nx.label : null, nextHref: nx ? nx.href : null },
+  };
+  if (nb && !nb.disabled) {
+    nb.click();
+    await wait(1500);
+    out.finishAfter = { path: location.pathname,
+                        prevTitle: (document.getElementById('kb-prev-doc') || {}).title || null };
+  }
   return JSON.stringify(out);
 })()"""
 
@@ -3056,6 +3164,31 @@ def probe_public_artifact(base, tmp):
         check("点二级子域行：同样只收不导航",
               s.get("moved") is False and s.get("collapsed") is True
               and s.get("aria") == "false", s)
+        # ---- 2026-10-15：正文底部这一条在只读档（= 用户手机）的两半 ----
+        f = d.get("finish") or {}
+        ex = f.get("expect") or {}
+        check("[390 只读档] 底部这一条在位，但「读完/掌握」整组裁掉"
+              "（含「读完这篇了？」那句问话，不是留一句没有钮的问话）",
+              f.get("bar") is True and f.get("marksShown") is False, f)
+        fb, bb = f.get("barBox") or {}, f.get("bodyBox") or {}
+        check("[390 只读档] 这一条与正文同宽（左右边界同一个内容盒，不再比正文窄一圈）",
+              bool(bb) and fb.get("x") == bb.get("x") and fb.get("w") == bb.get("w"),
+              {"bar": fb, "body": bb})
+        check("[390 只读档] 上一篇 / 下一篇 的灰亮与提示篇名 == 按树独立摊平算出的相邻篇"
+              "（只读档不是两枚死钮，也不是写死的一对）",
+              (f.get("i") or -1) >= 0
+              and ((f.get("prev") or {}).get("disabled") is True) == (ex.get("prev") is None)
+              and ((f.get("next") or {}).get("disabled") is True) == (ex.get("next") is None)
+              and ((ex.get("prev") or "") in ((f.get("prev") or {}).get("title") or ""))
+              and ((ex.get("next") or "") in ((f.get("next") or {}).get("title") or "")),
+              {"got": {"prev": f.get("prev"), "next": f.get("next")},
+               "expect": ex, "i": f.get("i"), "n": f.get("n")})
+        fa = d.get("finishAfter") or {}
+        check("[390 只读档] 点「下一篇」真翻到那一篇（地址栏 == 独立算出的相邻篇链接），"
+              "返程钮跟着指回本篇",
+              bool(ex.get("nextHref")) and fa.get("path") == ex.get("nextHref")
+              and "alpha" in (fa.get("prevTitle") or ""),
+              {"expect": ex.get("nextHref"), "after": fa})
     finally:
         srv.kill()
         try:

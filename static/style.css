@@ -456,8 +456,12 @@ main.single{display:flex;flex-direction:column}
 .chips-add:hover{color:var(--c-acc);border-color:var(--acc-line);background:var(--acc-soft)}
 #article.pretty-mode{max-width:none}
 #article.pretty-mode .html-frame{height:calc(100vh - 175px);min-height:560px}
-.kb-finish-bar{display:flex;align-items:center;gap:10px;margin:0 28px;padding:12px 16px;
+/* 正文末尾这一条（2026-10-15 改版）：左「上一篇/下一篇」导航组 + 右「读完/掌握」标记组。
+   flex-wrap 兜底：手机上标记组还在时（本地窄窗）宁折成两行，也不横向溢出把正文拉出横向滚动条。 */
+.kb-finish-bar{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin:0 28px;padding:12px 16px;
   border:1px solid var(--c-line);border-radius:var(--rd-card);background:var(--c-sunk)}
+.kb-finish-nav{display:flex;align-items:center;gap:8px}
+.kb-finish-marks{display:flex;align-items:center;gap:10px;margin-left:auto}
 .kb-finish-q{font-size:13px;color:var(--muted)}
 .kb-finish-bar .kb-btn{min-height:32px;padding:0 14px;font-size:12.5px}
 
@@ -951,6 +955,9 @@ html.motion-ok .ss-bar i{transform-origin:left center;animation:ss-grow .9s var(
   main>section.rail{display:none}
   .article{padding:16px 14px 40px}
   .article-inner{max-width:none}
+  /* 2026-10-15 用户拍板：这一条原来左右各留 28px 缩进，比正文窄一圈；手机档改为与正文同宽
+     （margins 归零 = 与 .a-body 同一内容盒，两档实测同 x 同 w） */
+  .kb-finish-bar{margin:0}
   .editor textarea{min-height:50vh}
   .kbm{padding:16px}
   .pretty-box{width:96vw;height:86vh}
